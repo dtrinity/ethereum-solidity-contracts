@@ -36,7 +36,7 @@ import SafeApiKit from '@safe-global/api-kit'
 import { ethers } from 'ethers'
 
 // Initialize provider and signer
-const provider = new ethers.JsonRpcProvider('https://rpc.sonic.fantom.network')
+const provider = new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY')
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider)
 ```
 
@@ -149,8 +149,8 @@ import SafeApiKit from '@safe-global/api-kit'
 
 // Initialize API Kit
 const apiKit = new SafeApiKit({
-  chainId: 146, // Sonic Network chain ID
-  txServiceUrl: 'https://safe-transaction-sonic.safe.global' // If available
+  chainId: 1, // Ethereum Mainnet chain ID
+  txServiceUrl: 'https://safe-transaction-mainnet.safe.global'
 })
 
 // Propose transaction for other signers
@@ -421,7 +421,7 @@ const CONFIG = {
   SAFE_ADDRESS: process.env.SAFE_ADDRESS!,
   RPC_URL: process.env.RPC_URL!,
   PRIVATE_KEYS: process.env.PRIVATE_KEYS!.split(','),
-  CHAIN_ID: parseInt(process.env.CHAIN_ID || '146')
+  CHAIN_ID: parseInt(process.env.CHAIN_ID || '1')
 }
 ```
 

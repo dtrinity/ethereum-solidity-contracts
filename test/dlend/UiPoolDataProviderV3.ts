@@ -29,20 +29,20 @@ describe("dLEND UiPoolDataProviderV3", () => {
     // Get oracle address
     const priceOracleAddress = await addressesProvider.getPriceOracle();
 
-    // Get wS token address
-    const { contract: wSToken } = await getTokenContractForSymbol(
+    // Get WETH token address
+    const { contract: wETHToken } = await getTokenContractForSymbol(
       hre,
       deployer,
-      "wS",
+      "WETH",
     );
 
-    // Deploy UiPoolDataProviderV3 with the oracle and wS token address
+    // Deploy UiPoolDataProviderV3 with the oracle and WETH token address
     const UiPoolDataProviderV3Factory = await ethers.getContractFactory(
       "UiPoolDataProviderV3",
     );
     uiPoolDataProvider = await UiPoolDataProviderV3Factory.deploy(
       priceOracleAddress,
-      await wSToken.getAddress(),
+      await wETHToken.getAddress(),
     );
 
     // Get test assets from the fixture's assets mapping

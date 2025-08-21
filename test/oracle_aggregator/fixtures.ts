@@ -8,9 +8,9 @@ import {
   RedstoneChainlinkWrapperWithThresholding,
 } from "../../typechain-types";
 import {
-  S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_REDSTONE_ORACLE_WRAPPER_ID,
-  S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
@@ -82,14 +82,15 @@ export async function getOracleAggregatorFixture(currency: string) {
           wrapperWithThresholding: USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
           compositeWrapperWithThresholding: USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
         };
-      } else if (currency === "S") {
+      } else if (currency === "S" || currency === "ETH") {
+        // Use ETH oracle wrappers (S is legacy, kept for compatibility)
         wrapperIds = {
-          wrapper: S_REDSTONE_ORACLE_WRAPPER_ID,
-          wrapperWithThresholding: S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-          compositeWrapperWithThresholding: S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+          wrapper: ETH_REDSTONE_ORACLE_WRAPPER_ID,
+          wrapperWithThresholding: ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+          compositeWrapperWithThresholding: ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
         };
       } else {
-        throw new Error(`Unsupported currency: ${currency}. Only USD and S are supported.`);
+        throw new Error(`Unsupported currency: ${currency}. Only USD, S, and ETH are supported.`);
       }
 
       // Check if deployments exist, throw informative error if not

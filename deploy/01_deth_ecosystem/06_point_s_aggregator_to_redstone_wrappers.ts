@@ -3,47 +3,47 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_ORACLE_AGGREGATOR_ID,
-  S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_REDSTONE_ORACLE_WRAPPER_ID,
-  S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
 } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
 
-  // Get S OracleAggregator contract
+  // Get ETH OracleAggregator contract
   const oracleAggregatorDeployment = await hre.deployments.get(
-    S_ORACLE_AGGREGATOR_ID,
+    ETH_ORACLE_AGGREGATOR_ID,
   );
   const oracleAggregator = await hre.ethers.getContractAt(
     "OracleAggregator",
     oracleAggregatorDeployment.address,
   );
 
-  // Get S RedstoneChainlinkWrapper for plain feeds
+  // Get ETH RedstoneChainlinkWrapper for plain feeds
   const redstoneWrapperDeployment = await hre.deployments.get(
-    S_REDSTONE_ORACLE_WRAPPER_ID,
+    ETH_REDSTONE_ORACLE_WRAPPER_ID,
   );
   const redstoneWrapperAddress = redstoneWrapperDeployment.address;
 
-  // Get S RedstoneChainlinkWrapperWithThresholding for feeds with thresholding
+  // Get ETH RedstoneChainlinkWrapperWithThresholding for feeds with thresholding
   const redstoneWrapperWithThresholdingDeployment = await hre.deployments.get(
-    S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+    ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   );
   const redstoneWrapperWithThresholdingAddress =
     redstoneWrapperWithThresholdingDeployment.address;
 
   // Get S RedstoneChainlinkCompositeWrapperWithThresholding for composite feeds
   const redstoneCompositeWrapperDeployment = await hre.deployments.get(
-    S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+    ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   );
   const redstoneCompositeWrapperAddress =
     redstoneCompositeWrapperDeployment.address;
 
   // Set plain Redstone oracle wrappers
   const plainFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.plainRedstoneOracleWrappers || {};
 
   for (const [assetAddress, _feed] of Object.entries(plainFeeds)) {
@@ -55,7 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Set Redstone oracle wrappers with thresholding
   const thresholdFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.redstoneOracleWrappersWithThresholding || {};
 
   for (const [assetAddress, _config] of Object.entries(thresholdFeeds)) {
@@ -70,7 +70,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Set composite Redstone wrapper for assets
   const compositeFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.compositeRedstoneOracleWrappersWithThresholding || {};
 
   for (const [_assetAddress, feedConfig] of Object.entries(compositeFeeds)) {
@@ -95,10 +95,10 @@ func.tags = [
   "s-redstone-wrapper",
 ];
 func.dependencies = [
-  S_REDSTONE_ORACLE_WRAPPER_ID,
-  S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
 ];
 func.id = "point-s-aggregator-to-redstone-wrappers";
 

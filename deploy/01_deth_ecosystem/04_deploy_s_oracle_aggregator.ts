@@ -2,18 +2,18 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { S_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
+import { ETH_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
   const config = await getConfig(hre);
 
-  await hre.deployments.deploy(S_ORACLE_AGGREGATOR_ID, {
+  await hre.deployments.deploy(ETH_ORACLE_AGGREGATOR_ID, {
     from: deployer,
     args: [
-      config.oracleAggregators.S.baseCurrency, // wS token as base currency for S
-      BigInt(10) ** BigInt(config.oracleAggregators.S.priceDecimals),
+      config.oracleAggregators.ETH.baseCurrency, // WETH token as base currency for ETH
+      BigInt(10) ** BigInt(config.oracleAggregators.ETH.priceDecimals),
     ],
     contract: "OracleAggregator",
     autoMine: true,
@@ -25,8 +25,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   return true;
 };
 
-func.tags = ["s-oracle", "oracle-aggregator", "s-oracle-aggregator"];
+func.tags = ["eth-oracle", "oracle-aggregator", "eth-oracle-aggregator"];
 func.dependencies = [];
-func.id = S_ORACLE_AGGREGATOR_ID;
+func.id = ETH_ORACLE_AGGREGATOR_ID;
 
 export default func;

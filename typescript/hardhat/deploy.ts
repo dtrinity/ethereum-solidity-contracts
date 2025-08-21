@@ -9,13 +9,13 @@ export function isLocalNetwork(network: string): boolean {
 }
 
 /**
- * Check if the network is sonic_testnet
+ * Check if the network is ethereum_testnet (Sepolia)
  *
  * @param network - The network name
- * @returns True if the network is sonic_testnet, false otherwise
+ * @returns True if the network is ethereum_testnet, false otherwise
  */
-export function isSonicTestnet(network: string): boolean {
-  return network === "sonic_testnet";
+export function isEthereumTestnet(network: string): boolean {
+  return network === "ethereum_testnet";
 }
 
 /**
@@ -25,5 +25,5 @@ export function isSonicTestnet(network: string): boolean {
  * @returns True if the network is mainnet, false otherwise
  */
 export function isMainnet(network: string): boolean {
-  return network === "sonic_mainnet";
+  return network === "ethereum_mainnet";
 }

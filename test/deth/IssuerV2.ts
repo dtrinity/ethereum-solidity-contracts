@@ -23,7 +23,7 @@ import {
 } from "./fixtures";
 
 // Define which assets are yield-bearing vs stable for reference
-const yieldBearingAssets = new Set(["sfrxUSD", "sUSDS", "stS", "wOS"]);
+const yieldBearingAssets = new Set(["sfrxUSD", "sUSDS", "stETH"]);
 const isYieldBearingAsset = (symbol: string): boolean =>
   yieldBearingAssets.has(symbol);
 

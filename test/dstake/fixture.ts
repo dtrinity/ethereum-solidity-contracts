@@ -358,6 +358,6 @@ export const SDUSDRewardsFixture = setupDLendRewardsFixture(
 // Pre-bound SDS rewards fixture for table-driven tests
 export const SDSRewardsFixture = setupDLendRewardsFixture(
   SDETH_CONFIG,
-  "stS",
+  "stETH",
   ethers.parseUnits("100", 18),
 );

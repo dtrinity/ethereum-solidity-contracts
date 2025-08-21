@@ -18,7 +18,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         if (config.dStableSymbol === "dUSD") {
           return "sfrxUSD";
         } else if (config.dStableSymbol === "dETH") {
-          return "stS";
+          return "stETH";
         } else {
           throw new Error(
             `Unsupported dStableSymbol for rewards fixture: ${config.dStableSymbol}`,
@@ -56,7 +56,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
 
     // Determine reward token symbol and dStable token ID based on config
     const rewardTokenSymbol =
-      config.dStableSymbol === "dUSD" ? "sfrxUSD" : "stS";
+      config.dStableSymbol === "dUSD" ? "sfrxUSD" : "stETH";
     const dStableTokenId =
       config.dStableSymbol === "dUSD" ? DUSD_TOKEN_ID : DETH_TOKEN_ID;
     const rewardAmount = ethers.parseUnits("100", 18);

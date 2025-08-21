@@ -90,7 +90,7 @@ func.tags = ["deth"];
 func.dependencies = [
   "deth-collateral-vault",
   "s-oracle",
-  "wS_HardPegOracleWrapper",
+  "WETH_HardPegOracleWrapper",
 ];
 func.id = "deth-whitelist-collateral";
 

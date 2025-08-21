@@ -17,13 +17,13 @@ export const OS_TO_S_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_OS_to_S";
 export const WOS_TO_OS_DECIMAL_CONVERTER_ID =
   "ChainlinkDecimalConverter_wOS_to_OS";
 
-// S Oracles
-export const S_ORACLE_AGGREGATOR_ID = "S_OracleAggregator";
-export const S_REDSTONE_ORACLE_WRAPPER_ID = "S_RedstoneWrapper";
-export const S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID =
-  "S_RedstoneWrapperWithThresholding";
-export const S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID =
-  "S_RedstoneCompositeWrapperWithThresholding";
+// ETH Oracles
+export const ETH_ORACLE_AGGREGATOR_ID = "ETH_OracleAggregator";
+export const ETH_REDSTONE_ORACLE_WRAPPER_ID = "ETH_RedstoneWrapper";
+export const ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID =
+  "ETH_RedstoneWrapperWithThresholding";
+export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID =
+  "ETH_RedstoneCompositeWrapperWithThresholding";
 
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";
@@ -42,7 +42,8 @@ export const DETH_REDEEMER_CONTRACT_ID = "dETH_Redeemer";
 export const DETH_COLLATERAL_VAULT_CONTRACT_ID = "dETH_CollateralHolderVault";
 export const DETH_AMO_MANAGER_ID = "dETH_AmoManager";
 export const DETH_HARD_PEG_ORACLE_WRAPPER_ID = "dETH_HardPegOracleWrapper";
-export const WS_HARD_PEG_ORACLE_WRAPPER_ID = "wS_HardPegOracleWrapper";
+export const WETH_HARD_PEG_ORACLE_WRAPPER_LEGACY_ID = "wS_HardPegOracleWrapper"; // Legacy reference
+export const WETH_HARD_PEG_ORACLE_WRAPPER_ID = "WETH_HardPegOracleWrapper";
 
 // dLEND
 export const TREASURY_PROXY_ID = "TreasuryProxy";

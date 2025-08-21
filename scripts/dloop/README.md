@@ -15,47 +15,47 @@ This directory contains shell scripts for deploying DLoop contracts to various n
   Examples:
 
   ```bash
-  # Deploy to sonic mainnet
-  ./scripts/dloop/deploy.sh sonic_mainnet
+  # Deploy to ethereum mainnet
+  ./scripts/dloop/deploy.sh ethereum_mainnet
   
-  # Deploy to sonic testnet with reset
-  ./scripts/dloop/deploy.sh sonic_testnet true DLoop
+  # Deploy to ethereum testnet with reset
+  ./scripts/dloop/deploy.sh ethereum_testnet true DLoop
   ```
 
 ### Network-Specific Scripts
 
-- **`deploy-sonic-mainnet.sh`** - Deploy DLoop to Sonic Mainnet
+- **`deploy-ethereum-mainnet.sh`** - Deploy DLoop to Ethereum Mainnet
 
   ```bash
-  ./scripts/dloop/deploy-sonic-mainnet.sh
+  ./scripts/dloop/deploy-ethereum-mainnet.sh
   ```
 
-- **`deploy-sonic-mainnet-reset.sh`** - Deploy DLoop to Sonic Mainnet with reset
+- **`deploy-ethereum-mainnet-reset.sh`** - Deploy DLoop to Ethereum Mainnet with reset
 
   ```bash
-  ./scripts/dloop/deploy-sonic-mainnet-reset.sh
+  ./scripts/dloop/deploy-ethereum-mainnet-reset.sh
   ```
 
-- **`deploy-sonic-testnet.sh`** - Deploy DLoop to Sonic Testnet
+- **`deploy-ethereum-testnet.sh`** - Deploy DLoop to Ethereum Testnet (Sepolia)
 
   ```bash
-  ./scripts/dloop/deploy-sonic-testnet.sh
+  ./scripts/dloop/deploy-ethereum-testnet.sh
   ```
 
-- **`deploy-sonic-testnet-reset.sh`** - Deploy DLoop to Sonic Testnet with reset
+- **`deploy-ethereum-testnet-reset.sh`** - Deploy DLoop to Ethereum Testnet (Sepolia) with reset
 
   ```bash
-  ./scripts/dloop/deploy-sonic-testnet-reset.sh
+  ./scripts/dloop/deploy-ethereum-testnet-reset.sh
   ```
 
 ## Migration from Makefile
 
 These scripts replace the following Makefile targets:
 
-- `make deploy.dloop.sonic_mainnet` → `./scripts/dloop/deploy-sonic-mainnet.sh`
-- `make deploy.dloop.sonic_mainnet.reset` → `./scripts/dloop/deploy-sonic-mainnet-reset.sh`
-- `make deploy.dloop.sonic_testnet` → `./scripts/dloop/deploy-sonic-testnet.sh`
-- `make deploy.dloop.sonic_testnet.reset` → `./scripts/dloop/deploy-sonic-testnet-reset.sh`
+- `make deploy.dloop.ethereum_mainnet` → `./scripts/dloop/deploy-ethereum-mainnet.sh`
+- `make deploy.dloop.ethereum_mainnet.reset` → `./scripts/dloop/deploy-ethereum-mainnet-reset.sh`
+- `make deploy.dloop.ethereum_testnet` → `./scripts/dloop/deploy-ethereum-testnet.sh`
+- `make deploy.dloop.ethereum_testnet.reset` → `./scripts/dloop/deploy-ethereum-testnet-reset.sh`
 - `make deploy.dloop network=<network>` → `./scripts/dloop/deploy.sh <network>`
 
 ## Prerequisites

@@ -2,7 +2,7 @@
 
 ## Overview
 
-dETH is a decentralized ETH-pegged stablecoin system built on the Sonic blockchain that maintains price stability through a combination of overcollateralization, algorithmic market operations (AMOs), and dynamic fee mechanisms. The system allows users to mint dETH tokens by depositing collateral and redeem dETH tokens for collateral, while maintaining protocol stability through automated market operations.
+dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum blockchain that maintains price stability through a combination of overcollateralization, algorithmic market operations (AMOs), and dynamic fee mechanisms. The system allows users to mint dETH tokens by depositing collateral and redeem dETH tokens for collateral, while maintaining protocol stability through automated market operations.
 
 ## System Goals
 

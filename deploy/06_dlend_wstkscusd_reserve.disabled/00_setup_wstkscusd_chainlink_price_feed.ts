@@ -61,7 +61,8 @@ const func: DeployFunction = async function (
   const wstkscUSDAddress = config.tokenAddresses.wstkscUSD;
 
   if (!wstkscUSDAddress) {
-    throw new Error("wstkscUSD address not found in config");
+    console.log("⚠️  wstkscUSD address not found in config - skipping deployment");
+    return true;
   }
   const deployerSigner = await hre.ethers.getSigner(deployer);
   const oracleAggregatorDeployment = await hre.deployments.get(

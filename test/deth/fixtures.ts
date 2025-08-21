@@ -9,7 +9,7 @@ import {
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
   DUSD_REDEEMER_CONTRACT_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
@@ -91,7 +91,7 @@ export const DETH_CONFIG: DStableFixtureConfig = {
   redeemerContractId: DETH_REDEEMER_CONTRACT_ID,
   collateralVaultContractId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
   amoManagerId: DETH_AMO_MANAGER_ID,
-  oracleAggregatorId: S_ORACLE_AGGREGATOR_ID,
-  peggedCollaterals: ["wS"],
-  yieldBearingCollaterals: ["wOS", "stS"],
+  oracleAggregatorId: ETH_ORACLE_AGGREGATOR_ID,
+  peggedCollaterals: ["WETH"],
+  yieldBearingCollaterals: ["stETH"],
 };

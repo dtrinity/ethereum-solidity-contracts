@@ -59,8 +59,8 @@ const func: DeployFunction = async function (
 
   const config = await getConfig(hre);
   const baseCurrencyUnit =
-    BigInt(10) ** BigInt(config.oracleAggregators.S.priceDecimals);
-  const baseCurrency = config.oracleAggregators.S.baseCurrency;
+    BigInt(10) ** BigInt(config.oracleAggregators.ETH.priceDecimals);
+  const baseCurrency = config.oracleAggregators.ETH.baseCurrency;
 
   // Deploy RedstoneChainlinkWrapper for plain oracle feeds
   const redstoneWrapperDeployment = await hre.deployments.deploy(
@@ -81,7 +81,7 @@ const func: DeployFunction = async function (
 
   // Set feeds for plain oracle feeds
   const plainFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.plainRedstoneOracleWrappers || {};
 
   for (const [assetAddress, feed] of Object.entries(plainFeeds)) {
@@ -99,7 +99,7 @@ const func: DeployFunction = async function (
 
   // Deploy RedstoneChainlinkWrapperWithThresholding for feeds with thresholding
   const thresholdFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.redstoneOracleWrappersWithThresholding || {};
 
   const redstoneWrapperWithThresholdingDeployment =
@@ -142,7 +142,7 @@ const func: DeployFunction = async function (
 
   // Deploy RedstoneChainlinkCompositeWrapperWithThresholding for composite feeds
   const compositeFeeds =
-    config.oracleAggregators.S.redstoneOracleAssets
+    config.oracleAggregators.ETH.redstoneOracleAssets
       ?.compositeRedstoneOracleWrappersWithThresholding || {};
 
   const redstoneCompositeWrapperDeployment = await hre.deployments.deploy(

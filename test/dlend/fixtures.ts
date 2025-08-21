@@ -17,7 +17,7 @@ import {
   DUSD_TOKEN_ID,
   POOL_DATA_PROVIDER_ID,
   POOL_PROXY_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
@@ -219,16 +219,16 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID))
     .address;
   const dsIssuer = await hre.ethers.getContractAt("IssuerV2", dsIssuerAddress);
-  const sOracleAddress = (await hre.deployments.get(S_ORACLE_AGGREGATOR_ID))
+  const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID))
     .address;
-  const sOracle = await hre.ethers.getContractAt(
+  const ethOracle = await hre.ethers.getContractAt(
     "OracleAggregator",
-    sOracleAddress,
+    ethOracleAddress,
   );
 
-  // Get collateral token (stS) for dETH
+  // Get collateral token (stETH) for dETH
   const { contract: sCollateralToken, tokenInfo: sCollateralInfo } =
-    await getTokenContractForSymbol(hre, deployer, "stS");
+    await getTokenContractForSymbol(hre, deployer, "stETH");
   const { contract: dETHToken, tokenInfo: dETHInfo } =
     await getTokenContractForSymbol(hre, deployer, "dETH");
 
@@ -237,8 +237,8 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
     "1000000",
     sCollateralInfo.decimals,
   );
-  const sCollateralPrice = await sOracle.getAssetPrice(sCollateralInfo.address);
-  const dETHPrice = await sOracle.getAssetPrice(dETHInfo.address);
+  const sCollateralPrice = await ethOracle.getAssetPrice(sCollateralInfo.address);
+  const dETHPrice = await ethOracle.getAssetPrice(dETHInfo.address);
   const sBaseValue =
     (sCollateralAmount * sCollateralPrice) /
     BigInt(10 ** sCollateralInfo.decimals);

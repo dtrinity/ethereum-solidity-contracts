@@ -168,8 +168,8 @@ describe("StaticATokenFactory & StaticATokenLM", () => {
       );
       if (collateralAssets.length === 0)
         throw new Error("Need a collateral asset for the borrower.");
-      const stSAssetInfo = collateralAssets.find((a) => a.symbol === "stS");
-      const chosenCollateral = stSAssetInfo || collateralAssets[0];
+      const stETHAssetInfo = collateralAssets.find((a) => a.symbol === "stETH");
+      const chosenCollateral = stETHAssetInfo || collateralAssets[0];
       user2CollateralAsset = chosenCollateral.address;
       user2CollateralToken = await ethers.getContractAt(
         "TestERC20",

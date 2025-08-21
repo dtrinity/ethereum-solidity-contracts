@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import {
   S_ORACLE_AGGREGATOR_ID,
-  WS_HARD_PEG_ORACLE_WRAPPER_ID,
+  WETH_HARD_PEG_ORACLE_WRAPPER_ID,
 } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -12,13 +12,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const config = await getConfig(hre);
 
-  // Deploy a hard peg oracle wrapper for wS with a peg of 1
-  await hre.deployments.deploy(WS_HARD_PEG_ORACLE_WRAPPER_ID, {
+  // Deploy a hard peg oracle wrapper for WETH with a peg of 1
+  await hre.deployments.deploy(WETH_HARD_PEG_ORACLE_WRAPPER_ID, {
     from: deployer,
     args: [
-      config.oracleAggregators.S.baseCurrency, // Technically this is wS, so wS points to itself, but that's ok since we treat the counterparty risk of wS as negligible
-      BigInt(10) ** BigInt(config.oracleAggregators.S.priceDecimals), // 1 unit of wS
-      BigInt(10) ** BigInt(config.oracleAggregators.S.priceDecimals), // Hard peg of 1 S per wS
+      config.oracleAggregators.ETH.baseCurrency, // Technically this is WETH, so WETH points to itself, but that's ok since we treat the counterparty risk of WETH as negligible
+      BigInt(10) ** BigInt(config.oracleAggregators.ETH.priceDecimals), // 1 unit of WETH
+      BigInt(10) ** BigInt(config.oracleAggregators.ETH.priceDecimals), // Hard peg of 1 ETH per WETH
     ],
     contract: "HardPegOracleWrapper",
     autoMine: true,
@@ -37,16 +37,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Get HardPegOracleWrapper contract
   const { address: hardPegOracleWrapperAddress } = await hre.deployments.get(
-    WS_HARD_PEG_ORACLE_WRAPPER_ID,
+    WETH_HARD_PEG_ORACLE_WRAPPER_ID,
   );
 
-  // Set the HardPegOracleWrapper as the oracle for wS
+  // Set the HardPegOracleWrapper as the oracle for WETH
   console.log(
-    `Setting HardPegOracleWrapper for wS (${config.tokenAddresses.wS}) to`,
+    `Setting HardPegOracleWrapper for WETH (${config.tokenAddresses.WETH}) to`,
     hardPegOracleWrapperAddress,
   );
   await oracleAggregatorContract.setOracle(
-    config.tokenAddresses.wS,
+    config.tokenAddresses.WETH,
     hardPegOracleWrapperAddress,
   );
 
@@ -57,6 +57,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ["ds"];
 func.dependencies = ["s-oracle"];
-func.id = WS_HARD_PEG_ORACLE_WRAPPER_ID;
+func.id = WETH_HARD_PEG_ORACLE_WRAPPER_ID;
 
 export default func;
