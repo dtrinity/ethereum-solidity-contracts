@@ -266,7 +266,7 @@ func.tags = [
   "oracle-wrapper",
   "usd-redstone-oracle-wrapper",
 ];
-func.dependencies = [];
+func.dependencies = ["tokens", "oracle"];
 func.id = "setup-usd-redstone-oracle-wrappers";
 
 export default func;

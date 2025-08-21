@@ -56,7 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ["deth", "weth-oracle"];
-func.dependencies = ["deth"];
+func.dependencies = ["eth-oracle"];
 func.id = WETH_HARD_PEG_ORACLE_WRAPPER_ID;
 
 export default func;

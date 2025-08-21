@@ -61,7 +61,9 @@ const func: DeployFunction = async function (
   const wstkscUSDAddress = config.tokenAddresses.wstkscUSD;
 
   if (!wstkscUSDAddress) {
-    console.log("⚠️  wstkscUSD address not found in config - skipping deployment");
+    console.log(
+      "⚠️  wstkscUSD address not found in config - skipping deployment",
+    );
     return true;
   }
   const deployerSigner = await hre.ethers.getSigner(deployer);

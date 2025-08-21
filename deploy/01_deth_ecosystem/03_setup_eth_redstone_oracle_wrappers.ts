@@ -194,7 +194,7 @@ func.tags = [
   "oracle-wrapper",
   "eth-redstone-oracle-wrapper",
 ];
-func.dependencies = [];
+func.dependencies = ["tokens", "oracle"];
 func.id = "setup-eth-redstone-oracle-wrappers";
 
 export default func;

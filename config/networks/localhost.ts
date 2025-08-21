@@ -190,10 +190,16 @@ export async function getConfig(
         baseCurrency: ZeroAddress,
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
-            [WETHDeployment?.address || ""]:
-              mockOracleNameToAddress["WETH_USD"],
-            [dETHDeployment?.address || ""]:
-              mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
+            ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"],
+                }
+              : {}),
+            ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
+                }
+              : {}),
           },
           redstoneOracleWrappersWithThresholding: {
             ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
@@ -280,8 +286,13 @@ export async function getConfig(
         baseCurrency: WETHDeployment?.address || ZeroAddress, // Base currency is WETH
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
-            [stETHDeployment?.address || ""]:
-              mockOracleNameToAddress["stETH_WETH"],
+            ...(stETHDeployment?.address &&
+            mockOracleNameToAddress["stETH_WETH"]
+              ? {
+                  [stETHDeployment.address]:
+                    mockOracleNameToAddress["stETH_WETH"],
+                }
+              : {}),
           },
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
@@ -380,7 +391,7 @@ export async function getConfig(
           treasury: user1, // Or a dedicated treasury address
           maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS, // Example: 5%
           initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS, // Example: 1%
-          initialExchangeThreshold: 1000n * 10n ** 18n, // 1000 dStable
+          initialExchangeThreshold: 100n * 10n ** 18n, // 100 dStable (reduced to stay within 500 supply cap)
           initialAdmin: user1, // Optional: specific admin for this reward manager
           initialRewardsManager: user1, // Optional: specific rewards manager role holder
         },
@@ -423,8 +434,7 @@ export async function getConfig(
           minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
           withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
           extraParams: {
-            targetStaticATokenWrapper:
-              dLendATokenWrapperDSDeployment?.address,
+            targetStaticATokenWrapper: dLendATokenWrapperDSDeployment?.address,
             treasury: user1,
             maxTreasuryFeeBps: 1000,
             initialTreasuryFeeBps: 500,

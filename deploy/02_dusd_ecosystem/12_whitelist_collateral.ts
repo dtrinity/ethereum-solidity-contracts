@@ -88,7 +88,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ["dusd"];
-func.dependencies = ["dusd-collateral-vault", "usd-oracle"];
+func.dependencies = [DUSD_COLLATERAL_VAULT_CONTRACT_ID, "usd-oracle"];
 func.id = "dusd-whitelist-collateral";
 
 export default func;

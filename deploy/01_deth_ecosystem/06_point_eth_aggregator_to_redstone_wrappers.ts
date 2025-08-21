@@ -89,6 +89,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = [
+  "deth",
   "s-oracle",
   "oracle-aggregator",
   "oracle-wrapper",

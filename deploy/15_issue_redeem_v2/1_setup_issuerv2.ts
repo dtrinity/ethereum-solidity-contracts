@@ -448,8 +448,6 @@ func.dependencies = [
   DETH_TOKEN_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   DETH_AMO_MANAGER_ID,
-  DUSD_ISSUER_V2_CONTRACT_ID,
-  DETH_ISSUER_V2_CONTRACT_ID,
 ];
 
 export default func;

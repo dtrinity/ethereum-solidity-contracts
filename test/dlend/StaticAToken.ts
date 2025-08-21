@@ -159,9 +159,10 @@ describe("StaticATokenFactory & StaticATokenLM", () => {
       staticTokenAddress = await staticToken.getAddress();
 
       const dec = await underlyingToken.decimals();
-      depositAmount = ethers.parseUnits("2000", dec);
-      borrowAmount = ethers.parseUnits("1000", dec);
-      user3DepositAmount = ethers.parseUnits("5000", dec);
+      // Reduced amounts to fit within dETH supply cap of 500
+      depositAmount = ethers.parseUnits("100", dec);
+      borrowAmount = ethers.parseUnits("50", dec);
+      user3DepositAmount = ethers.parseUnits("200", dec);
 
       const collateralAssets = Object.values(fixture.assets).filter(
         (a) => !a.isDStable && a.ltv !== BigInt(0),

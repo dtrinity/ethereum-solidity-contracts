@@ -25,7 +25,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
           );
         }
       })(),
-      ethers.parseUnits("1000000", 18), // Reduced from 100M to 1M
+      ethers.parseUnits("100000", 18), // Reduced from 1M to 100K to stay within supply caps
       ethers.parseUnits("1", 6), // Reduced from 100 to 1 per second
       365 * 24 * 3600,
     );
@@ -478,7 +478,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
 
         // 1. Bootstrap collateral vault ownership by compounding with a large
         //    amount so it becomes the dominant shareholder of the wrapper.
-        const largeDeposit = threshold * 100n;
+        const largeDeposit = threshold * 2n; // Reduced from 100x to 2x to stay within supply caps
 
         // Ensure caller has sufficient balance & allowance
         await underlyingDStableToken

@@ -88,9 +88,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ["deth"];
 func.dependencies = [
-  "deth-collateral-vault",
-  "dETH_setup",
-  "WETH_HardPegOracleWrapper",
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  "eth-oracle",
+  "weth-oracle",
 ];
 func.id = "deth-whitelist-collateral";
 

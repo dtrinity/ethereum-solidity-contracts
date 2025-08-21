@@ -449,8 +449,6 @@ func.dependencies = [
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_TOKEN_ID,
   ETH_ORACLE_AGGREGATOR_ID,
-  "RedeemerV2_DUSD",
-  "RedeemerV2_DS",
 ];
 
 export default func;
