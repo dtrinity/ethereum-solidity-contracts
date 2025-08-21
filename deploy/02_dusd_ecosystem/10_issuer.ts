@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       oracleAggregatorAddress,
       amoManagerAddress,
     ],
-    contract: "Issuer",
+    contract: "IssuerV2",
     autoMine: true,
     log: false,
   });

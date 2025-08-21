@@ -10,16 +10,16 @@ export function getEnvPrivateKeys(network: string): string[] {
   let pks: string[] = [];
 
   switch (network) {
-    case "sonic_testnet":
+    case "ethereum_testnet":
       pks = [
-        getPrivateKeyFromMnemonic(`testnet_deployer`),
-        getPrivateKeyFromEnv(`testnet_deployer`),
+        getPrivateKeyFromMnemonic(`ethereum_testnet_deployer`),
+        getPrivateKeyFromEnv(`ethereum_testnet_deployer`),
       ];
       break;
-    case "sonic_mainnet":
+    case "ethereum_mainnet":
       pks = [
-        getPrivateKeyFromMnemonic(`mainnet_deployer`),
-        getPrivateKeyFromEnv(`mainnet_deployer`),
+        getPrivateKeyFromMnemonic(`ethereum_mainnet_deployer`),
+        getPrivateKeyFromEnv(`ethereum_mainnet_deployer`),
       ];
       break;
     default:
@@ -106,8 +106,8 @@ export function getStandardNamedAccounts(): {
     deployer: {
       hardhat: 0,
       localhost: 0,
-      sonic_testnet: 0,
-      sonic_mainnet: 0,
+      ethereum_testnet: 0,
+      ethereum_mainnet: 0,
     },
     // For testing ONLY
     user1: {

@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
-  DS_TOKEN_ID,
+  DETH_TOKEN_ID,
   DUSD_TOKEN_ID,
   INCENTIVES_PROXY_ID,
   SDUSD_DSTAKE_TOKEN_ID,
@@ -38,7 +38,7 @@ export async function getConfig(
 ): Promise<Config> {
   // Token info will only be populated after their deployment
   const dUSDDeployment = await _hre.deployments.getOrNull(DUSD_TOKEN_ID);
-  const dSDeployment = await _hre.deployments.getOrNull(DS_TOKEN_ID);
+  const dETHDeployment = await _hre.deployments.getOrNull(DETH_TOKEN_ID);
   const USDCDeployment = await _hre.deployments.getOrNull("USDC");
   const USDSDeployment = await _hre.deployments.getOrNull("USDS");
   const sUSDSDeployment = await _hre.deployments.getOrNull("sUSDS");
@@ -56,7 +56,7 @@ export async function getConfig(
     "dLend_ATokenWrapper_dUSD",
   );
   const dLendATokenWrapperDSDeployment = await _hre.deployments.getOrNull(
-    "dLend_ATokenWrapper_dS",
+    "dLend_ATokenWrapper_dETH",
   );
 
   // Fetch deployed dLend RewardsController
@@ -163,33 +163,18 @@ export async function getConfig(
           initialSupply: 1e6,
         },
       },
-      curvePools: {
-        // eslint-disable-next-line camelcase -- Ignore for config
-        USDC_USDS_CurvePool: {
-          name: "USDC/USDS Curve Pool",
-          token0: "USDC",
-          token1: "USDS",
-          fee: 4000000, // 0.04% fee
-        },
-        // eslint-disable-next-line camelcase -- Ignore for config
-        frxUSD_USDC_CurvePool: {
-          name: "frxUSD/USDC Curve Pool",
-          token0: "frxUSD",
-          token1: "USDC",
-          fee: 4000000, // 0.04% fee
-        },
-      },
+      curvePools: {},
     },
     tokenAddresses: {
       dUSD: emptyStringIfUndefined(dUSDDeployment?.address),
-      dS: emptyStringIfUndefined(dSDeployment?.address),
+      dETH: emptyStringIfUndefined(dETHDeployment?.address),
       wS: emptyStringIfUndefined(wSTokenDeployment?.address),
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address), // Used by dLEND
       stS: emptyStringIfUndefined(stSTokenDeployment?.address), // Used by dLEND
       wstkscUSD: emptyStringIfUndefined(wstkscUSDDeployment?.address), // Used by dLEND
-      USDC: emptyStringIfUndefined(USDCDeployment?.address), // Used by dPOOL
-      USDS: emptyStringIfUndefined(USDSDeployment?.address), // Used by dPOOL
-      frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address), // Used by dPOOL
+      USDC: emptyStringIfUndefined(USDCDeployment?.address),
+      USDS: emptyStringIfUndefined(USDSDeployment?.address),
+      frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
     },
     walletAddresses: {
       governanceMultisig: user1,
@@ -216,7 +201,7 @@ export async function getConfig(
           [sfrxUSDDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
         },
       },
-      dS: {
+      dETH: {
         collaterals: [
           wSTokenDeployment?.address || ZeroAddress,
           wOSTokenDeployment?.address || ZeroAddress,
@@ -238,16 +223,11 @@ export async function getConfig(
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: ZeroAddress,
-        api3OracleAssets: {
-          plainApi3OracleWrappers: {},
-          api3OracleWrappersWithThresholding: {},
-          compositeApi3OracleWrappersWithThresholding: {},
-        },
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
             [wSTokenDeployment?.address || ""]:
               mockOracleNameToAddress["wS_USD"],
-            [dSDeployment?.address || ""]: mockOracleNameToAddress["wS_USD"], // Peg dS to S
+            [dETHDeployment?.address || ""]: mockOracleNameToAddress["wS_USD"], // Peg dETH to S
           },
           redstoneOracleWrappersWithThresholding: {
             ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
@@ -360,11 +340,6 @@ export async function getConfig(
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: wSTokenDeployment?.address || ZeroAddress, // Base currency is S
-        api3OracleAssets: {
-          plainApi3OracleWrappers: {},
-          api3OracleWrappersWithThresholding: {},
-          compositeApi3OracleWrappersWithThresholding: {},
-        },
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
             [stSTokenDeployment?.address || ""]:
@@ -415,7 +390,7 @@ export async function getConfig(
       ],
       reservesConfig: {
         dUSD: strategyDUSD,
-        dS: strategyDS,
+        dETH: strategyDS,
         stS: strategyStS,
         sfrxUSD: strategySfrxUSD,
         wstkscUSD: strategyWstkscUSD,
@@ -509,10 +484,10 @@ export async function getConfig(
           initialRewardsManager: user1, // Optional: specific rewards manager role holder
         },
       },
-      sdS: {
-        dStable: emptyStringIfUndefined(dSDeployment?.address),
-        name: "Staked dS",
-        symbol: "sdS",
+      sdETH: {
+        dStable: emptyStringIfUndefined(dETHDeployment?.address),
+        name: "Staked dETH",
+        symbol: "sdETH",
         initialAdmin: user1,
         initialFeeManager: user1,
         initialWithdrawalFeeBps: 10,
@@ -527,13 +502,13 @@ export async function getConfig(
         defaultDepositVaultAsset: emptyStringIfUndefined(
           dLendATokenWrapperDSDeployment?.address,
         ),
-        collateralVault: "DStakeCollateralVault_sdS",
+        collateralVault: "DStakeCollateralVault_sdETH",
         collateralExchangers: [user1],
         dLendRewardManager: {
           managedVaultAsset: emptyStringIfUndefined(
             dLendATokenWrapperDSDeployment?.address,
-          ), // This should be the deployed StaticATokenLM address for dS
-          dLendAssetToClaimFor: emptyStringIfUndefined(dSDeployment?.address), // Use the dS underlying asset address as a placeholder
+          ), // This should be the deployed StaticATokenLM address for dETH
+          dLendAssetToClaimFor: emptyStringIfUndefined(dETHDeployment?.address), // Use the dETH underlying asset address as a placeholder
           dLendRewardsController: emptyStringIfUndefined(
             rewardsControllerDeployment?.address,
           ), // This will be fetched after dLend incentives deployment
@@ -554,29 +529,6 @@ export async function getConfig(
       maxTotalSupply: _hre.ethers.parseUnits("1000000", 18).toString(), // 1 million tokens
       initialOwner: user1,
       minDepositThreshold: _hre.ethers.parseUnits("100000", 18).toString(), // 100,000 tokens
-    },
-    dPool: {
-      // Note: In localhost, pool should be the deployment name
-      // In testnet/mainnet, pool should be the actual pool address
-      // Example for mainnet: pool: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD"
-      // eslint-disable-next-line camelcase -- Ignore for config
-      USDC_USDS_Curve: {
-        baseAsset: "USDC", // Base asset for valuation (smart contract will auto-determine index)
-        name: "dPOOL USDC/USDS",
-        symbol: "USDC-USDS_Curve",
-        initialAdmin: user1,
-        initialSlippageBps: 100, // 1% max slippage for periphery
-        pool: "USDC_USDS_CurvePool", // Deployment name (localhost) or address (testnet/mainnet)
-      },
-      // eslint-disable-next-line camelcase -- Ignore for config
-      frxUSD_USDC_Curve: {
-        baseAsset: "frxUSD", // Base asset for valuation (smart contract will auto-determine index)
-        name: "dPOOL frxUSD/USDC",
-        symbol: "frxUSD-USDC_Curve",
-        initialAdmin: user1,
-        initialSlippageBps: 100, // 1% max slippage for periphery
-        pool: "frxUSD_USDC_CurvePool", // Deployment name (localhost) or address (testnet/mainnet)
-      },
     },
   };
 }

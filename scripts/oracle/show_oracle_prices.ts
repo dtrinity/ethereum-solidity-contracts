@@ -95,12 +95,6 @@ async function dumpAggregatorPrices(): Promise<void> {
       }
     };
 
-    // API3
-    addKeys(aggConfig.api3OracleAssets?.plainApi3OracleWrappers);
-    addKeys(aggConfig.api3OracleAssets?.api3OracleWrappersWithThresholding);
-    addKeys(
-      aggConfig.api3OracleAssets?.compositeApi3OracleWrappersWithThresholding,
-    );
 
     // Redstone
     addKeys(aggConfig.redstoneOracleAssets?.plainRedstoneOracleWrappers);

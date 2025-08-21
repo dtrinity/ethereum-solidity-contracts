@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     collateralVaultAddress,
     await hre.ethers.getSigner(deployer),
   );
-  const { tokenAddresses } = await getConfig(hre);
+  const { tokenAddresses, dStables } = await getConfig(hre);
 
   const deployment = await hre.deployments.deploy(DUSD_REDEEMER_CONTRACT_ID, {
     from: deployer,
@@ -33,8 +33,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       collateralVaultAddress,
       tokenAddresses.dUSD,
       oracleAggregatorAddress,
+      dStables.dUSD.initialFeeReceiver,
+      dStables.dUSD.initialRedemptionFeeBps,
     ],
-    contract: "Redeemer",
+    contract: "RedeemerV2",
     autoMine: true,
     log: false,
   });

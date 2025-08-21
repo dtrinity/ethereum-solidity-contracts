@@ -132,13 +132,13 @@ clean-deployments: ## Clean the deployments for a given network which matches at
 ## Block explorer ##
 ####################
 
-explorer.verify.sonic_testnet:
-	@echo "Verifying contracts on sonic testnet..."
-	@yarn hardhat --network sonic_testnet etherscan-verify --api-key 4EJCRRD3JKIE6TKF6ME7AKVYWFEJI79A26 --api-url https://api-testnet.sonicscan.org
+explorer.verify.ethereum_testnet:
+	@echo "Verifying contracts on Ethereum testnet (Sepolia)..."
+	@yarn hardhat --network ethereum_testnet etherscan-verify --api-key $${ETHERSCAN_API_KEY} --api-url https://api-sepolia.etherscan.io/api
 
-explorer.verify.sonic_mainnet:
-	@echo "Verifying contracts on sonic mainnet..."
-	@yarn hardhat --network sonic_mainnet etherscan-verify --api-key 4EJCRRD3JKIE6TKF6ME7AKVYWFEJI79A26 --api-url https://api.sonicscan.org
+explorer.verify.ethereum_mainnet:
+	@echo "Verifying contracts on Ethereum mainnet..."
+	@yarn hardhat --network ethereum_mainnet etherscan-verify --api-key $${ETHERSCAN_API_KEY} --api-url https://api.etherscan.io/api
 
 ##############
 ## Building ##

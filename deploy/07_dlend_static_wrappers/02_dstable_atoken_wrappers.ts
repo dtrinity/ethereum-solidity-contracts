@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  DS_A_TOKEN_WRAPPER_ID,
+  DETH_A_TOKEN_WRAPPER_ID,
   DUSD_A_TOKEN_WRAPPER_ID,
   INCENTIVES_PROXY_ID,
   POOL_ADDRESSES_PROVIDER_ID,
@@ -50,8 +50,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     rewardsControllerAddress = rewardsController.address;
   }
 
-  // Get dUSD and dS aToken addresses
-  let dUSDAToken, dSAToken;
+  // Get dUSD and dETH aToken addresses
+  let dUSDAToken, dETHAToken;
 
   try {
     const dUSDReserveData = await poolContract.getReserveData(
@@ -64,10 +64,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   try {
-    const dSReserveData = await poolContract.getReserveData(tokenAddresses.dS);
-    dSAToken = dSReserveData.aTokenAddress;
+    const dETHReserveData = await poolContract.getReserveData(
+      tokenAddresses.dETH,
+    );
+    dETHAToken = dETHReserveData.aTokenAddress;
   } catch (error: any) {
-    console.log(`Error getting dS aToken: ${error.message}`);
+    console.log(`Error getting dETH aToken: ${error.message}`);
     return;
   }
 
@@ -98,27 +100,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     );
   }
 
-  // Deploy StaticATokenLM for dS
-  if (dSAToken && dSAToken !== ethers.ZeroAddress) {
-    const dSATokenContract = await ethers.getContractAt(
+  // Deploy StaticATokenLM for dETH
+  if (dETHAToken && dETHAToken !== ethers.ZeroAddress) {
+    const dETHATokenContract = await ethers.getContractAt(
       "IERC20Detailed",
-      dSAToken,
+      dETHAToken,
     );
-    const dSATokenSymbol = await dSATokenContract.symbol();
+    const dETHATokenSymbol = await dETHATokenContract.symbol();
 
-    await deploy(DS_A_TOKEN_WRAPPER_ID, {
+    await deploy(DETH_A_TOKEN_WRAPPER_ID, {
       from: deployer,
       contract: "StaticATokenLM",
       args: [
         poolAddress,
         rewardsControllerAddress,
-        dSAToken,
-        `Static ${dSATokenSymbol}`,
-        `stk${dSATokenSymbol}`,
+        dETHAToken,
+        `Static ${dETHATokenSymbol}`,
+        `stk${dETHATokenSymbol}`,
       ],
     });
   } else {
-    console.log("dS aToken not found or invalid, skipping wrapper deployment");
+    console.log(
+      "dETH aToken not found or invalid, skipping wrapper deployment",
+    );
   }
 
   console.log(`🧧 ${__filename.split("/").slice(-2).join("/")}: ✅`);
@@ -127,7 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "dStableATokenWrappers";
-func.tags = ["dUSD-aTokenWrapper", "dS-aTokenWrapper"];
+func.tags = ["dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
 func.dependencies = ["dlend-static-wrapper-factory"];
 
 export default func;

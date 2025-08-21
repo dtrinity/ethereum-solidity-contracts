@@ -4,16 +4,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_API3_ORACLE_WRAPPER_ID,
-  S_API3_WRAPPER_WITH_THRESHOLDING_ID,
   S_ORACLE_AGGREGATOR_ID,
   S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   S_REDSTONE_ORACLE_WRAPPER_ID,
   S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-  USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  USD_API3_ORACLE_WRAPPER_ID,
-  USD_API3_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
@@ -59,76 +53,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (!ORACLE_MANAGER_ROLE) {
     throw new Error("❌ Could not determine ORACLE_MANAGER_ROLE.");
   }
-
-  // Transfer roles for S API3 oracle wrappers
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      S_API3_ORACLE_WRAPPER_ID,
-      "S API3 Plain Wrapper",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    S_API3_ORACLE_WRAPPER_ID,
-    "S API3 Plain Wrapper",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
-
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      S_API3_WRAPPER_WITH_THRESHOLDING_ID,
-      "S API3 Wrapper With Thresholding",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    S_API3_WRAPPER_WITH_THRESHOLDING_ID,
-    "S API3 Wrapper With Thresholding",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
-
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      S_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-      "S API3 Composite Wrapper With Thresholding",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    S_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-    "S API3 Composite Wrapper With Thresholding",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
 
   // Transfer roles for S Redstone oracle wrappers
   if (ORACLE_MANAGER_ROLE) {
@@ -193,76 +117,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hre,
     S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
     "S Redstone Composite Wrapper With Thresholding",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
-
-  // Transfer roles for USD API3 oracle wrappers
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      USD_API3_ORACLE_WRAPPER_ID,
-      "USD API3 Plain Wrapper",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    USD_API3_ORACLE_WRAPPER_ID,
-    "USD API3 Plain Wrapper",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
-
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      USD_API3_WRAPPER_WITH_THRESHOLDING_ID,
-      "USD API3 Wrapper With Thresholding",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    USD_API3_WRAPPER_WITH_THRESHOLDING_ID,
-    "USD API3 Wrapper With Thresholding",
-    DEFAULT_ADMIN_ROLE,
-    "DEFAULT_ADMIN_ROLE",
-    deployerSigner,
-    governanceMultisig,
-    deployer,
-  );
-
-  if (ORACLE_MANAGER_ROLE) {
-    await transferRole(
-      hre,
-      USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-      "USD API3 Composite Wrapper With Thresholding",
-      ORACLE_MANAGER_ROLE,
-      "ORACLE_MANAGER_ROLE",
-      deployerSigner,
-      governanceMultisig,
-      deployer,
-    );
-  }
-  await transferRole(
-    hre,
-    USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-    "USD API3 Composite Wrapper With Thresholding",
     DEFAULT_ADMIN_ROLE,
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
@@ -418,10 +272,8 @@ async function transferRole(
 func.id = "transfer_oracle_wrapper_roles_to_multisig";
 func.tags = ["governance", "roles"];
 func.dependencies = [
-  "setup-s-api3-oracle-wrappers",
   "setup-s-redstone-oracle-wrappers",
   "setup-usd-redstone-oracle-wrappers",
-  "setup-usd-api3-oracle-wrappers",
 ];
 
 export default func;

@@ -4,11 +4,11 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  DS_AMO_MANAGER_ID,
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_ISSUER_CONTRACT_ID,
-  DS_ISSUER_V2_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_AMO_MANAGER_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_ISSUER_CONTRACT_ID,
+  DETH_ISSUER_V2_CONTRACT_ID,
+  DETH_TOKEN_ID,
   DUSD_AMO_MANAGER_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_ISSUER_CONTRACT_ID,
@@ -324,11 +324,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       aggregatorId: USD_ORACLE_AGGREGATOR_ID,
     },
     {
-      oldId: DS_ISSUER_CONTRACT_ID,
-      newId: DS_ISSUER_V2_CONTRACT_ID,
-      tokenId: DS_TOKEN_ID,
-      collateralVaultId: DS_COLLATERAL_VAULT_CONTRACT_ID,
-      amoManagerId: DS_AMO_MANAGER_ID,
+      oldId: DETH_ISSUER_CONTRACT_ID,
+      newId: DETH_ISSUER_V2_CONTRACT_ID,
+      tokenId: DETH_TOKEN_ID,
+      collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
+      amoManagerId: DETH_AMO_MANAGER_ID,
       aggregatorId: S_ORACLE_AGGREGATOR_ID,
     },
   ];
@@ -444,12 +444,12 @@ func.dependencies = [
   DUSD_TOKEN_ID,
   USD_ORACLE_AGGREGATOR_ID,
   DUSD_AMO_MANAGER_ID,
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_TOKEN_ID,
   S_ORACLE_AGGREGATOR_ID,
-  DS_AMO_MANAGER_ID,
+  DETH_AMO_MANAGER_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
-  DS_ISSUER_V2_CONTRACT_ID,
+  DETH_ISSUER_V2_CONTRACT_ID,
 ];
 
 export default func;

@@ -5,28 +5,28 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ERC20 } from "../../typechain-types";
 import { IERC20 } from "../../typechain-types/@openzeppelin/contracts/token/ERC20/IERC20";
 import {
-  DS_A_TOKEN_WRAPPER_ID,
+  DETH_A_TOKEN_WRAPPER_ID,
   DUSD_A_TOKEN_WRAPPER_ID,
   EMISSION_MANAGER_ID,
   INCENTIVES_PROXY_ID,
   POOL_ADDRESSES_PROVIDER_ID,
   PULL_REWARDS_TRANSFER_STRATEGY_ID,
-  SDS_COLLATERAL_VAULT_ID,
-  SDS_DSTAKE_TOKEN_ID,
-  SDS_ROUTER_ID,
+  SDETH_COLLATERAL_VAULT_ID,
+  SDETH_DSTAKE_TOKEN_ID,
+  SDETH_ROUTER_ID,
   SDUSD_COLLATERAL_VAULT_ID,
   SDUSD_DSTAKE_TOKEN_ID,
   SDUSD_ROUTER_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
 import {
-  DS_CONFIG,
+  DETH_CONFIG,
   DStableFixtureConfig,
   DUSD_CONFIG,
-} from "../dstable/fixtures";
+} from "../deth/fixtures";
 
 export interface DStakeFixtureConfig {
-  dStableSymbol: "dUSD" | "dS";
+  dStableSymbol: "dUSD" | "dETH";
   DStakeTokenSymbol: string;
   DStakeTokenContractId: string;
   collateralVaultContractId: string;
@@ -56,26 +56,26 @@ export const SDUSD_CONFIG: DStakeFixtureConfig = {
   ],
 };
 
-export const SDS_CONFIG: DStakeFixtureConfig = {
-  dStableSymbol: "dS",
-  DStakeTokenSymbol: "sdS",
-  DStakeTokenContractId: SDS_DSTAKE_TOKEN_ID,
-  collateralVaultContractId: SDS_COLLATERAL_VAULT_ID,
-  routerContractId: SDS_ROUTER_ID,
-  defaultVaultAssetSymbol: "wdS",
-  underlyingDStableConfig: DS_CONFIG,
+export const SDETH_CONFIG: DStakeFixtureConfig = {
+  dStableSymbol: "dETH",
+  DStakeTokenSymbol: "sdETH",
+  DStakeTokenContractId: SDETH_DSTAKE_TOKEN_ID,
+  collateralVaultContractId: SDETH_COLLATERAL_VAULT_ID,
+  routerContractId: SDETH_ROUTER_ID,
+  defaultVaultAssetSymbol: "wdETH",
+  underlyingDStableConfig: DETH_CONFIG,
   deploymentTags: [
     "local-setup",
     "oracle",
-    "ds",
-    "dS-aTokenWrapper",
+    "deth",
+    "dETH-aTokenWrapper",
     "dlend",
     "dStake",
   ],
 };
 
 // Array of all DStake configurations
-export const DSTAKE_CONFIGS: DStakeFixtureConfig[] = [SDUSD_CONFIG, SDS_CONFIG];
+export const DSTAKE_CONFIGS: DStakeFixtureConfig[] = [SDUSD_CONFIG, SDETH_CONFIG];
 
 // Core logic for fetching dStake components *after* deployments are done
 /**
@@ -122,7 +122,7 @@ async function fetchDStakeComponents(
     await deployments.get(
       config.dStableSymbol === "dUSD"
         ? DUSD_A_TOKEN_WRAPPER_ID
-        : DS_A_TOKEN_WRAPPER_ID,
+        : DETH_A_TOKEN_WRAPPER_ID,
     )
   ).address;
   const wrappedAToken = await ethers.getContractAt(
@@ -357,7 +357,7 @@ export const SDUSDRewardsFixture = setupDLendRewardsFixture(
 
 // Pre-bound SDS rewards fixture for table-driven tests
 export const SDSRewardsFixture = setupDLendRewardsFixture(
-  SDS_CONFIG,
+  SDETH_CONFIG,
   "stS",
   ethers.parseUnits("100", 18),
 );

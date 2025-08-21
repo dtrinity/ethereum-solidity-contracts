@@ -13,7 +13,7 @@ import {
  * (using signer) or to queue them as Safe transactions for multisig execution.
  *
  * Behavior:
- * - By default, enables Safe queueing only on Sonic mainnet (chainId 146)
+ * - By default, enables Safe queueing only on Ethereum mainnet (chainId 1)
  *   when a `safeConfig` is provided. You can override by setting USE_SAFE=true
  *   in env to force Safe usage on other networks.
  * - For non-Safe mode, direct calls are attempted; on failure, the helper
@@ -36,9 +36,9 @@ export class GovernanceExecutor {
 
     const envForce = process.env.USE_SAFE?.toLowerCase() === "true";
     const chainIdStr = String(hre.network.config.chainId ?? "");
-    const isSonicMainnet = chainIdStr === "146";
+    const isEthereumMainnet = chainIdStr === "1";
 
-    this.useSafe = Boolean(safeConfig) && (isSonicMainnet || envForce);
+    this.useSafe = Boolean(safeConfig) && (isEthereumMainnet || envForce);
 
     if (this.useSafe && safeConfig) {
       this.safeManager = new SafeManager(hre, signer, { safeConfig });

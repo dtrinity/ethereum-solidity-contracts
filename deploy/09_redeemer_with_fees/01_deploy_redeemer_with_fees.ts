@@ -4,9 +4,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_REDEEMER_WITH_FEES_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
+  DETH_TOKEN_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
   DUSD_TOKEN_ID,
@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check all required configuration values at the top
   const dUSDConfig = config.dStables.dUSD;
-  const dSConfig = config.dStables.dS;
+  const dETHConfig = config.dStables.dS;
 
   const missingConfigs: string[] = [];
 
@@ -43,13 +43,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check dS configuration
   if (
-    !dSConfig?.initialFeeReceiver ||
-    !isAddress(dSConfig.initialFeeReceiver)
+    !dETHConfig?.initialFeeReceiver ||
+    !isAddress(dETHConfig.initialFeeReceiver)
   ) {
     missingConfigs.push("dStables.dS.initialFeeReceiver");
   }
 
-  if (dSConfig?.initialRedemptionFeeBps === undefined) {
+  if (dETHConfig?.initialRedemptionFeeBps === undefined) {
     missingConfigs.push("dStables.dS.initialRedemptionFeeBps");
   }
 
@@ -75,7 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
     {
       from: deployer,
-      contract: "RedeemerWithFees",
+      contract: "RedeemerV2",
       args: [
         dUSDCollateralVaultDeployment.address,
         dUSDToken.address,
@@ -118,53 +118,53 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   // Deploy RedeemerWithFees for dS
-  const dSToken = await get(DS_TOKEN_ID);
-  const dSCollateralVaultDeployment = await get(
-    DS_COLLATERAL_VAULT_CONTRACT_ID,
+  const dETHToken = await get(DETH_TOKEN_ID);
+  const dETHCollateralVaultDeployment = await get(
+    DETH_COLLATERAL_VAULT_CONTRACT_ID,
   );
   const sOracleAggregator = await get(S_ORACLE_AGGREGATOR_ID);
 
-  const dSRedeemerWithFeesDeployment = await deploy(
-    DS_REDEEMER_WITH_FEES_CONTRACT_ID,
+  const dETHRedeemerWithFeesDeployment = await deploy(
+    DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
     {
       from: deployer,
-      contract: "RedeemerWithFees",
+      contract: "RedeemerV2",
       args: [
-        dSCollateralVaultDeployment.address,
-        dSToken.address,
+        dETHCollateralVaultDeployment.address,
+        dETHToken.address,
         sOracleAggregator.address,
-        dSConfig.initialFeeReceiver,
-        dSConfig.initialRedemptionFeeBps,
+        dETHConfig.initialFeeReceiver,
+        dETHConfig.initialRedemptionFeeBps,
       ],
     },
   );
 
-  const dSCollateralVaultContract = await hre.ethers.getContractAt(
+  const dETHCollateralVaultContract = await hre.ethers.getContractAt(
     "CollateralVault",
-    dSCollateralVaultDeployment.address,
+    dETHCollateralVaultDeployment.address,
     await hre.ethers.getSigner(deployer),
   );
   const dSWithdrawerRole =
-    await dSCollateralVaultContract.COLLATERAL_WITHDRAWER_ROLE();
-  const dSHasRole = await dSCollateralVaultContract.hasRole(
+    await dETHCollateralVaultContract.COLLATERAL_WITHDRAWER_ROLE();
+  const dSHasRole = await dETHCollateralVaultContract.hasRole(
     dSWithdrawerRole,
-    dSRedeemerWithFeesDeployment.address,
+    dETHRedeemerWithFeesDeployment.address,
   );
-  const dSDeployerIsAdmin = await dSCollateralVaultContract.hasRole(
-    await dSCollateralVaultContract.DEFAULT_ADMIN_ROLE(),
+  const dSDeployerIsAdmin = await dETHCollateralVaultContract.hasRole(
+    await dETHCollateralVaultContract.DEFAULT_ADMIN_ROLE(),
     deployer,
   );
 
   if (!dSHasRole) {
     if (dSDeployerIsAdmin) {
-      await dSCollateralVaultContract.grantRole(
+      await dETHCollateralVaultContract.grantRole(
         dSWithdrawerRole,
-        dSRedeemerWithFeesDeployment.address,
+        dETHRedeemerWithFeesDeployment.address,
       );
       console.log("Role granted for dS RedeemerWithFees.");
     } else {
       manualActions.push(
-        `CollateralVault (${dSCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dSRedeemerWithFeesDeployment.address})`,
+        `CollateralVault (${dETHCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dETHRedeemerWithFeesDeployment.address})`,
       );
     }
   }
@@ -182,7 +182,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Transfer dUSD RedeemerWithFees admin role
     try {
       const dUSDRedeemerContract = await hre.ethers.getContractAt(
-        "RedeemerWithFees",
+        "RedeemerV2",
         dUSDRedeemerWithFeesDeployment.address,
         deployerSigner,
       );
@@ -222,19 +222,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Transfer dS RedeemerWithFees admin role
     try {
-      const dSRedeemerContract = await hre.ethers.getContractAt(
-        "RedeemerWithFees",
-        dSRedeemerWithFeesDeployment.address,
+      const dETHRedeemerContract = await hre.ethers.getContractAt(
+        "RedeemerV2",
+        dETHRedeemerWithFeesDeployment.address,
         deployerSigner,
       );
 
       if (
-        !(await dSRedeemerContract.hasRole(
+        !(await dETHRedeemerContract.hasRole(
           DEFAULT_ADMIN_ROLE,
           governanceAddress,
         ))
       ) {
-        await dSRedeemerContract.grantRole(
+        await dETHRedeemerContract.grantRole(
           DEFAULT_ADMIN_ROLE,
           governanceAddress,
         );
@@ -243,8 +243,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         );
       }
 
-      if (await dSRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-        await dSRedeemerContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer);
+      if (await dETHRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
+        await dETHRedeemerContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer);
         console.log(
           `  ➖ Revoked DEFAULT_ADMIN_ROLE from deployer for dS RedeemerWithFees`,
         );
@@ -254,10 +254,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         `  ❌ Failed to transfer dS RedeemerWithFees admin role: ${error}`,
       );
       manualActions.push(
-        `dS_RedeemerWithFees (${dSRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
+        `dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
       );
       manualActions.push(
-        `dS_RedeemerWithFees (${dSRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`,
+        `dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`,
       );
     }
 
@@ -287,8 +287,8 @@ func.dependencies = [
   DUSD_TOKEN_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   USD_ORACLE_AGGREGATOR_ID,
-  DS_TOKEN_ID,
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_TOKEN_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
   S_ORACLE_AGGREGATOR_ID,
 ];
 

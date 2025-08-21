@@ -6,7 +6,7 @@ import { TestERC20, TestMintableERC20 } from "../../typechain-types";
 /**
  * List of dStable symbols that use TestMintableERC20
  */
-export const DSTABLE_SYMBOLS = ["dUSD", "dS"] as const;
+export const DSTABLE_SYMBOLS = ["dUSD", "dETH"] as const;
 export type DStableSymbol = (typeof DSTABLE_SYMBOLS)[number];
 
 /**

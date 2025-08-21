@@ -18,7 +18,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @dev Interface for the individual oracle wrappers, to unify interface between Redstone and API3 for example
+ * @dev Interface for the individual oracle wrappers, to unify interface between different oracle providers
  */
 interface IOracleWrapper {
     /**

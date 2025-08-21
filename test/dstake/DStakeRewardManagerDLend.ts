@@ -2,7 +2,7 @@ import { expect } from "chai";
 import hre, { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import { IDStableConversionAdapter, IERC20 } from "../../typechain-types";
-import { DS_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import {
   DSTAKE_CONFIGS,
   DStakeFixtureConfig,
@@ -17,7 +17,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       (() => {
         if (config.dStableSymbol === "dUSD") {
           return "sfrxUSD";
-        } else if (config.dStableSymbol === "dS") {
+        } else if (config.dStableSymbol === "dETH") {
           return "stS";
         } else {
           throw new Error(
@@ -58,7 +58,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
     const rewardTokenSymbol =
       config.dStableSymbol === "dUSD" ? "sfrxUSD" : "stS";
     const dStableTokenId =
-      config.dStableSymbol === "dUSD" ? DUSD_TOKEN_ID : DS_TOKEN_ID;
+      config.dStableSymbol === "dUSD" ? DUSD_TOKEN_ID : DETH_TOKEN_ID;
     const rewardAmount = ethers.parseUnits("100", 18);
     const emissionPerSecond = ethers.parseUnits("1", 6);
 

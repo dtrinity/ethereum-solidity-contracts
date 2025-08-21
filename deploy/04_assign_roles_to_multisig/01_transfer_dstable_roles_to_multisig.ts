@@ -7,7 +7,7 @@ import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
 import { isMainnet } from "../../typescript/hardhat/deploy";
 
 /**
- * Transfer dStable roles to governance multisig
+ * Transfer stable token (dUSD/dETH) roles to governance multisig
  *
  * @param hre The Hardhat Runtime Environment for deployment
  */
@@ -29,14 +29,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get the governance multisig address
   const { governanceMultisig } = config.walletAddresses;
 
-  // Iterate over all dStables in the config
+  // Iterate over all stable tokens in the config
   const dStableNames = Object.keys(config.dStables);
 
   for (const dStableName of dStableNames) {
     console.log(`\n🔄 Transferring roles for ${dStableName}...`);
 
-    // Get token IDs based on the dStable name
-    const tokenId = dStableName; // The token ID is the same as the dStable name (e.g., "dUSD" or "dS")
+    // Get token IDs based on the stable token name
+    const tokenId = dStableName; // The token ID is the same as the stable token name (e.g., "dUSD" or "dETH")
     const issuerContractId = `${dStableName}_Issuer`;
     const redeemerContractId = `${dStableName}_Redeemer`;
     const collateralVaultContractId = `${dStableName}_CollateralHolderVault`;
@@ -694,6 +694,6 @@ async function transferCollateralVaultRoles(
 
 func.id = "transfer_dstable_roles_to_multisig";
 func.tags = ["governance", "roles"];
-func.dependencies = ["dusd", "ds"];
+func.dependencies = ["dusd", "deth"];
 
 export default func;

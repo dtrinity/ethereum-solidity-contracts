@@ -3,10 +3,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_REDEEMER_CONTRACT_ID,
-  DS_REDEEMER_WITH_FEES_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_REDEEMER_CONTRACT_ID,
+  DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
+  DETH_TOKEN_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_REDEEMER_CONTRACT_ID,
   DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
@@ -187,8 +187,8 @@ async function ensureDefaultAdminExistsAndRevokeFromWithSafe(
   // Determine Safe mode once for both try and catch blocks
   const envForce = process.env.USE_SAFE?.toLowerCase() === "true";
   const chainIdStr = String(hre.network.config.chainId ?? "");
-  const isSonicMainnet = chainIdStr === "146";
-  const useSafe = isSonicMainnet || envForce;
+  const isEthereumMainnet = chainIdStr === "1";
+  const useSafe = isEthereumMainnet || envForce;
 
   try {
     // The original function uses manualActions array, we need to handle this differently
@@ -259,10 +259,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       aggregatorId: USD_ORACLE_AGGREGATOR_ID,
     },
     {
-      oldId: DS_REDEEMER_CONTRACT_ID,
+      oldId: DETH_REDEEMER_CONTRACT_ID,
       newId: "RedeemerV2_DS",
-      tokenId: DS_TOKEN_ID,
-      collateralVaultId: DS_COLLATERAL_VAULT_CONTRACT_ID,
+      tokenId: DETH_TOKEN_ID,
+      collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
       aggregatorId: S_ORACLE_AGGREGATOR_ID,
     },
   ];
@@ -348,7 +348,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       t.oldId,
       t.newId === "RedeemerV2_DUSD"
         ? DUSD_REDEEMER_WITH_FEES_CONTRACT_ID
-        : DS_REDEEMER_WITH_FEES_CONTRACT_ID,
+        : DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
     ];
 
     for (const legacyId of legacyIds) {
@@ -446,8 +446,8 @@ func.dependencies = [
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_TOKEN_ID,
   USD_ORACLE_AGGREGATOR_ID,
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_TOKEN_ID,
   S_ORACLE_AGGREGATOR_ID,
   "RedeemerV2_DUSD",
   "RedeemerV2_DS",
