@@ -1,0 +1,36 @@
+node_modules
+.env
+
+# Yarn cache
+.yarn
+
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# Script outputs
+contract-addresses_*.md
+nsloc.md
+
+# Certora
+certora # python virtual environment
+.certora_internal
+
+.DS_Store
+
+# Slither analysis reports
+reports/slither/
+
+# Mythril analysis reports
+reports/mythril/

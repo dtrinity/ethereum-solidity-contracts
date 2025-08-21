@@ -1,0 +1,6 @@
+{
+  "rules": {
+    "max-line-length": ["error", 180],
+    "compiler-version": "off"
+  }
+}
