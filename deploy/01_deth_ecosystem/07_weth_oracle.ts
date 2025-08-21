@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   WETH_HARD_PEG_ORACLE_WRAPPER_ID,
 } from "../../typescript/deploy-ids";
 
@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Get OracleAggregator contract
   const { address: oracleAggregatorAddress } = await hre.deployments.get(
-    S_ORACLE_AGGREGATOR_ID,
+    ETH_ORACLE_AGGREGATOR_ID,
   );
   const oracleAggregatorContract = await hre.ethers.getContractAt(
     "OracleAggregator",
@@ -56,7 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ["ds"];
-func.dependencies = ["s-oracle"];
+func.dependencies = ["dETH_setup"];
 func.id = WETH_HARD_PEG_ORACLE_WRAPPER_ID;
 
 export default func;

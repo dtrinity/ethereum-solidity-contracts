@@ -10,7 +10,7 @@ import {
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
   DUSD_TOKEN_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
@@ -122,7 +122,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const dETHCollateralVaultDeployment = await get(
     DETH_COLLATERAL_VAULT_CONTRACT_ID,
   );
-  const sOracleAggregator = await get(S_ORACLE_AGGREGATOR_ID);
+  const sOracleAggregator = await get(ETH_ORACLE_AGGREGATOR_ID);
 
   const dETHRedeemerWithFeesDeployment = await deploy(
     DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
@@ -289,7 +289,7 @@ func.dependencies = [
   USD_ORACLE_AGGREGATOR_ID,
   DETH_TOKEN_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
 ];
 
 export default func;

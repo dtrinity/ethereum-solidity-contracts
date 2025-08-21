@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Transfer roles for S oracle aggregator
   await transferOracleAggregatorRoles(
     hre,
-    S_ORACLE_AGGREGATOR_ID,
+    ETH_ORACLE_AGGREGATOR_ID,
     "S",
     deployerSigner,
     governanceMultisig,

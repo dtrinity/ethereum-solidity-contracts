@@ -6,7 +6,7 @@ import {
   DETH_AMO_MANAGER_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_TOKEN_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 
   const { address: oracleAddress } = await hre.deployments.get(
-    S_ORACLE_AGGREGATOR_ID,
+    ETH_ORACLE_AGGREGATOR_ID,
   );
 
   await hre.deployments.deploy(DETH_AMO_MANAGER_ID, {
@@ -39,7 +39,7 @@ func.tags = ["deth"];
 func.dependencies = [
   DETH_TOKEN_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
 ];
 
 export default func;

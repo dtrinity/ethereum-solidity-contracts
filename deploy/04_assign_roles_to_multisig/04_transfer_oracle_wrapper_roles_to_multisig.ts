@@ -4,10 +4,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_ORACLE_AGGREGATOR_ID,
-  S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_REDSTONE_ORACLE_WRAPPER_ID,
-  S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const ORACLE_MANAGER_ROLE = await ethers
     .getContractAt(
       "OracleAggregator",
-      (await deployments.get(S_ORACLE_AGGREGATOR_ID)).address,
+      (await deployments.get(ETH_ORACLE_AGGREGATOR_ID)).address,
     )
     .then((c) => c.ORACLE_MANAGER_ROLE());
 
@@ -58,8 +58,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (ORACLE_MANAGER_ROLE) {
     await transferRole(
       hre,
-      S_REDSTONE_ORACLE_WRAPPER_ID,
-      "S Redstone Plain Wrapper",
+      ETH_REDSTONE_ORACLE_WRAPPER_ID,
+      "ETH Redstone Plain Wrapper",
       ORACLE_MANAGER_ROLE,
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
@@ -69,8 +69,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   await transferRole(
     hre,
-    S_REDSTONE_ORACLE_WRAPPER_ID,
-    "S Redstone Plain Wrapper",
+    ETH_REDSTONE_ORACLE_WRAPPER_ID,
+    "ETH Redstone Plain Wrapper",
     DEFAULT_ADMIN_ROLE,
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
@@ -81,8 +81,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (ORACLE_MANAGER_ROLE) {
     await transferRole(
       hre,
-      S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-      "S Redstone Wrapper With Thresholding",
+      ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+      "ETH Redstone Wrapper With Thresholding",
       ORACLE_MANAGER_ROLE,
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
@@ -92,8 +92,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   await transferRole(
     hre,
-    S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-    "S Redstone Wrapper With Thresholding",
+    ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+    "ETH Redstone Wrapper With Thresholding",
     DEFAULT_ADMIN_ROLE,
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
@@ -104,8 +104,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (ORACLE_MANAGER_ROLE) {
     await transferRole(
       hre,
-      S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-      "S Redstone Composite Wrapper With Thresholding",
+      ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+      "ETH Redstone Composite Wrapper With Thresholding",
       ORACLE_MANAGER_ROLE,
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
@@ -115,8 +115,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   await transferRole(
     hre,
-    S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-    "S Redstone Composite Wrapper With Thresholding",
+    ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+    "ETH Redstone Composite Wrapper With Thresholding",
     DEFAULT_ADMIN_ROLE,
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
@@ -272,7 +272,7 @@ async function transferRole(
 func.id = "transfer_oracle_wrapper_roles_to_multisig";
 func.tags = ["governance", "roles"];
 func.dependencies = [
-  "setup-s-redstone-oracle-wrappers",
+  "setup-eth-redstone-oracle-wrappers",
   "setup-usd-redstone-oracle-wrappers",
 ];
 

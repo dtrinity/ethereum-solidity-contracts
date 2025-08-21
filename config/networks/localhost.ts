@@ -256,7 +256,9 @@ export async function getConfig(
                   },
                 }
               : {}),
-            ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_USD"]
+            ...(stETHDeployment?.address &&
+            mockOracleNameToAddress["stETH_WETH"] &&
+            mockOracleNameToAddress["WETH_USD"]
               ? {
                   [stETHDeployment.address]: {
                     feedAsset: stETHDeployment.address,
@@ -381,6 +383,73 @@ export async function getConfig(
           initialExchangeThreshold: 1000n * 10n ** 18n, // 1000 dStable
           initialAdmin: user1, // Optional: specific admin for this reward manager
           initialRewardsManager: user1, // Optional: specific rewards manager role holder
+        },
+      },
+    },
+    dLoop: {
+      dUSDAddress: dUSDDeployment?.address || "",
+      coreVaults: {
+        "3x_sFRAX_dUSD": {
+          venue: "dlend",
+          name: "dLOOP 3X sfrxUSD dLEND",
+          symbol: "3X-sfrxUSD",
+          underlyingAsset: sfrxUSDDeployment?.address || "",
+          dStable: dUSDDeployment?.address || "",
+          targetLeverageBps: 300 * ONE_PERCENT_BPS, // 300% leverage, meaning 3x leverage
+          lowerBoundTargetLeverageBps: 200 * ONE_PERCENT_BPS, // 200% leverage, meaning 2x leverage
+          upperBoundTargetLeverageBps: 400 * ONE_PERCENT_BPS, // 400% leverage, meaning 4x leverage
+          maxSubsidyBps: 2 * ONE_PERCENT_BPS, // 2% subsidy
+          minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
+          withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
+          extraParams: {
+            targetStaticATokenWrapper:
+              dLendATokenWrapperDUSDDeployment?.address,
+            treasury: user1,
+            maxTreasuryFeeBps: 1000,
+            initialTreasuryFeeBps: 500,
+            initialExchangeThreshold: 100n,
+          },
+        },
+        "3x_stETH_dETH": {
+          venue: "dlend",
+          name: "dLOOP 3X stETH dLEND",
+          symbol: "3X-stETH",
+          underlyingAsset: stETHDeployment?.address || "",
+          dStable: dETHDeployment?.address || "",
+          targetLeverageBps: 300 * ONE_PERCENT_BPS, // 300% leverage, meaning 3x leverage
+          lowerBoundTargetLeverageBps: 200 * ONE_PERCENT_BPS, // 200% leverage, meaning 2x leverage
+          upperBoundTargetLeverageBps: 400 * ONE_PERCENT_BPS, // 400% leverage, meaning 4x leverage
+          maxSubsidyBps: 2 * ONE_PERCENT_BPS, // 2% subsidy
+          minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
+          withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
+          extraParams: {
+            targetStaticATokenWrapper:
+              dLendATokenWrapperDSDeployment?.address,
+            treasury: user1,
+            maxTreasuryFeeBps: 1000,
+            initialTreasuryFeeBps: 500,
+            initialExchangeThreshold: 100n,
+          },
+        },
+      },
+      depositors: {
+        odos: {
+          router: "", // Odos doesn't work on localhost
+        },
+      },
+      redeemers: {
+        odos: {
+          router: "", // Odos doesn't work on localhost
+        },
+      },
+      decreaseLeverage: {
+        odos: {
+          router: "", // Odos doesn't work on localhost
+        },
+      },
+      increaseLeverage: {
+        odos: {
+          router: "", // Odos doesn't work on localhost
         },
       },
     },

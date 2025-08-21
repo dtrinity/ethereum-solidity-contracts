@@ -100,6 +100,6 @@ func.dependencies = [
   ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
 ];
-func.id = "point-s-aggregator-to-redstone-wrappers";
+func.id = "point-eth-aggregator-to-redstone-wrappers";
 
 export default func;

@@ -3,9 +3,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-  S_REDSTONE_ORACLE_WRAPPER_ID,
-  S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
 } from "../../typescript/deploy-ids";
 
 // Helper function to perform sanity checks on oracle wrappers
@@ -64,7 +64,7 @@ const func: DeployFunction = async function (
 
   // Deploy RedstoneChainlinkWrapper for plain oracle feeds
   const redstoneWrapperDeployment = await hre.deployments.deploy(
-    S_REDSTONE_ORACLE_WRAPPER_ID,
+    ETH_REDSTONE_ORACLE_WRAPPER_ID,
     {
       from: deployer,
       args: [baseCurrency, baseCurrencyUnit],
@@ -103,7 +103,7 @@ const func: DeployFunction = async function (
       ?.redstoneOracleWrappersWithThresholding || {};
 
   const redstoneWrapperWithThresholdingDeployment =
-    await hre.deployments.deploy(S_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID, {
+    await hre.deployments.deploy(ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID, {
       from: deployer,
       args: [baseCurrency, baseCurrencyUnit],
       contract: "RedstoneChainlinkWrapperWithThresholding",
@@ -146,7 +146,7 @@ const func: DeployFunction = async function (
       ?.compositeRedstoneOracleWrappersWithThresholding || {};
 
   const redstoneCompositeWrapperDeployment = await hre.deployments.deploy(
-    S_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+    ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
     {
       from: deployer,
       args: [baseCurrency, baseCurrencyUnit],
@@ -189,12 +189,12 @@ const func: DeployFunction = async function (
 };
 
 func.tags = [
-  "s-oracle",
+  "dETH_setup",
   "oracle-aggregator",
   "oracle-wrapper",
-  "s-redstone-oracle-wrapper",
+  "eth-redstone-oracle-wrapper",
 ];
 func.dependencies = [];
-func.id = "setup-s-redstone-oracle-wrappers";
+func.id = "setup-eth-redstone-oracle-wrappers";
 
 export default func;

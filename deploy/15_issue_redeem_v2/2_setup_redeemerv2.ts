@@ -11,7 +11,7 @@ import {
   DUSD_REDEEMER_CONTRACT_ID,
   DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
   DUSD_TOKEN_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { ensureDefaultAdminExistsAndRevokeFrom } from "../../typescript/hardhat/access_control";
@@ -263,7 +263,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       newId: "RedeemerV2_DS",
       tokenId: DETH_TOKEN_ID,
       collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
-      aggregatorId: S_ORACLE_AGGREGATOR_ID,
+      aggregatorId: ETH_ORACLE_AGGREGATOR_ID,
     },
   ];
 
@@ -448,7 +448,7 @@ func.dependencies = [
   USD_ORACLE_AGGREGATOR_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_TOKEN_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   "RedeemerV2_DUSD",
   "RedeemerV2_DS",
 ];
