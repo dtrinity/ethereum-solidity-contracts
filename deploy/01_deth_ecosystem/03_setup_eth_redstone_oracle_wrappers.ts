@@ -189,7 +189,7 @@ const func: DeployFunction = async function (
 };
 
 func.tags = [
-  "dETH_setup",
+  "deth",
   "oracle-aggregator",
   "oracle-wrapper",
   "eth-redstone-oracle-wrapper",
