@@ -31,9 +31,9 @@ export const strategyDUSD: IReserveParams = {
   supplyCap: "2500000", // Specific to dUSD
 };
 
-export const strategyDS: IReserveParams = {
+export const strategyDETH: IReserveParams = {
   ...baseDStableConfig,
-  supplyCap: "5000000", // Specific to dS
+  supplyCap: "500", // Specific to dETH
 };
 
 export const strategyWETH: IReserveParams = {
@@ -72,19 +72,9 @@ const baseYieldBearingStablecoinConfig: IReserveParams = {
   borrowableIsolation: false,
 };
 
-export const strategyStS: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "5000000", // Specific to stS
-};
-
-export const strategySfrxUSD: IReserveParams = {
+export const strategySFRXUSD: IReserveParams = {
   ...baseYieldBearingStablecoinConfig,
   supplyCap: "1000000", // Specific to sfrxUSD
-};
-
-export const strategyWstkscUSD: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "2500000", // Specific to wstkscUSD
 };
 
 export const strategyETHLST: IReserveParams = {
@@ -105,27 +95,7 @@ export const strategyETHLST: IReserveParams = {
   borrowableIsolation: false,
 };
 
-export const strategyscETH: IReserveParams = {
+export const strategySTETH: IReserveParams = {
   ...strategyETHLST,
-  supplyCap: "500",
-};
-
-export const strategywstkscETH: IReserveParams = {
-  ...strategyETHLST,
-  supplyCap: "200",
-};
-
-export const strategyPTaUSDC: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "1000000",
-};
-
-export const strategyPTwstkscUSD: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "1000000",
-};
-
-export const strategywOS: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "500000",
+  supplyCap: "5000000", // Specific to stS
 };

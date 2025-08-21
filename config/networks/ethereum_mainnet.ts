@@ -19,13 +19,13 @@ import {
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
 import {
-  strategyDS,
+  strategyDETH,
   strategyDUSD,
   strategyPTaUSDC,
   strategyPTwstkscUSD,
   strategyscETH,
   strategySfrxUSD,
-  strategyStS,
+  strategySTETH,
   strategyWETH,
   strategywOS,
   strategywstkscETH,
@@ -318,8 +318,8 @@ export async function getConfig(
       ],
       reservesConfig: {
         dUSD: strategyDUSD,
-        dETH: strategyDS,
-        stS: strategyStS, // Update key to match Ethereum equivalent
+        dETH: strategyDETH,
+        stS: strategySTETH, // Update key to match Ethereum equivalent
         sfrxUSD: strategySfrxUSD,
         wstkscUSD: strategyWstkscUSD, // Update if different on Ethereum
         WETH: strategyWETH,

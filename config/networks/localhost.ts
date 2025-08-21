@@ -19,11 +19,10 @@ import {
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
 import {
-  strategyDS,
+  strategyDETH,
   strategyDUSD,
-  strategySfrxUSD,
-  strategyStS,
-  strategyWstkscUSD,
+  strategySFRXUSD,
+  strategySTETH,
 } from "../dlend/reserves-params";
 import { Config } from "../types";
 
@@ -44,12 +43,8 @@ export async function getConfig(
   const sUSDSDeployment = await _hre.deployments.getOrNull("sUSDS");
   const frxUSDDeployment = await _hre.deployments.getOrNull("frxUSD");
   const sfrxUSDDeployment = await _hre.deployments.getOrNull("sfrxUSD");
-  const wSTokenDeployment = await _hre.deployments.getOrNull("wS");
-  const OSTokenDeployment = await _hre.deployments.getOrNull("OS");
-  const wOSTokenDeployment = await _hre.deployments.getOrNull("wOS");
-  const stSTokenDeployment = await _hre.deployments.getOrNull("stS");
-  const scUSDDeployment = await _hre.deployments.getOrNull("scUSD");
-  const wstkscUSDDeployment = await _hre.deployments.getOrNull("wstkscUSD");
+  const WETHDeployment = await _hre.deployments.getOrNull("WETH");
+  const stETHDeployment = await _hre.deployments.getOrNull("stETH");
 
   // Fetch deployed dLend StaticATokenLM wrappers
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull(
@@ -74,19 +69,16 @@ export async function getConfig(
   // Get mock oracle deployments
   const mockOracleNameToAddress: Record<string, string> = {};
 
-  // REFACTOR: Load addresses directly using getOrNull
+  // Get mock oracle addresses
   const mockOracleAddressesDeployment = await _hre.deployments.getOrNull(
     "MockOracleNameToAddress",
   );
 
+  // Mock oracles won't exist initially, so we need to check if they do
   if (mockOracleAddressesDeployment?.linkedData) {
     Object.assign(
       mockOracleNameToAddress,
       mockOracleAddressesDeployment.linkedData,
-    );
-  } else {
-    console.warn(
-      "WARN: MockOracleNameToAddress deployment not found or has no linkedData. Oracle addresses might be incomplete.",
     );
   }
 
@@ -126,39 +118,15 @@ export async function getConfig(
           decimals: 18,
           initialSupply: 1e6,
         },
-        wS: {
-          name: "Wrapped S",
-          address: wSTokenDeployment?.address,
+        WETH: {
+          name: "Wrapped ETH",
+          address: WETHDeployment?.address,
           decimals: 18,
           initialSupply: 1e6,
         },
-        OS: {
-          name: "Origin S",
-          address: OSTokenDeployment?.address,
-          decimals: 18,
-          initialSupply: 1e6,
-        },
-        wOS: {
-          name: "Wrapped Origin S",
-          address: wOSTokenDeployment?.address,
-          decimals: 18,
-          initialSupply: 1e6,
-        },
-        stS: {
-          name: "Staked S",
-          address: stSTokenDeployment?.address,
-          decimals: 18,
-          initialSupply: 1e6,
-        },
-        scUSD: {
-          name: "Sonic USD",
-          address: scUSDDeployment?.address,
-          decimals: 18,
-          initialSupply: 1e6,
-        },
-        wstkscUSD: {
-          name: "Wrapped Staked Sonic USD",
-          address: wstkscUSDDeployment?.address,
+        stETH: {
+          name: "Staked ETH",
+          address: stETHDeployment?.address,
           decimals: 18,
           initialSupply: 1e6,
         },
@@ -168,13 +136,12 @@ export async function getConfig(
     tokenAddresses: {
       dUSD: emptyStringIfUndefined(dUSDDeployment?.address),
       dETH: emptyStringIfUndefined(dETHDeployment?.address),
-      wS: emptyStringIfUndefined(wSTokenDeployment?.address),
-      sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address), // Used by dLEND
-      stS: emptyStringIfUndefined(stSTokenDeployment?.address), // Used by dLEND
-      wstkscUSD: emptyStringIfUndefined(wstkscUSDDeployment?.address), // Used by dLEND
+      WETH: emptyStringIfUndefined(WETHDeployment?.address),
+      stETH: emptyStringIfUndefined(stETHDeployment?.address),
+      frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
+      sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address),
       USDC: emptyStringIfUndefined(USDCDeployment?.address),
       USDS: emptyStringIfUndefined(USDSDeployment?.address),
-      frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
     },
     walletAddresses: {
       governanceMultisig: user1,
@@ -203,18 +170,16 @@ export async function getConfig(
       },
       dETH: {
         collaterals: [
-          wSTokenDeployment?.address || ZeroAddress,
-          wOSTokenDeployment?.address || ZeroAddress,
-          stSTokenDeployment?.address || ZeroAddress,
+          WETHDeployment?.address || ZeroAddress,
+          stETHDeployment?.address || ZeroAddress,
         ],
         initialFeeReceiver: deployer,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS, // Default for stablecoins
         collateralRedemptionFees: {
           // Stablecoins: 0.4%
-          [wSTokenDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
-          [wOSTokenDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
+          [WETHDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
           // Yield bearing stablecoins: 0.5%
-          [stSTokenDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
+          [stETHDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
         },
       },
     },
@@ -225,9 +190,10 @@ export async function getConfig(
         baseCurrency: ZeroAddress,
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
-            [wSTokenDeployment?.address || ""]:
-              mockOracleNameToAddress["wS_USD"],
-            [dETHDeployment?.address || ""]: mockOracleNameToAddress["wS_USD"], // Peg dETH to S
+            [WETHDeployment?.address || ""]:
+              mockOracleNameToAddress["WETH_USD"],
+            [dETHDeployment?.address || ""]:
+              mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
           },
           redstoneOracleWrappersWithThresholding: {
             ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
@@ -290,89 +256,33 @@ export async function getConfig(
                   },
                 }
               : {}),
-            ...(wstkscUSDDeployment?.address &&
-            mockOracleNameToAddress["wstkscUSD_scUSD"] &&
-            mockOracleNameToAddress["scUSD_USD"]
+            ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_USD"]
               ? {
-                  [wstkscUSDDeployment.address]: {
-                    feedAsset: wstkscUSDDeployment.address,
-                    feed1: mockOracleNameToAddress["wstkscUSD_scUSD"],
-                    feed2: mockOracleNameToAddress["scUSD_USD"],
+                  [stETHDeployment.address]: {
+                    feedAsset: stETHDeployment.address,
+                    feed1: mockOracleNameToAddress["stETH_WETH"],
+                    feed2: mockOracleNameToAddress["WETH_USD"],
                     lowerThresholdInBase1: 0n,
                     fixedPriceInBase1: 0n,
                     lowerThresholdInBase2: 0n,
                     fixedPriceInBase2: 0n,
-                  },
-                }
-              : {}),
-            ...(stSTokenDeployment?.address
-              ? {
-                  [stSTokenDeployment.address]: {
-                    feedAsset: stSTokenDeployment.address,
-                    feed1: mockOracleNameToAddress["stS_S"],
-                    feed2: mockOracleNameToAddress["wS_USD"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: 0n,
-                    fixedPriceInBase2: 0n,
-                  },
-                }
-              : {}),
-            ...(wOSTokenDeployment?.address &&
-            mockOracleNameToAddress["wOS_S"] &&
-            mockOracleNameToAddress["wS_USD"]
-              ? {
-                  [wOSTokenDeployment.address]: {
-                    feedAsset: wOSTokenDeployment.address,
-                    feed1: mockOracleNameToAddress["wOS_OS"],
-                    feed2: mockOracleNameToAddress["OS_S"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
                   },
                 }
               : {}),
           },
         },
       },
-      S: {
+      ETH: {
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
-        baseCurrency: wSTokenDeployment?.address || ZeroAddress, // Base currency is S
+        baseCurrency: WETHDeployment?.address || ZeroAddress, // Base currency is WETH
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
-            [stSTokenDeployment?.address || ""]:
-              mockOracleNameToAddress["stS_S"],
+            [stETHDeployment?.address || ""]:
+              mockOracleNameToAddress["stETH_WETH"],
           },
-          redstoneOracleWrappersWithThresholding: {
-            ...(OSTokenDeployment?.address && mockOracleNameToAddress["OS_S"]
-              ? {
-                  [OSTokenDeployment.address]: {
-                    feed: mockOracleNameToAddress["OS_S"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, // 1.0 in S terms
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, // 1.0 in S terms
-                  },
-                }
-              : {}),
-          },
-          compositeRedstoneOracleWrappersWithThresholding: {
-            ...(wOSTokenDeployment?.address &&
-            mockOracleNameToAddress["wOS_OS"] &&
-            mockOracleNameToAddress["OS_S"]
-              ? {
-                  [wOSTokenDeployment.address]: {
-                    feedAsset: wOSTokenDeployment.address,
-                    feed1: mockOracleNameToAddress["wOS_OS"],
-                    feed2: mockOracleNameToAddress["OS_S"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
-              : {}),
-          },
+          redstoneOracleWrappersWithThresholding: {},
+          compositeRedstoneOracleWrappersWithThresholding: {},
         },
       },
     },
@@ -390,60 +300,13 @@ export async function getConfig(
       ],
       reservesConfig: {
         dUSD: strategyDUSD,
-        dETH: strategyDS,
-        stS: strategyStS,
-        sfrxUSD: strategySfrxUSD,
-        wstkscUSD: strategyWstkscUSD,
+        dETH: strategyDETH,
+        stETH: strategySTETH,
+        sfrxUSD: strategySFRXUSD,
       },
     },
     odos: {
       router: "", // Odos doesn't work on localhost
-    },
-    dLoop: {
-      dUSDAddress: dUSDDeployment?.address || "",
-      coreVaults: {
-        "3x_sFRAX_dUSD": {
-          venue: "dlend",
-          name: "dLOOP 3X sfrxUSD dLEND",
-          symbol: "3X-sfrxUSD",
-          underlyingAsset: sfrxUSDDeployment?.address || "",
-          dStable: dUSDDeployment?.address || "",
-          targetLeverageBps: 300 * ONE_PERCENT_BPS, // 300% leverage, meaning 3x leverage
-          lowerBoundTargetLeverageBps: 200 * ONE_PERCENT_BPS, // 200% leverage, meaning 2x leverage
-          upperBoundTargetLeverageBps: 400 * ONE_PERCENT_BPS, // 400% leverage, meaning 4x leverage
-          maxSubsidyBps: 2 * ONE_PERCENT_BPS, // 2% subsidy
-          minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
-          withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
-          extraParams: {
-            targetStaticATokenWrapper:
-              dLendATokenWrapperDUSDDeployment?.address,
-            treasury: user1,
-            maxTreasuryFeeBps: 1000,
-            initialTreasuryFeeBps: 500,
-            initialExchangeThreshold: 100n,
-          },
-        },
-      },
-      depositors: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      redeemers: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      decreaseLeverage: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      increaseLeverage: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
     },
     dStake: {
       sdUSD: {

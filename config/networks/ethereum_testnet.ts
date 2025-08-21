@@ -19,10 +19,10 @@ import {
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
 import {
-  strategyDS,
+  strategyDETH,
   strategyDUSD,
   strategySfrxUSD,
-  strategyStS,
+  strategySTETH,
   strategyWstkscUSD,
 } from "../dlend/reserves-params";
 import { Config } from "../types";
@@ -436,8 +436,8 @@ export async function getConfig(
       ],
       reservesConfig: {
         dUSD: strategyDUSD,
-        dETH: strategyDS,
-        stS: strategyStS, // Keep same key but will use stETH token
+        dETH: strategyDETH,
+        stS: strategySTETH, // Keep same key but will use stETH token
         sfrxUSD: strategySfrxUSD,
         wstkscUSD: strategyWstkscUSD,
       },

@@ -19,7 +19,7 @@ export interface Config {
     readonly router: string;
   };
   readonly pendle?: PendleConfig;
-  readonly dLoop: {
+  readonly dLoop?: {
     readonly dUSDAddress: string;
     readonly coreVaults: { [vaultName: string]: DLoopCoreConfig };
     readonly depositors: {
@@ -102,7 +102,7 @@ export interface DLoopIncreaseLeverageOdosConfig {
 }
 
 export interface TokenAddresses {
-  readonly wS: string;
+  readonly WETH: string;
   readonly dUSD: string;
   readonly dETH: string;
   readonly [key: string]: string; // dLEND assets must be defined as well
