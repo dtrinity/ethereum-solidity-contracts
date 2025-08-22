@@ -177,7 +177,7 @@ import { ethers } from 'ethers'
 async function upgradeContract() {
   // Initialize Safe
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://rpc.sonic.fantom.network'),
+    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
     safeAddress: process.env.SAFE_ADDRESS
   })
@@ -222,7 +222,7 @@ async function upgradeContract() {
 ```typescript
 async function executeMultipleOperations() {
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://rpc.sonic.fantom.network'),
+    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
     safeAddress: process.env.SAFE_ADDRESS
   })
@@ -261,7 +261,7 @@ async function executeMultipleOperations() {
 ```typescript
 async function transferAdminRole() {
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://rpc.sonic.fantom.network'),
+    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
     safeAddress: process.env.SAFE_ADDRESS
   })

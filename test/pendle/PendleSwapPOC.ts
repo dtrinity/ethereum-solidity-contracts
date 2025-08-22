@@ -1,13 +1,13 @@
 import { ethers, network } from "hardhat";
 
 import { estimateSwapExactIn } from "../../typescript/pendle/sdk";
-import { SONIC_MAINNET_PT_TOKENS } from "./fixture";
+import { ETHEREUM_MAINNET_PT_TOKENS } from "./fixture";
 
 describe("PendleSwapPOC - Mainnet Integration", function () {
-  // Skip if not on Sonic mainnet
+  // Skip if not on Ethereum mainnet
   before(function () {
-    if (network.name !== "sonic_mainnet") {
-      console.log(`Skipping Pendle POC tests - not on Sonic mainnet`);
+    if (network.name !== "ethereum_mainnet") {
+      console.log(`Skipping Pendle POC tests - not on Ethereum mainnet`);
       this.skip();
     }
   });
@@ -18,13 +18,13 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
   async function deployPendleSwapPOCForMainnet() {
     const [deployer] = await ethers.getSigners();
     console.log(
-      `Deploying on network: ${network.name} (chainId: ${network.config.chainId})`,
+      `Deploying on network: ${network.name} (chainId: ${network.config.chainId})`
     );
     console.log(`Deployer: ${deployer.address}`);
 
     // Deploy PendleSwapPOC contract directly (no fixtures on mainnet)
     const PendleSwapPOC = await ethers.getContractFactory(
-      "contracts/testing/pendle/PendleSwapPOC.sol:PendleSwapPOC",
+      "contracts/testing/pendle/PendleSwapPOC.sol:PendleSwapPOC"
     );
     const pocContract = (await PendleSwapPOC.deploy()) as any;
     await pocContract.waitForDeployment();
@@ -49,7 +49,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
     tokenOut: string,
     receiver: string,
     market: string,
-    chainId: number,
+    chainId: number
   ) {
     console.log(`\n=== Calling Pendle SDK ===`);
     console.log(`PT Token: ${ptToken}`);
@@ -65,7 +65,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         receiver,
         market,
         chainId,
-        0.01,
+        0.01
       );
       console.log(`SDK Response:`);
       console.log(`  Amount Out: ${response.data.data.amountOut}`);
@@ -84,7 +84,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
   describe("Full POC flow simulation", function () {
     it("Should demonstrate complete off-chain → on-chain flow", async function () {
       const { pocContract, deployer } = await deployPendleSwapPOCForMainnet();
-      const ptToken = SONIC_MAINNET_PT_TOKENS.PTwstkscUSD;
+      const ptToken = ETHEREUM_MAINNET_PT_TOKENS.PTsUSDe;
       const testAmount = ethers.parseUnits("0.1", ptToken.decimals);
       const contractAddress = await pocContract.getAddress();
       const network = await ethers.provider.getNetwork();
@@ -93,18 +93,18 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
       console.log(`Contract: ${await pocContract.getAddress()}`);
       console.log(`PT Token: ${ptToken.name} (${ptToken.address})`);
       console.log(
-        `Test Amount: ${ethers.formatUnits(testAmount, ptToken.decimals)}`,
+        `Test Amount: ${ethers.formatUnits(testAmount, ptToken.decimals)}`
       );
 
       try {
         // Step 1: Get PT token balance
         const ptContract = await ethers.getContractAt(
           "@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20",
-          ptToken.address,
+          ptToken.address
         );
         const ptBalance = await ptContract.balanceOf(deployer.address);
         console.log(
-          `Deployer PT balance: ${ethers.formatUnits(ptBalance, ptToken.decimals)}`,
+          `Deployer PT balance: ${ethers.formatUnits(ptBalance, ptToken.decimals)}`
         );
 
         // Step 2: Call Pendle SDK
@@ -115,7 +115,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
           ptToken.asset,
           contractAddress,
           ptToken.market,
-          chainId,
+          chainId
         );
 
         console.log(`\nStep 2: Contract ready at ${contractAddress}`);
@@ -126,10 +126,10 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         if (ptBalance < testAmount) {
           console.log(`⚠️  Insufficient PT tokens for actual execution`);
           console.log(
-            `   Required: ${ethers.formatUnits(testAmount, ptToken.decimals)}`,
+            `   Required: ${ethers.formatUnits(testAmount, ptToken.decimals)}`
           );
           console.log(
-            `   Available: ${ethers.formatUnits(ptBalance, ptToken.decimals)}`,
+            `   Available: ${ethers.formatUnits(ptBalance, ptToken.decimals)}`
           );
 
           // Still demonstrate the contract call structure
@@ -137,7 +137,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
           console.log(`  ptToken: ${ptToken.address}`);
           console.log(`  underlyingToken: ${ptToken.asset}`);
           console.log(
-            `  ptAmount: ${ethers.formatUnits(testAmount, ptToken.decimals)}`,
+            `  ptAmount: ${ethers.formatUnits(testAmount, ptToken.decimals)}`
           );
           console.log(`  expectedOut: ${sdkResponse.data.amountOut}`);
           console.log(`  router: ${sdkResponse.tx.to}`);
@@ -147,7 +147,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
           console.log(`   Transaction data generation: ✅`);
           console.log(`   Contract integration ready: ✅`);
           console.log(
-            `   Note: Actual execution skipped due to insufficient PT tokens`,
+            `   Note: Actual execution skipped due to insufficient PT tokens`
           );
           return;
         }
@@ -157,19 +157,19 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         const approveTx = await ptContract.approve(contractAddress, testAmount);
         await approveTx.wait();
         console.log(
-          `✅ Approved ${ethers.formatUnits(testAmount, ptToken.decimals)} PT tokens`,
+          `✅ Approved ${ethers.formatUnits(testAmount, ptToken.decimals)} PT tokens`
         );
 
         // Step 5: Execute the actual swap
         console.log(
-          `\nStep 5: Executing actual Pendle swap through POC contract...`,
+          `\nStep 5: Executing actual Pendle swap through POC contract...`
         );
         const swapTx = await pocContract.executePendleSwap(
           ptToken.address,
           ptToken.asset,
           testAmount,
           sdkResponse.tx.to,
-          sdkResponse.tx.data,
+          sdkResponse.tx.data
         );
 
         const receipt = await swapTx.wait();
@@ -182,23 +182,23 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         const newPtBalance = await ptContract.balanceOf(deployer.address);
         const underlyingContract = await ethers.getContractAt(
           "@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20",
-          ptToken.asset,
+          ptToken.asset
         );
         const underlyingBalanceAfter = await underlyingContract.balanceOf(
-          deployer.address,
+          deployer.address
         );
 
         console.log(
-          `PT tokens after swap: ${ethers.formatUnits(newPtBalance, ptToken.decimals)}`,
+          `PT tokens after swap: ${ethers.formatUnits(newPtBalance, ptToken.decimals)}`
         );
         console.log(
-          `Underlying tokens received: ${ethers.formatUnits(underlyingBalanceAfter, await underlyingContract.decimals())}`,
+          `Underlying tokens received: ${ethers.formatUnits(underlyingBalanceAfter, await underlyingContract.decimals())}`
         );
 
         // Calculate PT tokens used and verify swap occurred
         const ptTokensUsed = ptBalance - newPtBalance;
         console.log(
-          `PT tokens used: ${ethers.formatUnits(ptTokensUsed, ptToken.decimals)}`,
+          `PT tokens used: ${ethers.formatUnits(ptTokensUsed, ptToken.decimals)}`
         );
 
         if (ptTokensUsed > 0) {
@@ -208,7 +208,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         }
 
         console.log(
-          `\n🎯 COMPLETE SUCCESS: Full PT liquidation flow executed!`,
+          `\n🎯 COMPLETE SUCCESS: Full PT liquidation flow executed!`
         );
         console.log(`   Off-chain computation: ✅`);
         console.log(`   Transaction data generation: ✅`);
@@ -222,7 +222,7 @@ describe("PendleSwapPOC - Mainnet Integration", function () {
         // Still consider it successful if we got the SDK data
         if (error.message && error.message.includes("SDK")) {
           console.log(
-            `\n🎯 PARTIAL SUCCESS: SDK integration working, execution failed due to:`,
+            `\n🎯 PARTIAL SUCCESS: SDK integration working, execution failed due to:`
           );
           console.log(`   ${error.message}`);
         } else {
