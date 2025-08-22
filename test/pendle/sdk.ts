@@ -39,11 +39,11 @@ describe("Pendle SDK Functions", function () {
       // Test with underlying assets (these should not be PT tokens)
       const nonPTTokens = [
         {
-          name: "USDCe (underlying of PT-aUSDC)",
+          name: "USDC (underlying of PT-aUSDC)",
           address: ETHEREUM_MAINNET_PT_TOKENS.PTsyrupUSDC.asset,
         },
         {
-          name: "scUSD (underlying of PT-wstkscUSD)",
+          name: "sUSDe (underlying of PT-sUSDe)",
           address: ETHEREUM_MAINNET_PT_TOKENS.PTsUSDe.underlyingToken,
         },
       ];
@@ -106,8 +106,8 @@ describe("Pendle SDK Functions", function () {
       );
     });
 
-    it("Should return correct market info for PT-wstkscUSD (active market)", async function () {
-      console.log(`\n=== Testing getPTMarketInfo for PT-wstkscUSD ===`);
+    it("Should return correct market info for PT-sUSDe (active market)", async function () {
+      console.log(`\n=== Testing getPTMarketInfo for PT-sUSDe ===`);
 
       const ptToken = ETHEREUM_MAINNET_PT_TOKENS.PTsUSDe;
       console.log(`PT Token: ${ptToken.name} (${ptToken.address})`);

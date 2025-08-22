@@ -21,16 +21,9 @@ import {
 import {
   strategyDETH,
   strategyDUSD,
-  strategyPTaUSDC,
-  strategyPTwstkscUSD,
-  strategyscETH,
-  strategySfrxUSD,
   strategySTETH,
   strategyWETH,
-  strategywOS,
-  strategywstkscETH,
-  strategyWstkscUSD,
-  // strategyWstkscUSD,
+  strategySFRXUSD,
 } from "../dlend/reserves-params";
 import { Config } from "../types";
 
@@ -41,7 +34,7 @@ import { Config } from "../types";
  * @returns The configuration for the network
  */
 export async function getConfig(
-  _hre: HardhatRuntimeEnvironment,
+  _hre: HardhatRuntimeEnvironment
 ): Promise<Config> {
   const dUSDDeployment = await _hre.deployments.getOrNull(DUSD_TOKEN_ID);
   const dETHDeployment = await _hre.deployments.getOrNull(DETH_TOKEN_ID);
@@ -52,15 +45,7 @@ export async function getConfig(
   const stETHAddress = "0x0000000000000000000000000000000000000000"; // Lido Staked ETH
   const frxUSDAddress = "0x0000000000000000000000000000000000000000"; // Frax USD
   const sfrxUSDAddress = "0x0000000000000000000000000000000000000000"; // Staked Frax USD
-  const wstkscUSDAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
   const USDCAddress = "0x0000000000000000000000000000000000000000"; // USD Coin
-  const scUSDAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
-  const scETHAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
-  const wstkscETHAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
-  const ptaUSDCAddress = "0x0000000000000000000000000000000000000000"; // Pendle PT aUSDC - update for Ethereum
-  const ptwstkscUSDAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
-  const wOSAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
-  const osAddress = "0x0000000000000000000000000000000000000000"; // Placeholder - update for Ethereum equivalent
 
   const odoRouterV2Address = "0x0000000000000000000000000000000000000000"; // Odos Router V2 - update for Ethereum
 
@@ -76,7 +61,7 @@ export async function getConfig(
 
   // Fetch deployed dLend StaticATokenLM wrapper, aToken and RewardsController (may be undefined prior to deployment)
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull(
-    "dLend_ATokenWrapper_dUSD",
+    "dLend_ATokenWrapper_dUSD"
   );
   const rewardsControllerDeployment =
     await _hre.deployments.getOrNull(INCENTIVES_PROXY_ID);
@@ -107,75 +92,37 @@ export async function getConfig(
     tokenAddresses: {
       dUSD: emptyStringIfUndefined(dUSDDeployment?.address),
       dETH: emptyStringIfUndefined(dETHDeployment?.address),
-      wS: wETHAddress, // Using WETH as the base asset for Ethereum
-      stS: stETHAddress, // Using stETH as the staked asset
+      WETH: wETHAddress, // Using WETH as the base asset for Ethereum
+      stETH: stETHAddress, // Using stETH as the staked asset
       frxUSD: frxUSDAddress,
       sfrxUSD: sfrxUSDAddress,
-      wstkscUSD: wstkscUSDAddress,
-      USDCe: USDCAddress,
-      scUSD: scUSDAddress,
-      WETH: wETHAddress,
-      scETH: scETHAddress,
-      wstkscETH: wstkscETHAddress,
-      PTaUSDC: ptaUSDCAddress,
-      PTwstkscUSD: ptwstkscUSDAddress,
-      wOS: wOSAddress,
-      OS: osAddress,
+      USDC: USDCAddress,
     },
     walletAddresses: {
       governanceMultisig: governanceSafeMultisig,
       incentivesVault: "0x0000000000000000000000000000000000000000", // Placeholder - set incentives vault
     },
     pendle: {
-      ptYtLpOracleAddress: "0x0000000000000000000000000000000000000000", // Placeholder - Pendle Oracle for Ethereum
-      ptTokens: [
-        {
-          name: "PT-aUSDC-PLACEHOLDER", // Update with actual Ethereum PT token
-          ptToken: "0x0000000000000000000000000000000000000000",
-          market: "0x0000000000000000000000000000000000000000",
-          oracleType: "PT_TO_ASSET",
-          twapDuration: 900,
-        },
-        {
-          name: "PT-PLACEHOLDER-2", // Update with actual Ethereum PT token
-          ptToken: "0x0000000000000000000000000000000000000000",
-          market: "0x0000000000000000000000000000000000000000",
-          oracleType: "PT_TO_ASSET",
-          twapDuration: 900,
-        },
-      ],
+      ptYtLpOracleAddress: "0x0000000000000000000000000000000000000000", // Placeholder - update when known
+      ptTokens: [],
     },
     dStables: {
       dUSD: {
         collaterals: [
           frxUSDAddress,
           sfrxUSDAddress,
-          // wstkscUSDAddress,
           USDCAddress,
-          scUSDAddress,
+          // add other Ethereum stables as needed
         ],
         initialFeeReceiver: governanceSafeMultisig,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS, // Default for stablecoins
-        collateralRedemptionFees: {
-          // Stablecoins: 0.4%
-          [frxUSDAddress]: 0.4 * ONE_PERCENT_BPS,
-          [USDCAddress]: 0.4 * ONE_PERCENT_BPS,
-          [scUSDAddress]: 0.4 * ONE_PERCENT_BPS,
-          // Yield bearing stablecoins: 0.5%
-          [sfrxUSDAddress]: 0.5 * ONE_PERCENT_BPS,
-          [wstkscUSDAddress]: 0.5 * ONE_PERCENT_BPS,
-        },
+        collateralRedemptionFees: {},
       },
       dETH: {
         collaterals: [wETHAddress, stETHAddress], // Updated for Ethereum
         initialFeeReceiver: governanceSafeMultisig,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS, // Default for stablecoins
-        collateralRedemptionFees: {
-          // Base assets: 0.4%
-          [wETHAddress]: 0.4 * ONE_PERCENT_BPS,
-          // Yield bearing assets: 0.5%
-          [stETHAddress]: 0.5 * ONE_PERCENT_BPS,
-        },
+        collateralRedemptionFees: {},
       },
     },
     dLoop: {
@@ -231,66 +178,12 @@ export async function getConfig(
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {},
-          redstoneOracleWrappersWithThresholding: {
-            // PLACEHOLDER: All oracle feed addresses must be updated for Ethereum
-            [frxUSDAddress]: {
-              feed: "0x0000000000000000000000000000000000000000", // frxUSD/USD Feed
-              lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-              fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-            },
-            [USDCAddress]: {
-              feed: "0x0000000000000000000000000000000000000000", // USDC/USD Feed
-              lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-              fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-            },
-            [wETHAddress]: {
-              feed: "0x0000000000000000000000000000000000000000", // WETH/USD Feed
-              lowerThreshold: 0n, // No thresholding
-              fixedPrice: 0n,
-            },
-            [scETHAddress]: {
-              feed: "0x0000000000000000000000000000000000000000", // Placeholder - ETH equivalent
-              lowerThreshold: 0n, // No thresholding
-              fixedPrice: 0n,
-            },
-          },
-          compositeRedstoneOracleWrappersWithThresholding: {
-            // PLACEHOLDER: All composite oracle configurations need Ethereum addresses
-            [sfrxUSDAddress]: {
-              feedAsset: sfrxUSDAddress,
-              feed1: "0x0000000000000000000000000000000000000000", // sfrxUSD/frxUSD Feed
-              feed2: "0x0000000000000000000000000000000000000000", // frxUSD/USD Feed
-              lowerThresholdInBase1: 0n,
-              fixedPriceInBase1: 0n,
-              lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-              fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-            },
-            [stETHAddress]: {
-              feedAsset: stETHAddress,
-              feed1: "0x0000000000000000000000000000000000000000", // stETH/ETH Feed
-              feed2: "0x0000000000000000000000000000000000000000", // ETH/USD Feed
-              lowerThresholdInBase1: 0n,
-              fixedPriceInBase1: 0n,
-              lowerThresholdInBase2: 0n,
-              fixedPriceInBase2: 0n,
-            },
-          },
+          redstoneOracleWrappersWithThresholding: {},
+          compositeRedstoneOracleWrappersWithThresholding: {},
         },
-        chainlinkCompositeAggregator: {
-          // PLACEHOLDER: Update with Ethereum equivalent composite feeds
-          [osAddress]: {
-            name: "PLACEHOLDER_COMPOSITE",
-            feedAsset: osAddress,
-            sourceFeed1: "0x0000000000000000000000000000000000000000",
-            sourceFeed2: "0x0000000000000000000000000000000000000000",
-            lowerThresholdInBase1: 0n,
-            fixedPriceInBase1: 0n,
-            lowerThresholdInBase2: 0n,
-            fixedPriceInBase2: 0n,
-          },
-        },
+        chainlinkCompositeAggregator: {},
       },
-      S: {
+      ETH: {
         hardDStablePeg: 10n ** BigInt(ORACLE_AGGREGATOR_PRICE_DECIMALS),
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: wETHAddress, // Using WETH as base currency for Ethereum
@@ -319,15 +212,9 @@ export async function getConfig(
       reservesConfig: {
         dUSD: strategyDUSD,
         dETH: strategyDETH,
-        stS: strategySTETH, // Update key to match Ethereum equivalent
-        sfrxUSD: strategySfrxUSD,
-        wstkscUSD: strategyWstkscUSD, // Update if different on Ethereum
+        stETH: strategySTETH,
+        sfrxUSD: strategySFRXUSD,
         WETH: strategyWETH,
-        scETH: strategyscETH, // Update key if different on Ethereum
-        wstkscETH: strategywstkscETH, // Update key if different on Ethereum
-        PTaUSDC: strategyPTaUSDC, // Update for Ethereum Pendle tokens
-        PTwstkscUSD: strategyPTwstkscUSD, // Update for Ethereum Pendle tokens
-        wOS: strategywOS, // Update key if different on Ethereum
       },
     },
     odos: {
@@ -344,25 +231,25 @@ export async function getConfig(
         adapters: [
           {
             vaultAsset: emptyStringIfUndefined(
-              dLendATokenWrapperDUSDDeployment?.address,
+              dLendATokenWrapperDUSDDeployment?.address
             ),
             adapterContract: "WrappedDLendConversionAdapter",
           },
         ],
         defaultDepositVaultAsset: emptyStringIfUndefined(
-          dLendATokenWrapperDUSDDeployment?.address,
+          dLendATokenWrapperDUSDDeployment?.address
         ),
         collateralVault: "DStakeCollateralVault_sdUSD", // Keep in sync with deploy ID constants
         collateralExchangers: [governanceSafeMultisig],
         dLendRewardManager: {
           managedVaultAsset: emptyStringIfUndefined(
-            dLendATokenWrapperDUSDDeployment?.address,
+            dLendATokenWrapperDUSDDeployment?.address
           ), // StaticATokenLM wrapper
           dLendAssetToClaimFor: emptyStringIfUndefined(
-            aTokenDUSDDeployment?.address,
+            aTokenDUSDDeployment?.address
           ), // dLEND aToken for dUSD
           dLendRewardsController: emptyStringIfUndefined(
-            rewardsControllerDeployment?.address,
+            rewardsControllerDeployment?.address
           ), // RewardsController proxy
           treasury: governanceSafeMultisig,
           maxTreasuryFeeBps: 20 * ONE_PERCENT_BPS, // 20%

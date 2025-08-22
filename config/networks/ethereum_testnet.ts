@@ -21,9 +21,8 @@ import {
 import {
   strategyDETH,
   strategyDUSD,
-  strategySfrxUSD,
+  strategySFRXUSD,
   strategySTETH,
-  strategyWstkscUSD,
 } from "../dlend/reserves-params";
 import { Config } from "../types";
 
@@ -37,7 +36,7 @@ const wETHAddress = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14";
  * @returns The configuration for the network
  */
 export async function getConfig(
-  _hre: HardhatRuntimeEnvironment,
+  _hre: HardhatRuntimeEnvironment
 ): Promise<Config> {
   // Token info will only be populated after their deployment
   const dUSDDeployment = await _hre.deployments.getOrNull(DUSD_TOKEN_ID);
@@ -49,11 +48,10 @@ export async function getConfig(
   const sfrxUSDDeployment = await _hre.deployments.getOrNull("sfrxUSD");
   const wOSTokenDeployment = await _hre.deployments.getOrNull("wOS");
   const stETHTokenDeployment = await _hre.deployments.getOrNull("stETH"); // Updated from stS to stETH
-  const wstkscUSDDeployment = await _hre.deployments.getOrNull("wstkscUSD");
 
   // Fetch deployed dLend StaticATokenLM wrapper (optional, may be undefined on testnet)
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull(
-    "dLend_ATokenWrapper_dUSD",
+    "dLend_ATokenWrapper_dUSD"
   );
 
   // Fetch deployed dLend RewardsController (optional)
@@ -65,22 +63,22 @@ export async function getConfig(
 
   // Fetch deployed dSTAKE token for sdUSD (optional)
   const sdUSDDeployment = await _hre.deployments.getOrNull(
-    SDUSD_DSTAKE_TOKEN_ID,
+    SDUSD_DSTAKE_TOKEN_ID
   );
   // Get mock oracle deployments
   const mockOracleNameToAddress: Record<string, string> = {};
   const mockOracleAddressesDeployment = await _hre.deployments.getOrNull(
-    "MockOracleNameToAddress",
+    "MockOracleNameToAddress"
   );
 
   if (mockOracleAddressesDeployment?.linkedData) {
     Object.assign(
       mockOracleNameToAddress,
-      mockOracleAddressesDeployment.linkedData,
+      mockOracleAddressesDeployment.linkedData
     );
   } else {
     console.warn(
-      "WARN: MockOracleNameToAddress deployment not found or has no linkedData. Oracle configuration might be incomplete.",
+      "WARN: MockOracleNameToAddress deployment not found or has no linkedData. Oracle configuration might be incomplete."
     );
   }
 
@@ -145,22 +143,15 @@ export async function getConfig(
           decimals: 18,
           initialSupply: 1e6,
         },
-        wstkscUSD: {
-          name: "Wrapped Staked USD", // Updated from "Wrapped Staked Sonic USD"
-          address: wstkscUSDDeployment?.address,
-          decimals: 18,
-          initialSupply: 1e6,
-        },
       },
       curvePools: {},
     },
     tokenAddresses: {
       dUSD: emptyStringIfUndefined(dUSDDeployment?.address),
       dETH: emptyStringIfUndefined(dETHDeployment?.address),
-      wS: wETHAddress, // Using WETH as the base asset for Ethereum
+      WETH: wETHAddress, // Using WETH as the base asset for Ethereum
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address), // Used by dLEND
-      stS: emptyStringIfUndefined(stETHTokenDeployment?.address), // Updated to use stETH
-      wstkscUSD: emptyStringIfUndefined(wstkscUSDDeployment?.address), // Used by dLEND
+      stETH: emptyStringIfUndefined(stETHTokenDeployment?.address), // Use stETH on Ethereum
     },
     walletAddresses: {
       governanceMultisig: "0xd2f775Ff2cD41bfe43C7A8c016eD10393553fe44", // Actually just the testnet deployer address
@@ -330,21 +321,7 @@ export async function getConfig(
                   },
                 }
               : {}),
-            ...(wstkscUSDDeployment?.address &&
-            mockOracleNameToAddress["wstkscUSD_scUSD"] &&
-            mockOracleNameToAddress["scUSD_USD"]
-              ? {
-                  [wstkscUSDDeployment.address]: {
-                    feedAsset: wstkscUSDDeployment.address,
-                    feed1: mockOracleNameToAddress["wstkscUSD_scUSD"],
-                    feed2: mockOracleNameToAddress["scUSD_USD"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: 0n,
-                    fixedPriceInBase2: 0n,
-                  },
-                }
-              : {}),
+            // Removed Sonic-era wstkscUSD composite feed
             // Used by dLEND, and thus need USD feed - updated for Ethereum
             ...(stETHTokenDeployment?.address
               ? {
@@ -437,9 +414,8 @@ export async function getConfig(
       reservesConfig: {
         dUSD: strategyDUSD,
         dETH: strategyDETH,
-        stS: strategySTETH, // Keep same key but will use stETH token
-        sfrxUSD: strategySfrxUSD,
-        wstkscUSD: strategyWstkscUSD,
+        stETH: strategySTETH,
+        sfrxUSD: strategySFRXUSD,
       },
     },
     odos: {
@@ -456,25 +432,25 @@ export async function getConfig(
         adapters: [
           {
             vaultAsset: emptyStringIfUndefined(
-              dLendATokenWrapperDUSDDeployment?.address,
+              dLendATokenWrapperDUSDDeployment?.address
             ),
             adapterContract: "WrappedDLendConversionAdapter",
           },
         ],
         defaultDepositVaultAsset: emptyStringIfUndefined(
-          dLendATokenWrapperDUSDDeployment?.address,
+          dLendATokenWrapperDUSDDeployment?.address
         ),
         collateralVault: "DStakeCollateralVault_sdUSD",
         collateralExchangers: [deployer],
         dLendRewardManager: {
           managedVaultAsset: emptyStringIfUndefined(
-            dLendATokenWrapperDUSDDeployment?.address,
+            dLendATokenWrapperDUSDDeployment?.address
           ), // This should be the deployed StaticATokenLM address for dUSD
           dLendAssetToClaimFor: emptyStringIfUndefined(
-            aTokenDUSDDeployment?.address,
+            aTokenDUSDDeployment?.address
           ), // Use the deployed dLEND-dUSD aToken address
           dLendRewardsController: emptyStringIfUndefined(
-            rewardsControllerDeployment?.address,
+            rewardsControllerDeployment?.address
           ), // This will be fetched after dLend incentives deployment
           treasury: deployer, // Or a dedicated treasury address
           maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS, // Example: 5%

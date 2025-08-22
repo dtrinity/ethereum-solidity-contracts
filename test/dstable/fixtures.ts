@@ -30,8 +30,7 @@ export const createDStableFixture = (config: DStableFixtureConfig) => {
   return deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture(); // Start from a fresh deployment
     await deployments.fixture(["local-setup", config.symbol.toLowerCase()]); // Include local-setup to use the mock Oracle
-    // Ensure IssuerV2 and RedeemerV2 are deployed and roles migrated to mirror mainnet
-    await deployments.fixture(["setup-issuerv2", "setup-redeemerv2"]);
+    // IssuerV2 and RedeemerV2 are now deployed as part of the standard ecosystem tags
   });
 };
 
@@ -43,17 +42,17 @@ export const createDStableAmoFixture = (config: DStableFixtureConfig) => {
 
     const { deployer } = await hre.getNamedAccounts();
     const { address: amoManagerAddress } = await deployments.get(
-      config.amoManagerId,
+      config.amoManagerId
     );
 
     const { tokenInfo: dstableInfo } = await getTokenContractForSymbol(
       hre,
       deployer,
-      config.symbol,
+      config.symbol
     );
 
     const { address: oracleAggregatorAddress } = await deployments.get(
-      config.oracleAggregatorId,
+      config.oracleAggregatorId
     );
 
     // Deploy MockAmoVault using standard deployment
