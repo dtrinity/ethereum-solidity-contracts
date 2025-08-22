@@ -233,10 +233,8 @@ const config: HardhatUserConfig = {
   etherscan: {
     // Used for verifying single contracts when hardhat-deploy auto verify doesn't work
     apiKey: {
-      ethereum_mainnet:
-        process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
-      ethereum_testnet:
-        process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
+      ethereum_mainnet: process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
+      ethereum_testnet: process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
     },
     customChains: [
       {

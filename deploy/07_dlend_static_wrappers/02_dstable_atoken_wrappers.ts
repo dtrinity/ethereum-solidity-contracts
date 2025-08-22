@@ -20,27 +20,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { tokenAddresses } = config;
 
   // Get dLend contracts
-  const poolAddressesProvider = await deployments.getOrNull(
-    POOL_ADDRESSES_PROVIDER_ID,
-  );
+  const poolAddressesProvider = await deployments.getOrNull(POOL_ADDRESSES_PROVIDER_ID);
 
   if (!poolAddressesProvider) {
-    console.log(
-      "PoolAddressesProvider not found, skipping aToken wrapper deployment",
-    );
+    console.log("PoolAddressesProvider not found, skipping aToken wrapper deployment");
     return;
   }
 
   const poolAddressesProviderContract = await ethers.getContractAt(
     "contracts/dlend/core/interfaces/IPoolAddressesProvider.sol:IPoolAddressesProvider",
-    poolAddressesProvider.address,
+    poolAddressesProvider.address
   );
 
   const poolAddress = await poolAddressesProviderContract.getPool();
-  const poolContract = await ethers.getContractAt(
-    "contracts/dlend/core/interfaces/IPool.sol:IPool",
-    poolAddress,
-  );
+  const poolContract = await ethers.getContractAt("contracts/dlend/core/interfaces/IPool.sol:IPool", poolAddress);
 
   // Get rewards controller if available
   let rewardsControllerAddress = ethers.ZeroAddress;
@@ -54,9 +47,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   let dUSDAToken, dETHAToken;
 
   try {
-    const dUSDReserveData = await poolContract.getReserveData(
-      tokenAddresses.dUSD,
-    );
+    const dUSDReserveData = await poolContract.getReserveData(tokenAddresses.dUSD);
     dUSDAToken = dUSDReserveData.aTokenAddress;
   } catch (error: any) {
     console.log(`Error getting dUSD aToken: ${error.message}`);
@@ -64,9 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   try {
-    const dETHReserveData = await poolContract.getReserveData(
-      tokenAddresses.dETH,
-    );
+    const dETHReserveData = await poolContract.getReserveData(tokenAddresses.dETH);
     dETHAToken = dETHReserveData.aTokenAddress;
   } catch (error: any) {
     console.log(`Error getting dETH aToken: ${error.message}`);
@@ -75,10 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Deploy StaticATokenLM for dUSD
   if (dUSDAToken && dUSDAToken !== ethers.ZeroAddress) {
-    const dUSDATokenContract = await ethers.getContractAt(
-      "IERC20Detailed",
-      dUSDAToken,
-    );
+    const dUSDATokenContract = await ethers.getContractAt("IERC20Detailed", dUSDAToken);
     const dUSDATokenSymbol = await dUSDATokenContract.symbol();
 
     // console.log(`Deploying StaticATokenLM wrapper for ${dUSDATokenSymbol}...`);
@@ -86,43 +72,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deploy(DUSD_A_TOKEN_WRAPPER_ID, {
       from: deployer,
       contract: "StaticATokenLM",
-      args: [
-        poolAddress,
-        rewardsControllerAddress,
-        dUSDAToken,
-        `Static ${dUSDATokenSymbol}`,
-        `stk${dUSDATokenSymbol}`,
-      ],
+      args: [poolAddress, rewardsControllerAddress, dUSDAToken, `Static ${dUSDATokenSymbol}`, `stk${dUSDATokenSymbol}`],
     });
   } else {
-    console.log(
-      "dUSD aToken not found or invalid, skipping wrapper deployment",
-    );
+    console.log("dUSD aToken not found or invalid, skipping wrapper deployment");
   }
 
   // Deploy StaticATokenLM for dETH
   if (dETHAToken && dETHAToken !== ethers.ZeroAddress) {
-    const dETHATokenContract = await ethers.getContractAt(
-      "IERC20Detailed",
-      dETHAToken,
-    );
+    const dETHATokenContract = await ethers.getContractAt("IERC20Detailed", dETHAToken);
     const dETHATokenSymbol = await dETHATokenContract.symbol();
 
     await deploy(DETH_A_TOKEN_WRAPPER_ID, {
       from: deployer,
       contract: "StaticATokenLM",
-      args: [
-        poolAddress,
-        rewardsControllerAddress,
-        dETHAToken,
-        `Static ${dETHATokenSymbol}`,
-        `stk${dETHATokenSymbol}`,
-      ],
+      args: [poolAddress, rewardsControllerAddress, dETHAToken, `Static ${dETHATokenSymbol}`, `stk${dETHATokenSymbol}`],
     });
   } else {
-    console.log(
-      "dETH aToken not found or invalid, skipping wrapper deployment",
-    );
+    console.log("dETH aToken not found or invalid, skipping wrapper deployment");
   }
 
   console.log(`🧧 ${__filename.split("/").slice(-2).join("/")}: ✅`);

@@ -2,10 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import {
-  ETH_ORACLE_AGGREGATOR_ID,
-  WETH_HARD_PEG_ORACLE_WRAPPER_ID,
-} from "../../typescript/deploy-ids";
+import { ETH_ORACLE_AGGREGATOR_ID, WETH_HARD_PEG_ORACLE_WRAPPER_ID } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -26,29 +23,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   // Get OracleAggregator contract
-  const { address: oracleAggregatorAddress } = await hre.deployments.get(
-    ETH_ORACLE_AGGREGATOR_ID,
-  );
+  const { address: oracleAggregatorAddress } = await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID);
   const oracleAggregatorContract = await hre.ethers.getContractAt(
     "OracleAggregator",
     oracleAggregatorAddress,
-    await hre.ethers.getSigner(deployer),
+    await hre.ethers.getSigner(deployer)
   );
 
   // Get HardPegOracleWrapper contract
-  const { address: hardPegOracleWrapperAddress } = await hre.deployments.get(
-    WETH_HARD_PEG_ORACLE_WRAPPER_ID,
-  );
+  const { address: hardPegOracleWrapperAddress } = await hre.deployments.get(WETH_HARD_PEG_ORACLE_WRAPPER_ID);
 
   // Set the HardPegOracleWrapper as the oracle for WETH
-  console.log(
-    `Setting HardPegOracleWrapper for WETH (${config.tokenAddresses.WETH}) to`,
-    hardPegOracleWrapperAddress,
-  );
-  await oracleAggregatorContract.setOracle(
-    config.tokenAddresses.WETH,
-    hardPegOracleWrapperAddress,
-  );
+  console.log(`Setting HardPegOracleWrapper for WETH (${config.tokenAddresses.WETH}) to`, hardPegOracleWrapperAddress);
+  await oracleAggregatorContract.setOracle(config.tokenAddresses.WETH, hardPegOracleWrapperAddress);
 
   console.log(`🔮 ${__filename.split("/").slice(-2).join("/")}: ✅`);
   // Return true to indicate deployment success

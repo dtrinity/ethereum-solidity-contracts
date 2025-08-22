@@ -17,9 +17,9 @@
 
 pragma solidity ^0.8.20;
 
-import {IPool} from "../../interfaces/IPool.sol";
-import {IDelegationToken} from "../../interfaces/IDelegationToken.sol";
-import {AToken} from "./AToken.sol";
+import { IPool } from "../../interfaces/IPool.sol";
+import { IDelegationToken } from "../../interfaces/IDelegationToken.sol";
+import { AToken } from "./AToken.sol";
 
 /**
  * @title DelegationAwareAToken
@@ -28,26 +28,26 @@ import {AToken} from "./AToken.sol";
  * @dev The underlying asset needs to be compatible with the COMP delegation interface
  */
 contract DelegationAwareAToken is AToken {
-    /**
-     * @dev Emitted when underlying voting power is delegated
-     * @param delegatee The address of the delegatee
-     */
-    event DelegateUnderlyingTo(address indexed delegatee);
+  /**
+   * @dev Emitted when underlying voting power is delegated
+   * @param delegatee The address of the delegatee
+   */
+  event DelegateUnderlyingTo(address indexed delegatee);
 
-    /**
-     * @dev Constructor.
-     * @param pool The address of the Pool contract
-     */
-    constructor(IPool pool) AToken(pool) {
-        // Intentionally left blank
-    }
+  /**
+   * @dev Constructor.
+   * @param pool The address of the Pool contract
+   */
+  constructor(IPool pool) AToken(pool) {
+    // Intentionally left blank
+  }
 
-    /**
-     * @notice Delegates voting power of the underlying asset to a `delegatee` address
-     * @param delegatee The address that will receive the delegation
-     */
-    function delegateUnderlyingTo(address delegatee) external onlyPoolAdmin {
-        IDelegationToken(_underlyingAsset).delegate(delegatee);
-        emit DelegateUnderlyingTo(delegatee);
-    }
+  /**
+   * @notice Delegates voting power of the underlying asset to a `delegatee` address
+   * @param delegatee The address that will receive the delegation
+   */
+  function delegateUnderlyingTo(address delegatee) external onlyPoolAdmin {
+    IDelegationToken(_underlyingAsset).delegate(delegatee);
+    emit DelegateUnderlyingTo(delegatee);
+  }
 }

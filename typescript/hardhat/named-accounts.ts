@@ -11,27 +11,17 @@ export function getEnvPrivateKeys(network: string): string[] {
 
   switch (network) {
     case "ethereum_testnet":
-      pks = [
-        getPrivateKeyFromMnemonic(`ethereum_testnet_deployer`),
-        getPrivateKeyFromEnv(`ethereum_testnet_deployer`),
-      ];
+      pks = [getPrivateKeyFromMnemonic(`ethereum_testnet_deployer`), getPrivateKeyFromEnv(`ethereum_testnet_deployer`)];
       break;
     case "ethereum_mainnet":
-      pks = [
-        getPrivateKeyFromMnemonic(`ethereum_mainnet_deployer`),
-        getPrivateKeyFromEnv(`ethereum_mainnet_deployer`),
-      ];
+      pks = [getPrivateKeyFromMnemonic(`ethereum_mainnet_deployer`), getPrivateKeyFromEnv(`ethereum_mainnet_deployer`)];
       break;
     default:
       throw new Error(`Unsupported network: ${network}`);
   }
 
   // Filter out Zero private keys
-  pks = pks.filter(
-    (pk) =>
-      pk !==
-      "0x0000000000000000000000000000000000000000000000000000000000000000",
-  );
+  pks = pks.filter((pk) => pk !== "0x0000000000000000000000000000000000000000000000000000000000000000");
 
   if (pks.length === 0) {
     console.log(`No private keys found for ${network} in the .env file`);

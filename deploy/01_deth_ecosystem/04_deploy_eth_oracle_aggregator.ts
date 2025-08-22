@@ -25,12 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   return true;
 };
 
-func.tags = [
-  "deth",
-  "eth-oracle",
-  "oracle-aggregator",
-  "eth-oracle-aggregator",
-];
+func.tags = ["deth", "eth-oracle", "oracle-aggregator", "eth-oracle-aggregator"];
 func.dependencies = [];
 func.id = ETH_ORACLE_AGGREGATOR_ID;
 

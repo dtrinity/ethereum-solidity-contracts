@@ -1,6 +1,13 @@
 {
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.useFlatConfig": true,
+  "eslint.validate": ["javascript", "typescript"],
+  "eslint.workingDirectories": [
+    { "mode": "auto" }
+  ],
   "prettier.prettierPath": "./node_modules/prettier",
   "prettier.printWidth": 140,
   "prettier.semi": true,

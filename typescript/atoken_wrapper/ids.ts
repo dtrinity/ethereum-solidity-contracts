@@ -1,7 +1,4 @@
-import {
-  DETH_A_TOKEN_WRAPPER_ID,
-  DUSD_A_TOKEN_WRAPPER_ID,
-} from "../deploy-ids";
+import { DETH_A_TOKEN_WRAPPER_ID, DUSD_A_TOKEN_WRAPPER_ID } from "../deploy-ids";
 
 const DLEND_A_TOKEN_WRAPPER_PREFIX = "dLend_ATokenWrapper";
 
