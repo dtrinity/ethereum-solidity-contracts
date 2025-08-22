@@ -11,13 +11,20 @@ import {
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 /**
+ * Creates a transaction object for granting a role to an address
  *
- * @param contractAddress
- * @param role
- * @param grantee
- * @param contractInterface
+ * @param contractAddress - The address of the contract to grant the role on
+ * @param role - The role hash to grant
+ * @param grantee - The address to grant the role to
+ * @param contractInterface - The contract interface for encoding function data
+ * @returns Transaction object with encoded grantRole function call
  */
-function createGrantRoleTransaction(contractAddress: string, role: string, grantee: string, contractInterface: any) {
+function createGrantRoleTransaction(
+  contractAddress: string,
+  role: string,
+  grantee: string,
+  contractInterface: any
+): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
     value: "0",
@@ -26,13 +33,20 @@ function createGrantRoleTransaction(contractAddress: string, role: string, grant
 }
 
 /**
+ * Creates a transaction object for revoking a role from an address
  *
- * @param contractAddress
- * @param role
- * @param account
- * @param contractInterface
+ * @param contractAddress - The address of the contract to revoke the role from
+ * @param role - The role hash to revoke
+ * @param account - The address to revoke the role from
+ * @param contractInterface - The contract interface for encoding function data
+ * @returns Transaction object with encoded revokeRole function call
  */
-function createRevokeRoleTransaction(contractAddress: string, role: string, account: string, contractInterface: any) {
+function createRevokeRoleTransaction(
+  contractAddress: string,
+  role: string,
+  account: string,
+  contractInterface: any
+): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
     value: "0",
@@ -43,12 +57,14 @@ function createRevokeRoleTransaction(contractAddress: string, role: string, acco
 const ZERO_BYTES_32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
+ * Migrates all necessary roles from deployer to governance multisig for RedeemerV2 contract
  *
- * @param hre
- * @param redeemerAddress
- * @param deployerAddress
- * @param governanceMultisig
- * @param executor
+ * @param hre - Hardhat runtime environment
+ * @param redeemerAddress - Address of the RedeemerV2 contract
+ * @param deployerAddress - Address of the deployer to revoke roles from
+ * @param governanceMultisig - Address of the governance multisig
+ * @param executor - Governance executor for handling transactions
+ * @returns True if all operations completed successfully, false if pending governance actions
  */
 async function migrateRedeemerRolesIdempotent(
   hre: HardhatRuntimeEnvironment,

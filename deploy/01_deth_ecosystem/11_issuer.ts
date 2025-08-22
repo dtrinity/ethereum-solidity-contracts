@@ -13,13 +13,20 @@ import { ensureDefaultAdminExistsAndRevokeFrom } from "../../typescript/hardhat/
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 /**
+ * Creates a transaction object for granting a role to an address
  *
- * @param contractAddress
- * @param role
- * @param grantee
- * @param contractInterface
+ * @param contractAddress - The address of the contract to grant the role on
+ * @param role - The role hash to grant
+ * @param grantee - The address to grant the role to
+ * @param contractInterface - The contract interface for encoding function data
+ * @returns Transaction object with encoded grantRole function call
  */
-function createGrantRoleTransaction(contractAddress: string, role: string, grantee: string, contractInterface: any) {
+function createGrantRoleTransaction(
+  contractAddress: string,
+  role: string,
+  grantee: string,
+  contractInterface: any
+): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
     value: "0",
@@ -28,13 +35,20 @@ function createGrantRoleTransaction(contractAddress: string, role: string, grant
 }
 
 /**
+ * Creates a transaction object for revoking a role from an address
  *
- * @param contractAddress
- * @param role
- * @param account
- * @param contractInterface
+ * @param contractAddress - The address of the contract to revoke the role from
+ * @param role - The role hash to revoke
+ * @param account - The address to revoke the role from
+ * @param contractInterface - The contract interface for encoding function data
+ * @returns Transaction object with encoded revokeRole function call
  */
-function createRevokeRoleTransaction(contractAddress: string, role: string, account: string, contractInterface: any) {
+function createRevokeRoleTransaction(
+  contractAddress: string,
+  role: string,
+  account: string,
+  contractInterface: any
+): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
     value: "0",
@@ -45,11 +59,13 @@ function createRevokeRoleTransaction(contractAddress: string, role: string, acco
 const ZERO_BYTES_32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
+ * Ensures that a given address has the MINTER_ROLE on a stablecoin contract
  *
- * @param hre
- * @param stableAddress
- * @param grantee
- * @param executor
+ * @param hre - Hardhat runtime environment
+ * @param stableAddress - Address of the stablecoin contract
+ * @param grantee - Address to grant MINTER_ROLE to
+ * @param executor - Governance executor for handling transactions
+ * @returns True if the operation completed successfully, false if pending governance action
  */
 async function ensureMinterRole(
   hre: HardhatRuntimeEnvironment,
@@ -75,14 +91,16 @@ async function ensureMinterRole(
 }
 
 /**
+ * Ensures default admin role exists for governance and revokes from deployer with Safe support
  *
- * @param hre
- * @param contractName
- * @param contractAddress
- * @param governanceMultisig
- * @param deployerAddress
- * @param deployerSigner
- * @param executor
+ * @param hre - Hardhat runtime environment
+ * @param contractName - Name of the contract for logging purposes
+ * @param contractAddress - Address of the contract to manage admin roles for
+ * @param governanceMultisig - Address of the governance multisig
+ * @param deployerAddress - Address of the deployer to revoke roles from
+ * @param deployerSigner - Signer object for the deployer
+ * @param executor - Governance executor for handling transactions
+ * @returns True if admin migration completed successfully, false if pending governance action
  */
 async function ensureDefaultAdminExistsAndRevokeFromWithSafe(
   hre: HardhatRuntimeEnvironment,
@@ -121,12 +139,14 @@ async function ensureDefaultAdminExistsAndRevokeFromWithSafe(
 }
 
 /**
+ * Migrates all necessary roles from deployer to governance multisig for IssuerV2 contract
  *
- * @param hre
- * @param issuerAddress
- * @param deployerSigner
- * @param governanceMultisig
- * @param executor
+ * @param hre - Hardhat runtime environment
+ * @param issuerAddress - Address of the IssuerV2 contract
+ * @param deployerSigner - Signer object for the deployer
+ * @param governanceMultisig - Address of the governance multisig
+ * @param executor - Governance executor for handling transactions
+ * @returns True if all operations completed successfully, false if pending governance actions
  */
 async function migrateIssuerRolesIdempotent(
   hre: HardhatRuntimeEnvironment,
