@@ -23,7 +23,7 @@ import {
   DETH_CONFIG,
   DStableFixtureConfig,
   DUSD_CONFIG,
-} from "../deth/fixtures";
+} from "../dstable/fixtures";
 
 export interface DStakeFixtureConfig {
   dStableSymbol: "dUSD" | "dETH";
