@@ -10,28 +10,18 @@ export function getEnvPrivateKeys(network: string): string[] {
   let pks: string[] = [];
 
   switch (network) {
-    case "sonic_testnet":
-      pks = [
-        getPrivateKeyFromMnemonic(`testnet_deployer`),
-        getPrivateKeyFromEnv(`testnet_deployer`),
-      ];
+    case "ethereum_testnet":
+      pks = [getPrivateKeyFromMnemonic(`ethereum_testnet_deployer`), getPrivateKeyFromEnv(`ethereum_testnet_deployer`)];
       break;
-    case "sonic_mainnet":
-      pks = [
-        getPrivateKeyFromMnemonic(`mainnet_deployer`),
-        getPrivateKeyFromEnv(`mainnet_deployer`),
-      ];
+    case "ethereum_mainnet":
+      pks = [getPrivateKeyFromMnemonic(`ethereum_mainnet_deployer`), getPrivateKeyFromEnv(`ethereum_mainnet_deployer`)];
       break;
     default:
       throw new Error(`Unsupported network: ${network}`);
   }
 
   // Filter out Zero private keys
-  pks = pks.filter(
-    (pk) =>
-      pk !==
-      "0x0000000000000000000000000000000000000000000000000000000000000000",
-  );
+  pks = pks.filter((pk) => pk !== "0x0000000000000000000000000000000000000000000000000000000000000000");
 
   if (pks.length === 0) {
     console.log(`No private keys found for ${network} in the .env file`);
@@ -106,8 +96,8 @@ export function getStandardNamedAccounts(): {
     deployer: {
       hardhat: 0,
       localhost: 0,
-      sonic_testnet: 0,
-      sonic_mainnet: 0,
+      ethereum_testnet: 0,
+      ethereum_mainnet: 0,
     },
     // For testing ONLY
     user1: {

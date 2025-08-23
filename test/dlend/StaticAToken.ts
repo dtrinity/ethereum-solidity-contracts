@@ -159,17 +159,18 @@ describe("StaticATokenFactory & StaticATokenLM", () => {
       staticTokenAddress = await staticToken.getAddress();
 
       const dec = await underlyingToken.decimals();
-      depositAmount = ethers.parseUnits("2000", dec);
-      borrowAmount = ethers.parseUnits("1000", dec);
-      user3DepositAmount = ethers.parseUnits("5000", dec);
+      // Reduced amounts to fit within dETH supply cap of 500
+      depositAmount = ethers.parseUnits("100", dec);
+      borrowAmount = ethers.parseUnits("50", dec);
+      user3DepositAmount = ethers.parseUnits("200", dec);
 
       const collateralAssets = Object.values(fixture.assets).filter(
         (a) => !a.isDStable && a.ltv !== BigInt(0),
       );
       if (collateralAssets.length === 0)
         throw new Error("Need a collateral asset for the borrower.");
-      const stSAssetInfo = collateralAssets.find((a) => a.symbol === "stS");
-      const chosenCollateral = stSAssetInfo || collateralAssets[0];
+      const stETHAssetInfo = collateralAssets.find((a) => a.symbol === "stETH");
+      const chosenCollateral = stETHAssetInfo || collateralAssets[0];
       user2CollateralAsset = chosenCollateral.address;
       user2CollateralToken = await ethers.getContractAt(
         "TestERC20",

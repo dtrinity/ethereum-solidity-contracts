@@ -98,10 +98,15 @@ async function runTestsForCurrency(
 
     describe("Asset pricing with thresholding", () => {
       it("should return original price when no threshold is set", async function () {
+        const thresholdAssetKeys = Object.keys(fixtureResult.assets.redstoneThresholdAssets);
+        
+        // Skip this test if no threshold assets are configured for this currency
+        if (thresholdAssetKeys.length === 0) {
+          this.skip();
+        }
+
         // Get a random test asset (any type is fine here)
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneThresholdAssets),
-        );
+        const testAsset = getRandomItemFromList(thresholdAssetKeys);
         const assetData =
           fixtureResult.assets.redstoneThresholdAssets[testAsset];
 
@@ -248,10 +253,15 @@ async function runTestsForCurrency(
 
     describe("Threshold configuration management", () => {
       it("should allow setting and removing threshold config", async function () {
+        const thresholdAssetKeys = Object.keys(fixtureResult.assets.redstoneThresholdAssets);
+        
+        // Skip this test if no threshold assets are configured for this currency
+        if (thresholdAssetKeys.length === 0) {
+          this.skip();
+        }
+
         // Get a random test asset (any type is fine here)
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneThresholdAssets),
-        );
+        const testAsset = getRandomItemFromList(thresholdAssetKeys);
 
         // Set threshold configuration
         const lowerThreshold = ethers.parseUnits(
@@ -306,10 +316,15 @@ async function runTestsForCurrency(
       });
 
       it("should revert when non-ORACLE_MANAGER tries to set threshold config", async function () {
+        const thresholdAssetKeys = Object.keys(fixtureResult.assets.redstoneThresholdAssets);
+        
+        // Skip this test if no threshold assets are configured for this currency
+        if (thresholdAssetKeys.length === 0) {
+          this.skip();
+        }
+
         // Get a random test asset
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneThresholdAssets),
-        );
+        const testAsset = getRandomItemFromList(thresholdAssetKeys);
 
         const lowerThreshold = ethers.parseUnits(
           "0.99",
@@ -337,10 +352,15 @@ async function runTestsForCurrency(
       });
 
       it("should revert when non-ORACLE_MANAGER tries to remove threshold config", async function () {
+        const thresholdAssetKeys = Object.keys(fixtureResult.assets.redstoneThresholdAssets);
+        
+        // Skip this test if no threshold assets are configured for this currency
+        if (thresholdAssetKeys.length === 0) {
+          this.skip();
+        }
+
         // Get a random test asset
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneThresholdAssets),
-        );
+        const testAsset = getRandomItemFromList(thresholdAssetKeys);
 
         const unauthorizedSigner = await ethers.getSigner(user2);
         const oracleManagerRole =

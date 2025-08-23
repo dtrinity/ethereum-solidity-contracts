@@ -195,18 +195,20 @@ const config: HardhatUserConfig = {
       deploy: ["deploy-mocks", "deploy"],
       saveDeployments: true,
     },
-    sonic_testnet: {
-      // https://docs.soniclabs.com/sonic/build-on-sonic/getting-started
-      url: `https://rpc.blaze.soniclabs.com`,
+    ethereum_testnet: {
+      // Sepolia testnet
+      url: `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "YOUR_API_KEY"}`,
+      chainId: 11155111,
       deploy: ["deploy-mocks", "deploy"],
       saveDeployments: true,
-      accounts: getEnvPrivateKeys("sonic_testnet"),
+      accounts: getEnvPrivateKeys("ethereum_testnet"),
     },
-    sonic_mainnet: {
-      url: `https://rpc.soniclabs.com`,
+    ethereum_mainnet: {
+      url: `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "YOUR_API_KEY"}`,
+      chainId: 1,
       deploy: ["deploy"], // NOTE: DO NOT DEPLOY mocks
       saveDeployments: true,
-      accounts: getEnvPrivateKeys("sonic_mainnet"),
+      accounts: getEnvPrivateKeys("ethereum_mainnet"),
     },
   },
   namedAccounts: {
@@ -231,15 +233,16 @@ const config: HardhatUserConfig = {
   etherscan: {
     // Used for verifying single contracts when hardhat-deploy auto verify doesn't work
     apiKey: {
-      sonic_mainnet: "4EJCRRD3JKIE6TKF6ME7AKVYWFEJI79A26",
+      ethereum_mainnet: process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
+      ethereum_testnet: process.env.ETHERSCAN_API_KEY || "YOUR_ETHERSCAN_API_KEY",
     },
     customChains: [
       {
-        network: "sonic_mainnet",
-        chainId: 146,
+        network: "ethereum_testnet",
+        chainId: 11155111,
         urls: {
-          apiURL: "https://api.sonicscan.org/api",
-          browserURL: "https://sonicscan.org",
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io",
         },
       },
     ],

@@ -19,13 +19,13 @@ import {
 } from "../../typescript/token/utils";
 import {
   createDStableAmoFixture,
-  DS_CONFIG,
+  DETH_CONFIG,
   DStableFixtureConfig,
   DUSD_CONFIG,
 } from "./fixtures";
 
 // Run tests for each dStable configuration
-const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DS_CONFIG];
+const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DETH_CONFIG];
 
 dstableConfigs.forEach((config) => {
   describe(`AmoManager Ecosystem Tests for ${config.symbol}`, () => {
@@ -188,7 +188,7 @@ dstableConfigs.forEach((config) => {
           const price = await oracleAggregatorContract.getAssetPrice(
             collateralInfo.address,
           );
-          const expectedPrice = hre.ethers.parseUnits("1", 18); // API3 uses 18 decimals
+          const expectedPrice = hre.ethers.parseUnits("1", 18); // Oracle uses 18 decimals
           assert.equal(
             price,
             expectedPrice,
@@ -202,7 +202,7 @@ dstableConfigs.forEach((config) => {
           const price = await oracleAggregatorContract.getAssetPrice(
             collateralInfo.address,
           );
-          const expectedPrice = hre.ethers.parseUnits("1.1", 18); // API3 uses 18 decimals
+          const expectedPrice = hre.ethers.parseUnits("1.1", 18); // Oracle uses 18 decimals
           assert.equal(
             price,
             expectedPrice,

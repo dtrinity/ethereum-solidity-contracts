@@ -17,7 +17,7 @@
 
 pragma solidity ^0.8.20;
 
-import {IBaseCurveAdapter} from "./IBaseCurveAdapter.sol";
+import { IBaseCurveAdapter } from "./IBaseCurveAdapter.sol";
 
 /**
  * @title ICurveWithdrawSwapAdapter
@@ -25,23 +25,20 @@ import {IBaseCurveAdapter} from "./IBaseCurveAdapter.sol";
  * @dev Implement this interface to provide functionality of withdrawing from the Aave Pool and swapping to another asset
  **/
 interface ICurveWithdrawSwapAdapter is IBaseCurveAdapter {
-    struct WithdrawSwapParams {
-        address oldAsset; // the asset to withdraw and swap from
-        uint256 oldAssetAmount; // the amount to withdraw
-        address newAsset; // the asset to swap to
-        uint256 minAmountToReceive; // the minimum amount of new asset to receive
-        address user; // the address of user
-        address[11] route; // the route to swap the collateral asset to the debt asset on Curve
-        uint256[4][5] swapParams; // the swap parameters on Curve
-    }
+  struct WithdrawSwapParams {
+    address oldAsset; // the asset to withdraw and swap from
+    uint256 oldAssetAmount; // the amount to withdraw
+    address newAsset; // the asset to swap to
+    uint256 minAmountToReceive; // the minimum amount of new asset to receive
+    address user; // the address of user
+    address[11] route; // the route to swap the collateral asset to the debt asset on Curve
+    uint256[4][5] swapParams; // the swap parameters on Curve
+  }
 
-    /**
-     * @notice Withdraws and swaps an asset that is supplied to the Aave Pool
-     * @param withdrawSwapParams struct describing the withdraw swap
-     * @param permitInput optional permit for collateral aToken
-     */
-    function withdrawAndSwap(
-        WithdrawSwapParams memory withdrawSwapParams,
-        PermitInput memory permitInput
-    ) external;
+  /**
+   * @notice Withdraws and swaps an asset that is supplied to the Aave Pool
+   * @param withdrawSwapParams struct describing the withdraw swap
+   * @param permitInput optional permit for collateral aToken
+   */
+  function withdrawAndSwap(WithdrawSwapParams memory withdrawSwapParams, PermitInput memory permitInput) external;
 }

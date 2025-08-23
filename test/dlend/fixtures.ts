@@ -11,13 +11,13 @@ import {
   VariableDebtToken,
 } from "../../typechain-types";
 import {
-  DS_ISSUER_V2_CONTRACT_ID,
-  DS_TOKEN_ID,
+  DETH_ISSUER_V2_CONTRACT_ID,
+  DETH_TOKEN_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
   DUSD_TOKEN_ID,
   POOL_DATA_PROVIDER_ID,
   POOL_PROXY_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
@@ -67,7 +67,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
 
   // Get dStable token addresses first
   const { address: dUsdAddress } = await deployments.get(DUSD_TOKEN_ID);
-  const { address: dSAddress } = await deployments.get(DS_TOKEN_ID);
+  const { address: dETHAddress } = await deployments.get(DETH_TOKEN_ID);
 
   // Get the Pool contract
   const { address: poolAddress } = await deployments.get(POOL_PROXY_ID);
@@ -152,7 +152,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
       ltv: config.ltv,
       liquidationThreshold: config.liquidationThreshold,
       symbol,
-      isDStable: asset === dUsdAddress || asset === dSAddress,
+      isDStable: asset === dUsdAddress || asset === dETHAddress,
     };
   }
 
@@ -163,8 +163,8 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
     );
   }
 
-  if (!reservesList.includes(dSAddress)) {
-    throw new Error(`dS (${dSAddress}) not found in reserves: ${reservesList}`);
+  if (!reservesList.includes(dETHAddress)) {
+    throw new Error(`dETH (${dETHAddress}) not found in reserves: ${reservesList}`);
   }
 
   // Mint dUSD
@@ -215,37 +215,37 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
     expectedDusdAmount,
   );
 
-  // Then mint dS
-  const dsIssuerAddress = (await hre.deployments.get(DS_ISSUER_V2_CONTRACT_ID))
+  // Then mint dETH
+  const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID))
     .address;
   const dsIssuer = await hre.ethers.getContractAt("IssuerV2", dsIssuerAddress);
-  const sOracleAddress = (await hre.deployments.get(S_ORACLE_AGGREGATOR_ID))
+  const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID))
     .address;
-  const sOracle = await hre.ethers.getContractAt(
+  const ethOracle = await hre.ethers.getContractAt(
     "OracleAggregator",
-    sOracleAddress,
+    ethOracleAddress,
   );
 
-  // Get collateral token (stS) for dS
+  // Get collateral token (stETH) for dETH
   const { contract: sCollateralToken, tokenInfo: sCollateralInfo } =
-    await getTokenContractForSymbol(hre, deployer, "stS");
-  const { contract: dSToken, tokenInfo: dSInfo } =
-    await getTokenContractForSymbol(hre, deployer, "dS");
+    await getTokenContractForSymbol(hre, deployer, "stETH");
+  const { contract: dETHToken, tokenInfo: dETHInfo } =
+    await getTokenContractForSymbol(hre, deployer, "dETH");
 
-  // Mint dS
+  // Mint dETH
   const sCollateralAmount = ethers.parseUnits(
     "1000000",
     sCollateralInfo.decimals,
   );
-  const sCollateralPrice = await sOracle.getAssetPrice(sCollateralInfo.address);
-  const dSPrice = await sOracle.getAssetPrice(dSInfo.address);
+  const sCollateralPrice = await ethOracle.getAssetPrice(sCollateralInfo.address);
+  const dETHPrice = await ethOracle.getAssetPrice(dETHInfo.address);
   const sBaseValue =
     (sCollateralAmount * sCollateralPrice) /
     BigInt(10 ** sCollateralInfo.decimals);
-  const expectedDsAmount =
-    (sBaseValue * BigInt(10 ** dSInfo.decimals)) / dSPrice;
+  const expectedDethAmount =
+    (sBaseValue * BigInt(10 ** dETHInfo.decimals)) / dETHPrice;
 
-  // Mint dS - deployer now holds this
+  // Mint dETH - deployer now holds this
   // Note: Approval is for the Issuer, not the Pool
   await sCollateralToken.approve(
     await dsIssuer.getAddress(),
@@ -254,7 +254,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   await dsIssuer.issue(
     sCollateralAmount,
     sCollateralInfo.address,
-    expectedDsAmount,
+    expectedDethAmount,
   );
 
   return {
@@ -271,7 +271,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
     assets,
     dStables: {
       dUSD: dUsdAddress,
-      dS: dSAddress,
+      dS: dETHAddress,
     },
   };
 }

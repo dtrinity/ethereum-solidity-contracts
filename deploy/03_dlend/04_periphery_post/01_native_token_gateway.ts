@@ -11,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Get wrapped native token address for the network
   const config = await getConfig(hre);
-  const wrappedNativeTokenAddress = config.tokenAddresses.wS;
+  const wrappedNativeTokenAddress = config.tokenAddresses.WETH;
 
   // Get pool address
   const pool = await deployments.get(POOL_PROXY_ID);

@@ -674,7 +674,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         user2 = signers[2]; // Use third signer as attacker
 
         // Set up for test: user1 deposits assets
-        assetsToDeposit = parseUnits(1000, dStableDecimals);
+        assetsToDeposit = parseUnits(100, dStableDecimals); // Reduced from 1000 to 100 to stay within supply caps
 
         // Give user1 some dStable tokens
         await stable.connect(deployer).mint(user1.address, assetsToDeposit);

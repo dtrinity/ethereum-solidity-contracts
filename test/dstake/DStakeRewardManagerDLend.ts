@@ -2,7 +2,7 @@ import { expect } from "chai";
 import hre, { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import { IDStableConversionAdapter, IERC20 } from "../../typechain-types";
-import { DS_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import {
   DSTAKE_CONFIGS,
   DStakeFixtureConfig,
@@ -17,15 +17,15 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       (() => {
         if (config.dStableSymbol === "dUSD") {
           return "sfrxUSD";
-        } else if (config.dStableSymbol === "dS") {
-          return "stS";
+        } else if (config.dStableSymbol === "dETH") {
+          return "stETH";
         } else {
           throw new Error(
             `Unsupported dStableSymbol for rewards fixture: ${config.dStableSymbol}`,
           );
         }
       })(),
-      ethers.parseUnits("1000000", 18), // Reduced from 100M to 1M
+      ethers.parseUnits("100000", 18), // Reduced from 1M to 100K to stay within supply caps
       ethers.parseUnits("1", 6), // Reduced from 100 to 1 per second
       365 * 24 * 3600,
     );
@@ -56,9 +56,9 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
 
     // Determine reward token symbol and dStable token ID based on config
     const rewardTokenSymbol =
-      config.dStableSymbol === "dUSD" ? "sfrxUSD" : "stS";
+      config.dStableSymbol === "dUSD" ? "sfrxUSD" : "stETH";
     const dStableTokenId =
-      config.dStableSymbol === "dUSD" ? DUSD_TOKEN_ID : DS_TOKEN_ID;
+      config.dStableSymbol === "dUSD" ? DUSD_TOKEN_ID : DETH_TOKEN_ID;
     const rewardAmount = ethers.parseUnits("100", 18);
     const emissionPerSecond = ethers.parseUnits("1", 6);
 
@@ -478,7 +478,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
 
         // 1. Bootstrap collateral vault ownership by compounding with a large
         //    amount so it becomes the dominant shareholder of the wrapper.
-        const largeDeposit = threshold * 100n;
+        const largeDeposit = threshold * 2n; // Reduced from 100x to 2x to stay within supply caps
 
         // Ensure caller has sufficient balance & allowance
         await underlyingDStableToken

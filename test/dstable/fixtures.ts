@@ -1,21 +1,21 @@
 import hre, { deployments } from "hardhat";
 
 import {
-  DS_AMO_MANAGER_ID,
-  DS_COLLATERAL_VAULT_CONTRACT_ID,
-  DS_ISSUER_V2_CONTRACT_ID,
-  DS_REDEEMER_CONTRACT_ID,
+  DETH_AMO_MANAGER_ID,
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_ISSUER_V2_CONTRACT_ID,
+  DETH_REDEEMER_CONTRACT_ID,
   DUSD_AMO_MANAGER_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
   DUSD_REDEEMER_CONTRACT_ID,
-  S_ORACLE_AGGREGATOR_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
 
 export interface DStableFixtureConfig {
-  symbol: "dUSD" | "dS";
+  symbol: "dUSD" | "dETH";
   issuerContractId: string;
   redeemerContractId: string;
   collateralVaultContractId: string;
@@ -30,8 +30,7 @@ export const createDStableFixture = (config: DStableFixtureConfig) => {
   return deployments.createFixture(async ({ deployments }) => {
     await deployments.fixture(); // Start from a fresh deployment
     await deployments.fixture(["local-setup", config.symbol.toLowerCase()]); // Include local-setup to use the mock Oracle
-    // Ensure IssuerV2 and RedeemerV2 are deployed and roles migrated to mirror mainnet
-    await deployments.fixture(["setup-issuerv2", "setup-redeemerv2"]);
+    // IssuerV2 and RedeemerV2 are now deployed as part of the standard ecosystem tags
   });
 };
 
@@ -43,17 +42,17 @@ export const createDStableAmoFixture = (config: DStableFixtureConfig) => {
 
     const { deployer } = await hre.getNamedAccounts();
     const { address: amoManagerAddress } = await deployments.get(
-      config.amoManagerId,
+      config.amoManagerId
     );
 
     const { tokenInfo: dstableInfo } = await getTokenContractForSymbol(
       hre,
       deployer,
-      config.symbol,
+      config.symbol
     );
 
     const { address: oracleAggregatorAddress } = await deployments.get(
-      config.oracleAggregatorId,
+      config.oracleAggregatorId
     );
 
     // Deploy MockAmoVault using standard deployment
@@ -85,13 +84,13 @@ export const DUSD_CONFIG: DStableFixtureConfig = {
   yieldBearingCollaterals: ["sfrxUSD", "sUSDS"],
 };
 
-export const DS_CONFIG: DStableFixtureConfig = {
-  symbol: "dS",
-  issuerContractId: DS_ISSUER_V2_CONTRACT_ID,
-  redeemerContractId: DS_REDEEMER_CONTRACT_ID,
-  collateralVaultContractId: DS_COLLATERAL_VAULT_CONTRACT_ID,
-  amoManagerId: DS_AMO_MANAGER_ID,
-  oracleAggregatorId: S_ORACLE_AGGREGATOR_ID,
-  peggedCollaterals: ["wS"],
-  yieldBearingCollaterals: ["wOS", "stS"],
+export const DETH_CONFIG: DStableFixtureConfig = {
+  symbol: "dETH",
+  issuerContractId: DETH_ISSUER_V2_CONTRACT_ID,
+  redeemerContractId: DETH_REDEEMER_CONTRACT_ID,
+  collateralVaultContractId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  amoManagerId: DETH_AMO_MANAGER_ID,
+  oracleAggregatorId: ETH_ORACLE_AGGREGATOR_ID,
+  peggedCollaterals: ["WETH"],
+  yieldBearingCollaterals: ["stETH"],
 };

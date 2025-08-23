@@ -2,18 +2,14 @@ import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { SafeManager } from "../safe/SafeManager";
-import {
-  SafeConfig,
-  SafeTransactionBatch,
-  SafeTransactionData,
-} from "../safe/types";
+import { SafeConfig, SafeTransactionBatch, SafeTransactionData } from "../safe/types";
 
 /**
  * GovernanceExecutor decides whether to execute operations directly
  * (using signer) or to queue them as Safe transactions for multisig execution.
  *
  * Behavior:
- * - By default, enables Safe queueing only on Sonic mainnet (chainId 146)
+ * - By default, enables Safe queueing only on Ethereum mainnet (chainId 1)
  *   when a `safeConfig` is provided. You can override by setting USE_SAFE=true
  *   in env to force Safe usage on other networks.
  * - For non-Safe mode, direct calls are attempted; on failure, the helper
@@ -26,19 +22,15 @@ export class GovernanceExecutor {
   private readonly transactions: SafeTransactionData[] = [];
   readonly useSafe: boolean;
 
-  constructor(
-    hre: HardhatRuntimeEnvironment,
-    signer: Signer,
-    safeConfig?: SafeConfig,
-  ) {
+  constructor(hre: HardhatRuntimeEnvironment, signer: Signer, safeConfig?: SafeConfig) {
     this.hre = hre;
     this.signer = signer;
 
     const envForce = process.env.USE_SAFE?.toLowerCase() === "true";
     const chainIdStr = String(hre.network.config.chainId ?? "");
-    const isSonicMainnet = chainIdStr === "146";
+    const isEthereumMainnet = chainIdStr === "1";
 
-    this.useSafe = Boolean(safeConfig) && (isSonicMainnet || envForce);
+    this.useSafe = Boolean(safeConfig) && (isEthereumMainnet || envForce);
 
     if (this.useSafe && safeConfig) {
       this.safeManager = new SafeManager(hre, signer, { safeConfig });
@@ -65,10 +57,7 @@ export class GovernanceExecutor {
    * @param directCall - The function to call directly
    * @param safeTxBuilder - The function to build a Safe transaction if direct call fails
    */
-  async tryOrQueue<T>(
-    directCall: () => Promise<T>,
-    safeTxBuilder?: () => SafeTransactionData,
-  ): Promise<boolean> {
+  async tryOrQueue<T>(directCall: () => Promise<T>, safeTxBuilder?: () => SafeTransactionData): Promise<boolean> {
     try {
       await directCall();
       return true;
@@ -81,10 +70,7 @@ export class GovernanceExecutor {
       // Non-safe mode: mark as pending to allow callers to surface incomplete state
       // while still allowing scripts to decide how to proceed.
 
-      console.warn(
-        "Direct execution failed; marking requirement as pending:",
-        error,
-      );
+      console.warn("Direct execution failed; marking requirement as pending:", error);
       return false;
     }
   }

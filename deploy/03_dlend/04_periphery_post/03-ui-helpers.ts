@@ -2,11 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../../config/config";
-import {
-  PRICE_ORACLE_ID,
-  UI_INCENTIVE_DATA_PROVIDER_ID,
-  UI_POOL_DATA_PROVIDER_ID,
-} from "../../../typescript/deploy-ids";
+import { PRICE_ORACLE_ID, UI_INCENTIVE_DATA_PROVIDER_ID, UI_POOL_DATA_PROVIDER_ID } from "../../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -28,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Then deploy UiPoolDataProvider
   await deploy(UI_POOL_DATA_PROVIDER_ID, {
     from: deployer,
-    args: [priceOracle.address, config.tokenAddresses.wS], // Use price oracle and wS token address
+    args: [priceOracle.address, config.tokenAddresses.WETH], // Use price oracle and WETH token address
     log: true,
     waitConfirmations: 1,
   });

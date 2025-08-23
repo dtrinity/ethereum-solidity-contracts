@@ -18,7 +18,7 @@ export async function performOracleSanityChecks(
   baseCurrencyUnit: bigint,
   wrapperName: string,
   minPrice: number,
-  maxPrice: number,
+  maxPrice: number
 ): Promise<void> {
   for (const [assetAddress] of Object.entries(feeds)) {
     try {
@@ -27,24 +27,19 @@ export async function performOracleSanityChecks(
 
       if (normalizedPrice < minPrice || normalizedPrice > maxPrice) {
         console.error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`,
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`
         );
         throw new Error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`,
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`
         );
       } else {
         console.log(
-          `Sanity check passed for asset ${assetAddress} in ${wrapperName}: Normalized price is ${normalizedPrice} (range: [${minPrice}, ${maxPrice}])`,
+          `Sanity check passed for asset ${assetAddress} in ${wrapperName}: Normalized price is ${normalizedPrice} (range: [${minPrice}, ${maxPrice}])`
         );
       }
     } catch (error) {
-      console.error(
-        `Error performing sanity check for asset ${assetAddress} in ${wrapperName}:`,
-        error,
-      );
-      throw new Error(
-        `Error performing sanity check for asset ${assetAddress} in ${wrapperName}: ${error}`,
-      );
+      console.error(`Error performing sanity check for asset ${assetAddress} in ${wrapperName}:`, error);
+      throw new Error(`Error performing sanity check for asset ${assetAddress} in ${wrapperName}: ${error}`);
     }
   }
 }
@@ -69,45 +64,32 @@ export async function setupRedstoneCompositeFeedsForAssets(
   baseCurrencyUnit: bigint,
   minPrice: number,
   maxPrice: number,
-  deployerAddress: string,
+  deployerAddress: string
 ): Promise<void> {
-  const allCompositeFeeds =
-    config.oracleAggregators.USD.redstoneOracleAssets
-      ?.compositeRedstoneOracleWrappersWithThresholding || {};
+  const allCompositeFeeds = config.oracleAggregators.USD.redstoneOracleAssets?.compositeRedstoneOracleWrappersWithThresholding || {};
 
   for (const assetAddress of assetAddresses) {
     const feedConfig = allCompositeFeeds[assetAddress];
 
     if (!feedConfig) {
-      console.log(
-        `⚠️  No composite feed configuration found for asset ${assetAddress}. Skipping.`,
-      );
+      console.log(`⚠️  No composite feed configuration found for asset ${assetAddress}. Skipping.`);
       continue;
     }
 
     // Check if composite feed already exists
-    const existingFeed =
-      await redstoneCompositeWrapper.compositeFeeds(assetAddress);
+    const existingFeed = await redstoneCompositeWrapper.compositeFeeds(assetAddress);
 
     if (existingFeed.feed1 !== ZeroAddress) {
-      console.log(
-        `- Composite feed for asset ${assetAddress} already configured. Skipping setup.`,
-      );
+      console.log(`- Composite feed for asset ${assetAddress} already configured. Skipping setup.`);
       continue;
     }
 
-    console.log(
-      `- Composite feed for asset ${assetAddress} not found. Proceeding with setup...`,
-    );
+    console.log(`- Composite feed for asset ${assetAddress} not found. Proceeding with setup...`);
 
     // Check permissions before attempting to add feed
     try {
-      const oracleManagerRole =
-        await redstoneCompositeWrapper.ORACLE_MANAGER_ROLE();
-      const hasRole = await redstoneCompositeWrapper.hasRole(
-        oracleManagerRole,
-        deployerAddress,
-      );
+      const oracleManagerRole = await redstoneCompositeWrapper.ORACLE_MANAGER_ROLE();
+      const hasRole = await redstoneCompositeWrapper.hasRole(oracleManagerRole, deployerAddress);
       console.log(`  - Deployer has ORACLE_MANAGER_ROLE: ${hasRole}`);
 
       if (!hasRole) {
@@ -116,10 +98,7 @@ export async function setupRedstoneCompositeFeedsForAssets(
         throw new Error(errorMessage);
       }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("lacks ORACLE_MANAGER_ROLE")
-      ) {
+      if (error instanceof Error && error.message.includes("lacks ORACLE_MANAGER_ROLE")) {
         throw error; // Re-throw our custom error
       }
       console.warn(`  - Could not check ORACLE_MANAGER_ROLE:`, error);
@@ -129,13 +108,9 @@ export async function setupRedstoneCompositeFeedsForAssets(
     console.log(`  - feedAsset: ${feedConfig.feedAsset}`);
     console.log(`  - feed1: ${feedConfig.feed1}`);
     console.log(`  - feed2: ${feedConfig.feed2}`);
-    console.log(
-      `  - lowerThresholdInBase1: ${feedConfig.lowerThresholdInBase1}`,
-    );
+    console.log(`  - lowerThresholdInBase1: ${feedConfig.lowerThresholdInBase1}`);
     console.log(`  - fixedPriceInBase1: ${feedConfig.fixedPriceInBase1}`);
-    console.log(
-      `  - lowerThresholdInBase2: ${feedConfig.lowerThresholdInBase2}`,
-    );
+    console.log(`  - lowerThresholdInBase2: ${feedConfig.lowerThresholdInBase2}`);
     console.log(`  - fixedPriceInBase2: ${feedConfig.fixedPriceInBase2}`);
 
     try {
@@ -146,28 +121,18 @@ export async function setupRedstoneCompositeFeedsForAssets(
         feedConfig.lowerThresholdInBase1,
         feedConfig.fixedPriceInBase1,
         feedConfig.lowerThresholdInBase2,
-        feedConfig.fixedPriceInBase2,
+        feedConfig.fixedPriceInBase2
       );
       console.log(`✅ Set composite Redstone feed for asset ${assetAddress}`);
     } catch (error) {
-      console.error(
-        `❌ Error adding composite feed for ${assetAddress}:`,
-        error,
-      );
+      console.error(`❌ Error adding composite feed for ${assetAddress}:`, error);
       console.error(`   Feed config was:`, feedConfig);
-      throw new Error(
-        `Failed to add composite feed for ${assetAddress}: ${error}`,
-      );
+      throw new Error(`Failed to add composite feed for ${assetAddress}: ${error}`);
     }
 
     try {
-      await oracleAggregator.setOracle(
-        feedConfig.feedAsset,
-        redstoneCompositeWrapper.target,
-      );
-      console.log(
-        `✅ Set composite Redstone wrapper for asset ${feedConfig.feedAsset} to ${redstoneCompositeWrapper.target}`,
-      );
+      await oracleAggregator.setOracle(feedConfig.feedAsset, redstoneCompositeWrapper.target);
+      console.log(`✅ Set composite Redstone wrapper for asset ${feedConfig.feedAsset} to ${redstoneCompositeWrapper.target}`);
     } catch (error) {
       console.error(`❌ Error setting oracle for ${assetAddress}:`, error);
       throw new Error(`Failed to set oracle for ${assetAddress}: ${error}`);
@@ -181,7 +146,7 @@ export async function setupRedstoneCompositeFeedsForAssets(
       baseCurrencyUnit,
       `${assetAddress} composite feed`,
       minPrice,
-      maxPrice,
+      maxPrice
     );
   }
 }
@@ -206,19 +171,15 @@ export async function setupRedstoneSimpleFeedsForAssets(
   baseCurrencyUnit: bigint,
   minPrice: number,
   maxPrice: number,
-  deployerAddress: string,
+  deployerAddress: string
 ): Promise<void> {
-  const allSimpleFeeds =
-    config.oracleAggregators.USD.redstoneOracleAssets
-      ?.redstoneOracleWrappersWithThresholding || {};
+  const allSimpleFeeds = config.oracleAggregators.USD.redstoneOracleAssets?.redstoneOracleWrappersWithThresholding || {};
 
   for (const assetAddress of assetAddresses) {
     const feedConfig = allSimpleFeeds[assetAddress];
 
     if (!feedConfig) {
-      console.log(
-        `⚠️  No simple feed configuration found for asset ${assetAddress}. Skipping.`,
-      );
+      console.log(`⚠️  No simple feed configuration found for asset ${assetAddress}. Skipping.`);
       continue;
     }
 
@@ -226,23 +187,16 @@ export async function setupRedstoneSimpleFeedsForAssets(
     const existingFeed = await redstoneWrapper.assetToFeed(assetAddress);
 
     if (existingFeed !== ZeroAddress) {
-      console.log(
-        `- Simple feed for asset ${assetAddress} already configured. Skipping setup.`,
-      );
+      console.log(`- Simple feed for asset ${assetAddress} already configured. Skipping setup.`);
       continue;
     }
 
-    console.log(
-      `- Simple feed for asset ${assetAddress} not found. Proceeding with setup...`,
-    );
+    console.log(`- Simple feed for asset ${assetAddress} not found. Proceeding with setup...`);
 
     // Check permissions before attempting to add feed
     try {
       const oracleManagerRole = await redstoneWrapper.ORACLE_MANAGER_ROLE();
-      const hasRole = await redstoneWrapper.hasRole(
-        oracleManagerRole,
-        deployerAddress,
-      );
+      const hasRole = await redstoneWrapper.hasRole(oracleManagerRole, deployerAddress);
       console.log(`  - Deployer has ORACLE_MANAGER_ROLE: ${hasRole}`);
 
       if (!hasRole) {
@@ -251,10 +205,7 @@ export async function setupRedstoneSimpleFeedsForAssets(
         throw new Error(errorMessage);
       }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("lacks ORACLE_MANAGER_ROLE")
-      ) {
+      if (error instanceof Error && error.message.includes("lacks ORACLE_MANAGER_ROLE")) {
         throw error; // Re-throw our custom error
       }
       console.warn(`  - Could not check ORACLE_MANAGER_ROLE:`, error);
@@ -268,19 +219,13 @@ export async function setupRedstoneSimpleFeedsForAssets(
       console.log(`✅ Set simple Redstone feed for asset ${assetAddress}`);
     } catch (error) {
       console.error(`❌ Error adding simple feed for ${assetAddress}:`, error);
-      throw new Error(
-        `Failed to add simple feed for ${assetAddress}: ${error}`,
-      );
+      throw new Error(`Failed to add simple feed for ${assetAddress}: ${error}`);
     }
 
     try {
       // Set threshold configuration if thresholds are specified
       if (feedConfig.lowerThreshold && feedConfig.lowerThreshold > 0) {
-        await redstoneWrapper.setThresholdConfig(
-          assetAddress,
-          feedConfig.lowerThreshold,
-          feedConfig.fixedPrice,
-        );
+        await redstoneWrapper.setThresholdConfig(assetAddress, feedConfig.lowerThreshold, feedConfig.fixedPrice);
         console.log(`✅ Set threshold config for asset ${assetAddress}`);
       }
     } catch (error) {
@@ -290,9 +235,7 @@ export async function setupRedstoneSimpleFeedsForAssets(
 
     try {
       await oracleAggregator.setOracle(assetAddress, redstoneWrapper.target);
-      console.log(
-        `✅ Set simple Redstone wrapper for asset ${assetAddress} to ${redstoneWrapper.target}`,
-      );
+      console.log(`✅ Set simple Redstone wrapper for asset ${assetAddress} to ${redstoneWrapper.target}`);
     } catch (error) {
       console.error(`❌ Error setting oracle for ${assetAddress}:`, error);
       throw new Error(`Failed to set oracle for ${assetAddress}: ${error}`);
@@ -306,7 +249,7 @@ export async function setupRedstoneSimpleFeedsForAssets(
       baseCurrencyUnit,
       `${assetAddress} simple feed`,
       minPrice,
-      maxPrice,
+      maxPrice
     );
   }
 }

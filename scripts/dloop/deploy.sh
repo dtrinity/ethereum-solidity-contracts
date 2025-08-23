@@ -3,8 +3,8 @@
 # Deploy DLoop to specified network
 # Usage: ./scripts/dloop/deploy.sh <network> [reset] [deployment_keywords]
 # Examples:
-#   ./scripts/dloop/deploy.sh sonic_mainnet
-#   ./scripts/dloop/deploy.sh sonic_testnet true DLoop
+#   ./scripts/dloop/deploy.sh ethereum_mainnet
+#   ./scripts/dloop/deploy.sh ethereum_testnet true DLoop
 
 set -e
 

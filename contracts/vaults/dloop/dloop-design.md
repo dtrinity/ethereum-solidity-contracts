@@ -144,7 +144,7 @@ Where:
 
 3. **Oracle Safety**
    - Validates non-zero prices from oracles
-   - Supports multiple oracle sources (API3, Chainlink, Redstone)
+   - Supports multiple oracle sources (Chainlink, Redstone)
    - Fails safely on oracle errors
 
 4. **Balance Validation**

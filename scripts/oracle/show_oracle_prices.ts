@@ -5,8 +5,8 @@ import path from "path";
  * Utility script: prints latest prices for all on-chain oracle deployments on a given Hardhat network.
  *
  * Usage examples:
- *   yarn hardhat run --network sonic_mainnet scripts/oracle/show_oracle_prices.ts
- *   yarn hardhat run --network sonic_testnet scripts/oracle/show_oracle_prices.ts
+ *   yarn hardhat run --network ethereum_mainnet scripts/oracle/show_oracle_prices.ts
+ *   yarn hardhat run --network ethereum_testnet scripts/oracle/show_oracle_prices.ts
  *
  * The script walks the hardhat-deploy deployments directory for the selected network, tries to
  * attach the minimal Chainlink AggregatorV3 interface and prints {name, description, price, updatedAt}.
@@ -18,7 +18,7 @@ async function loadNetworkConfig() {
   const networkName = hre.network.name;
 
   try {
-    // Example path: ../../config/networks/sonic_mainnet.ts (relative to this script file)
+    // Example path: ../../config/networks/ethereum_mainnet.ts (relative to this script file)
     const configPath = path.resolve(
       __dirname,
       "../../config/networks",
@@ -95,12 +95,6 @@ async function dumpAggregatorPrices(): Promise<void> {
       }
     };
 
-    // API3
-    addKeys(aggConfig.api3OracleAssets?.plainApi3OracleWrappers);
-    addKeys(aggConfig.api3OracleAssets?.api3OracleWrappersWithThresholding);
-    addKeys(
-      aggConfig.api3OracleAssets?.compositeApi3OracleWrappersWithThresholding,
-    );
 
     // Redstone
     addKeys(aggConfig.redstoneOracleAssets?.plainRedstoneOracleWrappers);

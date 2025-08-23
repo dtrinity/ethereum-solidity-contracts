@@ -3,7 +3,7 @@
 # Script to generate a markdown table of all deployment file names and their addresses
 # for a specified network directory
 # Usage: ./print-contract-addresses.sh [network_name]
-# Default network: sonic_mainnet
+# Default network: ethereum_mainnet
 
 set -e
 
@@ -13,7 +13,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEPLOYMENTS_DIR="$PROJECT_ROOT/deployments"
 
 # Default network or use first argument
-NETWORK="${1:-sonic_mainnet}"
+NETWORK="${1:-ethereum_mainnet}"
 NETWORK_DIR="$DEPLOYMENTS_DIR/$NETWORK"
 
 # Check if network directory exists

@@ -15,25 +15,20 @@ export interface OracleFeedConfig {
 export type OracleProvider = "REDSTONE"; // Only Redstone now
 
 // Export the feeds array
-// api3Feeds is removed as all feeds are now Redstone
+// Updated to match the oracle feeds expected in localhost.ts and ethereum_testnet.ts
 export const redstoneFeeds: OracleFeedConfig[] = [
-  // USD price feeds
-  { name: "frxUSD_USD", symbol: "frxUSD", price: "1" },
+  // USD price feeds - matching localhost.ts usage
+  { name: "WETH_USD", symbol: "WETH", price: "2500" }, // ETH price feed
   { name: "USDC_USD", symbol: "USDC", price: "1" },
   { name: "USDS_USD", symbol: "USDS", price: "1" },
-  { name: "wS_USD", symbol: "wS", price: "4.2" },
-  { name: "scUSD_USD", symbol: "scUSD", price: "1" }, // Moved from original redstoneFeeds
+  { name: "frxUSD_USD", symbol: "frxUSD", price: "1" },
 
-  // Vault feeds
-  { name: "sfrxUSD_frxUSD", symbol: "sfrxUSD", price: "1.1" },
+  // Vault feeds for yield-bearing tokens
   { name: "sUSDS_USDS", symbol: "sUSDS", price: "1.1" },
-  { name: "wstkscUSD_scUSD", symbol: "wstkscUSD", price: "1.15" }, // Moved from original redstoneFeeds
-  { name: "wOS_OS", symbol: "wOS", price: "1.1" }, // Moved from original redstoneFeeds
+  { name: "sfrxUSD_frxUSD", symbol: "sfrxUSD", price: "1.1" },
 
-  // S feeds
-  { name: "stS_S", symbol: "stS", price: "1.1" },
-  { name: "OS_S", symbol: "OS", price: "1.0" }, // Moved from original redstoneFeeds
-  { name: "wOS_S", symbol: "wOS", price: "1.1" }, // Required for S aggregator plain wrapper on testnet
+  // ETH-based feeds for dETH
+  { name: "stETH_WETH", symbol: "stETH", price: "1.1" }, // stETH to WETH ratio
 ];
 
 // Redstone oracle feeds - This array is now merged into redstoneFeeds above
@@ -72,7 +67,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const mockOracleContract = await hre.ethers.getContractAt(
       "MockRedstoneChainlinkOracleAlwaysAlive",
       mockOracle.address,
-      signer,
+      signer
     );
 
     // Convert price to int256 format expected by Redstone (8 decimals)
@@ -84,7 +79,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     mockOracleNameToProvider[feed.name] = "REDSTONE"; // All are Redstone now
 
     console.log(
-      `Deployed ${mockOracleName} at ${mockOracle.address} with price ${feed.price}`,
+      `Deployed ${mockOracleName} at ${mockOracle.address} with price ${feed.price}`
     );
   }
 

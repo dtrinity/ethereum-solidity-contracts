@@ -19,7 +19,7 @@ export interface Config {
     readonly router: string;
   };
   readonly pendle?: PendleConfig;
-  readonly dLoop: {
+  readonly dLoop?: {
     readonly dUSDAddress: string;
     readonly coreVaults: { [vaultName: string]: DLoopCoreConfig };
     readonly depositors: {
@@ -36,12 +36,9 @@ export interface Config {
     };
   };
   readonly dStake?: {
-    [key: string]: DStakeInstanceConfig; // e.g., sdUSD, sdS
+    [key: string]: DStakeInstanceConfig; // e.g., sdUSD, sdETH
   };
   readonly vesting?: VestingConfig;
-  readonly dPool?: {
-    [key: string]: DPoolInstanceConfig; // e.g., dUSD-USDC_Curve
-  };
 }
 
 // Configuration for mocking infrastructure on local and test networks
@@ -105,9 +102,9 @@ export interface DLoopIncreaseLeverageOdosConfig {
 }
 
 export interface TokenAddresses {
-  readonly wS: string;
+  readonly WETH: string;
   readonly dUSD: string;
-  readonly dS: string;
+  readonly dETH: string;
   readonly [key: string]: string; // dLEND assets must be defined as well
 }
 
@@ -120,29 +117,6 @@ export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
   readonly baseCurrency: string;
-  readonly api3OracleAssets: {
-    plainApi3OracleWrappers: {
-      [key: string]: string;
-    };
-    api3OracleWrappersWithThresholding: {
-      [key: string]: {
-        proxy: string;
-        lowerThreshold: bigint;
-        fixedPrice: bigint;
-      };
-    };
-    compositeApi3OracleWrappersWithThresholding: {
-      [key: string]: {
-        feedAsset: string;
-        proxy1: string;
-        proxy2: string;
-        lowerThresholdInBase1: bigint;
-        fixedPriceInBase1: bigint;
-        lowerThresholdInBase2: bigint;
-        fixedPriceInBase2: bigint;
-      };
-    };
-  };
   readonly redstoneOracleAssets: {
     plainRedstoneOracleWrappers: {
       [key: string]: string;
@@ -201,9 +175,7 @@ export interface IReserveCollateralParams {
   readonly liquidationProtocolFee?: string;
 }
 
-export interface IReserveParams
-  extends IReserveBorrowParams,
-    IReserveCollateralParams {
+export interface IReserveParams extends IReserveBorrowParams, IReserveCollateralParams {
   readonly aTokenImpl: string;
   readonly reserveFactor: string;
   readonly supplyCap: string;
@@ -224,13 +196,13 @@ export interface DLendRewardManagerConfig {
   readonly treasury: Address; // Address for treasury fees
   readonly maxTreasuryFeeBps: number;
   readonly initialTreasuryFeeBps: number;
-  readonly initialExchangeThreshold: bigint; // Min dStable amount to trigger compounding
+  readonly initialExchangeThreshold: bigint; // Min stable amount to trigger compounding
   readonly initialAdmin?: Address; // Optional: admin for this DStakeRewardManagerDLend instance
   readonly initialRewardsManager?: Address; // Optional: holder of REWARDS_MANAGER_ROLE for this instance
 }
 
 export interface DStakeInstanceConfig {
-  readonly dStable: Address; // Address of the underlying dSTABLE (e.g., dUSD)
+  readonly dStable: Address; // Address of the underlying stable token (e.g., dUSD, dETH)
   readonly name: string; // Name for DStakeToken (e.g., "Staked dUSD")
   readonly symbol: string; // Symbol for DStakeToken (e.g., "sdUSD")
   readonly initialAdmin: Address;
@@ -251,21 +223,6 @@ export interface VestingConfig {
   readonly maxTotalSupply: string; // Maximum total dSTAKE that can be deposited (as string for big numbers)
   readonly initialOwner: Address; // Initial owner of the vesting contract
   readonly minDepositThreshold: string; // Minimum total dSTAKE that must be deposited per deposit
-}
-
-// --- dPool Types ---
-
-export interface DPoolInstanceConfig {
-  readonly baseAsset: string; // Reference to token in config (e.g., "USDC", "dUSD")
-  readonly name: string; // Name for the vault (e.g., "dPOOL USDC/USDS")
-  readonly symbol: string; // Symbol for the vault (e.g., "dpUSDC_USDS")
-  readonly initialAdmin: Address;
-  readonly initialSlippageBps?: number; // Initial max slippage setting in BPS for periphery
-  readonly pool: string; // Pool deployment name (localhost) or pool address (testnet/mainnet)
-  // Examples by environment:
-  // - localhost: "USDC_USDS_CurvePool" (deployment name)
-  // - testnet: "0x742d35Cc6634C0532925a3b8D404fEdF6Caf9cd5" (actual pool address)
-  // - mainnet: "0xA5407eAE9Ba41422680e2e00537571bcC53efBfD" (actual pool address)
 }
 
 // --- Pendle PT Token Types ---

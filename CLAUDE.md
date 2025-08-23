@@ -49,7 +49,7 @@ All components are in the `.memento/` directory:
 
 ## Project Overview
 
-dTRINITY Sonic Contracts is a comprehensive DeFi protocol on Sonic blockchain providing decentralized stablecoin issuance, lending, leveraged yield farming, and staking functionality. The codebase consists of multiple interconnected smart contract modules built with Hardhat and TypeScript.
+dTRINITY Ethereum Contracts is a comprehensive DeFi protocol on Ethereum blockchain providing decentralized stablecoin issuance, lending, leveraged yield farming, and staking functionality. The codebase consists of multiple interconnected smart contract modules built with Hardhat and TypeScript.
 
 ## Essential Commands
 
@@ -71,8 +71,8 @@ make audit                   # Run full security analysis
 
 ### Network Operations
 ```bash
-make explorer.verify.sonic_mainnet    # Verify contracts on Sonic mainnet
-make explorer.verify.sonic_testnet    # Verify contracts on Sonic testnet
+make explorer.verify.ethereum_mainnet    # Verify contracts on Ethereum mainnet
+make explorer.verify.ethereum_testnet    # Verify contracts on Ethereum testnet (Sepolia)
 ```
 
 ### Testing Individual Components
@@ -85,7 +85,7 @@ npx hardhat test test/vaults/dstake/test.ts
 
 ## Architecture Overview
 
-The codebase is organized into five main modules:
+The codebase is organized into four main modules:
 
 ### 1. dStable (`contracts/dstable/`)
 Decentralized stablecoin system. 
@@ -110,11 +110,6 @@ Leveraged yield farming with modular venue system:
 - Periphery contracts for user interactions
 - Venue-specific implementations (dlend, mock, odos)
 
-### 5. dPool (`contracts/vaults/dpool/`)
-Liquidity pool management with Curve integration:
-- `DPoolVaultLP.sol` - LP token vault
-- `DPoolCurvePeriphery.sol` - Curve pool integration
-
 ## Development Environment
 
 ### Build System
@@ -135,8 +130,8 @@ Liquidity pool management with Curve integration:
 ## Deployment
 
 ### Network Configuration
-- **Sonic Mainnet**: Production deployment - DO NOT ATTEMPT TO DEPLOY TO MAINNET. You do not have the keys for it anyways.
-- **Sonic Testnet**: Testing and development
+- **Ethereum Mainnet**: Production deployment - DO NOT ATTEMPT TO DEPLOY TO MAINNET. You do not have the keys for it anyways.
+- **Ethereum Testnet (Sepolia)**: Testing and development
 - **Localhost**: Local development with mocks
 
 ## Common Development Patterns

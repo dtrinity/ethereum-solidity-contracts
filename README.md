@@ -1,6 +1,6 @@
-# dTRINITY Sonic Contracts
+# dTRINITY Ethereum Contracts
 
-This repository contains the code and tooling for dTRINITY on Sonic.
+This repository contains the code and tooling for dTRINITY on Ethereum.
 
 Website: https://dtrinity.org/
 

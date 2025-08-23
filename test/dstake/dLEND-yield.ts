@@ -18,11 +18,11 @@ import { StaticATokenLM } from "../../typechain-types/contracts/vaults/atoken_wr
 import {
   createDStakeFixture,
   DStakeFixtureConfig,
-  SDS_CONFIG,
+  SDETH_CONFIG,
   SDUSD_CONFIG,
 } from "./fixture";
 
-const STAKE_CONFIGS: DStakeFixtureConfig[] = [SDUSD_CONFIG, SDS_CONFIG];
+const STAKE_CONFIGS: DStakeFixtureConfig[] = [SDUSD_CONFIG, SDETH_CONFIG];
 
 STAKE_CONFIGS.forEach((cfg) => {
   describe(`dSTAKE Ecosystem - ${cfg.DStakeTokenSymbol} - Yield Accrual and Exchange Rate Update`, function () {

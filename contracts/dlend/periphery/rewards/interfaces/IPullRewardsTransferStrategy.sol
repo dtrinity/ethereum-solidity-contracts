@@ -17,15 +17,15 @@
 
 pragma solidity ^0.8.20;
 
-import {ITransferStrategyBase} from "./ITransferStrategyBase.sol";
+import { ITransferStrategyBase } from "./ITransferStrategyBase.sol";
 
 /**
  * @title IPullRewardsTransferStrategy
  * @author Aave
  **/
 interface IPullRewardsTransferStrategy is ITransferStrategyBase {
-    /**
-     * @return Address of the rewards vault
-     */
-    function getRewardsVault() external view returns (address);
+  /**
+   * @return Address of the rewards vault
+   */
+  function getRewardsVault() external view returns (address);
 }

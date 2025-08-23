@@ -11,12 +11,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
 
   // Skip if no mock config or curve pools config
+  // DISABLED: dPool functionality not available in this fork
   if (!config.MOCK_ONLY?.curvePools) {
     console.log(
       "No mock curve pools configuration found, skipping mock Curve pool deployment",
     );
     return true;
   }
+
+  console.log(
+    "⚠️  Skipping mock Curve pool deployment: dPool functionality disabled in this fork",
+  );
+  return true;
 
   console.log(`\n--- Deploying Mock Curve Pools ---`);
 

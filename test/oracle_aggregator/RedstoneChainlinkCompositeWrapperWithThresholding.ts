@@ -119,9 +119,14 @@ async function runTestsForCurrency(
       });
 
       it("should handle thresholding for both primary and secondary prices", async function () {
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneCompositeAssets),
-        );
+        const compositeAssetKeys = Object.keys(fixtureResult.assets.redstoneCompositeAssets);
+        
+        // Skip this test if no composite assets are configured for this currency
+        if (compositeAssetKeys.length === 0) {
+          this.skip();
+        }
+
+        const testAsset = getRandomItemFromList(compositeAssetKeys);
 
         // Deploy mock feeds for testing
         const mockFeed1 = await ethers.deployContract(
@@ -217,9 +222,14 @@ async function runTestsForCurrency(
       });
 
       it("should handle stale prices correctly", async function () {
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneCompositeAssets),
-        );
+        const compositeAssetKeys = Object.keys(fixtureResult.assets.redstoneCompositeAssets);
+        
+        // Skip this test if no composite assets are configured for this currency
+        if (compositeAssetKeys.length === 0) {
+          this.skip();
+        }
+
+        const testAsset = getRandomItemFromList(compositeAssetKeys);
 
         // Deploy mock feeds for testing
         const mockFeed1 = await ethers.deployContract(
@@ -268,9 +278,14 @@ async function runTestsForCurrency(
 
     describe("Feed management", () => {
       it("should allow adding and removing composite feeds", async function () {
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneCompositeAssets),
-        );
+        const compositeAssetKeys = Object.keys(fixtureResult.assets.redstoneCompositeAssets);
+        
+        // Skip this test if no composite assets are configured for this currency
+        if (compositeAssetKeys.length === 0) {
+          this.skip();
+        }
+
+        const testAsset = getRandomItemFromList(compositeAssetKeys);
         const feed1 = "0x2345678901234567890123456789012345678901";
         const feed2 = "0x3456789012345678901234567890123456789012";
         const lowerThreshold1 = ethers.parseUnits(
@@ -354,9 +369,14 @@ async function runTestsForCurrency(
       });
 
       it("should revert when non-ORACLE_MANAGER tries to manage feeds", async function () {
-        const testAsset = getRandomItemFromList(
-          Object.keys(fixtureResult.assets.redstoneCompositeAssets),
-        );
+        const compositeAssetKeys = Object.keys(fixtureResult.assets.redstoneCompositeAssets);
+        
+        // Skip this test if no composite assets are configured for this currency
+        if (compositeAssetKeys.length === 0) {
+          this.skip();
+        }
+
+        const testAsset = getRandomItemFromList(compositeAssetKeys);
         const feed1 = "0x2345678901234567890123456789012345678901";
         const feed2 = "0x3456789012345678901234567890123456789012";
 

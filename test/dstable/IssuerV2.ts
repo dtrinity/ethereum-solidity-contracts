@@ -17,13 +17,13 @@ import {
 } from "../../typescript/token/utils";
 import {
   createDStableFixture,
-  DS_CONFIG,
+  DETH_CONFIG,
   DStableFixtureConfig,
   DUSD_CONFIG,
 } from "./fixtures";
 
 // Define which assets are yield-bearing vs stable for reference
-const yieldBearingAssets = new Set(["sfrxUSD", "sUSDS", "stS", "wOS"]);
+const yieldBearingAssets = new Set(["sfrxUSD", "sUSDS", "stETH"]);
 const isYieldBearingAsset = (symbol: string): boolean =>
   yieldBearingAssets.has(symbol);
 
@@ -76,7 +76,7 @@ async function calculateExpectedDstableFromBase(
 }
 
 // Run tests for each dStable configuration
-const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DS_CONFIG];
+const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DETH_CONFIG];
 
 dstableConfigs.forEach((config) => {
   describe(`IssuerV2 for ${config.symbol}`, () => {
