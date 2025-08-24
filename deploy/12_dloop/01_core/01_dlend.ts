@@ -67,9 +67,19 @@ async function deployDLoopCoreDLend(
 
   const targetStaticATokenWrapper = assertNotEmpty(extraParams.targetStaticATokenWrapper as string);
   const treasury = assertNotEmpty(extraParams.treasury);
-  const maxTreasuryFeeBps = assertNotEmpty(extraParams.maxTreasuryFeeBps);
-  const initialTreasuryFeeBps = assertNotEmpty(extraParams.initialTreasuryFeeBps);
-  const initialExchangeThreshold = assertNotEmpty(extraParams.initialExchangeThreshold);
+  const maxTreasuryFeeBps = extraParams.maxTreasuryFeeBps;
+  const initialTreasuryFeeBps = extraParams.initialTreasuryFeeBps;
+  const initialExchangeThreshold = extraParams.initialExchangeThreshold;
+  
+  if (maxTreasuryFeeBps === undefined) {
+    throw new Error("maxTreasuryFeeBps is undefined");
+  }
+  if (initialTreasuryFeeBps === undefined) {
+    throw new Error("initialTreasuryFeeBps is undefined");
+  }
+  if (initialExchangeThreshold === undefined) {
+    throw new Error("initialExchangeThreshold is undefined");
+  }
 
   await hre.deployments.deploy(deploymentName, {
     from: deployer,
@@ -90,9 +100,9 @@ async function deployDLoopCoreDLend(
       assertNotEmpty(aTokenAddress), // _dLendAssetToClaimFor
       assertNotEmpty(targetStaticATokenWrapper), // _targetStaticATokenWrapper
       assertNotEmpty(treasury), // _treasury
-      assertNotEmpty(maxTreasuryFeeBps), // _maxTreasuryFeeBps
-      assertNotEmpty(initialTreasuryFeeBps), // _initialTreasuryFeeBps
-      assertNotEmpty(initialExchangeThreshold), // _initialExchangeThreshold
+      maxTreasuryFeeBps, // _maxTreasuryFeeBps
+      initialTreasuryFeeBps, // _initialTreasuryFeeBps
+      initialExchangeThreshold, // _initialExchangeThreshold
     ],
     log: true,
     autoMine: true,

@@ -360,7 +360,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
           withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
           extraParams: {
-            targetStaticATokenWrapper: dLendATokenWrapperDUSDDeployment?.address,
+            targetStaticATokenWrapper: dLendATokenWrapperDUSDDeployment?.address || "0x0000000000000000000000000000000000000000",
             treasury: governanceAddress,
             maxTreasuryFeeBps: 1000,
             initialTreasuryFeeBps: 500,
@@ -380,7 +380,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
           withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
           extraParams: {
-            targetStaticATokenWrapper: dLendATokenWrapperDSDeployment?.address,
+            targetStaticATokenWrapper: dLendATokenWrapperDSDeployment?.address || "0x0000000000000000000000000000000000000000",
             treasury: governanceAddress,
             maxTreasuryFeeBps: 1000,
             initialTreasuryFeeBps: 500,
