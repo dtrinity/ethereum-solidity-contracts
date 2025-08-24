@@ -56,7 +56,10 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   }
 
   // Get the named accounts
-  const { deployer, user1 } = await _hre.getNamedAccounts();
+  const namedAccounts = await _hre.getNamedAccounts();
+  const deployer = namedAccounts.deployer;
+  // Use deployer as governance for testnet since we may not have multiple accounts
+  const governanceAddress = namedAccounts.user1 || deployer;
 
   return {
     MOCK_ONLY: {
@@ -117,7 +120,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       USDS: emptyStringIfUndefined(USDSDeployment?.address),
     },
     walletAddresses: {
-      governanceMultisig: user1,
+      governanceMultisig: governanceAddress,
       incentivesVault: deployer,
     },
     dStables: {
@@ -288,8 +291,8 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         dStable: emptyStringIfUndefined(dUSDDeployment?.address),
         name: "Staked dUSD",
         symbol: "sdUSD",
-        initialAdmin: user1,
-        initialFeeManager: user1,
+        initialAdmin: governanceAddress,
+        initialFeeManager: governanceAddress,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -299,25 +302,25 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         ],
         defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
         collateralVault: "DStakeCollateralVault_sdUSD",
-        collateralExchangers: [user1],
+        collateralExchangers: [governanceAddress],
         dLendRewardManager: {
           managedVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address), // This should be the deployed StaticATokenLM address for dUSD
           dLendAssetToClaimFor: emptyStringIfUndefined(aTokenDUSDDeployment?.address), // Use the deployed dLEND-dUSD aToken address
           dLendRewardsController: emptyStringIfUndefined(rewardsControllerDeployment?.address), // This will be fetched after dLend incentives deployment
-          treasury: user1, // Or a dedicated treasury address
+          treasury: governanceAddress, // Or a dedicated treasury address
           maxTreasuryFeeBps: 500, // Example: 5%
           initialTreasuryFeeBps: 100, // Example: 1%
           initialExchangeThreshold: 1_000_000n, // Example: 1 dStable (adjust based on dStable decimals)
-          initialAdmin: user1, // Optional: specific admin for this reward manager
-          initialRewardsManager: user1, // Optional: specific rewards manager role holder
+          initialAdmin: governanceAddress, // Optional: specific admin for this reward manager
+          initialRewardsManager: governanceAddress, // Optional: specific rewards manager role holder
         },
       },
       sdETH: {
         dStable: emptyStringIfUndefined(dETHDeployment?.address),
         name: "Staked dETH",
         symbol: "sdETH",
-        initialAdmin: user1,
-        initialFeeManager: user1,
+        initialAdmin: governanceAddress,
+        initialFeeManager: governanceAddress,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -327,17 +330,17 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         ],
         defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
         collateralVault: "DStakeCollateralVault_sdETH",
-        collateralExchangers: [user1],
+        collateralExchangers: [governanceAddress],
         dLendRewardManager: {
           managedVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address), // This should be the deployed StaticATokenLM address for dETH
           dLendAssetToClaimFor: emptyStringIfUndefined(dETHDeployment?.address), // Use the dETH underlying asset address as a placeholder
           dLendRewardsController: emptyStringIfUndefined(rewardsControllerDeployment?.address), // This will be fetched after dLend incentives deployment
-          treasury: user1, // Or a dedicated treasury address
+          treasury: governanceAddress, // Or a dedicated treasury address
           maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS, // Example: 5%
           initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS, // Example: 1%
           initialExchangeThreshold: 100n * 10n ** 18n, // 100 dStable (reduced to stay within 500 supply cap)
-          initialAdmin: user1, // Optional: specific admin for this reward manager
-          initialRewardsManager: user1, // Optional: specific rewards manager role holder
+          initialAdmin: governanceAddress, // Optional: specific admin for this reward manager
+          initialRewardsManager: governanceAddress, // Optional: specific rewards manager role holder
         },
       },
     },
@@ -358,7 +361,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
           extraParams: {
             targetStaticATokenWrapper: dLendATokenWrapperDUSDDeployment?.address,
-            treasury: user1,
+            treasury: governanceAddress,
             maxTreasuryFeeBps: 1000,
             initialTreasuryFeeBps: 500,
             initialExchangeThreshold: 100n,
@@ -378,7 +381,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
           extraParams: {
             targetStaticATokenWrapper: dLendATokenWrapperDSDeployment?.address,
-            treasury: user1,
+            treasury: governanceAddress,
             maxTreasuryFeeBps: 1000,
             initialTreasuryFeeBps: 500,
             initialExchangeThreshold: 100n,
@@ -412,7 +415,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       dstakeToken: emptyStringIfUndefined(sdUSDDeployment?.address), // Use sdUSD as the vesting token
       vestingPeriod: 180 * 24 * 60 * 60, // 6 months in seconds
       maxTotalSupply: _hre.ethers.parseUnits("1000000", 18).toString(), // 1 million tokens
-      initialOwner: user1,
+      initialOwner: governanceAddress,
       minDepositThreshold: _hre.ethers.parseUnits("100000", 18).toString(), // 100,000 tokens
     },
   };

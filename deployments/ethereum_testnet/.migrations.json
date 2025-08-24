@@ -7,5 +7,7 @@
   "ETH_OracleAggregator": 1756014772,
   "point-eth-aggregator-to-redstone-wrappers": 1756014783,
   "WETH_HardPegOracleWrapper": 1756014805,
-  "dETH_HardPegOracleWrapper": 1756014830
+  "dETH_HardPegOracleWrapper": 1756014830,
+  "dETH_CollateralHolderVault": 1756023819,
+  "dETH_AmoManager": 1756023832
 }
