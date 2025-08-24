@@ -45,5 +45,10 @@
   "dLend_StaticATokenFactory": 1756045078,
   "dLoop:CoreLogicLibrary": 1756048173,
   "DLoopCoreDLend": 1756048218,
-  "OdosSwapLogic": 1756048227
+  "OdosSwapLogic": 1756048227,
+  "transfer_dlend_roles_to_multisig": 1756049646,
+  "transfer_oracle_wrapper_roles_to_multisig": 1756049646,
+  "dStableATokenWrappers": 1756049648,
+  "deploy_redeemer_with_fees": 1756049776,
+  "ERC20VestingNFT": 1756049788
 }
