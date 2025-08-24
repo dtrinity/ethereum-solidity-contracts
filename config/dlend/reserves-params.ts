@@ -48,7 +48,7 @@ export const strategyWETH: IReserveParams = {
   reserveDecimals: "18",
   aTokenImpl: eContractid.AToken,
   reserveFactor: "1000",
-  supplyCap: "500",
+  supplyCap: "10000",
   borrowCap: "0",
   debtCeiling: "0",
   borrowableIsolation: false,
