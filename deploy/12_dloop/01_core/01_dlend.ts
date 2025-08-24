@@ -83,7 +83,7 @@ async function deployDLoopCoreDLend(
 
   await hre.deployments.deploy(deploymentName, {
     from: deployer,
-    contract: "DLoopCoreDLend",
+    contract: "contracts/vaults/dloop/core/venue/dlend/DLoopCoreDLend.sol:DLoopCoreDLend",
     args: [
       assertNotEmpty(vaultInfo.name),
       assertNotEmpty(vaultInfo.symbol),
