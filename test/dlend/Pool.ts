@@ -441,9 +441,9 @@ describe("dLEND Pool", () => {
       const collateralAsset1 = collateralAssets[0]; // User 1 supplies this
       const collateralAsset2 = collateralAssets[1]; // User 2 supplies this
 
-      const user1SupplyAmount = ethers.parseUnits("1000", 18); // User1 supplies collateral
-      const user2SupplyAmount = ethers.parseUnits("1000", 18); // User2 supplies different collateral
-      const borrowAmount = ethers.parseUnits("100", 18); // User2 borrows dStable
+      const user1SupplyAmount = ethers.parseUnits("100", 18); // User1 supplies collateral
+      const user2SupplyAmount = ethers.parseUnits("100", 18); // User2 supplies different collateral
+      const borrowAmount = ethers.parseUnits("10", 18); // User2 borrows dStable
 
       const collateralToken1 = (await ethers.getContractAt(
         "TestERC20",
