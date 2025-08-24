@@ -6,6 +6,7 @@ import { getConfig } from "../../../config/config";
 import { DLoopCoreConfig } from "../../../config/types";
 import { assertNotEmpty } from "../../../typescript/common/assert";
 import {
+  DLOOP_CORE_LOGIC_ID,
   DLOOP_CORE_DLEND_ID,
   INCENTIVES_PROXY_ID,
   POOL_ADDRESSES_PROVIDER_ID,
@@ -29,6 +30,9 @@ async function deployDLoopCoreDLend(
   vaultInfo: DLoopCoreConfig
 ): Promise<boolean> {
   const { address: lendingPoolAddressesProviderAddress } = await hre.deployments.get(POOL_ADDRESSES_PROVIDER_ID);
+
+  // Get the DLoopCoreLogic library
+  const dLoopCoreLogicDeployment = await hre.deployments.get(DLOOP_CORE_LOGIC_ID);
 
   // Get the incentives proxy (rewards controller)
   const incentivesProxyDeployment = await hre.deployments.get(INCENTIVES_PROXY_ID);
@@ -104,6 +108,9 @@ async function deployDLoopCoreDLend(
       initialTreasuryFeeBps, // _initialTreasuryFeeBps
       initialExchangeThreshold, // _initialExchangeThreshold
     ],
+    libraries: {
+      DLoopCoreLogic: dLoopCoreLogicDeployment.address,
+    },
     log: true,
     autoMine: true,
   });
@@ -159,7 +166,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ["dloop", "core", "dlend"];
-func.dependencies = [POOL_ADDRESSES_PROVIDER_ID, INCENTIVES_PROXY_ID, POOL_DATA_PROVIDER_ID];
+func.dependencies = [DLOOP_CORE_LOGIC_ID, POOL_ADDRESSES_PROVIDER_ID, INCENTIVES_PROXY_ID, POOL_DATA_PROVIDER_ID];
 func.id = DLOOP_CORE_DLEND_ID;
 
 export default func;

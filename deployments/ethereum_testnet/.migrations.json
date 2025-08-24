@@ -42,5 +42,8 @@
   "dLend:Incentives": 1756041770,
   "transfer_dstable_roles_to_multisig": 1756041770,
   "transfer_oracle_roles_to_multisig": 1756041770,
-  "dLend_StaticATokenFactory": 1756045078
+  "dLend_StaticATokenFactory": 1756045078,
+  "dLoop:CoreLogicLibrary": 1756048173,
+  "DLoopCoreDLend": 1756048218,
+  "OdosSwapLogic": 1756048227
 }
