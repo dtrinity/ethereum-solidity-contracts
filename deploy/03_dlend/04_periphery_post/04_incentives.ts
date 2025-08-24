@@ -43,15 +43,30 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const incentivesImplContract = await ethers.getContractAt("RewardsController", incentivesImpl.address);
 
-  // Initialize the implementation
+  // Check if already initialized
+  let isInitialized = false;
   try {
-    await incentivesImplContract.initialize(ZeroAddress);
-  } catch (error: any) {
-    if (error?.message.includes("Contract instance has already been initialized")) {
-      console.log("Incentives implementation already initialized");
-    } else {
+    const emissionManagerAddress = await incentivesImplContract.getEmissionManager();
+    if (emissionManagerAddress && emissionManagerAddress !== ZeroAddress) {
+      isInitialized = true;
+      console.log(`  - RewardsController already initialized with emission manager: ${emissionManagerAddress}`);
+    }
+  } catch (e) {
+    // Not initialized yet
+  }
+
+  if (!isInitialized) {
+    // Initialize the implementation
+    try {
+      await incentivesImplContract.initialize(ZeroAddress);
+      console.log("  - RewardsController initialized");
+    } catch (error: any) {
+      console.log(`  - Failed to initialize RewardsController`);
+      console.log(`  - Error: ${error?.message || error}`);
       throw Error(`Failed to initialize Incentives implementation: ${error}`);
     }
+  } else {
+    console.log("  - Skipping RewardsController initialization (already initialized)");
   }
 
   // The Rewards Controller must be set at AddressesProvider with id keccak256("INCENTIVES_CONTROLLER")
