@@ -153,16 +153,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const emissionManagerDeployment = await deployments.get(EMISSION_MANAGER_ID);
     const emissionManager = await ethers.getContractAt("EmissionManager", emissionManagerDeployment.address);
 
-    // Attempt to authorize this manager as a claimer via EmissionManager only if the deployer is the owner.
+    // Attempt to authorize this manager as a claimer only on first deploy; otherwise verify and skip.
     const emissionOwner = await emissionManager.owner();
+    const rewardsController = await emissionManager.getRewardsController();
+    const rewardsControllerContract = await ethers.getContractAt("RewardsController", rewardsController);
+    const existingClaimer = await rewardsControllerContract.getClaimer(targetStaticATokenWrapperAddress);
+    const needsClaimerUpdate = existingClaimer.toLowerCase() !== deployment.address.toLowerCase();
 
-    if (emissionOwner.toLowerCase() === deployer.toLowerCase()) {
-      const tx = await emissionManager.connect(deployerSigner).setClaimer(targetStaticATokenWrapperAddress, deployment.address);
-      await tx.wait();
-    } else {
-      manualActions.push(
-        `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`
-      );
+    if (needsClaimerUpdate) {
+      if (emissionOwner.toLowerCase() === deployer.toLowerCase()) {
+        const tx = await emissionManager.connect(deployerSigner).setClaimer(targetStaticATokenWrapperAddress, deployment.address);
+        await tx.wait();
+      } else {
+        manualActions.push(
+          `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`
+        );
+      }
     }
 
     // --- Configure Roles ---
@@ -235,6 +241,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   console.log(`🥩 ${__filename.split("/").slice(-2).join("/")}: ✅`);
+  return true;
 };
 
 export default func;

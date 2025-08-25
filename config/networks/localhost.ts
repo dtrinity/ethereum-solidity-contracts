@@ -10,7 +10,7 @@ import {
   rateStrategyMediumLiquidityStable,
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 /**
@@ -275,6 +275,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       reservesConfig: {
         dUSD: strategyDUSD,
         dETH: strategyDETH,
+        WETH: strategyWETH,
         stETH: strategySTETH,
         sfrxUSD: strategySFRXUSD,
       },

@@ -11,10 +11,10 @@ export function getEnvPrivateKeys(network: string): string[] {
 
   switch (network) {
     case "ethereum_testnet":
-      pks = [getPrivateKeyFromMnemonic(`ethereum_testnet_deployer`), getPrivateKeyFromEnv(`ethereum_testnet_deployer`)];
+      pks = [getPrivateKeyFromMnemonic(`testnet_deployer`), getPrivateKeyFromEnv(`testnet_deployer`)];
       break;
     case "ethereum_mainnet":
-      pks = [getPrivateKeyFromMnemonic(`ethereum_mainnet_deployer`), getPrivateKeyFromEnv(`ethereum_mainnet_deployer`)];
+      pks = [getPrivateKeyFromMnemonic(`mainnet_deployer`), getPrivateKeyFromEnv(`mainnet_deployer`)];
       break;
     default:
       throw new Error(`Unsupported network: ${network}`);
