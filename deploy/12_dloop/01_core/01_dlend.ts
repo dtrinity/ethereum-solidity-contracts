@@ -6,8 +6,8 @@ import { getConfig } from "../../../config/config";
 import { DLoopCoreConfig } from "../../../config/types";
 import { assertNotEmpty } from "../../../typescript/common/assert";
 import {
-  DLOOP_CORE_LOGIC_ID,
   DLOOP_CORE_DLEND_ID,
+  DLOOP_CORE_LOGIC_ID,
   INCENTIVES_PROXY_ID,
   POOL_ADDRESSES_PROVIDER_ID,
   POOL_DATA_PROVIDER_ID,
@@ -74,13 +74,15 @@ async function deployDLoopCoreDLend(
   const maxTreasuryFeeBps = extraParams.maxTreasuryFeeBps;
   const initialTreasuryFeeBps = extraParams.initialTreasuryFeeBps;
   const initialExchangeThreshold = extraParams.initialExchangeThreshold;
-  
+
   if (maxTreasuryFeeBps === undefined) {
     throw new Error("maxTreasuryFeeBps is undefined");
   }
+
   if (initialTreasuryFeeBps === undefined) {
     throw new Error("initialTreasuryFeeBps is undefined");
   }
+
   if (initialExchangeThreshold === undefined) {
     throw new Error("initialExchangeThreshold is undefined");
   }

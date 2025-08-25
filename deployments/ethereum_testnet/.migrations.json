@@ -50,5 +50,6 @@
   "transfer_oracle_wrapper_roles_to_multisig": 1756049646,
   "dStableATokenWrappers": 1756049648,
   "deploy_redeemer_with_fees": 1756049776,
-  "ERC20VestingNFT": 1756049788
+  "ERC20VestingNFT": 1756049788,
+  "transfer_dstake_roles_to_multisig": 1756096040
 }

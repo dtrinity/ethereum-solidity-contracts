@@ -46,13 +46,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check if already initialized by checking the name
   let isInitialized = false;
+
   try {
     const tokenName = await aTokenContract.name();
+
     if (tokenName && tokenName !== "") {
       isInitialized = true;
       console.log(`  - AToken already initialized with name: ${tokenName}`);
     }
-  } catch (e) {
+  } catch {
     // Not initialized yet
   }
 
@@ -93,13 +95,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check if already initialized by checking the name
   let isStableDebtInitialized = false;
+
   try {
     const tokenName = await stableDebtTokenContract.name();
+
     if (tokenName && tokenName !== "") {
       isStableDebtInitialized = true;
       console.log(`  - StableDebtToken already initialized with name: ${tokenName}`);
     }
-  } catch (e) {
+  } catch {
     // Not initialized yet
   }
 
@@ -136,13 +140,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check if already initialized by checking the name
   let isVariableDebtInitialized = false;
+
   try {
     const tokenName = await variableDebtTokenContract.name();
+
     if (tokenName && tokenName !== "") {
       isVariableDebtInitialized = true;
       console.log(`  - VariableDebtToken already initialized with name: ${tokenName}`);
     }
-  } catch (e) {
+  } catch {
     // Not initialized yet
   }
 

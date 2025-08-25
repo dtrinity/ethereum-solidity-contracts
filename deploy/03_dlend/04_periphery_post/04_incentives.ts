@@ -45,13 +45,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check if already initialized
   let isInitialized = false;
+
   try {
     const emissionManagerAddress = await incentivesImplContract.getEmissionManager();
+
     if (emissionManagerAddress && emissionManagerAddress !== ZeroAddress) {
       isInitialized = true;
       console.log(`  - RewardsController already initialized with emission manager: ${emissionManagerAddress}`);
     }
-  } catch (e) {
+  } catch {
     // Not initialized yet
   }
 

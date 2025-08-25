@@ -11,23 +11,19 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Wrapper function to add a delay to transactions
 
-const wrapSigner = (signer: any, hre: HardhatRuntimeEnvironment) => {
+const wrapSigner = (signer: any, hre: HardhatRuntimeEnvironment): any => {
   const originalSendTransaction = signer.sendTransaction;
 
-  signer.sendTransaction = async (tx: any) => {
+  signer.sendTransaction = async (tx: any): Promise<any> => {
     const result = await originalSendTransaction.apply(signer, [tx]);
 
     if (hre.network.live) {
-      const sleepTime = 15000; // 15 seconds to ensure at least 1 block
-      console.log(
-        `\n>>> Waiting ${sleepTime}ms after transaction to ${
-          result.to || "a new contract"
-        }`,
-      );
+      const sleepTime = 30000; // 30 seconds to reduce flakiness from eventual consistency
+      console.log(`\n>>> Waiting ${sleepTime}ms after transaction to ${result.to || "a new contract"}`);
       await sleep(sleepTime);
     }
     return result;
@@ -39,7 +35,7 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   // Wrap hre.ethers.getSigner
   const originalGetSigner = hre.ethers.getSigner;
 
-  hre.ethers.getSigner = async (address) => {
+  hre.ethers.getSigner = async (address): Promise<any> => {
     const signer = await originalGetSigner(address);
     return wrapSigner(signer, hre);
   };
@@ -47,7 +43,7 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   // Wrap hre.ethers.getSigners
   const originalGetSigners = hre.ethers.getSigners;
 
-  hre.ethers.getSigners = async () => {
+  hre.ethers.getSigners = async (): Promise<any[]> => {
     const signers = await originalGetSigners();
     return signers.map((signer) => wrapSigner(signer, hre));
   };
