@@ -86,28 +86,27 @@ async function dumpAggregatorPrices(): Promise<void> {
     // Collect asset addresses from the various config buckets
     const assetSet = new Set<string>();
 
-    const addKeys = (obj?: Record<string, any>) => {
-      if (!obj) return;
-
-      for (const k of Object.keys(obj)) {
-        const keyStr = k as string;
-        if (keyStr && keyStr !== "") assetSet.add(keyStr.toLowerCase());
+    const addKeys = (obj?: Record<string, unknown>) => {
+      if (!obj) {
+        return;
+      }
+      for (const key of Object.keys(obj)) {
+        if (key) {
+          assetSet.add(key.toLowerCase());
+        }
       }
     };
 
+    // Aggregator asset wiring
+    addKeys(aggConfig.assets);
 
-    // Redstone
-    addKeys(aggConfig.redstoneOracleAssets?.plainRedstoneOracleWrappers);
-    addKeys(
-      aggConfig.redstoneOracleAssets?.redstoneOracleWrappersWithThresholding,
-    );
-    addKeys(
-      aggConfig.redstoneOracleAssets
-        ?.compositeRedstoneOracleWrappersWithThresholding,
-    );
-
-    // Chainlink composite wrappers (simple map asset->config)
-    addKeys(aggConfig.chainlinkCompositeWrapperAggregator);
+    // Wrapper configuration assets
+    const wrappers = aggConfig.wrappers as Record<string, { assets?: Record<string, unknown> }> | undefined;
+    if (wrappers) {
+      for (const wrapper of Object.values(wrappers)) {
+        addKeys(wrapper?.assets);
+      }
+    }
 
     const tokenAddressMap: Record<string, string> = Object.entries(
       (config.tokenAddresses ?? {}) as Record<string, any>,

@@ -1,21 +1,15 @@
-// USD Oracles
+// Oracle Aggregator V1.1 Deploy IDs
 export const USD_ORACLE_AGGREGATOR_ID = "USD_OracleAggregator";
-export const USD_REDSTONE_ORACLE_WRAPPER_ID = "USD_RedstoneChainlinkWrapper";
-export const USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkWrapperWithThresholding";
-export const USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkCompositeWrapperWithThresholding";
+export const USD_CHAINLINK_FEED_WRAPPER_V1_1_ID = "USD_ChainlinkFeedWrapperV1_1";
+export const USD_API3_WRAPPER_V1_1_ID = "USD_API3WrapperV1_1";
+export const USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID = "USD_ChainlinkRateCompositeWrapperV1_1";
+export const USD_HARD_PEG_WRAPPER_V1_1_ID = "USD_HardPegOracleWrapperV1_1";
 
-// Pendle PT Oracles
-export const PENDLE_CHAINLINK_ORACLE_FACTORY_ID = "PendleChainlinkOracleFactory";
-export const PENDLE_PT_AUSDC_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_PT_aUSDC_14AUG2025";
-export const PENDLE_PT_WSTKSCUSD_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_PT_wstkscUSD_18DEC2025";
-export const OS_TO_S_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_OS_to_S";
-export const WOS_TO_OS_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_wOS_to_OS";
-
-// ETH Oracles
 export const ETH_ORACLE_AGGREGATOR_ID = "ETH_OracleAggregator";
-export const ETH_REDSTONE_ORACLE_WRAPPER_ID = "ETH_RedstoneWrapper";
-export const ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneWrapperWithThresholding";
-export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneCompositeWrapperWithThresholding";
+export const ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID = "ETH_ChainlinkFeedWrapperV1_1";
+export const ETH_API3_WRAPPER_V1_1_ID = "ETH_API3WrapperV1_1";
+export const ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID = "ETH_ChainlinkRateCompositeWrapperV1_1";
+export const ETH_HARD_PEG_WRAPPER_V1_1_ID = "ETH_HardPegOracleWrapperV1_1";
 
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";

@@ -3,20 +3,27 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { USD_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
+import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
   const config = await getConfig(hre);
 
-  // Deploy the USD-specific OracleAggregator
+  const oracleConfig = config.oracleAggregators.USD;
+
+  // Deploy the USD-specific OracleAggregatorV1_1
   await hre.deployments.deploy(USD_ORACLE_AGGREGATOR_ID, {
     from: deployer,
     args: [
-      config.oracleAggregators.USD.baseCurrency, // USD as base currency (address 0)
-      BigInt(10) ** BigInt(config.oracleAggregators.USD.priceDecimals),
+      oracleConfig.baseCurrency,
+      ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+      oracleConfig.roles.admins,
+      oracleConfig.roles.oracleManagers,
+      oracleConfig.roles.guardians,
+      oracleConfig.roles.globalMaxStaleTime,
     ],
-    contract: "OracleAggregator",
+    contract: "OracleAggregatorV1_1",
     autoMine: true,
     log: false,
   });
