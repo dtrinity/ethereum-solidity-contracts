@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "../OracleBaseV1_1.sol";
-import {IOracleWrapperV1_1} from "../interface/IOracleWrapperV1_1.sol";
-import {IApi3Proxy} from "../interface/api3/IApi3Proxy.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
+import { IOracleWrapperV1_1 } from "../interface/IOracleWrapperV1_1.sol";
+import { IApi3Proxy } from "../interface/api3/IApi3Proxy.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
   using SafeCast for uint256;
@@ -51,9 +51,11 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
   error InvalidDeviationSetting();
   error InvalidAnswerBounds(uint192 minAnswer, uint192 maxAnswer);
 
-  constructor(address baseCurrency_, uint256 baseCurrencyUnit_, address initialAdmin)
-    OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin)
-  {}
+  constructor(
+    address baseCurrency_,
+    uint256 baseCurrencyUnit_,
+    address initialAdmin
+  ) OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
 
   function configureProxy(
     address asset,
@@ -202,9 +204,7 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         }
       }
     } else {
-      normalizedPrice = rawValue > 0
-        ? Math.mulDiv(uint256(int256(rawValue)), BASE_CURRENCY_UNIT(), config.decimalsFactor)
-        : 0;
+      normalizedPrice = rawValue > 0 ? Math.mulDiv(uint256(int256(rawValue)), BASE_CURRENCY_UNIT(), config.decimalsFactor) : 0;
     }
 
     if (normalizedPrice > type(uint192).max) {

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "../OracleBaseV1_1.sol";
-import {IOracleWrapperV1_1} from "../interface/IOracleWrapperV1_1.sol";
-import {AggregatorV3Interface} from "../interface/chainlink/IAggregatorV3Interface.sol";
-import {IRateProvider} from "../interface/rate/IRateProvider.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
+import { IOracleWrapperV1_1 } from "../interface/IOracleWrapperV1_1.sol";
+import { AggregatorV3Interface } from "../interface/chainlink/IAggregatorV3Interface.sol";
+import { IRateProvider } from "../interface/rate/IRateProvider.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
   using SafeCast for uint256;
@@ -53,9 +53,11 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
   error CompositePriceNotAlive(address asset);
   error InvalidAnswerBounds(uint192 minAnswer, uint192 maxAnswer);
 
-  constructor(address baseCurrency_, uint256 baseCurrencyUnit_, address initialAdmin)
-    OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin)
-  {}
+  constructor(
+    address baseCurrency_,
+    uint256 baseCurrencyUnit_,
+    address initialAdmin
+  ) OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
 
   function configureComposite(
     address asset,
@@ -149,13 +151,9 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
     uint64 priceUpdatedAt;
     uint256 compositePrice;
     {
-      (
-        uint80 priceRoundId,
-        int256 priceAnswer,
-        uint256 priceStartedAt,
-        uint256 priceUpdatedRaw,
-        uint80 priceAnsweredInRound
-      ) = config.priceFeed.latestRoundData();
+      (uint80 priceRoundId, int256 priceAnswer, uint256 priceStartedAt, uint256 priceUpdatedRaw, uint80 priceAnsweredInRound) = config
+        .priceFeed
+        .latestRoundData();
 
       if (
         priceAnswer <= 0 ||

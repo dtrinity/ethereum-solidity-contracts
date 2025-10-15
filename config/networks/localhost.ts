@@ -193,6 +193,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
     lowerGuard: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
     upperGuard: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
   };
+
   if (dUSDDeployment?.address) {
     hardPegUsdAssets[dUSDDeployment.address] = {
       pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
@@ -208,6 +209,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       maxDeviationBps: 0,
     },
   };
+
   if (dUSDDeployment?.address) {
     usdAggregatorAssets[dUSDDeployment.address] = {
       primaryWrapperId: USD_HARD_PEG_WRAPPER_V1_1_ID,
@@ -216,6 +218,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (USDCDeployment?.address) {
     usdAggregatorAssets[USDCDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -225,6 +228,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (USDSDeployment?.address) {
     usdAggregatorAssets[USDSDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -234,6 +238,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (sUSDSDeployment?.address) {
     usdAggregatorAssets[sUSDSDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -243,6 +248,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (frxUSDDeployment?.address) {
     usdAggregatorAssets[frxUSDDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -252,6 +258,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (sfrxUSDDeployment?.address) {
     usdAggregatorAssets[sfrxUSDDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -261,6 +268,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (WETHDeployment?.address) {
     usdAggregatorAssets[WETHDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -270,6 +278,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (dETHDeployment?.address) {
     usdAggregatorAssets[dETHDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -279,6 +288,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (stETHDeployment?.address) {
     usdAggregatorAssets[stETHDeployment.address] = {
       primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
@@ -290,6 +300,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   }
 
   const chainlinkEthAssets: Record<string, ChainlinkFeedAssetConfig> = {};
+
   if (stETHDeployment?.address) {
     chainlinkEthAssets[stETHDeployment.address] = {
       feed: "mock:chainlink:stETH_WETH",
@@ -306,6 +317,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   }
 
   const hardPegEthAssets: Record<string, HardPegAssetConfig> = {};
+
   if (WETHDeployment?.address) {
     hardPegEthAssets[WETHDeployment.address] = {
       pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
@@ -313,6 +325,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       upperGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 101n) / 100n,
     };
   }
+
   if (dETHDeployment?.address) {
     hardPegEthAssets[dETHDeployment.address] = {
       pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
@@ -322,6 +335,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   }
 
   const ethAggregatorAssets: Record<string, OracleAssetRoutingConfig> = {};
+
   if (WETHDeployment?.address) {
     ethAggregatorAssets[WETHDeployment.address] = {
       primaryWrapperId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
@@ -330,6 +344,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (dETHDeployment?.address) {
     ethAggregatorAssets[dETHDeployment.address] = {
       primaryWrapperId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
@@ -338,6 +353,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       },
     };
   }
+
   if (stETHDeployment?.address) {
     ethAggregatorAssets[stETHDeployment.address] = {
       primaryWrapperId: ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,

@@ -66,11 +66,7 @@ async function transferOracleAggregatorRoles(
     if (oracleAggregatorDeployment) {
       console.log(`\n  📄 ORACLE AGGREGATOR ROLES: ${oracleType} Oracle Aggregator`);
 
-      const oracleAggregator = await ethers.getContractAt(
-        "OracleAggregatorV1_1",
-        oracleAggregatorDeployment.address,
-        deployerSigner
-      );
+      const oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", oracleAggregatorDeployment.address, deployerSigner);
 
       // Get roles
       const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;

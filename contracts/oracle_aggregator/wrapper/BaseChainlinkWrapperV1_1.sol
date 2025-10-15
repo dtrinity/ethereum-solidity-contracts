@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "../OracleBaseV1_1.sol";
-import {IOracleWrapperV1_1} from "../interface/IOracleWrapperV1_1.sol";
-import {AggregatorV3Interface} from "../interface/chainlink/IAggregatorV3Interface.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
+import { IOracleWrapperV1_1 } from "../interface/IOracleWrapperV1_1.sol";
+import { AggregatorV3Interface } from "../interface/chainlink/IAggregatorV3Interface.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
  * @dev Abstract base for Chainlink style oracle wrappers. Handles feed wiring, heartbeat configuration,
@@ -55,9 +55,11 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
   error InvalidDeviationSetting();
   error FeedPriceNotAlive(address asset);
 
-  constructor(address baseCurrency_, uint256 baseCurrencyUnit_, address initialAdmin)
-    OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin)
-  {}
+  constructor(
+    address baseCurrency_,
+    uint256 baseCurrencyUnit_,
+    address initialAdmin
+  ) OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
 
   function getAssetPrice(address asset) external view override returns (uint256) {
     PriceData memory data = getPriceInfo(asset);
@@ -74,13 +76,7 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
     }
 
     AggregatorV3Interface feed = config.feed;
-    (
-      uint80 roundId,
-      int256 answer,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    ) = feed.latestRoundData();
+    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
 
     PriceData memory data;
     bool alive = true;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "../OracleBaseV1_1.sol";
+import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
 
 interface IOracleWrapperV1_1 {
   function BASE_CURRENCY() external view returns (address);

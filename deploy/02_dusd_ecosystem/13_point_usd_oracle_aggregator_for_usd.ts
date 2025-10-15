@@ -5,11 +5,11 @@ import { USD_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
 
 /**
  * Placeholder script for wiring the USD oracle aggregator's base currency feed in the V1.1 stack.
+ *
+ * @param _hre Hardhat runtime environment (unused placeholder until implemented).
  */
 const func: DeployFunction = async function (_hre: HardhatRuntimeEnvironment) {
-  console.log(
-    `🔮 ${__filename.split("/").slice(-2).join("/")}: TODO - point USD aggregator base currency once wrappers are configured`
-  );
+  console.log(`🔮 ${__filename.split("/").slice(-2).join("/")}: TODO - point USD aggregator base currency once wrappers are configured`);
   return true;
 };
 

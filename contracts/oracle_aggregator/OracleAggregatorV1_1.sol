@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "./OracleBaseV1_1.sol";
-import {IOracleWrapperV1_1} from "./interface/IOracleWrapperV1_1.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import { OracleBaseV1_1 } from "./OracleBaseV1_1.sol";
+import { IOracleWrapperV1_1 } from "./interface/IOracleWrapperV1_1.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title OracleAggregatorV1_1
@@ -222,11 +222,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     emit AssetUnfrozen(asset);
   }
 
-  function pushFrozenPrice(
-    address asset,
-    uint192 price,
-    uint64 updatedAt
-  ) external onlyRole(GUARDIAN_ROLE) {
+  function pushFrozenPrice(address asset, uint192 price, uint64 updatedAt) external onlyRole(GUARDIAN_ROLE) {
     AggregatorAssetConfig storage config = _assetConfigs[asset];
     if (!config.exists) {
       revert AssetNotConfigured(asset);
@@ -297,11 +293,9 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     return data;
   }
 
-  function batchRefresh(address[] calldata assets)
-    external
-    view
-    returns (PriceData[] memory prices, bool[] memory isFrozen, bool[] memory usedFallback)
-  {
+  function batchRefresh(
+    address[] calldata assets
+  ) external view returns (PriceData[] memory prices, bool[] memory isFrozen, bool[] memory usedFallback) {
     uint256 length = assets.length;
     prices = new PriceData[](length);
     isFrozen = new bool[](length);
@@ -421,11 +415,10 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     emit AssetConfigUpdated(asset, maxStaleTime, heartbeatOverride, maxDeviationBps, minAnswer, maxAnswer);
   }
 
-  function _evaluatePrice(address asset, AggregatorAssetConfig storage config)
-    internal
-    view
-    returns (PriceData memory data, PriceResolution resolution)
-  {
+  function _evaluatePrice(
+    address asset,
+    AggregatorAssetConfig storage config
+  ) internal view returns (PriceData memory data, PriceResolution resolution) {
     if (config.isFrozen) {
       return (config.lastGoodPrice, PriceResolution.LAST_GOOD);
     }
@@ -512,11 +505,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     }
   }
 
-  function _seedRoleGrants(
-    address[] memory admins,
-    address[] memory oracleManagers,
-    address[] memory guardians
-  ) private {
+  function _seedRoleGrants(address[] memory admins, address[] memory oracleManagers, address[] memory guardians) private {
     for (uint256 i = 0; i < admins.length; ++i) {
       if (admins[i] == address(0)) {
         revert ZeroAddress("admin");

@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {OracleBaseV1_1} from "../OracleBaseV1_1.sol";
-import {IOracleWrapperV1_1} from "../interface/IOracleWrapperV1_1.sol";
+import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
+import { IOracleWrapperV1_1 } from "../interface/IOracleWrapperV1_1.sol";
 
 /**
  * @dev Hard peg oracle wrapper that always returns a guardian-governed fixed price with
  *      configurable guard rails to avoid accidental misconfiguration.
  */
 contract HardPegOracleWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
-
   struct PegConfig {
     uint192 pricePeg;
     uint192 lowerGuard;
@@ -28,16 +27,13 @@ contract HardPegOracleWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
   error PegOutOfBounds(address asset, uint192 price, uint192 lowerGuard, uint192 upperGuard);
   error InvalidGuardRails(address asset, uint192 lowerGuard, uint192 upperGuard);
 
-  constructor(address baseCurrency_, uint256 baseCurrencyUnit_, address initialAdmin)
-    OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin)
-  {}
+  constructor(
+    address baseCurrency_,
+    uint256 baseCurrencyUnit_,
+    address initialAdmin
+  ) OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
 
-  function configurePeg(
-    address asset,
-    uint192 pricePeg,
-    uint192 lowerGuard,
-    uint192 upperGuard
-  ) external onlyRole(ORACLE_MANAGER_ROLE) {
+  function configurePeg(address asset, uint192 pricePeg, uint192 lowerGuard, uint192 upperGuard) external onlyRole(ORACLE_MANAGER_ROLE) {
     if (upperGuard != 0 && lowerGuard > upperGuard) {
       revert InvalidGuardRails(asset, lowerGuard, upperGuard);
     }

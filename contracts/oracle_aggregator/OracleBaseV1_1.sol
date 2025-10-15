@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @dev Abstract base contract shared by all oracle wrappers in the V1.1 stack.
@@ -122,12 +122,7 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
   /**
    * @dev Ensures the supplied timestamp is not in the future and within allowed staleness.
    */
-  function _checkFreshness(
-    address asset,
-    uint64 updatedAt,
-    uint64 maxStaleTime,
-    uint64 heartbeatBuffer
-  ) internal view {
+  function _checkFreshness(address asset, uint64 updatedAt, uint64 maxStaleTime, uint64 heartbeatBuffer) internal view {
     uint64 currentTimestamp = uint64(block.timestamp);
     if (updatedAt > currentTimestamp) {
       revert TimestampInFuture(asset, updatedAt, currentTimestamp);
@@ -143,12 +138,7 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
   /**
    * @dev Ensures the supplied price is inside configured bounds.
    */
-  function _checkBounds(
-    address asset,
-    uint192 price,
-    uint192 minAnswer,
-    uint192 maxAnswer
-  ) internal pure {
+  function _checkBounds(address asset, uint192 price, uint192 minAnswer, uint192 maxAnswer) internal pure {
     if (minAnswer != 0 && price < minAnswer) {
       revert PriceBelowMinimum(asset, price, minAnswer);
     }
@@ -160,20 +150,13 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
   /**
    * @dev Ensures the deviation between price and reference is within limits.
    */
-  function _checkDeviation(
-    address asset,
-    uint192 price,
-    uint192 referencePrice,
-    uint16 maxDeviationBps
-  ) internal pure {
+  function _checkDeviation(address asset, uint192 price, uint192 referencePrice, uint16 maxDeviationBps) internal pure {
     if (maxDeviationBps == 0 || referencePrice == 0) {
       return;
     }
 
     uint256 difference = price > referencePrice ? price - referencePrice : referencePrice - price;
-    uint256 deviationBps = referencePrice == 0
-      ? 0
-      : Math.mulDiv(difference, 10_000, referencePrice);
+    uint256 deviationBps = referencePrice == 0 ? 0 : Math.mulDiv(difference, 10_000, referencePrice);
 
     if (deviationBps > maxDeviationBps) {
       revert DeviationExceeded(asset, price, referencePrice, maxDeviationBps);
