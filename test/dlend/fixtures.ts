@@ -74,35 +74,18 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const pool = await hre.ethers.getContractAt("Pool", poolAddress);
 
   // Get the PoolDataProvider contract
-  const { address: dataProviderAddress } = await deployments.get(
-    POOL_DATA_PROVIDER_ID,
-  );
-  const dataProvider = await hre.ethers.getContractAt(
-    "AaveProtocolDataProvider",
-    dataProviderAddress,
-  );
+  const { address: dataProviderAddress } = await deployments.get(POOL_DATA_PROVIDER_ID);
+  const dataProvider = await hre.ethers.getContractAt("AaveProtocolDataProvider", dataProviderAddress);
 
   // Get additional required contracts *early*
-  const { address: addressesProviderAddress } = await deployments.get(
-    "PoolAddressesProvider",
-  );
-  const poolAddressesProvider = await hre.ethers.getContractAt(
-    "PoolAddressesProvider",
-    addressesProviderAddress,
-  );
+  const { address: addressesProviderAddress } = await deployments.get("PoolAddressesProvider");
+  const poolAddressesProvider = await hre.ethers.getContractAt("PoolAddressesProvider", addressesProviderAddress);
 
   const priceOracleAddress = await poolAddressesProvider.getPriceOracle();
-  const priceOracle = await hre.ethers.getContractAt(
-    "IAaveOracle",
-    priceOracleAddress,
-  );
+  const priceOracle = await hre.ethers.getContractAt("IAaveOracle", priceOracleAddress);
 
-  const poolConfiguratorAddress =
-    await poolAddressesProvider.getPoolConfigurator();
-  const poolConfigurator = await hre.ethers.getContractAt(
-    "PoolConfigurator",
-    poolConfiguratorAddress,
-  );
+  const poolConfiguratorAddress = await poolAddressesProvider.getPoolConfigurator();
+  const poolConfigurator = await hre.ethers.getContractAt("PoolConfigurator", poolConfiguratorAddress);
 
   // Get all reserves
   const reservesList = await pool.getReservesList();
@@ -129,18 +112,9 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
     }
 
     // Get token contracts
-    aTokens[asset] = await hre.ethers.getContractAt(
-      "AToken",
-      reserveData.aTokenAddress,
-    );
-    stableDebtTokens[asset] = await hre.ethers.getContractAt(
-      "StableDebtToken",
-      reserveData.stableDebtTokenAddress,
-    );
-    variableDebtTokens[asset] = await hre.ethers.getContractAt(
-      "VariableDebtToken",
-      reserveData.variableDebtTokenAddress,
-    );
+    aTokens[asset] = await hre.ethers.getContractAt("AToken", reserveData.aTokenAddress);
+    stableDebtTokens[asset] = await hre.ethers.getContractAt("StableDebtToken", reserveData.stableDebtTokenAddress);
+    variableDebtTokens[asset] = await hre.ethers.getContractAt("VariableDebtToken", reserveData.variableDebtTokenAddress);
 
     // Store asset configuration
     assets[asset] = {
@@ -158,9 +132,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
 
   // Ensure dStables are in the reserves
   if (!reservesList.includes(dUsdAddress)) {
-    throw new Error(
-      `dUSD (${dUsdAddress}) not found in reserves: ${reservesList}`,
-    );
+    throw new Error(`dUSD (${dUsdAddress}) not found in reserves: ${reservesList}`);
   }
 
   if (!reservesList.includes(dETHAddress)) {
@@ -168,94 +140,48 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   }
 
   // Mint dUSD
-  const dusdIssuerAddress = (
-    await hre.deployments.get(DUSD_ISSUER_V2_CONTRACT_ID)
-  ).address;
-  const dusdIssuer = await hre.ethers.getContractAt(
-    "IssuerV2",
-    dusdIssuerAddress,
-  );
-  const usdOracleAddress = (await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID))
-    .address;
-  const usdOracle = await hre.ethers.getContractAt(
-    "OracleAggregator",
-    usdOracleAddress,
-  );
+  const dusdIssuerAddress = (await hre.deployments.get(DUSD_ISSUER_V2_CONTRACT_ID)).address;
+  const dusdIssuer = await hre.ethers.getContractAt("IssuerV2", dusdIssuerAddress);
+  const usdOracleAddress = (await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID)).address;
+  const usdOracle = await hre.ethers.getContractAt("OracleAggregator", usdOracleAddress);
 
   // Get collateral token (sfrxUSD) for dUSD
-  const { contract: usdCollateralToken, tokenInfo: usdCollateralInfo } =
-    await getTokenContractForSymbol(hre, deployer, "sfrxUSD");
-  const { contract: dUsdToken, tokenInfo: dUsdInfo } =
-    await getTokenContractForSymbol(hre, deployer, "dUSD");
+  const { contract: usdCollateralToken, tokenInfo: usdCollateralInfo } = await getTokenContractForSymbol(hre, deployer, "sfrxUSD");
+  const { contract: dUsdToken, tokenInfo: dUsdInfo } = await getTokenContractForSymbol(hre, deployer, "dUSD");
 
   // Mint dUSD
-  const usdCollateralAmount = ethers.parseUnits(
-    "1000000",
-    usdCollateralInfo.decimals,
-  );
-  const usdCollateralPrice = await usdOracle.getAssetPrice(
-    usdCollateralInfo.address,
-  );
+  const usdCollateralAmount = ethers.parseUnits("1000000", usdCollateralInfo.decimals);
+  const usdCollateralPrice = await usdOracle.getAssetPrice(usdCollateralInfo.address);
   const dUsdPrice = await usdOracle.getAssetPrice(dUsdInfo.address);
-  const usdBaseValue =
-    (usdCollateralAmount * usdCollateralPrice) /
-    BigInt(10 ** usdCollateralInfo.decimals);
-  const expectedDusdAmount =
-    (usdBaseValue * BigInt(10 ** dUsdInfo.decimals)) / dUsdPrice;
+  const usdBaseValue = (usdCollateralAmount * usdCollateralPrice) / BigInt(10 ** usdCollateralInfo.decimals);
+  const expectedDusdAmount = (usdBaseValue * BigInt(10 ** dUsdInfo.decimals)) / dUsdPrice;
 
   // Mint dUSD - deployer now holds this
   // Note: Approval is for the Issuer, not the Pool
-  await usdCollateralToken.approve(
-    await dusdIssuer.getAddress(),
-    usdCollateralAmount,
-  );
-  await dusdIssuer.issue(
-    usdCollateralAmount,
-    usdCollateralInfo.address,
-    expectedDusdAmount,
-  );
+  await usdCollateralToken.approve(await dusdIssuer.getAddress(), usdCollateralAmount);
+  await dusdIssuer.issue(usdCollateralAmount, usdCollateralInfo.address, expectedDusdAmount);
 
   // Then mint dETH
-  const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID))
-    .address;
+  const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID)).address;
   const dsIssuer = await hre.ethers.getContractAt("IssuerV2", dsIssuerAddress);
-  const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID))
-    .address;
-  const ethOracle = await hre.ethers.getContractAt(
-    "OracleAggregator",
-    ethOracleAddress,
-  );
+  const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID)).address;
+  const ethOracle = await hre.ethers.getContractAt("OracleAggregator", ethOracleAddress);
 
   // Get collateral token (stETH) for dETH
-  const { contract: sCollateralToken, tokenInfo: sCollateralInfo } =
-    await getTokenContractForSymbol(hre, deployer, "stETH");
-  const { contract: dETHToken, tokenInfo: dETHInfo } =
-    await getTokenContractForSymbol(hre, deployer, "dETH");
+  const { contract: sCollateralToken, tokenInfo: sCollateralInfo } = await getTokenContractForSymbol(hre, deployer, "stETH");
+  const { contract: dETHToken, tokenInfo: dETHInfo } = await getTokenContractForSymbol(hre, deployer, "dETH");
 
   // Mint dETH
-  const sCollateralAmount = ethers.parseUnits(
-    "1000000",
-    sCollateralInfo.decimals,
-  );
+  const sCollateralAmount = ethers.parseUnits("1000000", sCollateralInfo.decimals);
   const sCollateralPrice = await ethOracle.getAssetPrice(sCollateralInfo.address);
   const dETHPrice = await ethOracle.getAssetPrice(dETHInfo.address);
-  const sBaseValue =
-    (sCollateralAmount * sCollateralPrice) /
-    BigInt(10 ** sCollateralInfo.decimals);
-  const expectedDethAmount =
-    (sBaseValue * BigInt(10 ** dETHInfo.decimals)) / dETHPrice;
+  const sBaseValue = (sCollateralAmount * sCollateralPrice) / BigInt(10 ** sCollateralInfo.decimals);
+  const expectedDethAmount = (sBaseValue * BigInt(10 ** dETHInfo.decimals)) / dETHPrice;
 
   // Mint dETH - deployer now holds this
   // Note: Approval is for the Issuer, not the Pool
-  await sCollateralToken.approve(
-    await dsIssuer.getAddress(),
-    sCollateralAmount,
-  );
-  await dsIssuer.issue(
-    sCollateralAmount,
-    sCollateralInfo.address,
-    expectedDethAmount,
-  );
+  await sCollateralToken.approve(await dsIssuer.getAddress(), sCollateralAmount);
+  await dsIssuer.issue(sCollateralAmount, sCollateralInfo.address, expectedDethAmount);
 
   return {
     contracts: {

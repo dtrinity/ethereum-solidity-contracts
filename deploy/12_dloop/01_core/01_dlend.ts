@@ -27,7 +27,7 @@ async function deployDLoopCoreDLend(
   hre: HardhatRuntimeEnvironment,
   deployer: string,
   dUSDAddress: string,
-  vaultInfo: DLoopCoreConfig
+  vaultInfo: DLoopCoreConfig,
 ): Promise<boolean> {
   const { address: lendingPoolAddressesProviderAddress } = await hre.deployments.get(POOL_ADDRESSES_PROVIDER_ID);
 
@@ -52,7 +52,7 @@ async function deployDLoopCoreDLend(
   const underlyingTokenContract = await hre.ethers.getContractAt(
     ["function symbol() view returns (string)"],
     vaultInfo.underlyingAsset,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
   const underlyingTokenSymbol = await underlyingTokenContract.symbol();
 

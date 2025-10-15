@@ -68,7 +68,7 @@ describe("DLoopCoreMock Wrapper Methods Tests", function () {
           // The wrapper expects vault balance to decrease, but mock transfers from user to mockPool
           await expect(dloopMock.testSupplyToPool(await collateralToken.getAddress(), amount, user1)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         });
       }
@@ -108,7 +108,7 @@ describe("DLoopCoreMock Wrapper Methods Tests", function () {
           // The wrapper expects vault balance to increase, but mock transfers from mockPool to user
           await expect(dloopMock.testBorrowFromPool(await debtToken.getAddress(), amount, user1)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         });
       }
@@ -150,7 +150,7 @@ describe("DLoopCoreMock Wrapper Methods Tests", function () {
           // The wrapper expects vault balance to decrease, but mock transfers from user to mockPool
           await expect(dloopMock.testRepayDebtToPool(await debtToken.getAddress(), repayAmount, user1)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         });
       }
@@ -189,7 +189,7 @@ describe("DLoopCoreMock Wrapper Methods Tests", function () {
           // Due to the mock implementation design, this will trigger the wrapper validation error
           // The wrapper expects vault balance to increase, but mock transfers from mockPool to user
           await expect(
-            dloopMock.testWithdrawFromPool(await collateralToken.getAddress(), withdrawAmount, user1)
+            dloopMock.testWithdrawFromPool(await collateralToken.getAddress(), withdrawAmount, user1),
           ).to.be.revertedWithCustomError(dloopMock, testCase.expectedError);
         });
       }
@@ -205,7 +205,7 @@ describe("DLoopCoreMock Wrapper Methods Tests", function () {
 
         // Note: Some operations might still revert due to business logic, but not due to balance validation
         await expect(
-          dloopMock.testSupplyToPoolImplementation(await collateralToken.getAddress(), zeroAmount, user1)
+          dloopMock.testSupplyToPoolImplementation(await collateralToken.getAddress(), zeroAmount, user1),
         ).to.not.be.revertedWith("TokenBalanceNotDecreasedAfterSupply");
       });
 

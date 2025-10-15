@@ -68,7 +68,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         0, // aTokenDecimals
         "ATOKEN_IMPL", // aTokenName
         "ATOKEN_IMPL", // aTokenSymbol
-        "0x00" // params
+        "0x00", // params
       );
       const initATokenReceipt = await initATokenResponse.wait();
       console.log(`  - TxHash  : ${initATokenReceipt?.hash}`);
@@ -116,7 +116,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         0, // debtTokenDecimals
         "STABLE_DEBT_TOKEN_IMPL", // debtTokenName
         "STABLE_DEBT_TOKEN_IMPL", // debtTokenSymbol
-        "0x00" // params
+        "0x00", // params
       );
       console.log(`  - StableDebtToken initialized`);
     } catch (error: any) {
@@ -161,7 +161,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         0, // debtTokenDecimals
         "VARIABLE_DEBT_TOKEN_IMPL", // debtTokenName
         "VARIABLE_DEBT_TOKEN_IMPL", // debtTokenSymbol
-        "0x00" // params
+        "0x00", // params
       );
       console.log(`  - VariableDebtToken initialized`);
     } catch (error: any) {

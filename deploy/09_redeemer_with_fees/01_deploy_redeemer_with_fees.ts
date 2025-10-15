@@ -74,7 +74,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const dUSDCollateralVaultContract = await hre.ethers.getContractAt(
     "CollateralVault",
     dUSDCollateralVaultDeployment.address,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
   const dUSDWithdrawerRole = await dUSDCollateralVaultContract.COLLATERAL_WITHDRAWER_ROLE();
   const dUSDHasRole = await dUSDCollateralVaultContract.hasRole(dUSDWithdrawerRole, dUSDRedeemerWithFeesDeployment.address);
@@ -87,7 +87,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.log("Role granted for dUSD RedeemerWithFees.");
     } else {
       manualActions.push(
-        `CollateralVault (${dUSDCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dUSDRedeemerWithFeesDeployment.address})`
+        `CollateralVault (${dUSDCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dUSDRedeemerWithFeesDeployment.address})`,
       );
     }
   }
@@ -112,7 +112,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const dETHCollateralVaultContract = await hre.ethers.getContractAt(
     "CollateralVault",
     dETHCollateralVaultDeployment.address,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
   const dSWithdrawerRole = await dETHCollateralVaultContract.COLLATERAL_WITHDRAWER_ROLE();
   const dSHasRole = await dETHCollateralVaultContract.hasRole(dSWithdrawerRole, dETHRedeemerWithFeesDeployment.address);
@@ -124,7 +124,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.log("Role granted for dS RedeemerWithFees.");
     } else {
       manualActions.push(
-        `CollateralVault (${dETHCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dETHRedeemerWithFeesDeployment.address})`
+        `CollateralVault (${dETHCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dETHRedeemerWithFeesDeployment.address})`,
       );
     }
   }
@@ -153,7 +153,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     } catch (error) {
       console.error(`  ❌ Failed to transfer dUSD RedeemerWithFees admin role: ${error}`);
       manualActions.push(
-        `dUSD_RedeemerWithFees (${dUSDRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`
+        `dUSD_RedeemerWithFees (${dUSDRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
       );
       manualActions.push(`dUSD_RedeemerWithFees (${dUSDRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`);
     }
@@ -174,7 +174,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     } catch (error) {
       console.error(`  ❌ Failed to transfer dS RedeemerWithFees admin role: ${error}`);
       manualActions.push(
-        `dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`
+        `dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
       );
       manualActions.push(`dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`);
     }

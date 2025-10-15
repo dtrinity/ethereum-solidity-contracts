@@ -95,7 +95,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
       const rescueAmount = ethers.parseEther("50");
 
       await expect(
-        dloopMock.connect(nonOwner).rescueToken(await otherToken.getAddress(), receiver.address, rescueAmount)
+        dloopMock.connect(nonOwner).rescueToken(await otherToken.getAddress(), receiver.address, rescueAmount),
       ).to.be.revertedWithCustomError(dloopMock, "OwnableUnauthorizedAccount");
     });
 
@@ -104,7 +104,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
       await collateralToken.mint(await dloopMock.getAddress(), ethers.parseEther("100"));
 
       await expect(
-        dloopMock.connect(owner).rescueToken(await collateralToken.getAddress(), receiver.address, ethers.parseEther("50"))
+        dloopMock.connect(owner).rescueToken(await collateralToken.getAddress(), receiver.address, ethers.parseEther("50")),
       ).to.be.revertedWith("Cannot rescue restricted token");
     });
 
@@ -113,7 +113,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
       await debtToken.mint(await dloopMock.getAddress(), ethers.parseEther("100"));
 
       await expect(
-        dloopMock.connect(owner).rescueToken(await debtToken.getAddress(), receiver.address, ethers.parseEther("50"))
+        dloopMock.connect(owner).rescueToken(await debtToken.getAddress(), receiver.address, ethers.parseEther("50")),
       ).to.be.revertedWith("Cannot rescue restricted token");
     });
   });
@@ -184,7 +184,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
       anotherToken = await TestMintableERC20.deploy(
         "Another Token",
         "ANOTHER",
-        6 // Different decimals
+        6, // Different decimals
       );
       await anotherToken.waitForDeployment();
 
@@ -221,7 +221,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
       const excessiveAmount = ethers.parseEther("150"); // More than the 100 in vault
 
       await expect(
-        dloopMock.connect(owner).rescueToken(await otherToken.getAddress(), receiver.address, excessiveAmount)
+        dloopMock.connect(owner).rescueToken(await otherToken.getAddress(), receiver.address, excessiveAmount),
       ).to.be.revertedWithCustomError(otherToken, "ERC20InsufficientBalance");
     });
 
@@ -232,14 +232,14 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
 
       // Should revert when trying to rescue from empty balance
       await expect(
-        dloopMock.connect(owner).rescueToken(await emptyToken.getAddress(), receiver.address, ethers.parseEther("1"))
+        dloopMock.connect(owner).rescueToken(await emptyToken.getAddress(), receiver.address, ethers.parseEther("1")),
       ).to.be.revertedWithCustomError(emptyToken, "ERC20InsufficientBalance");
     });
 
     it("Should handle rescue to zero address", async function () {
       // This should revert due to ERC20 transfer to zero address
       await expect(
-        dloopMock.connect(owner).rescueToken(await otherToken.getAddress(), ethers.ZeroAddress, ethers.parseEther("50"))
+        dloopMock.connect(owner).rescueToken(await otherToken.getAddress(), ethers.ZeroAddress, ethers.parseEther("50")),
       ).to.be.revertedWithCustomError(otherToken, "ERC20InvalidReceiver");
     });
 
@@ -299,7 +299,7 @@ describe.skip("DLoopCoreMock Rescue Token Tests", function () {
 
       // Verify only non-restricted tokens can be rescued
       await expect(dloopMock.connect(owner).rescueToken(await collateralToken.getAddress(), receiver.address, 1)).to.be.revertedWith(
-        "Cannot rescue restricted token"
+        "Cannot rescue restricted token",
       );
 
       // Verify non-restricted tokens can be rescued

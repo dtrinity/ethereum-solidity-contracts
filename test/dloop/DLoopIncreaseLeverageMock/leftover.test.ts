@@ -7,7 +7,7 @@ import { deployDLoopIncreaseLeverageMockFixture } from "./fixtures";
 describe("DLoopIncreaseLeverageMock - Leftover Debt Token Handling", function () {
   it("transfers leftover debt tokens to user and emits event", async function () {
     const { dloopMock, increaseLeverageMock, collateralToken, debtToken, user1 } = await loadFixture(
-      deployDLoopIncreaseLeverageMockFixture
+      deployDLoopIncreaseLeverageMockFixture,
     );
 
     // Simplified test - just pre-fund periphery with some tokens and run the function
@@ -16,11 +16,11 @@ describe("DLoopIncreaseLeverageMock - Leftover Debt Token Handling", function ()
     // Pre-fund periphery with some collateral and debt tokens
     await collateralToken.mint(
       await increaseLeverageMock.getAddress(),
-      ethers.parseEther("10") // Some collateral
+      ethers.parseEther("10"), // Some collateral
     );
     await debtToken.mint(
       await increaseLeverageMock.getAddress(),
-      ethers.parseEther("5") // Some debt tokens that should become leftovers
+      ethers.parseEther("5"), // Some debt tokens that should become leftovers
     );
 
     // Check if we can increase leverage at all

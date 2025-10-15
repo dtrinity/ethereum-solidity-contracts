@@ -26,7 +26,7 @@ export async function ensureDefaultAdminExistsAndRevokeFrom(
   adminToKeep: string,
   adminToRevoke: string,
   callerSigner: Signer,
-  manualActions?: string[]
+  manualActions?: string[],
 ): Promise<void> {
   const contract = await hre.ethers.getContractAt(contractName, contractAddress, callerSigner);
   const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;

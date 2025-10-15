@@ -24,8 +24,8 @@ import { ITransferStrategyBase } from "./ITransferStrategyBase.sol";
  * @author Aave
  **/
 interface IPullRewardsTransferStrategy is ITransferStrategyBase {
-  /**
-   * @return Address of the rewards vault
-   */
-  function getRewardsVault() external view returns (address);
+    /**
+     * @return Address of the rewards vault
+     */
+    function getRewardsVault() external view returns (address);
 }

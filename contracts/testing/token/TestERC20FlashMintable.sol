@@ -22,26 +22,26 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20FlashMint.sol";
 import "contracts/common/IMintableERC20.sol";
 
 contract TestERC20FlashMintable is ERC20, ERC20FlashMint, IMintableERC20 {
-  uint8 private immutable _decimals;
+    uint8 private immutable _decimals;
 
-  constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
-    _decimals = decimals_;
-  }
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
+        _decimals = decimals_;
+    }
 
-  function mint(address to, uint256 amount) external override {
-    _mint(to, amount);
-  }
+    function mint(address to, uint256 amount) external override {
+        _mint(to, amount);
+    }
 
-  function burn(uint256 amount) external override {
-    _burn(_msgSender(), amount);
-  }
+    function burn(uint256 amount) external override {
+        _burn(_msgSender(), amount);
+    }
 
-  function burnFrom(address account, uint256 amount) external override {
-    _spendAllowance(account, _msgSender(), amount);
-    _burn(account, amount);
-  }
+    function burnFrom(address account, uint256 amount) external override {
+        _spendAllowance(account, _msgSender(), amount);
+        _burn(account, amount);
+    }
 
-  function decimals() public view virtual override(ERC20, IMintableERC20) returns (uint8) {
-    return _decimals;
-  }
+    function decimals() public view virtual override(ERC20, IMintableERC20) returns (uint8) {
+        return _decimals;
+    }
 }

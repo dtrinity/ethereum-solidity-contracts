@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const addressesProviderContract = await hre.ethers.getContractAt(
     "PoolAddressesProvider",
     addressesProviderDeployedResult.address,
-    signer
+    signer,
   );
 
   // 1. Set price oracle

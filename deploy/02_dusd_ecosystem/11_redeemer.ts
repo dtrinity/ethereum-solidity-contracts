@@ -23,7 +23,7 @@ function createGrantRoleTransaction(
   contractAddress: string,
   role: string,
   grantee: string,
-  contractInterface: any
+  contractInterface: any,
 ): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
@@ -45,7 +45,7 @@ function createRevokeRoleTransaction(
   contractAddress: string,
   role: string,
   account: string,
-  contractInterface: any
+  contractInterface: any,
 ): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
@@ -71,7 +71,7 @@ async function migrateRedeemerRolesIdempotent(
   redeemerAddress: string,
   deployerAddress: string,
   governanceMultisig: string,
-  executor: GovernanceExecutor
+  executor: GovernanceExecutor,
 ): Promise<boolean> {
   const redeemer = await hre.ethers.getContractAt("RedeemerV2", redeemerAddress);
   const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
@@ -93,7 +93,7 @@ async function migrateRedeemerRolesIdempotent(
           await redeemer.grantRole(role.hash, governanceMultisig);
           console.log(`    ➕ Granted ${role.name} to ${governanceMultisig}`);
         },
-        () => createGrantRoleTransaction(redeemerAddress, role.hash, governanceMultisig, redeemer.interface)
+        () => createGrantRoleTransaction(redeemerAddress, role.hash, governanceMultisig, redeemer.interface),
       );
       if (!complete) allComplete = false;
     } else {
@@ -114,7 +114,7 @@ async function migrateRedeemerRolesIdempotent(
           await redeemer.revokeRole(role.hash, deployerAddress);
           console.log(`    ➖ Revoked ${role.name} from deployer`);
         },
-        () => createRevokeRoleTransaction(redeemerAddress, role.hash, deployerAddress, redeemer.interface)
+        () => createRevokeRoleTransaction(redeemerAddress, role.hash, deployerAddress, redeemer.interface),
       );
       if (!complete) allComplete = false;
     }
@@ -138,7 +138,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const collateralVault = await hre.ethers.getContractAt(
     "CollateralHolderVault",
     collateralVaultAddress,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
   const { tokenAddresses, dStables } = await getConfig(hre);
 
@@ -165,7 +165,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await collateralVault.grantRole(COLLATERAL_WITHDRAWER_ROLE, deployment.address);
         console.log(`    ➕ Granted COLLATERAL_WITHDRAWER_ROLE to ${deployment.address}`);
       },
-      () => createGrantRoleTransaction(collateralVaultAddress, COLLATERAL_WITHDRAWER_ROLE, deployment.address, collateralVault.interface)
+      () => createGrantRoleTransaction(collateralVaultAddress, COLLATERAL_WITHDRAWER_ROLE, deployment.address, collateralVault.interface),
     );
 
     if (!complete && executor.useSafe) {

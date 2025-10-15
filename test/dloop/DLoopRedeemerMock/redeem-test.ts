@@ -123,7 +123,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         // Get initial balances
@@ -137,7 +137,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           user.address,
           minOutputCollateral,
           "0x", // No specific swap data needed for SimpleDEXMock
-          dloopMock
+          dloopMock,
         );
 
         // Verify user share balance decreased by redeemed shares
@@ -162,7 +162,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
             const currentLeverage = await dloopMock.getCurrentLeverageBps();
             expect(currentLeverage).to.be.closeTo(
               BigInt(testCase.expectedLeverageBps),
-              BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+              BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
             );
           }
         }
@@ -173,12 +173,12 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
 
         expect(actualCollateralReceived).to.be.closeTo(
           expectedUnleveragedCollateral,
-          (expectedUnleveragedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (expectedUnleveragedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         expect(actualCollateralReceived).to.be.closeTo(
           testCase.expectedReceivedCollateral,
-          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
       });
     }
@@ -242,7 +242,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         // Perform leveraged redeem
@@ -254,7 +254,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         expect(actualCollateralReceived).to.be.gte(minOutputCollateral);
         expect(actualCollateralReceived).to.be.closeTo(
           testCase.expectedReceivedCollateral,
-          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Flash lender balance should return to approximately the same level
@@ -262,7 +262,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const finalFlashLenderBalance = await flashLender.balanceOf(await flashLender.getAddress());
         expect(finalFlashLenderBalance).to.be.closeTo(
           initialFlashLenderBalance,
-          ethers.parseEther("1") // Allow 1 ETH tolerance for fees
+          ethers.parseEther("1"), // Allow 1 ETH tolerance for fees
         );
       });
     }
@@ -299,7 +299,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           0.1 * ONE_PERCENT_BPS, // 0.1% slippage tolerance
-          dloopMock
+          dloopMock,
         );
 
         // Should succeed even with zero fees
@@ -391,7 +391,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         const userCollateralBalanceBeforeRedeem = await collateralToken.balanceOf(user1.address);
@@ -418,7 +418,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         expect(userCollateralReceived).to.be.gte(minOutputCollateral);
         expect(userCollateralReceived).to.be.closeTo(
           testCase.expectedReceivedCollateral,
-          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Reset to default values for next test
@@ -487,7 +487,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           await expect(dLoopRedeemerMock.connect(user1).redeem(actualRedeemShares, user1.address, 0, "0x", dloopMock)).to.be.reverted;
         } else {
           await expect(
-            dLoopRedeemerMock.connect(user1).redeem(actualRedeemShares, user1.address, 0, "0x", dloopMock)
+            dLoopRedeemerMock.connect(user1).redeem(actualRedeemShares, user1.address, 0, "0x", dloopMock),
           ).to.be.revertedWithCustomError(errorContract, testCase.expectedError);
         }
       });
@@ -520,7 +520,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const impossibleMinimum = expectedCollateral * BigInt(testCase.unreasonableMultiplier);
 
         await expect(
-          dLoopRedeemerMock.connect(user1).redeem(sharesToRedeem, user1.address, impossibleMinimum, "0x", dloopMock)
+          dLoopRedeemerMock.connect(user1).redeem(sharesToRedeem, user1.address, impossibleMinimum, "0x", dloopMock),
         ).to.be.revertedWithCustomError(dLoopRedeemerMock, testCase.expectedError);
       }
     });
@@ -570,7 +570,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
             sharesToRedeem,
             testCase.slippagePercentage,
-            dloopMock
+            dloopMock,
           );
 
           const initialCollateralBalance = await collateralToken.balanceOf(user.address);
@@ -595,7 +595,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           const currentLeverage = await dloopMock.getCurrentLeverageBps();
           expect(currentLeverage).to.be.closeTo(
             BigInt(TARGET_LEVERAGE_BPS),
-            BigInt(ONE_PERCENT_BPS * 2) // 2% tolerance for multiple operations
+            BigInt(ONE_PERCENT_BPS * 2), // 2% tolerance for multiple operations
           );
         }
       });
@@ -618,7 +618,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           debtToken,
           dLoopDepositorMock,
           user1,
-          testCase.depositAmount
+          testCase.depositAmount,
         );
 
         let remainingShares = initialShares;
@@ -628,7 +628,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
           const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
             sharesToRedeem,
             testCase.slippagePercentage,
-            dloopMock
+            dloopMock,
           );
 
           const initialCollateralBalance = await collateralToken.balanceOf(user1.address);
@@ -674,7 +674,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const firstMinOutput = await dLoopRedeemerMock.calculateMinOutputCollateral(
           firstRedeemShares,
           0.1 * ONE_PERCENT_BPS, // 0.1% slippage tolerance
-          dloopMock
+          dloopMock,
         );
 
         await dLoopRedeemerMock.connect(user1).redeem(firstRedeemShares, user1.address, firstMinOutput, "0x", dloopMock);
@@ -687,7 +687,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const secondMinOutput = await dLoopRedeemerMock.calculateMinOutputCollateral(
           secondRedeemShares,
           0.1 * ONE_PERCENT_BPS, // 0.1% slippage tolerance
-          dloopMock
+          dloopMock,
         );
 
         await dLoopRedeemerMock.connect(user1).redeem(secondRedeemShares, user1.address, secondMinOutput, "0x", dloopMock);
@@ -737,7 +737,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         const tx = await dLoopRedeemerMock.connect(user1).redeem(sharesToRedeem, user1.address, minOutputCollateral, "0x", dloopMock);
@@ -749,7 +749,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         expect(actualCollateralReceived).to.be.gte(minOutputCollateral);
         expect(actualCollateralReceived).to.be.closeTo(
           testCase.expectedReceivedCollateral,
-          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedCollateral * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
       });
     }
@@ -771,7 +771,7 @@ describe("DLoopRedeemerMock Redeem Tests", function () {
         const minOutputCollateral = await dLoopRedeemerMock.calculateMinOutputCollateral(
           sharesToRedeem,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         const before = await collateralToken.balanceOf(user1.address);

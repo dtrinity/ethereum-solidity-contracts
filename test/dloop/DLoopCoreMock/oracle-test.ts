@@ -52,15 +52,15 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
       // Set prices for tokens with different decimals
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(), // 18 decimals
-        price18Decimals
+        price18Decimals,
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(), // 18 decimals
-        price18Decimals
+        price18Decimals,
       );
       await dloopMock.setMockPrice(
         await otherToken.getAddress(), // 6 decimals
-        price6Decimals
+        price6Decimals,
       );
 
       // Verify prices are stored correctly
@@ -100,7 +100,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
     it("Should revert when getting price for asset without price set", async function () {
       await expect(dloopMock.getAssetPriceFromOracle(await otherToken.getAddress())).to.be.revertedWithCustomError(
         dloopMock,
-        "MockPriceNotSet"
+        "MockPriceNotSet",
       );
     });
 
@@ -118,7 +118,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
 
       await expect(dloopMock.getAssetPriceFromOracle(await collateralToken.getAddress())).to.be.revertedWithCustomError(
         dloopMock,
-        "MockPriceNotSet"
+        "MockPriceNotSet",
       );
     });
   });
@@ -224,11 +224,11 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
       // Set up prices for integration tests
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseEther("1200") // $1200
+        ethers.parseEther("1200"), // $1200
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(),
-        ethers.parseEther("0.8") // $0.8
+        ethers.parseEther("0.8"), // $0.8
       );
     });
 
@@ -273,7 +273,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
       // Change collateral price (decrease)
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseEther("1000") // Decreased from $1200 to $1000
+        ethers.parseEther("1000"), // Decreased from $1200 to $1000
       );
 
       // Leverage should increase due to lower collateral value
@@ -289,7 +289,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
         await collateralToken.getAddress(),
         await debtToken.getAddress(),
         depositAmount,
-        300_0000 // 300% target leverage
+        300_0000, // 300% target leverage
       );
 
       // Verify the calculation uses oracle prices
@@ -312,7 +312,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
     it("Should revert when accessing price for unset asset", async function () {
       await expect(dloopMock.getAssetPriceFromOracle(await otherToken.getAddress())).to.be.revertedWithCustomError(
         dloopMock,
-        "MockPriceNotSet"
+        "MockPriceNotSet",
       );
     });
 
@@ -321,7 +321,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
 
       await expect(dloopMock.getAssetPriceFromOracle(await collateralToken.getAddress())).to.be.revertedWithCustomError(
         dloopMock,
-        "MockPriceNotSet"
+        "MockPriceNotSet",
       );
     });
 
@@ -330,7 +330,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
       await dloopMock.setMockPrice(await collateralToken.getAddress(), 0);
 
       await expect(
-        dloopMock.convertFromBaseCurrencyToToken(ethers.parseEther("100"), await collateralToken.getAddress())
+        dloopMock.convertFromBaseCurrencyToToken(ethers.parseEther("100"), await collateralToken.getAddress()),
       ).to.be.revertedWithCustomError(dloopMock, "MockPriceNotSet");
     });
 
@@ -347,7 +347,7 @@ describe.skip("DLoopCoreMock Oracle Tests", function () {
       // Update prices to maintain balanced state
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseEther("1200") // Keep same price to avoid imbalance
+        ethers.parseEther("1200"), // Keep same price to avoid imbalance
       );
 
       // Operations should work with updated prices

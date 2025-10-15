@@ -64,11 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // Get the deployed mock oracle contract
-    const mockOracleContract = await hre.ethers.getContractAt(
-      "MockRedstoneChainlinkOracleAlwaysAlive",
-      mockOracle.address,
-      signer
-    );
+    const mockOracleContract = await hre.ethers.getContractAt("MockRedstoneChainlinkOracleAlwaysAlive", mockOracle.address, signer);
 
     // Convert price to int256 format expected by Redstone (8 decimals)
     const priceInWei = hre.ethers.parseUnits(feed.price, 8); // Redstone uses 8 decimals
@@ -78,9 +74,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     mockOracleNameToAddress[feed.name] = mockOracle.address;
     mockOracleNameToProvider[feed.name] = "REDSTONE"; // All are Redstone now
 
-    console.log(
-      `Deployed ${mockOracleName} at ${mockOracle.address} with price ${feed.price}`
-    );
+    console.log(`Deployed ${mockOracleName} at ${mockOracle.address} with price ${feed.price}`);
   }
 
   // Store the mock oracle deployments in JSON files for the config to use

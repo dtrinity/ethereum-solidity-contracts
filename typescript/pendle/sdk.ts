@@ -156,7 +156,7 @@ export async function estimateSwapExactIn(
   receiver: string,
   market: string,
   chainId: number,
-  slippage: number = 0.01
+  slippage: number = 0.01,
 ): Promise<AxiosResponse<MethodReturnType<RedeemPyData>>> {
   return await callSDK<RedeemPyData>(`v2/sdk/${chainId}/markets/${market}/swap`, {
     receiver: receiver,

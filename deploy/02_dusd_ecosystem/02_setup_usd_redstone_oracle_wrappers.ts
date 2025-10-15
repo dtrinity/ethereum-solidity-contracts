@@ -21,7 +21,7 @@ async function performOracleSanityChecks(
   wrapper: any,
   feeds: Record<string, any>,
   baseCurrencyUnit: bigint,
-  wrapperName: string
+  wrapperName: string,
 ): Promise<void> {
   for (const [assetAddress] of Object.entries(feeds)) {
     try {
@@ -30,10 +30,10 @@ async function performOracleSanityChecks(
 
       if (normalizedPrice < 0.01 || normalizedPrice > 1e6) {
         console.error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [0.9, 2]`
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [0.9, 2]`,
         );
         throw new Error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [0.9, 2]`
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [0.9, 2]`,
         );
       } else {
         console.log(`Sanity check passed for asset ${assetAddress} in ${wrapperName}: Normalized price is ${normalizedPrice}`);
@@ -96,7 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   const redstoneWrapperWithThresholding = await hre.ethers.getContractAt(
     "RedstoneChainlinkWrapperWithThresholding",
-    redstoneWrapperWithThresholdingDeployment.address
+    redstoneWrapperWithThresholdingDeployment.address,
   );
 
   // Set feeds and thresholds for feeds with thresholding
@@ -131,7 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   const redstoneCompositeWrapper = await hre.ethers.getContractAt(
     "RedstoneChainlinkCompositeWrapperWithThresholding",
-    redstoneCompositeWrapperDeployment.address
+    redstoneCompositeWrapperDeployment.address,
   );
 
   // Add composite feeds
@@ -162,7 +162,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       feedConfig.lowerThresholdInBase1,
       feedConfig.fixedPriceInBase1,
       feedConfig.lowerThresholdInBase2,
-      feedConfig.fixedPriceInBase2
+      feedConfig.fixedPriceInBase2,
     );
     console.log(`Set composite Redstone feed for asset ${assetAddress}`);
   }

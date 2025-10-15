@@ -117,13 +117,19 @@ This keeps editor integrations, ad-hoc `yarn prettier` runs, and the guardrails 
 
 #### Install the shared git hooks
 
-Enable the pre-commit and pre-push hooks so formatting and guardrails run locally before code reaches CI:
+Enable the shared git hooks so formatting and guardrails run locally before code reaches CI:
 
 ```bash
-node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks
+node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks                       # installs the pre-push hook
+node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks --include-pre-commit-hook # opt into the pre-commit hook
 ```
 
-The pre-commit hook writes staged files with Prettier and runs ESLint; the pre-push hook executes the shared guardrail suite with `--fail-fast`. Because the hook scripts live inside `.shared`, future updates to the tooling automatically flow into every repository.
+The pre-push hook executes the shared guardrail suite with `--fail-fast`, runs Prettier/ESLint/Solhint, and now
+executes `npx hardhat test` by default. Set `SHARED_HARDHAT_PRE_PUSH_PRETTIER=0` or `SHARED_HARDHAT_PRE_PUSH_TEST=0`
+to opt out temporarily, or override the test command with `SHARED_HARDHAT_PRE_PUSH_TEST_CMD="yarn test --runInBand"`.
+Because the hook scripts live inside `.shared`, future updates to the tooling automatically flow into every
+repository. Add `--include-pre-commit-hook` whenever you want the additional staged-file linting and compile guard that
+the shared pre-commit hook provides.
 
 > Prefer automation over manual flags? When you have access to this repository
 > locally, `bash path/to/scripts/subtree/add.sh --help` prints the non-
@@ -345,7 +351,8 @@ npm run validate:matrix -- --config configs/validation.networks.json --report re
 
 Once minimal integration is verified, consider:
 
-- [ ] Set up git hooks: `node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks`
+- [ ] Set up git hooks: `node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks` (add `--include-pre-commit-hook`
+      to opt into the shared pre-commit checks)
   - Pre-commit executes guardrails and staged-file heuristics; keep Prettier on unless you opt out (`SHARED_HARDHAT_PRE_COMMIT_PRETTIER=0`) and compile contracts by default (`SHARED_HARDHAT_PRE_COMMIT_COMPILE=0` to skip).
   - Pre-push reruns guardrails, optionally runs tests (`SHARED_HARDHAT_PRE_PUSH_TEST=1`) or a custom command (`SHARED_HARDHAT_PRE_PUSH_TEST_CMD="yarn test --runInBand"`), enables Prettier with `SHARED_HARDHAT_PRE_PUSH_PRETTIER=1`, and requires Slither only on `main`/`master`/`develop`.
 - [ ] Add shared CI workflow: `cp .shared/ci/shared-guardrails.yml .github/workflows/` (runs lint + sanity checks, Hardhat compile, and tests with a summary step)

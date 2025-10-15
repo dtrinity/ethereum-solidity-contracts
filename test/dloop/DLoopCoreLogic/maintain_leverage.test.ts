@@ -121,7 +121,7 @@ describe("DLoopCoreLogic - Maintain Leverage", () => {
           Number(tc.cDec),
           tc.cPrice,
           Number(tc.dDec),
-          tc.dPrice
+          tc.dPrice,
         );
 
         if ((tc as any).expectedZero) {
@@ -252,7 +252,7 @@ describe("DLoopCoreLogic - Maintain Leverage", () => {
           Number(tc.cDec),
           tc.cPrice,
           Number(tc.dDec),
-          tc.dPrice
+          tc.dPrice,
         );
 
         const L = tc.L0 === 0n ? tc.T : tc.L0;

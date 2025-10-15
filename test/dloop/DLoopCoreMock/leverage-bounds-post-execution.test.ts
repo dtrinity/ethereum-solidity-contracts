@@ -46,7 +46,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create imbalance by changing prices to make leverage below target
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1.1", 8) // 10% increase
+          ethers.parseUnits("1.1", 8), // 10% increase
         );
 
         // Verify leverage is now below target
@@ -75,7 +75,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create very small imbalance
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1.01", 8) // 1% increase
+          ethers.parseUnits("1.01", 8), // 1% increase
         );
 
         const leverageBeforeIncrease = await dloopMock.getCurrentLeverageBps();
@@ -109,7 +109,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
 
         await expect(dloopMock.connect(user).increaseLeverage(excessiveAmount, 0)).to.be.revertedWithCustomError(
           dloopMock,
-          "IncreaseLeverageOutOfRange"
+          "IncreaseLeverageOutOfRange",
         );
       });
 
@@ -132,7 +132,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
 
         await expect(dloopMock.connect(user).increaseLeverage(amount, 0)).to.be.revertedWithCustomError(
           dloopMock,
-          "IncreaseLeverageOutOfRange"
+          "IncreaseLeverageOutOfRange",
         );
       });
 
@@ -177,7 +177,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create imbalance to make leverage above target
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("0.9", 8) // 10% decrease
+          ethers.parseUnits("0.9", 8), // 10% decrease
         );
 
         const leverageBeforeDecrease = await dloopMock.getCurrentLeverageBps();
@@ -205,7 +205,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create small imbalance
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("0.99", 8) // 1% decrease
+          ethers.parseUnits("0.99", 8), // 1% decrease
         );
 
         const leverageBeforeDecrease = await dloopMock.getCurrentLeverageBps();
@@ -240,7 +240,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
 
         await expect(dloopMock.connect(user).decreaseLeverage(excessiveAmount, 0)).to.be.revertedWithCustomError(
           dloopMock,
-          "DecreaseLeverageOutOfRange"
+          "DecreaseLeverageOutOfRange",
         );
       });
 
@@ -289,7 +289,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create a scenario where leverage is below target, so increaseLeverage should work
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1.05", 8) // 5% increase to reduce leverage slightly
+          ethers.parseUnits("1.05", 8), // 5% increase to reduce leverage slightly
         );
 
         const leverageBeforeIncrease = await dloopMock.getCurrentLeverageBps();
@@ -363,7 +363,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create very small imbalance
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1.001", 8) // 0.1% increase
+          ethers.parseUnits("1.001", 8), // 0.1% increase
         );
 
         // Use very small amount
@@ -383,11 +383,11 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Test with extreme price ratios
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1000", 8) // Very high price
+          ethers.parseUnits("1000", 8), // Very high price
         );
         await dloopMock.setMockPrice(
           await debtToken.getAddress(),
-          ethers.parseUnits("1", 8) // Normal price
+          ethers.parseUnits("1", 8), // Normal price
         );
 
         await dloopMock.connect(user).deposit(depositAmount, user.address);
@@ -395,7 +395,7 @@ describe("DLoopCoreMock Post-Execution Leverage Validation Tests (Hats Finance I
         // Create imbalance
         await dloopMock.setMockPrice(
           await collateralToken.getAddress(),
-          ethers.parseUnits("1100", 8) // 10% increase
+          ethers.parseUnits("1100", 8), // 10% increase
         );
 
         const leverageAmount = ethers.parseEther("1");

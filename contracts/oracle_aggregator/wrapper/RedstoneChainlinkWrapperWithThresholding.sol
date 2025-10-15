@@ -22,36 +22,42 @@ import "./ThresholdingUtils.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RedstoneChainlinkWrapperWithThresholding is RedstoneChainlinkWrapper, ThresholdingUtils {
-  /* State */
-  mapping(address => ThresholdConfig) public assetThresholds;
+    /* State */
+    mapping(address => ThresholdConfig) public assetThresholds;
 
-  /* Events */
-  event ThresholdConfigSet(address indexed asset, uint256 lowerThresholdInBase, uint256 fixedPriceInBase);
-  event ThresholdConfigRemoved(address indexed asset);
+    /* Events */
+    event ThresholdConfigSet(address indexed asset, uint256 lowerThresholdInBase, uint256 fixedPriceInBase);
+    event ThresholdConfigRemoved(address indexed asset);
 
-  constructor(address baseCurrency, uint256 _baseCurrencyUnit) RedstoneChainlinkWrapper(baseCurrency, _baseCurrencyUnit) {}
+    constructor(
+        address baseCurrency,
+        uint256 _baseCurrencyUnit
+    ) RedstoneChainlinkWrapper(baseCurrency, _baseCurrencyUnit) {}
 
-  function getPriceInfo(address asset) public view override returns (uint256 price, bool isAlive) {
-    (price, isAlive) = super.getPriceInfo(asset);
-    if (isAlive) {
-      ThresholdConfig memory config = assetThresholds[asset];
-      if (config.lowerThresholdInBase > 0) {
-        price = _applyThreshold(price, config);
-      }
+    function getPriceInfo(address asset) public view override returns (uint256 price, bool isAlive) {
+        (price, isAlive) = super.getPriceInfo(asset);
+        if (isAlive) {
+            ThresholdConfig memory config = assetThresholds[asset];
+            if (config.lowerThresholdInBase > 0) {
+                price = _applyThreshold(price, config);
+            }
+        }
     }
-  }
 
-  function setThresholdConfig(
-    address asset,
-    uint256 lowerThresholdInBase,
-    uint256 fixedPriceInBase
-  ) external onlyRole(ORACLE_MANAGER_ROLE) {
-    assetThresholds[asset] = ThresholdConfig({ lowerThresholdInBase: lowerThresholdInBase, fixedPriceInBase: fixedPriceInBase });
-    emit ThresholdConfigSet(asset, lowerThresholdInBase, fixedPriceInBase);
-  }
+    function setThresholdConfig(
+        address asset,
+        uint256 lowerThresholdInBase,
+        uint256 fixedPriceInBase
+    ) external onlyRole(ORACLE_MANAGER_ROLE) {
+        assetThresholds[asset] = ThresholdConfig({
+            lowerThresholdInBase: lowerThresholdInBase,
+            fixedPriceInBase: fixedPriceInBase
+        });
+        emit ThresholdConfigSet(asset, lowerThresholdInBase, fixedPriceInBase);
+    }
 
-  function removeThresholdConfig(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
-    delete assetThresholds[asset];
-    emit ThresholdConfigRemoved(asset);
-  }
+    function removeThresholdConfig(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
+        delete assetThresholds[asset];
+        emit ThresholdConfigRemoved(asset);
+    }
 }

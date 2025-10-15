@@ -3,6 +3,13 @@ import { AbiItem } from "web3-utils";
 import * as fs from "fs";
 import * as path from "path";
 
+// Type guards for ABI fragments
+function isAbiFunctionFragment(
+  item: AbiItem,
+): item is AbiItem & { type: "function"; name: string; stateMutability?: string; inputs?: any[]; outputs?: any[] } {
+  return item.type === "function";
+}
+
 export interface RoleInfo {
   name: string;
   hash: string;
@@ -45,10 +52,11 @@ export interface ScanOptions {
 
 export async function scanRolesAndOwnership(options: ScanOptions): Promise<ScanResult> {
   const { hre, deployer, governanceMultisig, logger } = options;
-  const { ethers, network } = hre;
+  const ethers = (hre as any).ethers;
+  const network = (hre as any).network;
   const log = logger || (() => {});
 
-  const deploymentsPath = options.deploymentsPath || path.join(hre.config.paths.deployments, network.name);
+  const deploymentsPath = options.deploymentsPath || path.join((hre as any).config.paths.deployments, network.name);
   if (!fs.existsSync(deploymentsPath)) {
     throw new Error(`Deployments directory not found for network ${network.name}: ${deploymentsPath}`);
   }
@@ -72,7 +80,7 @@ export async function scanRolesAndOwnership(options: ScanOptions): Promise<ScanR
       // Detect AccessControl
       const hasRoleFn = abi.find(
         (item) =>
-          item.type === "function" &&
+          isAbiFunctionFragment(item) &&
           item.name === "hasRole" &&
           item.inputs?.length === 2 &&
           item.inputs[0].type === "bytes32" &&
@@ -89,7 +97,7 @@ export async function scanRolesAndOwnership(options: ScanOptions): Promise<ScanR
         // Collect role constants as view functions returning bytes32
         for (const item of abi) {
           if (
-            item.type === "function" &&
+            isAbiFunctionFragment(item) &&
             item.stateMutability === "view" &&
             ((item.name?.endsWith("_ROLE") as boolean) || item.name === "DEFAULT_ADMIN_ROLE") &&
             (item.inputs?.length ?? 0) === 0 &&
@@ -153,7 +161,7 @@ export async function scanRolesAndOwnership(options: ScanOptions): Promise<ScanR
       // Detect Ownable (owner() view returns address)
       const ownerFn = abi.find(
         (item) =>
-          item.type === "function" &&
+          isAbiFunctionFragment(item) &&
           item.name === "owner" &&
           (item.inputs?.length ?? 0) === 0 &&
           item.outputs?.length === 1 &&

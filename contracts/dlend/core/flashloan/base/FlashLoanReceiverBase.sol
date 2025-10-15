@@ -27,11 +27,11 @@ import { IPool } from "../../interfaces/IPool.sol";
  * @notice Base contract to develop a flashloan-receiver contract.
  */
 abstract contract FlashLoanReceiverBase is IFlashLoanReceiver {
-  IPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
-  IPool public immutable override POOL;
+    IPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
+    IPool public immutable override POOL;
 
-  constructor(IPoolAddressesProvider provider) {
-    ADDRESSES_PROVIDER = provider;
-    POOL = IPool(provider.getPool());
-  }
+    constructor(IPoolAddressesProvider provider) {
+        ADDRESSES_PROVIDER = provider;
+        POOL = IPool(provider.getPool());
+    }
 }

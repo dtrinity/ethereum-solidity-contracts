@@ -160,7 +160,7 @@ export async function deployDLoopMockLogic(): Promise<DLoopMockFixture> {
     MAX_SUBSIDY_BPS,
     0, // minDeviationBps
     0, // withdrawalFeeBps
-    mockPool
+    mockPool,
   );
 
   return {
@@ -272,7 +272,7 @@ export async function createPosition(
   debtToken: TestERC20FlashMintable,
   dLoopDepositorMock: DLoopDepositorMock,
   user: HardhatEthersSigner,
-  depositAmount: bigint
+  depositAmount: bigint,
 ): Promise<{ shares: bigint; leveragedAmount: bigint }> {
   // Get initial balances
   const initialShareBalance = await dloopMock.balanceOf(user.address);

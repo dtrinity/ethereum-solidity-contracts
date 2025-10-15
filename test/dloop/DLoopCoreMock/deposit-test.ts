@@ -85,7 +85,7 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
 
         // Verify collateral supplied to pool
         expect(await dloopMock.getMockCollateral(await dloopMock.getAddress(), await collateralToken.getAddress())).to.equal(
-          testCase.assets
+          testCase.assets,
         );
 
         // Verify leverage is correct
@@ -257,13 +257,13 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
             // First deposit should establish target leverage
             expect(leverageAfterDeposit).to.be.closeTo(
               BigInt(TARGET_LEVERAGE_BPS),
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           } else {
             // Subsequent deposits should preserve the leverage from before the deposit
             expect(leverageAfterDeposit).to.be.closeTo(
               leverageBeforeDeposit,
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           }
         } else {
@@ -360,13 +360,13 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
             // First deposit should establish target leverage
             expect(leverageAfterDeposit).to.be.closeTo(
               BigInt(TARGET_LEVERAGE_BPS),
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           } else {
             // Subsequent deposits should preserve the leverage from before the deposit
             expect(leverageAfterDeposit).to.be.closeTo(
               leverageBeforeDeposit,
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           }
         }
@@ -495,14 +495,14 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
             // First deposit should establish target leverage
             expect(leverageAfterDeposit).to.be.closeTo(
               BigInt(TARGET_LEVERAGE_BPS),
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
             isFirstDepositOverall = false;
           } else {
             // Subsequent deposits should preserve the leverage from before the deposit
             expect(leverageAfterDeposit).to.be.closeTo(
               leverageBeforeDeposit,
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           }
         }
@@ -634,14 +634,14 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
             // First deposit should establish target leverage
             expect(leverageAfterDeposit).to.be.closeTo(
               BigInt(TARGET_LEVERAGE_BPS),
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
             isFirstDepositOverall = false;
           } else {
             // Subsequent deposits should preserve the leverage from before the deposit
             expect(leverageAfterDeposit).to.be.closeTo(
               leverageBeforeDeposit,
-              BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+              BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
             );
           }
         }
@@ -798,7 +798,7 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
         if (testCase.secondDeposit.shouldFail) {
           // Verify deposit fails due to imbalance (maxDeposit returns 0)
           await expect(
-            dloopMock.connect(targetUser).deposit(testCase.secondDeposit.amount, targetUser.address)
+            dloopMock.connect(targetUser).deposit(testCase.secondDeposit.amount, targetUser.address),
           ).to.be.revertedWithCustomError(dloopMock, "ERC4626ExceededMaxDeposit");
         } else {
           // Get leverage before second deposit (after rebalancing)
@@ -814,7 +814,7 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
           // Check leverage preservation: after deposit, leverage should remain the same as before deposit
           expect(leverageAfterSecondDeposit).to.be.closeTo(
             leverageBeforeSecondDeposit,
-            BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+            BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
           );
 
           // Verify the vault is still balanced after second deposit
@@ -836,11 +836,11 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
       // Moderate price change that makes leverage high but doesn't break constraints
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseEther("0.9") // Collateral drops 10%
+        ethers.parseEther("0.9"), // Collateral drops 10%
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(),
-        ethers.parseEther("1.1") // Debt increases 10%
+        ethers.parseEther("1.1"), // Debt increases 10%
       );
 
       // Verify extreme imbalance
@@ -852,7 +852,7 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
       // Any deposit attempt should fail due to imbalance (maxDeposit returns 0)
       await expect(dloopMock.connect(targetUser).deposit(ethers.parseEther("1"), targetUser.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxDeposit"
+        "ERC4626ExceededMaxDeposit",
       );
     });
 
@@ -903,7 +903,7 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
       const leverageAfterFirstDeposit = await dloopMock.getCurrentLeverageBps();
       expect(leverageAfterFirstDeposit).to.be.closeTo(
         BigInt(TARGET_LEVERAGE_BPS),
-        BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+        BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
       );
 
       // Get leverage before User 2's deposit
@@ -918,17 +918,17 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
       // Check leverage preservation: after deposit, leverage should remain the same as before deposit
       expect(leverageAfterSecondDeposit).to.be.closeTo(
         leverageBeforeSecondDeposit,
-        BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+        BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
       );
 
       // Change prices to create imbalance
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseEther("0.8") // Collateral drops moderately
+        ethers.parseEther("0.8"), // Collateral drops moderately
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(),
-        ethers.parseEther("1.2") // Debt increases moderately
+        ethers.parseEther("1.2"), // Debt increases moderately
       );
 
       // Verify imbalance affects all users
@@ -939,12 +939,12 @@ describe.skip("DLoopCoreMock Deposit Tests", function () {
       // Both users should be unable to deposit due to imbalance (maxDeposit returns 0)
       await expect(dloopMock.connect(user1).deposit(ethers.parseEther("10"), user1.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxDeposit"
+        "ERC4626ExceededMaxDeposit",
       );
 
       await expect(dloopMock.connect(user2).deposit(ethers.parseEther("10"), user2.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxDeposit"
+        "ERC4626ExceededMaxDeposit",
       );
     });
   });

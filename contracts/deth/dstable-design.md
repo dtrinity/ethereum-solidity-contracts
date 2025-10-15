@@ -15,6 +15,7 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
 ## Core Components
 
 ### 1. ERC20StablecoinUpgradeable
+
 - **Purpose**: The core stablecoin token implementation
 - **Key Features**:
   - Upgradeable ERC20 token with 18 decimals across all chains
@@ -24,6 +25,7 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
   - Minter role restricted to authorized contracts (Issuer)
 
 ### 2. Issuer
+
 - **Purpose**: Manages the minting of dETH tokens
 - **Key Functions**:
   - `issue()`: Public function allowing users to mint dETH by depositing collateral
@@ -32,6 +34,7 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
 - **Trust Model**: Relies on oracle prices for collateral valuation
 
 ### 3. Redeemer / RedeemerWithFees
+
 - **Purpose**: Manages the redemption of dETH tokens for collateral
 - **Key Differences**:
   - `Redeemer`: Protocol-only redemptions without fees
@@ -42,6 +45,7 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
   - Fees collected go to a designated fee receiver address
 
 ### 4. CollateralVault (Abstract)
+
 - **Purpose**: Base contract for managing collateral assets
 - **Key Features**:
   - Whitelist of supported collateral types
@@ -50,12 +54,14 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
   - Minimum of one collateral must always be supported
 
 ### 5. CollateralHolderVault
+
 - **Purpose**: Simple implementation of CollateralVault for holding protocol collateral
 - **Additional Features**:
   - `exchangeCollateral()`: Swap between collateral types at oracle prices
   - Used by AMO system to manage collateral
 
 ### 6. AmoManager
+
 - **Purpose**: Coordinates Algorithmic Market Operations across multiple AMO vaults
 - **Key Mechanisms**:
   - Tracks dStable allocations to each AMO vault
@@ -64,6 +70,7 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
   - Maintains invariant: AMO operations don't change circulating supply
 
 ### 7. AmoVault (Abstract)
+
 - **Purpose**: Base contract for AMO vault implementations
 - **Key Features**:
   - Holds both dStable and collateral
@@ -73,16 +80,20 @@ dETH is a decentralized ETH-pegged stablecoin system built on the Ethereum block
 ## Economic Model
 
 ### Collateralization Ratio
+
 ```
 Collateralization Ratio = Total Collateral Value / Circulating dStable Supply
 ```
 
 Where:
+
 - **Total Collateral Value** = Value in CollateralVault + Value in AMO vaults
 - **Circulating dStable Supply** = Total Supply - AMO Supply
 
 ### AMO Supply Accounting
+
 The system carefully tracks "AMO supply" separately from circulating supply:
+
 1. When dStable is allocated to an AMO vault, it's considered non-circulating
 2. When collateral is withdrawn from AMO vaults, the equivalent dStable becomes circulating
 3. This ensures AMO operations are capital-neutral from a backing perspective
@@ -105,6 +116,7 @@ The system carefully tracks "AMO supply" separately from circulating supply:
 ## Security Properties
 
 ### Access Control Hierarchy
+
 ```
 DEFAULT_ADMIN_ROLE (Super Admin)
 ├── PAUSER_ROLE (Emergency pause)
@@ -160,33 +172,40 @@ DEFAULT_ADMIN_ROLE (Super Admin)
 ## Risk Scenarios
 
 ### 1. Oracle Failure/Manipulation
+
 - **Impact**: Incorrect collateral valuation leading to bad debt
 - **Mitigation**: Multi-oracle support planned, admin can update oracle
 
 ### 2. Collateral Crash
+
 - **Impact**: System becomes undercollateralized
 - **Mitigation**: Overcollateralization buffer, multi-collateral support
 
 ### 3. Bank Run
+
 - **Impact**: Rapid redemptions depleting specific collateral
 - **Mitigation**: Redemption fees up to 5%, multi-collateral pools
 
 ### 4. AMO Losses
+
 - **Impact**: Reduced protocol profits or actual losses
 - **Mitigation**: Conservative AMO strategies, profit buffer before withdrawal
 
 ### 5. Contract Bugs
+
 - **Impact**: Loss of funds or system dysfunction
 - **Mitigation**: Upgradeability for critical contracts, thorough testing
 
 ## Upgrade Paths
 
 The system uses OpenZeppelin's upgradeable pattern for the stablecoin contract, allowing:
+
 - Bug fixes without token migration
 - Feature additions while preserving state
 - Emergency patches if vulnerabilities found
 
 Other contracts are non-upgradeable but can be replaced by admin action:
+
 - Issuer/Redeemer can be swapped by updating roles
 - CollateralVault can be migrated with collateral transfer
 - Oracle can be updated while maintaining base currency unit

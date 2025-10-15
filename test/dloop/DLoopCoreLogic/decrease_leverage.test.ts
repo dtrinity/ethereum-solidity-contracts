@@ -256,7 +256,7 @@ describe("DLoopCoreLogic - Decrease Leverage", () => {
           Number(tc.cDec),
           tc.cPrice,
           Number(tc.dDec),
-          tc.dPrice
+          tc.dPrice,
         );
         expect(tokenOut).to.equal(expectedTokenOut);
       });
@@ -265,7 +265,7 @@ describe("DLoopCoreLogic - Decrease Leverage", () => {
     it("error: zero input debt", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralWithdrawTokenAmountToDecreaseLeveragePublic(0, 0, 18, pow10(18n), 18, pow10(18n))
+        harness.getCollateralWithdrawTokenAmountToDecreaseLeveragePublic(0, 0, 18, pow10(18n), 18, pow10(18n)),
       ).to.be.revertedWithCustomError(harness, "InputDebtTokenAmountIsZero");
     });
   });

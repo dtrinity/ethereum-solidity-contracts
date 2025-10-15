@@ -59,7 +59,7 @@ describe("DLoopCoreDLend.getTotalCollateralAndDebtOfUserInBase — per-asset onl
       await debt.getAddress(),
       ethers.ZeroAddress,
       await stableDebtToken.getAddress(),
-      await varDebtToken.getAddress()
+      await varDebtToken.getAddress(),
     );
     await pool.setReserveData(await other.getAddress(), await aOther.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress);
     await pool.setReserveData(await usdt.getAddress(), await aUSDT.getAddress(), ethers.ZeroAddress, await varUSDTDebt.getAddress());
@@ -103,7 +103,7 @@ describe("DLoopCoreDLend.getTotalCollateralAndDebtOfUserInBase — per-asset onl
       await admin.getAddress(), // treasury
       300_000, // maxTreasuryFeeBps
       100_000, // initialTreasuryFeeBps
-      ethers.parseEther("1")
+      ethers.parseEther("1"),
     );
   });
 
@@ -266,7 +266,7 @@ describe("DLoopCoreDLend.getTotalCollateralAndDebtOfUserInBase — per-asset onl
         await admin.getAddress(),
         300_000,
         100_000,
-        ethers.parseEther("1")
+        ethers.parseEther("1"),
       );
 
       // 3.5 units of 8-decimal token = 350,000,000 units
