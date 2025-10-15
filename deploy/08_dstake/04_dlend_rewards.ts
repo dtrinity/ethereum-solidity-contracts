@@ -122,7 +122,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     if (dLendAssetToClaimForAddress === ethers.ZeroAddress) {
       console.warn(
-        `Skipping dLend rewards for ${instanceKey}: could not find aToken for underlying stable ${underlyingStablecoinAddress}.`
+        `Skipping dLend rewards for ${instanceKey}: could not find aToken for underlying stable ${underlyingStablecoinAddress}.`,
       );
       continue;
     }
@@ -166,7 +166,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await tx.wait();
       } else {
         manualActions.push(
-          `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`
+          `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`,
         );
       }
     }
@@ -192,7 +192,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (!deployerIsAdmin) {
         manualActions.push(
-          `RewardManager (${deployment.address}) role setup: grantRole(DEFAULT_ADMIN_ROLE, ${targetAdmin}); grantRole(REWARDS_MANAGER_ROLE, ${targetRewardsManager}); optionally revoke roles from ${deployer}`
+          `RewardManager (${deployment.address}) role setup: grantRole(DEFAULT_ADMIN_ROLE, ${targetAdmin}); grantRole(REWARDS_MANAGER_ROLE, ${targetRewardsManager}); optionally revoke roles from ${deployer}`,
         );
       } else {
         // Grant and revoke roles as necessary

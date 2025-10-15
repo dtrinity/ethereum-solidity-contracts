@@ -31,7 +31,7 @@ describe.skip("DLoopCoreMock Calculation Tests", function () {
     _otherToken = await TestMintableERC20Factory.deploy(
       "Other Token",
       "OTHER",
-      8 // Different decimals for testing
+      8, // Different decimals for testing
     );
   });
 

@@ -27,44 +27,47 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @dev Implementation of DLoopDecreaseLeverageBase with SimpleDEXMock swap functionality
  */
 contract DLoopDecreaseLeverageMock is DLoopDecreaseLeverageBase {
-  using SafeERC20 for ERC20;
+    using SafeERC20 for ERC20;
 
-  SimpleDEXMock public immutable simpleDEXMock;
+    SimpleDEXMock public immutable simpleDEXMock;
 
-  /**
-   * @dev Constructor for the DLoopDecreaseLeverageMock contract
-   * @param _flashLender Address of the flash loan provider
-   * @param _simpleDEXMock Address of the SimpleDEXMock contract
-   */
-  constructor(IERC3156FlashLender _flashLender, SimpleDEXMock _simpleDEXMock) DLoopDecreaseLeverageBase(_flashLender) {
-    simpleDEXMock = _simpleDEXMock;
-  }
-
-  /**
-   * @dev Swaps an exact amount of output tokens for the minimum input tokens using SimpleDEXMock
-   */
-  function _swapExactOutputImplementation(
-    ERC20 inputToken,
-    ERC20 outputToken,
-    uint256 amountOut,
-    uint256 amountInMaximum,
-    address receiver,
-    uint256, // deadline
-    bytes memory // collateralToDebtTokenSwapData
-  ) internal override returns (uint256) {
-    // Approve the SimpleDEXMock to spend the input token
-    inputToken.forceApprove(address(simpleDEXMock), amountInMaximum);
-
-    if (amountOut == 0) {
-      return 0;
+    /**
+     * @dev Constructor for the DLoopDecreaseLeverageMock contract
+     * @param _flashLender Address of the flash loan provider
+     * @param _simpleDEXMock Address of the SimpleDEXMock contract
+     */
+    constructor(
+        IERC3156FlashLender _flashLender,
+        SimpleDEXMock _simpleDEXMock
+    ) DLoopDecreaseLeverageBase(_flashLender) {
+        simpleDEXMock = _simpleDEXMock;
     }
-    return
-      simpleDEXMock.executeSwapExactOutput(
-        IERC20Metadata(address(inputToken)),
-        IERC20Metadata(address(outputToken)),
-        amountOut,
-        amountInMaximum, // maxInputAmount
-        receiver
-      );
-  }
+
+    /**
+     * @dev Swaps an exact amount of output tokens for the minimum input tokens using SimpleDEXMock
+     */
+    function _swapExactOutputImplementation(
+        ERC20 inputToken,
+        ERC20 outputToken,
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        address receiver,
+        uint256, // deadline
+        bytes memory // collateralToDebtTokenSwapData
+    ) internal override returns (uint256) {
+        // Approve the SimpleDEXMock to spend the input token
+        inputToken.forceApprove(address(simpleDEXMock), amountInMaximum);
+
+        if (amountOut == 0) {
+            return 0;
+        }
+        return
+            simpleDEXMock.executeSwapExactOutput(
+                IERC20Metadata(address(inputToken)),
+                IERC20Metadata(address(outputToken)),
+                amountOut,
+                amountInMaximum, // maxInputAmount
+                receiver
+            );
+    }
 }

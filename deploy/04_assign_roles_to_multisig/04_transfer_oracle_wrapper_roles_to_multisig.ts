@@ -57,7 +57,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -68,7 +68,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   if (ORACLE_MANAGER_ROLE) {
@@ -80,7 +80,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -91,7 +91,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   if (ORACLE_MANAGER_ROLE) {
@@ -103,7 +103,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -114,7 +114,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   // Transfer roles for USD Redstone oracle wrappers
@@ -127,7 +127,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -138,7 +138,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   if (ORACLE_MANAGER_ROLE) {
@@ -150,7 +150,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -161,7 +161,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   if (ORACLE_MANAGER_ROLE) {
@@ -173,7 +173,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       "ORACLE_MANAGER_ROLE",
       deployerSigner,
       governanceMultisig,
-      deployer
+      deployer,
     );
   }
   await transferRole(
@@ -184,7 +184,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "DEFAULT_ADMIN_ROLE",
     deployerSigner,
     governanceMultisig,
-    deployer
+    deployer,
   );
 
   console.log(`\n🔑 ${__filename.split("/").slice(-2).join("/")}: ✅ Done\n`);
@@ -213,7 +213,7 @@ async function transferRole(
   roleName: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -229,7 +229,7 @@ async function transferRole(
   const contract = await ethers.getContractAt(
     "@openzeppelin/contracts/access/AccessControl.sol:AccessControl",
     contractDeployment.address,
-    deployerSigner
+    deployerSigner,
   );
 
   // Grant role to multisig

@@ -78,7 +78,7 @@ async function transferTokenRoles(
   tokenId: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -147,7 +147,7 @@ async function transferIssuerRoles(
   issuerContractId: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -229,7 +229,7 @@ async function transferRedeemerRoles(
   redeemerContractId: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -298,7 +298,7 @@ async function transferAmoManagerRoles(
   amoManagerId: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -380,7 +380,7 @@ async function transferCollateralVaultRoles(
   collateralVaultContractId: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 
@@ -393,7 +393,7 @@ async function transferCollateralVaultRoles(
       const collateralVaultContract = await ethers.getContractAt(
         "CollateralHolderVault",
         collateralVaultDeployment.address,
-        deployerSigner
+        deployerSigner,
       );
 
       // Get roles

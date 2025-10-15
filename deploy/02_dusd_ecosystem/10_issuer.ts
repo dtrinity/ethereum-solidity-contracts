@@ -25,7 +25,7 @@ function createGrantRoleTransaction(
   contractAddress: string,
   role: string,
   grantee: string,
-  contractInterface: any
+  contractInterface: any,
 ): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
@@ -47,7 +47,7 @@ function createRevokeRoleTransaction(
   contractAddress: string,
   role: string,
   account: string,
-  contractInterface: any
+  contractInterface: any,
 ): { to: string; value: string; data: string } {
   return {
     to: contractAddress,
@@ -71,7 +71,7 @@ async function ensureMinterRole(
   hre: HardhatRuntimeEnvironment,
   stableAddress: string,
   grantee: string,
-  executor: GovernanceExecutor
+  executor: GovernanceExecutor,
 ): Promise<boolean> {
   const stable = await hre.ethers.getContractAt("ERC20StablecoinUpgradeable", stableAddress);
   const MINTER_ROLE = await stable.MINTER_ROLE();
@@ -82,7 +82,7 @@ async function ensureMinterRole(
         await stable.grantRole(MINTER_ROLE, grantee);
         console.log(`    ➕ Granted MINTER_ROLE to ${grantee}`);
       },
-      () => createGrantRoleTransaction(stableAddress, MINTER_ROLE, grantee, stable.interface)
+      () => createGrantRoleTransaction(stableAddress, MINTER_ROLE, grantee, stable.interface),
     );
     return complete;
   }
@@ -109,7 +109,7 @@ async function ensureDefaultAdminExistsAndRevokeFromWithSafe(
   governanceMultisig: string,
   deployerAddress: string,
   deployerSigner: any,
-  executor: GovernanceExecutor
+  executor: GovernanceExecutor,
 ): Promise<boolean> {
   try {
     const manualActions: string[] = [];
@@ -120,7 +120,7 @@ async function ensureDefaultAdminExistsAndRevokeFromWithSafe(
       governanceMultisig,
       deployerAddress,
       deployerSigner,
-      manualActions
+      manualActions,
     );
 
     if (manualActions.length > 0) {
@@ -153,7 +153,7 @@ async function migrateIssuerRolesIdempotent(
   issuerAddress: string,
   deployerSigner: any,
   governanceMultisig: string,
-  executor: GovernanceExecutor
+  executor: GovernanceExecutor,
 ): Promise<boolean> {
   const issuer = await hre.ethers.getContractAt("IssuerV2", issuerAddress, deployerSigner);
 
@@ -178,7 +178,7 @@ async function migrateIssuerRolesIdempotent(
           await issuer.grantRole(role.hash, governanceMultisig);
           console.log(`    ➕ Granted ${role.name} to governance ${governanceMultisig}`);
         },
-        () => createGrantRoleTransaction(issuerAddress, role.hash, governanceMultisig, issuer.interface)
+        () => createGrantRoleTransaction(issuerAddress, role.hash, governanceMultisig, issuer.interface),
       );
       if (!complete) noPendingActions = false;
     } else {
@@ -201,7 +201,7 @@ async function migrateIssuerRolesIdempotent(
           await issuer.revokeRole(role.hash, deployerAddress);
           console.log(`    ➖ Revoked ${roleName} from deployer`);
         },
-        () => createRevokeRoleTransaction(issuerAddress, role.hash, deployerAddress, issuer.interface)
+        () => createRevokeRoleTransaction(issuerAddress, role.hash, deployerAddress, issuer.interface),
       );
       if (!complete) noPendingActions = false;
     }
@@ -214,7 +214,7 @@ async function migrateIssuerRolesIdempotent(
     governanceMultisig,
     deployerAddress,
     deployerSigner,
-    executor
+    executor,
   );
   if (!adminMigrationComplete) noPendingActions = false;
   return noPendingActions;
@@ -256,7 +256,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     issuerAddress,
     deployerSigner,
     config.walletAddresses.governanceMultisig,
-    executor
+    executor,
   );
   if (!rolesComplete) allOperationsComplete = false;
 

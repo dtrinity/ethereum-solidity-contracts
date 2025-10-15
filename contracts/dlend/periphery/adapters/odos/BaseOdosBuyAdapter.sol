@@ -31,51 +31,58 @@ import { OdosSwapUtils } from "contracts/odos/OdosSwapUtils.sol";
  * @notice Implements the logic for buying tokens on Odos
  */
 abstract contract BaseOdosBuyAdapter is BaseOdosSwapAdapter {
-  using PercentageMath for uint256;
-  using SafeERC20 for IERC20Detailed;
+    using PercentageMath for uint256;
+    using SafeERC20 for IERC20Detailed;
 
-  /// @notice The address of the Odos Router
-  IOdosRouterV2 public immutable swapRouter;
+    /// @notice The address of the Odos Router
+    IOdosRouterV2 public immutable swapRouter;
 
-  uint16 private constant SLIPPAGE_BUFFER_BPS = 1; // 1/100 of a basis point
+    uint16 private constant SLIPPAGE_BUFFER_BPS = 1; // 1/100 of a basis point
 
-  /* Custom Errors */
-  error EstimatedAmountExceedsMaximum(uint256 estimated, uint256 maximum);
+    /* Custom Errors */
+    error EstimatedAmountExceedsMaximum(uint256 estimated, uint256 maximum);
 
-  constructor(
-    IPoolAddressesProvider addressesProvider,
-    address pool,
-    IOdosRouterV2 _swapRouter
-  ) BaseOdosSwapAdapter(addressesProvider, pool) {
-    swapRouter = _swapRouter;
-  }
-
-  /**
-   * @dev Buys a specific amount of output token by spending a maximum amount of input token
-   * @param assetToSwapFrom The asset to swap from
-   * @param assetToSwapTo The asset to swap to
-   * @param maxAmountToSwap The maximum amount to swap
-   * @param amountToReceive The amount to receive
-   * @param swapData The encoded swap data for Odos
-   * @return amountSold The amount of input token sold
-   */
-  function _buyOnOdos(
-    IERC20Detailed assetToSwapFrom,
-    IERC20Detailed assetToSwapTo,
-    uint256 maxAmountToSwap,
-    uint256 amountToReceive,
-    bytes memory swapData
-  ) internal returns (uint256 amountSold) {
-    uint256 balanceBeforeAssetFrom = assetToSwapFrom.balanceOf(address(this));
-    if (balanceBeforeAssetFrom < maxAmountToSwap) {
-      revert InsufficientBalanceBeforeSwap(balanceBeforeAssetFrom, maxAmountToSwap);
+    constructor(
+        IPoolAddressesProvider addressesProvider,
+        address pool,
+        IOdosRouterV2 _swapRouter
+    ) BaseOdosSwapAdapter(addressesProvider, pool) {
+        swapRouter = _swapRouter;
     }
 
-    address tokenIn = address(assetToSwapFrom);
-    address tokenOut = address(assetToSwapTo);
+    /**
+     * @dev Buys a specific amount of output token by spending a maximum amount of input token
+     * @param assetToSwapFrom The asset to swap from
+     * @param assetToSwapTo The asset to swap to
+     * @param maxAmountToSwap The maximum amount to swap
+     * @param amountToReceive The amount to receive
+     * @param swapData The encoded swap data for Odos
+     * @return amountSold The amount of input token sold
+     */
+    function _buyOnOdos(
+        IERC20Detailed assetToSwapFrom,
+        IERC20Detailed assetToSwapTo,
+        uint256 maxAmountToSwap,
+        uint256 amountToReceive,
+        bytes memory swapData
+    ) internal returns (uint256 amountSold) {
+        uint256 balanceBeforeAssetFrom = assetToSwapFrom.balanceOf(address(this));
+        if (balanceBeforeAssetFrom < maxAmountToSwap) {
+            revert InsufficientBalanceBeforeSwap(balanceBeforeAssetFrom, maxAmountToSwap);
+        }
 
-    amountSold = OdosSwapUtils.executeSwapOperation(swapRouter, tokenIn, tokenOut, maxAmountToSwap, amountToReceive, swapData);
+        address tokenIn = address(assetToSwapFrom);
+        address tokenOut = address(assetToSwapTo);
 
-    emit Bought(tokenIn, tokenOut, amountSold, amountToReceive);
-  }
+        amountSold = OdosSwapUtils.executeSwapOperation(
+            swapRouter,
+            tokenIn,
+            tokenOut,
+            maxAmountToSwap,
+            amountToReceive,
+            swapData
+        );
+
+        emit Bought(tokenIn, tokenOut, amountSold, amountToReceive);
+    }
 }

@@ -452,12 +452,12 @@ describe.skip("DLoopCoreMock Rebalance Tests", function () {
         if (testCase.operation === "increase") {
           await expect(dloopMock.connect(user).increaseLeverage(testCase.amount, 0)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         } else {
           await expect(dloopMock.connect(user).decreaseLeverage(testCase.amount, 0)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         }
       });
@@ -515,12 +515,12 @@ describe.skip("DLoopCoreMock Rebalance Tests", function () {
         if (testCase.operation === "increase") {
           await expect(dloopMock.connect(user).increaseLeverage(testCase.amount, testCase.minReceived)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         } else {
           await expect(dloopMock.connect(user).decreaseLeverage(testCase.amount, testCase.minReceived)).to.be.revertedWithCustomError(
             dloopMock,
-            testCase.expectedError
+            testCase.expectedError,
           );
         }
       });
@@ -653,7 +653,7 @@ describe.skip("DLoopCoreMock Rebalance Tests", function () {
           const finalLeverage = await dloopMock.getCurrentLeverageBps();
           expect(finalLeverage).to.be.closeTo(
             scenario.expectedEndScenarioLeverage,
-            ONE_BPS_UNIT // only 1 bps unit of error is allowed
+            ONE_BPS_UNIT, // only 1 bps unit of error is allowed
           );
         }
 
@@ -811,7 +811,7 @@ describe.skip("DLoopCoreMock Rebalance Tests", function () {
           // Attempt deposit should fail
           await expect(dloopMock.connect(user).deposit(ethers.parseEther("10"), user.address)).to.be.revertedWithCustomError(
             dloopMock,
-            "ERC4626ExceededMaxDeposit"
+            "ERC4626ExceededMaxDeposit",
           );
         });
       } else {
@@ -1105,7 +1105,7 @@ describe.skip("DLoopCoreMock Rebalance Tests", function () {
           const leverageAfter = await dloopMock.getCurrentLeverageBps();
           expect(leverageAfter).to.be.closeTo(
             TARGET_LEVERAGE_BPS,
-            TARGET_LEVERAGE_BPS * 0.01 // 1% tolerance
+            TARGET_LEVERAGE_BPS * 0.01, // 1% tolerance
           );
         });
       }

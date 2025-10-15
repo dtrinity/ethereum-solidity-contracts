@@ -20,32 +20,32 @@ pragma solidity ^0.8.20;
 import "../interface/IOracleWrapper.sol";
 
 contract HardPegOracleWrapper is IOracleWrapper {
-  uint256 public immutable pricePeg;
-  address public immutable BASE_CURRENCY;
+    uint256 public immutable pricePeg;
+    address public immutable BASE_CURRENCY;
 
-  uint256 public BASE_CURRENCY_UNIT;
+    uint256 public BASE_CURRENCY_UNIT;
 
-  constructor(address _baseCurrency, uint256 _baseCurrencyUnit, uint256 _pricePeg) {
-    BASE_CURRENCY = _baseCurrency;
-    BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    pricePeg = _pricePeg;
-  }
+    constructor(address _baseCurrency, uint256 _baseCurrencyUnit, uint256 _pricePeg) {
+        BASE_CURRENCY = _baseCurrency;
+        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
+        pricePeg = _pricePeg;
+    }
 
-  /**
-   * @dev Get the price info of an asset
-   */
-  function getPriceInfo(
-    address // asset
-  ) external view returns (uint256 price, bool isAlive) {
-    return (pricePeg, true);
-  }
+    /**
+     * @dev Get the price info of an asset
+     */
+    function getPriceInfo(
+        address // asset
+    ) external view returns (uint256 price, bool isAlive) {
+        return (pricePeg, true);
+    }
 
-  /**
-   * @dev Get the price of an asset
-   */
-  function getAssetPrice(
-    address // asset
-  ) external view override returns (uint256) {
-    return pricePeg;
-  }
+    /**
+     * @dev Get the price of an asset
+     */
+    function getAssetPrice(
+        address // asset
+    ) external view override returns (uint256) {
+        return pricePeg;
+    }
 }

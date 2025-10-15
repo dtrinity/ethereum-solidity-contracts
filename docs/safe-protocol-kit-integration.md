@@ -31,13 +31,13 @@ npm install ethers
 ### Environment Setup
 
 ```typescript
-import Safe from '@safe-global/protocol-kit'
-import SafeApiKit from '@safe-global/api-kit'
-import { ethers } from 'ethers'
+import Safe from "@safe-global/protocol-kit";
+import SafeApiKit from "@safe-global/api-kit";
+import { ethers } from "ethers";
 
 // Initialize provider and signer
-const provider = new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY')
-const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider)
+const provider = new ethers.JsonRpcProvider("https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY");
+const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 ```
 
 ## Core Concepts
@@ -54,25 +54,25 @@ The Protocol Kit supports two primary initialization modes:
 const protocolKit = await Safe.init({
   provider,
   signer,
-  safeAddress: '0x1234...' // Your Safe address
-})
+  safeAddress: "0x1234...", // Your Safe address
+});
 
 // Initialize predicted Safe
 const predictedSafe = {
   safeAccountConfig: {
-    owners: ['0xOwner1...', '0xOwner2...', '0xOwner3...'],
-    threshold: 2
+    owners: ["0xOwner1...", "0xOwner2...", "0xOwner3..."],
+    threshold: 2,
   },
   safeDeploymentConfig: {
-    saltNonce: 'unique-salt-value'
-  }
-}
+    saltNonce: "unique-salt-value",
+  },
+};
 
 const protocolKit = await Safe.init({
   provider,
   signer,
-  predictedSafe
-})
+  predictedSafe,
+});
 ```
 
 ### Transaction Workflow
@@ -95,6 +95,7 @@ Safe.init(config: SafeConfig): Promise<Safe>
 ```
 
 **Parameters:**
+
 - `provider`: EIP-1193 provider or RPC URL
 - `signer`: Wallet instance or private key
 - `safeAddress`: Address of existing Safe (optional)
@@ -107,14 +108,15 @@ createTransaction(transactions: SafeTransactionDataPartial[]): Promise<SafeTrans
 ```
 
 **Example:**
+
 ```typescript
 const safeTransactionData = {
-  to: '0xContractAddress...',
-  value: '0',
-  data: contractInterface.encodeFunctionData('functionName', [param1, param2])
-}
+  to: "0xContractAddress...",
+  value: "0",
+  data: contractInterface.encodeFunctionData("functionName", [param1, param2]),
+};
 
-const safeTransaction = await protocolKit.createTransaction(safeTransactionData)
+const safeTransaction = await protocolKit.createTransaction(safeTransactionData);
 ```
 
 #### Transaction Signing
@@ -124,8 +126,9 @@ signTransaction(safeTransaction: SafeTransaction): Promise<SafeTransaction>
 ```
 
 **Example:**
+
 ```typescript
-const signedTransaction = await protocolKit.signTransaction(safeTransaction)
+const signedTransaction = await protocolKit.signTransaction(safeTransaction);
 ```
 
 #### Transaction Execution
@@ -135,9 +138,10 @@ executeTransaction(safeTransaction: SafeTransaction): Promise<TransactionRespons
 ```
 
 **Example:**
+
 ```typescript
-const executionResult = await protocolKit.executeTransaction(signedTransaction)
-await executionResult.wait()
+const executionResult = await protocolKit.executeTransaction(signedTransaction);
+await executionResult.wait();
 ```
 
 ### Safe Transaction Service Integration
@@ -145,13 +149,13 @@ await executionResult.wait()
 For multi-signer workflows, integrate with Safe Transaction Service:
 
 ```typescript
-import SafeApiKit from '@safe-global/api-kit'
+import SafeApiKit from "@safe-global/api-kit";
 
 // Initialize API Kit
 const apiKit = new SafeApiKit({
   chainId: 1, // Ethereum Mainnet chain ID
-  txServiceUrl: 'https://safe-transaction-mainnet.safe.global'
-})
+  txServiceUrl: "https://safe-transaction-mainnet.safe.global",
+});
 
 // Propose transaction for other signers
 await apiKit.proposeTransaction({
@@ -159,11 +163,11 @@ await apiKit.proposeTransaction({
   safeTransactionData: safeTransaction.data,
   safeTxHash: await protocolKit.getTransactionHash(safeTransaction),
   senderAddress: await signer.getAddress(),
-  senderSignature: signedTransaction.signatures.get(await signer.getAddress())
-})
+  senderSignature: signedTransaction.signatures.get(await signer.getAddress()),
+});
 
 // Confirm transaction (other signers)
-await apiKit.confirmTransaction(safeTxHash, signature)
+await apiKit.confirmTransaction(safeTxHash, signature);
 ```
 
 ## Practical Examples
@@ -171,47 +175,42 @@ await apiKit.confirmTransaction(safeTxHash, signature)
 ### Example 1: Contract Upgrade Transaction
 
 ```typescript
-import Safe from '@safe-global/protocol-kit'
-import { ethers } from 'ethers'
+import Safe from "@safe-global/protocol-kit";
+import { ethers } from "ethers";
 
 async function upgradeContract() {
   // Initialize Safe
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
+    provider: new ethers.JsonRpcProvider("https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
-    safeAddress: process.env.SAFE_ADDRESS
-  })
+    safeAddress: process.env.SAFE_ADDRESS,
+  });
 
   // Contract interface for upgrade
-  const proxyAdminABI = [
-    'function upgrade(address proxy, address implementation) external'
-  ]
-  
-  const proxyAdminInterface = new ethers.Interface(proxyAdminABI)
-  
+  const proxyAdminABI = ["function upgrade(address proxy, address implementation) external"];
+
+  const proxyAdminInterface = new ethers.Interface(proxyAdminABI);
+
   // Create upgrade transaction
   const upgradeTransaction = {
     to: process.env.PROXY_ADMIN_ADDRESS,
-    value: '0',
-    data: proxyAdminInterface.encodeFunctionData('upgrade', [
-      process.env.PROXY_ADDRESS,
-      process.env.NEW_IMPLEMENTATION_ADDRESS
-    ])
-  }
+    value: "0",
+    data: proxyAdminInterface.encodeFunctionData("upgrade", [process.env.PROXY_ADDRESS, process.env.NEW_IMPLEMENTATION_ADDRESS]),
+  };
 
   // Create and sign Safe transaction
-  const safeTransaction = await protocolKit.createTransaction(upgradeTransaction)
-  const signedTransaction = await protocolKit.signTransaction(safeTransaction)
+  const safeTransaction = await protocolKit.createTransaction(upgradeTransaction);
+  const signedTransaction = await protocolKit.signTransaction(safeTransaction);
 
   // Check if enough signatures collected
-  const threshold = await protocolKit.getThreshold()
+  const threshold = await protocolKit.getThreshold();
   if (signedTransaction.signatures.size >= threshold) {
     // Execute immediately if threshold met
-    const result = await protocolKit.executeTransaction(signedTransaction)
-    console.log('Transaction executed:', result.hash)
+    const result = await protocolKit.executeTransaction(signedTransaction);
+    console.log("Transaction executed:", result.hash);
   } else {
     // Propose for additional signatures
-    console.log('Transaction proposed, awaiting additional signatures')
+    console.log("Transaction proposed, awaiting additional signatures");
     // Use Safe Transaction Service to collect more signatures
   }
 }
@@ -222,37 +221,37 @@ async function upgradeContract() {
 ```typescript
 async function executeMultipleOperations() {
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
+    provider: new ethers.JsonRpcProvider("https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
-    safeAddress: process.env.SAFE_ADDRESS
-  })
+    safeAddress: process.env.SAFE_ADDRESS,
+  });
 
   // Multiple transaction data
   const transactions = [
     {
-      to: '0xContract1...',
-      value: '0',
-      data: contract1Interface.encodeFunctionData('method1', [param1])
+      to: "0xContract1...",
+      value: "0",
+      data: contract1Interface.encodeFunctionData("method1", [param1]),
     },
     {
-      to: '0xContract2...',
-      value: ethers.parseEther('1.0'), // Send 1 ETH
-      data: '0x' // Empty data for ETH transfer
+      to: "0xContract2...",
+      value: ethers.parseEther("1.0"), // Send 1 ETH
+      data: "0x", // Empty data for ETH transfer
     },
     {
-      to: '0xContract3...',
-      value: '0',
-      data: contract3Interface.encodeFunctionData('method3', [param3])
-    }
-  ]
+      to: "0xContract3...",
+      value: "0",
+      data: contract3Interface.encodeFunctionData("method3", [param3]),
+    },
+  ];
 
   // Create batch transaction
-  const safeTransaction = await protocolKit.createTransaction(transactions)
-  const signedTransaction = await protocolKit.signTransaction(safeTransaction)
-  
+  const safeTransaction = await protocolKit.createTransaction(transactions);
+  const signedTransaction = await protocolKit.signTransaction(safeTransaction);
+
   // Execute
-  const result = await protocolKit.executeTransaction(signedTransaction)
-  console.log('Batch transaction executed:', result.hash)
+  const result = await protocolKit.executeTransaction(signedTransaction);
+  console.log("Batch transaction executed:", result.hash);
 }
 ```
 
@@ -261,48 +260,44 @@ async function executeMultipleOperations() {
 ```typescript
 async function transferAdminRole() {
   const protocolKit = await Safe.init({
-    provider: new ethers.JsonRpcProvider('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
+    provider: new ethers.JsonRpcProvider("https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"),
     signer: new ethers.Wallet(process.env.PRIVATE_KEY),
-    safeAddress: process.env.SAFE_ADDRESS
-  })
+    safeAddress: process.env.SAFE_ADDRESS,
+  });
 
   // AccessControl interface
   const accessControlABI = [
-    'function grantRole(bytes32 role, address account) external',
-    'function revokeRole(bytes32 role, address account) external',
-    'function getRoleAdmin(bytes32 role) external view returns (bytes32)',
-    'function DEFAULT_ADMIN_ROLE() external view returns (bytes32)'
-  ]
-  
-  const contract = new ethers.Contract(
-    process.env.CONTRACT_ADDRESS,
-    accessControlABI,
-    protocolKit.getEthAdapter().getSigner()
-  )
+    "function grantRole(bytes32 role, address account) external",
+    "function revokeRole(bytes32 role, address account) external",
+    "function getRoleAdmin(bytes32 role) external view returns (bytes32)",
+    "function DEFAULT_ADMIN_ROLE() external view returns (bytes32)",
+  ];
+
+  const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, accessControlABI, protocolKit.getEthAdapter().getSigner());
 
   // Get role constants
-  const adminRole = await contract.DEFAULT_ADMIN_ROLE()
-  
+  const adminRole = await contract.DEFAULT_ADMIN_ROLE();
+
   const transactions = [
     // Grant admin role to new admin
     {
       to: process.env.CONTRACT_ADDRESS,
-      value: '0',
-      data: contract.interface.encodeFunctionData('grantRole', [adminRole, process.env.NEW_ADMIN_ADDRESS])
+      value: "0",
+      data: contract.interface.encodeFunctionData("grantRole", [adminRole, process.env.NEW_ADMIN_ADDRESS]),
     },
     // Revoke admin role from current admin
     {
       to: process.env.CONTRACT_ADDRESS,
-      value: '0',
-      data: contract.interface.encodeFunctionData('revokeRole', [adminRole, process.env.CURRENT_ADMIN_ADDRESS])
-    }
-  ]
+      value: "0",
+      data: contract.interface.encodeFunctionData("revokeRole", [adminRole, process.env.CURRENT_ADMIN_ADDRESS]),
+    },
+  ];
 
-  const safeTransaction = await protocolKit.createTransaction(transactions)
-  const signedTransaction = await protocolKit.signTransaction(safeTransaction)
-  const result = await protocolKit.executeTransaction(signedTransaction)
-  
-  console.log('Role transfer completed:', result.hash)
+  const safeTransaction = await protocolKit.createTransaction(transactions);
+  const signedTransaction = await protocolKit.signTransaction(safeTransaction);
+  const result = await protocolKit.executeTransaction(signedTransaction);
+
+  console.log("Role transfer completed:", result.hash);
 }
 ```
 
@@ -313,45 +308,45 @@ async function transferAdminRole() {
 For specialized provider configurations:
 
 ```typescript
-import { EthersAdapter } from '@safe-global/protocol-kit'
+import { EthersAdapter } from "@safe-global/protocol-kit";
 
 const ethAdapter = new EthersAdapter({
   ethers,
-  signerOrProvider: signer
-})
+  signerOrProvider: signer,
+});
 
 const protocolKit = await Safe.init({
   ethAdapter,
-  safeAddress: process.env.SAFE_ADDRESS
-})
+  safeAddress: process.env.SAFE_ADDRESS,
+});
 ```
 
 ### Signature Collection Workflow
 
 ```typescript
 async function collectSignatures(safeTransaction: SafeTransaction) {
-  const safeTxHash = await protocolKit.getTransactionHash(safeTransaction)
-  const signatures = new Map()
-  
+  const safeTxHash = await protocolKit.getTransactionHash(safeTransaction);
+  const signatures = new Map();
+
   // Collect signatures from multiple signers
   for (const signerPrivateKey of signerPrivateKeys) {
-    const signerWallet = new ethers.Wallet(signerPrivateKey, provider)
+    const signerWallet = new ethers.Wallet(signerPrivateKey, provider);
     const signerKit = await Safe.init({
       provider,
       signer: signerWallet,
-      safeAddress: process.env.SAFE_ADDRESS
-    })
-    
-    const signature = await signerKit.signHash(safeTxHash)
-    signatures.set(await signerWallet.getAddress(), signature)
+      safeAddress: process.env.SAFE_ADDRESS,
+    });
+
+    const signature = await signerKit.signHash(safeTxHash);
+    signatures.set(await signerWallet.getAddress(), signature);
   }
-  
+
   // Add signatures to transaction
   signatures.forEach((signature, address) => {
-    safeTransaction.addSignature(signature)
-  })
-  
-  return safeTransaction
+    safeTransaction.addSignature(signature);
+  });
+
+  return safeTransaction;
 }
 ```
 
@@ -361,11 +356,11 @@ async function collectSignatures(safeTransaction: SafeTransaction) {
 const gasEstimate = await protocolKit.estimateGas({
   safeTransaction,
   // Optional parameters
-  gasPrice: '20000000000', // 20 Gwei
-  gasLimit: '500000'
-})
+  gasPrice: "20000000000", // 20 Gwei
+  gasLimit: "500000",
+});
 
-console.log('Estimated gas:', gasEstimate.totalGas)
+console.log("Estimated gas:", gasEstimate.totalGas);
 ```
 
 ## Security Considerations
@@ -380,13 +375,13 @@ console.log('Estimated gas:', gasEstimate.totalGas)
 // Validate transaction before signing
 function validateTransaction(transaction: SafeTransactionDataPartial) {
   if (!ethers.isAddress(transaction.to)) {
-    throw new Error('Invalid recipient address')
+    throw new Error("Invalid recipient address");
   }
-  
-  if (!transaction.data || transaction.data === '0x') {
-    console.warn('Transaction contains no data')
+
+  if (!transaction.data || transaction.data === "0x") {
+    console.warn("Transaction contains no data");
   }
-  
+
   // Add custom validation logic
 }
 ```
@@ -395,18 +390,18 @@ function validateTransaction(transaction: SafeTransactionDataPartial) {
 
 ```typescript
 async function validateSafeConfig() {
-  const owners = await protocolKit.getOwners()
-  const threshold = await protocolKit.getThreshold()
-  
-  console.log('Safe owners:', owners)
-  console.log('Required signatures:', threshold)
-  
+  const owners = await protocolKit.getOwners();
+  const threshold = await protocolKit.getThreshold();
+
+  console.log("Safe owners:", owners);
+  console.log("Required signatures:", threshold);
+
   // Validate expected configuration
-  const expectedOwners = process.env.EXPECTED_OWNERS?.split(',') || []
-  const unexpectedOwners = owners.filter(owner => !expectedOwners.includes(owner))
-  
+  const expectedOwners = process.env.EXPECTED_OWNERS?.split(",") || [];
+  const unexpectedOwners = owners.filter((owner) => !expectedOwners.includes(owner));
+
   if (unexpectedOwners.length > 0) {
-    throw new Error(`Unexpected owners detected: ${unexpectedOwners.join(', ')}`)
+    throw new Error(`Unexpected owners detected: ${unexpectedOwners.join(", ")}`);
   }
 }
 ```
@@ -420,9 +415,9 @@ async function validateSafeConfig() {
 const CONFIG = {
   SAFE_ADDRESS: process.env.SAFE_ADDRESS!,
   RPC_URL: process.env.RPC_URL!,
-  PRIVATE_KEYS: process.env.PRIVATE_KEYS!.split(','),
-  CHAIN_ID: parseInt(process.env.CHAIN_ID || '1')
-}
+  PRIVATE_KEYS: process.env.PRIVATE_KEYS!.split(","),
+  CHAIN_ID: parseInt(process.env.CHAIN_ID || "1"),
+};
 ```
 
 ### 2. Error Handling
@@ -430,22 +425,22 @@ const CONFIG = {
 ```typescript
 async function executeSafeTransaction(transactionData: SafeTransactionDataPartial) {
   try {
-    const safeTransaction = await protocolKit.createTransaction(transactionData)
-    const signedTransaction = await protocolKit.signTransaction(safeTransaction)
-    
+    const safeTransaction = await protocolKit.createTransaction(transactionData);
+    const signedTransaction = await protocolKit.signTransaction(safeTransaction);
+
     // Validate before execution
-    await validateTransaction(transactionData)
-    await validateSafeConfig()
-    
-    const result = await protocolKit.executeTransaction(signedTransaction)
-    return result
+    await validateTransaction(transactionData);
+    await validateSafeConfig();
+
+    const result = await protocolKit.executeTransaction(signedTransaction);
+    return result;
   } catch (error) {
-    if (error.code === 'INSUFFICIENT_FUNDS') {
-      throw new Error('Safe has insufficient funds for transaction')
-    } else if (error.message.includes('threshold')) {
-      throw new Error('Not enough signatures collected')
+    if (error.code === "INSUFFICIENT_FUNDS") {
+      throw new Error("Safe has insufficient funds for transaction");
+    } else if (error.message.includes("threshold")) {
+      throw new Error("Not enough signatures collected");
     }
-    throw error
+    throw error;
   }
 }
 ```
@@ -458,11 +453,11 @@ async function simulateTransaction(transactionData: SafeTransactionDataPartial) 
   const simulationResult = await provider.call({
     to: transactionData.to,
     data: transactionData.data,
-    from: protocolKit.getAddress()
-  })
-  
-  console.log('Simulation result:', simulationResult)
-  return simulationResult
+    from: protocolKit.getAddress(),
+  });
+
+  console.log("Simulation result:", simulationResult);
+  return simulationResult;
 }
 ```
 
@@ -478,24 +473,19 @@ async function simulateTransaction(transactionData: SafeTransactionDataPartial) 
 
 ```typescript
 // Create wrapper function for backward compatibility
-async function executeGovernanceTransaction(
-  contractAddress: string,
-  functionName: string,
-  params: any[],
-  useAutomation = false
-) {
-  if (useAutomation && process.env.SAFE_AUTOMATION_ENABLED === 'true') {
+async function executeGovernanceTransaction(contractAddress: string, functionName: string, params: any[], useAutomation = false) {
+  if (useAutomation && process.env.SAFE_AUTOMATION_ENABLED === "true") {
     // Use Safe Protocol Kit
     return await executeSafeTransaction({
       to: contractAddress,
-      value: '0',
-      data: contractInterface.encodeFunctionData(functionName, params)
-    })
+      value: "0",
+      data: contractInterface.encodeFunctionData(functionName, params),
+    });
   } else {
     // Fall back to manual process
-    console.log('Manual signing required for:', functionName)
-    console.log('Contract:', contractAddress)
-    console.log('Parameters:', params)
+    console.log("Manual signing required for:", functionName);
+    console.log("Contract:", contractAddress);
+    console.log("Parameters:", params);
   }
 }
 ```
@@ -505,17 +495,17 @@ async function executeGovernanceTransaction(
 ```typescript
 // Deployment script integration
 async function deployWithSafeGovernance() {
-  const deployment = await deployContract('MyContract', [...args])
-  
+  const deployment = await deployContract("MyContract", [...args]);
+
   // Automatically transfer ownership to Safe
   await executeGovernanceTransaction(
     deployment.address,
-    'transferOwnership',
+    "transferOwnership",
     [process.env.SAFE_ADDRESS],
     true // Enable automation
-  )
-  
-  console.log('Contract deployed and ownership transferred to Safe')
+  );
+
+  console.log("Contract deployed and ownership transferred to Safe");
 }
 ```
 
@@ -523,45 +513,42 @@ async function deployWithSafeGovernance() {
 
 ```typescript
 // deploy/05_configure_with_safe.ts
-import { DeployFunction } from 'hardhat-deploy/types'
-import Safe from '@safe-global/protocol-kit'
+import { DeployFunction } from "hardhat-deploy/types";
+import Safe from "@safe-global/protocol-kit";
 
 const func: DeployFunction = async function (hre) {
-  const { deployments, getNamedAccounts, ethers } = hre
-  const { deployer } = await getNamedAccounts()
+  const { deployments, getNamedAccounts, ethers } = hre;
+  const { deployer } = await getNamedAccounts();
 
   // Initialize Safe
-  const signer = await ethers.getSigner(deployer)
+  const signer = await ethers.getSigner(deployer);
   const protocolKit = await Safe.init({
     provider: signer.provider,
     signer,
-    safeAddress: process.env.SAFE_ADDRESS
-  })
+    safeAddress: process.env.SAFE_ADDRESS,
+  });
 
   // Get deployed contract
-  const contract = await deployments.get('MyContract')
-  const contractInstance = await ethers.getContractAt('MyContract', contract.address)
+  const contract = await deployments.get("MyContract");
+  const contractInstance = await ethers.getContractAt("MyContract", contract.address);
 
   // Create configuration transaction
   const configTransaction = {
     to: contract.address,
-    value: '0',
-    data: contractInstance.interface.encodeFunctionData('initialize', [
-      process.env.PARAM1,
-      process.env.PARAM2
-    ])
-  }
+    value: "0",
+    data: contractInstance.interface.encodeFunctionData("initialize", [process.env.PARAM1, process.env.PARAM2]),
+  };
 
   // Execute through Safe
-  const safeTransaction = await protocolKit.createTransaction(configTransaction)
-  const signedTransaction = await protocolKit.signTransaction(safeTransaction)
-  const result = await protocolKit.executeTransaction(signedTransaction)
-  
-  console.log('Configuration transaction executed:', result.hash)
-}
+  const safeTransaction = await protocolKit.createTransaction(configTransaction);
+  const signedTransaction = await protocolKit.signTransaction(safeTransaction);
+  const result = await protocolKit.executeTransaction(signedTransaction);
 
-export default func
-func.tags = ['SafeConfig']
+  console.log("Configuration transaction executed:", result.hash);
+};
+
+export default func;
+func.tags = ["SafeConfig"];
 ```
 
 ## Troubleshooting
@@ -585,11 +572,11 @@ func.tags = ['SafeConfig']
 
 ```typescript
 async function debugSafeState() {
-  console.log('Safe Address:', protocolKit.getAddress())
-  console.log('Safe Owners:', await protocolKit.getOwners())
-  console.log('Safe Threshold:', await protocolKit.getThreshold())
-  console.log('Safe Balance:', await provider.getBalance(protocolKit.getAddress()))
-  console.log('Safe Nonce:', await protocolKit.getNonce())
+  console.log("Safe Address:", protocolKit.getAddress());
+  console.log("Safe Owners:", await protocolKit.getOwners());
+  console.log("Safe Threshold:", await protocolKit.getThreshold());
+  console.log("Safe Balance:", await provider.getBalance(protocolKit.getAddress()));
+  console.log("Safe Nonce:", await protocolKit.getNonce());
 }
 ```
 
@@ -598,7 +585,7 @@ async function debugSafeState() {
 The Safe Protocol Kit provides a robust foundation for automating multi-signature governance operations in the dTRINITY protocol. By implementing this SDK, teams can:
 
 - Reduce manual intervention in governance processes
-- Improve transaction reliability and auditability  
+- Improve transaction reliability and auditability
 - Enable programmatic execution of complex multi-step operations
 - Maintain security through multi-signature validation
 

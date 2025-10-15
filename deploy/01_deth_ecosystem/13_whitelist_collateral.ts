@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const collateralVault = await hre.ethers.getContractAt(
     "CollateralHolderVault",
     collateralVaultAddress,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
 
   // Get the OracleAggregator contract
@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const oracleAggregator = await hre.ethers.getContractAt(
     "OracleAggregator",
     oracleAggregatorAddress,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
 
   // Get collateral addresses from config

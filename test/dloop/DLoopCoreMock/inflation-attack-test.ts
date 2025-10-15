@@ -36,7 +36,7 @@ describe.skip("DLoopCoreMock - Inflation Attack Tests", function () {
         // Expect the deposit to revert with the exact custom error
         await expect(dloopMock.connect(attacker).deposit(attackerDeposit, attacker.address)).to.be.revertedWithCustomError(
           dloopMock,
-          "TokenBalanceNotIncreasedAfterBorrow"
+          "TokenBalanceNotIncreasedAfterBorrow",
         );
 
         // State assertions – vault metrics must remain unchanged after the revert
@@ -100,7 +100,7 @@ describe.skip("DLoopCoreMock - Inflation Attack Tests", function () {
           victimDepositReverted = true;
           await expect(dloopMock.connect(victim).deposit(victimDepositAmount, victim.address)).to.be.revertedWithCustomError(
             dloopMock,
-            "TooImbalanced"
+            "TooImbalanced",
           );
         }
 
@@ -231,7 +231,7 @@ describe.skip("DLoopCoreMock - Inflation Attack Tests", function () {
             // Expect revert for extremely tiny deposits
             await expect(dloopMock.connect(attacker).deposit(firstDeposit, attacker.address)).to.be.revertedWithCustomError(
               dloopMock,
-              "TokenBalanceNotIncreasedAfterBorrow"
+              "TokenBalanceNotIncreasedAfterBorrow",
             );
           } else {
             await dloopMock.connect(attacker).deposit(firstDeposit, attacker.address);

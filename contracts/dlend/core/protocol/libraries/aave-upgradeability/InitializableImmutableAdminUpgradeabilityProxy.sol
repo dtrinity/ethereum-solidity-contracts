@@ -26,17 +26,20 @@ import { BaseImmutableAdminUpgradeabilityProxy } from "./BaseImmutableAdminUpgra
  * @author Aave
  * @dev Extends BaseAdminUpgradeabilityProxy with an initializer function
  */
-contract InitializableImmutableAdminUpgradeabilityProxy is BaseImmutableAdminUpgradeabilityProxy, InitializableUpgradeabilityProxy {
-  /**
-   * @dev Constructor.
-   * @param admin The address of the admin
-   */
-  constructor(address admin) BaseImmutableAdminUpgradeabilityProxy(admin) {
-    // Intentionally left blank
-  }
+contract InitializableImmutableAdminUpgradeabilityProxy is
+    BaseImmutableAdminUpgradeabilityProxy,
+    InitializableUpgradeabilityProxy
+{
+    /**
+     * @dev Constructor.
+     * @param admin The address of the admin
+     */
+    constructor(address admin) BaseImmutableAdminUpgradeabilityProxy(admin) {
+        // Intentionally left blank
+    }
 
-  /// @inheritdoc BaseImmutableAdminUpgradeabilityProxy
-  function _willFallback() internal override(BaseImmutableAdminUpgradeabilityProxy, Proxy) {
-    BaseImmutableAdminUpgradeabilityProxy._willFallback();
-  }
+    /// @inheritdoc BaseImmutableAdminUpgradeabilityProxy
+    function _willFallback() internal override(BaseImmutableAdminUpgradeabilityProxy, Proxy) {
+        BaseImmutableAdminUpgradeabilityProxy._willFallback();
+    }
 }

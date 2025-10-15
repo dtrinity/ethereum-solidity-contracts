@@ -18,7 +18,7 @@ export async function performOracleSanityChecks(
   baseCurrencyUnit: bigint,
   wrapperName: string,
   minPrice: number,
-  maxPrice: number
+  maxPrice: number,
 ): Promise<void> {
   for (const [assetAddress] of Object.entries(feeds)) {
     try {
@@ -27,14 +27,14 @@ export async function performOracleSanityChecks(
 
       if (normalizedPrice < minPrice || normalizedPrice > maxPrice) {
         console.error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`,
         );
         throw new Error(
-          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`
+          `Sanity check failed for asset ${assetAddress} in ${wrapperName}: Normalized price ${normalizedPrice} is outside the range [${minPrice}, ${maxPrice}]`,
         );
       } else {
         console.log(
-          `Sanity check passed for asset ${assetAddress} in ${wrapperName}: Normalized price is ${normalizedPrice} (range: [${minPrice}, ${maxPrice}])`
+          `Sanity check passed for asset ${assetAddress} in ${wrapperName}: Normalized price is ${normalizedPrice} (range: [${minPrice}, ${maxPrice}])`,
         );
       }
     } catch (error) {
@@ -64,7 +64,7 @@ export async function setupRedstoneCompositeFeedsForAssets(
   baseCurrencyUnit: bigint,
   minPrice: number,
   maxPrice: number,
-  deployerAddress: string
+  deployerAddress: string,
 ): Promise<void> {
   const allCompositeFeeds = config.oracleAggregators.USD.redstoneOracleAssets?.compositeRedstoneOracleWrappersWithThresholding || {};
 
@@ -121,7 +121,7 @@ export async function setupRedstoneCompositeFeedsForAssets(
         feedConfig.lowerThresholdInBase1,
         feedConfig.fixedPriceInBase1,
         feedConfig.lowerThresholdInBase2,
-        feedConfig.fixedPriceInBase2
+        feedConfig.fixedPriceInBase2,
       );
       console.log(`✅ Set composite Redstone feed for asset ${assetAddress}`);
     } catch (error) {
@@ -146,7 +146,7 @@ export async function setupRedstoneCompositeFeedsForAssets(
       baseCurrencyUnit,
       `${assetAddress} composite feed`,
       minPrice,
-      maxPrice
+      maxPrice,
     );
   }
 }
@@ -171,7 +171,7 @@ export async function setupRedstoneSimpleFeedsForAssets(
   baseCurrencyUnit: bigint,
   minPrice: number,
   maxPrice: number,
-  deployerAddress: string
+  deployerAddress: string,
 ): Promise<void> {
   const allSimpleFeeds = config.oracleAggregators.USD.redstoneOracleAssets?.redstoneOracleWrappersWithThresholding || {};
 
@@ -249,7 +249,7 @@ export async function setupRedstoneSimpleFeedsForAssets(
       baseCurrencyUnit,
       `${assetAddress} simple feed`,
       minPrice,
-      maxPrice
+      maxPrice,
     );
   }
 }

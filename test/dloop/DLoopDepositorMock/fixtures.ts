@@ -145,7 +145,7 @@ export async function deployDLoopMockLogic(): Promise<DLoopMockFixture> {
     MAX_SUBSIDY_BPS,
     0, // minDeviationBps
     0, // withdrawalFeeBps
-    mockPool
+    mockPool,
   );
 
   return {
@@ -169,7 +169,7 @@ export async function deployDLoopMockLogic(): Promise<DLoopMockFixture> {
  */
 export async function testSetup(
   dloopCoreMockFixture: DLoopMockFixture,
-  dloopDepositorMockFixture: DLoopDepositorMockFixture
+  dloopDepositorMockFixture: DLoopDepositorMockFixture,
 ): Promise<void> {
   const { dloopMock, collateralToken, debtToken, mockPool } = dloopCoreMockFixture;
   const { flashLender, simpleDEXMock, user1, user2, user3 } = dloopDepositorMockFixture;

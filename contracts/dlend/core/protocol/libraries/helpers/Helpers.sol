@@ -25,14 +25,20 @@ import { DataTypes } from "../types/DataTypes.sol";
  * @author Aave
  */
 library Helpers {
-  /**
-   * @notice Fetches the user current stable and variable debt balances
-   * @param user The user address
-   * @param reserveCache The reserve cache data object
-   * @return The stable debt balance
-   * @return The variable debt balance
-   */
-  function getUserCurrentDebt(address user, DataTypes.ReserveCache memory reserveCache) internal view returns (uint256, uint256) {
-    return (IERC20(reserveCache.stableDebtTokenAddress).balanceOf(user), IERC20(reserveCache.variableDebtTokenAddress).balanceOf(user));
-  }
+    /**
+     * @notice Fetches the user current stable and variable debt balances
+     * @param user The user address
+     * @param reserveCache The reserve cache data object
+     * @return The stable debt balance
+     * @return The variable debt balance
+     */
+    function getUserCurrentDebt(
+        address user,
+        DataTypes.ReserveCache memory reserveCache
+    ) internal view returns (uint256, uint256) {
+        return (
+            IERC20(reserveCache.stableDebtTokenAddress).balanceOf(user),
+            IERC20(reserveCache.variableDebtTokenAddress).balanceOf(user)
+        );
+    }
 }

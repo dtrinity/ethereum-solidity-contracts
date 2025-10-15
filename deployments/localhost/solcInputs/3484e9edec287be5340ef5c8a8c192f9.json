@@ -89,16 +89,8 @@
     "evmVersion": "paris",
     "outputSelection": {
       "*": {
-        "*": [
-          "abi",
-          "evm.bytecode",
-          "evm.deployedBytecode",
-          "evm.methodIdentifiers",
-          "metadata"
-        ],
-        "": [
-          "ast"
-        ]
+        "*": ["abi", "evm.bytecode", "evm.deployedBytecode", "evm.methodIdentifiers", "metadata"],
+        "": ["ast"]
       }
     }
   }

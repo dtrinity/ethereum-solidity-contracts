@@ -53,8 +53,8 @@ describe("DLoopDecreaseLeverageBase – double-counting collateral protection", 
       decreaseLeverageMock.connect(user1).decreaseLeverage(
         requiredDebtAmount,
         "0x", // swap data (ignored by SimpleDEXMock)
-        dloopCoreMock
-      )
+        dloopCoreMock,
+      ),
     ).not.to.be.reverted;
 
     // 7️⃣ Leverage must have decreased compared to the pre-call state

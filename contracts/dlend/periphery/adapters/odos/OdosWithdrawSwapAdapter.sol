@@ -32,53 +32,61 @@ import { IERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts
  * @notice Adapter to swap then withdraw using Odos
  */
 contract OdosWithdrawSwapAdapter is BaseOdosSellAdapter, ReentrancyGuard, IOdosWithdrawSwapAdapter {
-  using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20;
 
-  constructor(
-    IPoolAddressesProvider addressesProvider,
-    address pool,
-    IOdosRouterV2 swapRouter,
-    address owner
-  ) BaseOdosSellAdapter(addressesProvider, pool, swapRouter) {
-    transferOwnership(owner);
-  }
+    constructor(
+        IPoolAddressesProvider addressesProvider,
+        address pool,
+        IOdosRouterV2 swapRouter,
+        address owner
+    ) BaseOdosSellAdapter(addressesProvider, pool, swapRouter) {
+        transferOwnership(owner);
+    }
 
-  /**
-   * @dev Implementation of the reserve data getter from the base adapter
-   * @param asset The address of the asset
-   * @return The address of the vToken, sToken and aToken
-   */
-  function _getReserveData(address asset) internal view override returns (address, address, address) {
-    DataTypes.ReserveData memory reserveData = POOL.getReserveData(asset);
-    return (reserveData.variableDebtTokenAddress, reserveData.stableDebtTokenAddress, reserveData.aTokenAddress);
-  }
+    /**
+     * @dev Implementation of the reserve data getter from the base adapter
+     * @param asset The address of the asset
+     * @return The address of the vToken, sToken and aToken
+     */
+    function _getReserveData(address asset) internal view override returns (address, address, address) {
+        DataTypes.ReserveData memory reserveData = POOL.getReserveData(asset);
+        return (reserveData.variableDebtTokenAddress, reserveData.stableDebtTokenAddress, reserveData.aTokenAddress);
+    }
 
-  /**
-   * @dev Implementation of the supply function from the base adapter
-   * @param asset The address of the asset to be supplied
-   * @param amount The amount of the asset to be supplied
-   * @param to The address receiving the aTokens
-   * @param referralCode The referral code to pass to Aave
-   */
-  function _supply(address asset, uint256 amount, address to, uint16 referralCode) internal override {
-    POOL.supply(asset, amount, to, referralCode);
-  }
+    /**
+     * @dev Implementation of the supply function from the base adapter
+     * @param asset The address of the asset to be supplied
+     * @param amount The amount of the asset to be supplied
+     * @param to The address receiving the aTokens
+     * @param referralCode The referral code to pass to Aave
+     */
+    function _supply(address asset, uint256 amount, address to, uint16 referralCode) internal override {
+        POOL.supply(asset, amount, to, referralCode);
+    }
 
-  /// @inheritdoc IOdosWithdrawSwapAdapter
-  function withdrawAndSwap(WithdrawSwapParams memory withdrawSwapParams, PermitInput memory permitInput) external nonReentrant {
-    // pulls liquidity asset from the user and withdraw
-    _pullATokenAndWithdraw(withdrawSwapParams.oldAsset, withdrawSwapParams.user, withdrawSwapParams.oldAssetAmount, permitInput);
+    /// @inheritdoc IOdosWithdrawSwapAdapter
+    function withdrawAndSwap(
+        WithdrawSwapParams memory withdrawSwapParams,
+        PermitInput memory permitInput
+    ) external nonReentrant {
+        // pulls liquidity asset from the user and withdraw
+        _pullATokenAndWithdraw(
+            withdrawSwapParams.oldAsset,
+            withdrawSwapParams.user,
+            withdrawSwapParams.oldAssetAmount,
+            permitInput
+        );
 
-    // sell(exact in) withdrawn asset from Aave Pool to new asset
-    uint256 amountReceived = _sellOnOdos(
-      IERC20Detailed(withdrawSwapParams.oldAsset),
-      IERC20Detailed(withdrawSwapParams.newAsset),
-      withdrawSwapParams.oldAssetAmount,
-      withdrawSwapParams.minAmountToReceive,
-      withdrawSwapParams.swapData
-    );
+        // sell(exact in) withdrawn asset from Aave Pool to new asset
+        uint256 amountReceived = _sellOnOdos(
+            IERC20Detailed(withdrawSwapParams.oldAsset),
+            IERC20Detailed(withdrawSwapParams.newAsset),
+            withdrawSwapParams.oldAssetAmount,
+            withdrawSwapParams.minAmountToReceive,
+            withdrawSwapParams.swapData
+        );
 
-    // transfer new asset to the user
-    IERC20(withdrawSwapParams.newAsset).safeTransfer(withdrawSwapParams.user, amountReceived);
-  }
+        // transfer new asset to the user
+        IERC20(withdrawSwapParams.newAsset).safeTransfer(withdrawSwapParams.user, amountReceived);
+    }
 }

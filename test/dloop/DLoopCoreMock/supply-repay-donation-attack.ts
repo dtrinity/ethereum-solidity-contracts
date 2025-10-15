@@ -47,7 +47,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
       // Verify attack was successful: vault now has collateral but no debt
       const vaultCollateralAfterAttack = await dloopMock.getMockCollateral(
         await dloopMock.getAddress(),
-        await collateralToken.getAddress()
+        await collateralToken.getAddress(),
       );
       const vaultDebtAfterAttack = await dloopMock.getMockDebt(await dloopMock.getAddress(), await debtToken.getAddress());
 
@@ -67,7 +67,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
       // which leads to maxDeposit() returns 0
       await expect(dloopMock.connect(victim).deposit(userDepositAmount, victim.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxDeposit"
+        "ERC4626ExceededMaxDeposit",
       );
 
       // Since the vault started with leverage=100%, the withdrawal calculation will fail
@@ -79,7 +79,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
       // Attempt withdrawal - this should revert as the vault is too imbalanced
       // which leads to maxWithdraw() returns 0
       await expect(
-        dloopMock.connect(victim).withdraw(userDepositAmount / 2n, victim.address, victim.address)
+        dloopMock.connect(victim).withdraw(userDepositAmount / 2n, victim.address, victim.address),
       ).to.be.revertedWithCustomError(dloopMock, "ERC4626ExceededMaxWithdraw");
 
       // Approve to increaseLeverage()
@@ -127,7 +127,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
       // Verify attack was successful: vault now has collateral but no debt
       const vaultCollateralAfterAttack = await dloopMock.getMockCollateral(
         await dloopMock.getAddress(),
-        await collateralToken.getAddress()
+        await collateralToken.getAddress(),
       );
       const vaultDebtAfterAttack = await dloopMock.getMockDebt(await dloopMock.getAddress(), await debtToken.getAddress());
 
@@ -149,7 +149,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
 
       // Attempt withdrawal - this should revert with ERC4626ExceededMaxWithdraw error
       await expect(
-        dloopMock.connect(victim).withdraw(initialDepositAmount / 2n, victim.address, victim.address)
+        dloopMock.connect(victim).withdraw(initialDepositAmount / 2n, victim.address, victim.address),
       ).to.be.revertedWithCustomError(dloopMock, "ERC4626ExceededMaxWithdraw");
     });
   });
@@ -231,7 +231,7 @@ describe("DLoopCoreMock - Supply/Repay Donation Edge Case Tests", function () {
       await collateralToken.connect(victim).approve(await dloopMock.getAddress(), userDepositAmount);
       await expect(dloopMock.connect(victim).deposit(userDepositAmount, victim.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxDeposit"
+        "ERC4626ExceededMaxDeposit",
       );
     });
   });

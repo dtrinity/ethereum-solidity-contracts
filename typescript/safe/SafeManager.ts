@@ -145,12 +145,12 @@ export class SafeManager {
       await this.storePendingTransaction(
         safeTxHash,
         batch.transactions[0],
-        `${batch.description} (${batch.transactions.length} operations)`
+        `${batch.description} (${batch.transactions.length} operations)`,
       );
       await this.exportTransactionBuilderBatch(
         batch.transactions,
         `${batch.description} (${batch.transactions.length} operations)`,
-        safeTxHash
+        safeTxHash,
       );
       // Always offline: do not propose, sign or execute
       return {

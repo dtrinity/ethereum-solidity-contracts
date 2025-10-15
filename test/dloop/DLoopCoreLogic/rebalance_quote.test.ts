@@ -138,7 +138,7 @@ describe("DLoopCoreLogic - Rebalance Quote", () => {
           Number(tc.cDec),
           tc.cPrice,
           Number(tc.dDec),
-          tc.dPrice
+          tc.dPrice,
         );
 
         if (tc.current < tc.target && direction === 1n) {
@@ -207,7 +207,7 @@ describe("DLoopCoreLogic - Rebalance Quote", () => {
           Number(tc.cDec),
           tc.cPrice,
           Number(tc.dDec),
-          tc.dPrice
+          tc.dPrice,
         );
 
         if (dir === 0n) continue;

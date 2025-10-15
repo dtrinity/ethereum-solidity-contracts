@@ -24,7 +24,7 @@ export function getNewLeverageBps(
   currentTotalCollateralInBase: bigint,
   currentTotalDebtInBase: bigint,
   collateralTokenDeltaInBase: bigint,
-  debtTokenDeltaInBase: bigint
+  debtTokenDeltaInBase: bigint,
 ): bigint {
   return (
     ((currentTotalCollateralInBase + collateralTokenDeltaInBase) * BigInt(ONE_HUNDRED_PERCENT_BPS)) /

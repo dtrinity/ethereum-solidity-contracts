@@ -180,7 +180,7 @@ describe("TestERC20FlashMintable", () => {
 
       await expect(token.flashLoan(await flashBorrower.getAddress(), tokenAddress, maxAmount, "0x")).to.be.revertedWithCustomError(
         token,
-        "ERC3156ExceededMaxLoan"
+        "ERC3156ExceededMaxLoan",
       );
     });
   });

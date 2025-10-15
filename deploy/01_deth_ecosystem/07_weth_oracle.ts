@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const oracleAggregatorContract = await hre.ethers.getContractAt(
     "OracleAggregator",
     oracleAggregatorAddress,
-    await hre.ethers.getSigner(deployer)
+    await hre.ethers.getSigner(deployer),
   );
 
   // Get HardPegOracleWrapper contract

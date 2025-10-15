@@ -32,7 +32,7 @@ describe.skip("DLoopCoreMock Calculation Tests", function () {
     _otherToken = await TestMintableERC20Factory.deploy(
       "Other Token",
       "OTHER",
-      8 // Different decimals for testing
+      8, // Different decimals for testing
     );
   });
 
@@ -147,7 +147,7 @@ describe.skip("DLoopCoreMock Calculation Tests", function () {
             await collateralToken.getAddress(),
             await testDebtToken.getAddress(),
             testCase.suppliedCollateralAmount,
-            testCase.leverageBpsBeforeSupply
+            testCase.leverageBpsBeforeSupply,
           );
 
           if (testCase.expectedBorrowAmount > 0) {
@@ -176,7 +176,7 @@ describe.skip("DLoopCoreMock Calculation Tests", function () {
               testState.totalCollateralInBase,
               getCorrespondingTotalDebtInBase(testState.totalCollateralInBase, testCase.leverageBpsBeforeSupply),
               await dloopMock.convertFromTokenAmountToBaseCurrency(testCase.suppliedCollateralAmount, await collateralToken.getAddress()),
-              await dloopMock.convertFromTokenAmountToBaseCurrency(result, await testDebtToken.getAddress())
+              await dloopMock.convertFromTokenAmountToBaseCurrency(result, await testDebtToken.getAddress()),
             );
             expect(newLeverage).to.be.closeTo(testCase.leverageBpsBeforeSupply, ONE_BPS_UNIT);
           }

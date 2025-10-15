@@ -25,35 +25,38 @@ import "../interface/chainlink/IPriceFeed.sol";
  * @dev Implementation of BaseChainlinkWrapper for Redstone oracle feeds that follow Chainlink AggregatorV3Interface
  */
 contract RedstoneChainlinkWrapper is BaseChainlinkWrapper {
-  mapping(address => IPriceFeed) public assetToFeed;
+    mapping(address => IPriceFeed) public assetToFeed;
 
-  constructor(address baseCurrency, uint256 _baseCurrencyUnit) BaseChainlinkWrapper(baseCurrency, _baseCurrencyUnit) {}
+    constructor(
+        address baseCurrency,
+        uint256 _baseCurrencyUnit
+    ) BaseChainlinkWrapper(baseCurrency, _baseCurrencyUnit) {}
 
-  function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
-    IPriceFeed feed = assetToFeed[asset];
-    if (address(feed) == address(0)) {
-      revert FeedNotSet(asset);
+    function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
+        IPriceFeed feed = assetToFeed[asset];
+        if (address(feed) == address(0)) {
+            revert FeedNotSet(asset);
+        }
+
+        (, int256 answer, , uint256 updatedAt, ) = feed.latestRoundData();
+
+        // Validate the oracle data
+        if (answer <= 0) {
+            revert InvalidPrice();
+        }
+
+        price = uint256(answer);
+        isAlive = updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
+
+        price = _convertToBaseCurrencyUnit(price);
     }
 
-    (, int256 answer, , uint256 updatedAt, ) = feed.latestRoundData();
-
-    // Validate the oracle data
-    if (answer <= 0) {
-      revert InvalidPrice();
+    /**
+     * @notice Sets the price feed for an asset
+     * @param asset The address of the asset
+     * @param feed The address of the Redstone Chainlink-compatible price feed
+     */
+    function setFeed(address asset, address feed) external onlyRole(ORACLE_MANAGER_ROLE) {
+        assetToFeed[asset] = IPriceFeed(feed);
     }
-
-    price = uint256(answer);
-    isAlive = updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
-
-    price = _convertToBaseCurrencyUnit(price);
-  }
-
-  /**
-   * @notice Sets the price feed for an asset
-   * @param asset The address of the asset
-   * @param feed The address of the Redstone Chainlink-compatible price feed
-   */
-  function setFeed(address asset, address feed) external onlyRole(ORACLE_MANAGER_ROLE) {
-    assetToFeed[asset] = IPriceFeed(feed);
-  }
 }

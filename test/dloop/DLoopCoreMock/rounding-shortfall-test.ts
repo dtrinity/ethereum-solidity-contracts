@@ -54,7 +54,7 @@ describe("DLoopCoreShortfallMock – 1-wei rounding shortfall", function () {
       100,
       0, // minDeviationBps
       0, // withdrawalFeeBps
-      mockPool.address
+      mockPool.address,
     )) as DLoopCoreShortfallMock;
 
     // Price 1:1
