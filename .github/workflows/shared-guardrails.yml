@@ -34,6 +34,7 @@ jobs:
             pnpm install --frozen-lockfile
           else
             npm ci
+          fi
 
       - name: Ensure reports directory
         run: mkdir -p "${{ env.REPORTS_DIR }}"
@@ -101,6 +102,7 @@ jobs:
             pnpm install --frozen-lockfile
           else
             npm ci
+          fi
 
       - name: Compile contracts
         run: |
@@ -133,6 +135,7 @@ jobs:
             pnpm install --frozen-lockfile
           else
             npm ci
+          fi
 
       - name: Execute tests
         run: |
