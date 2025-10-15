@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../../config/config";
-import { POOL_ADDRESSES_PROVIDER_ID, POOL_DATA_PROVIDER_ID } from "../../../typescript/deploy-ids";
+import { POOL_ADDRESS_PROVIDER_REGISTRY_ID, POOL_ADDRESSES_PROVIDER_ID, POOL_DATA_PROVIDER_ID } from "../../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // 3. Add AddressesProvider to Registry
   const registryContract = await hre.ethers.getContractAt(
     "PoolAddressesProviderRegistry",
-    (await hre.deployments.get("PoolAddressesProviderRegistry")).address,
+    (await hre.deployments.get(POOL_ADDRESS_PROVIDER_REGISTRY_ID)).address,
     await hre.ethers.getSigner(deployer),
   );
 
