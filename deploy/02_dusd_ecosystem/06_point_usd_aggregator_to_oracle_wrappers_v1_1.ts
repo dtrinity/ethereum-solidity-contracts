@@ -23,14 +23,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   for (const [assetAddress, routing] of Object.entries(assets)) {
     const isZeroAddress = assetAddress.toLowerCase() === ZeroAddress.toLowerCase();
+
     if (!isZeroAddress && !isUsableAddress(assetAddress)) {
       continue;
     }
 
     const primaryWrapperAddress = await resolveWrapperAddress(hre, routing.primaryWrapperId);
-    const fallbackWrapperAddress = routing.fallbackWrapperId
-      ? await resolveWrapperAddress(hre, routing.fallbackWrapperId)
-      : ZeroAddress;
+    const fallbackWrapperAddress = routing.fallbackWrapperId ? await resolveWrapperAddress(hre, routing.fallbackWrapperId) : ZeroAddress;
 
     await (
       await aggregator.configureAsset(
@@ -56,6 +55,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
+/**
+ * Resolves a deployment id to its deployed address.
+ *
+ * @param hre Hardhat runtime environment
+ * @param deploymentId Deployment identifier to resolve
+ */
 async function resolveWrapperAddress(hre: HardhatRuntimeEnvironment, deploymentId: string): Promise<string> {
   if (!deploymentId) {
     throw new Error("Wrapper deployment id missing in oracle configuration");
@@ -64,12 +69,18 @@ async function resolveWrapperAddress(hre: HardhatRuntimeEnvironment, deploymentI
   return deployment.address;
 }
 
+/**
+ * Checks whether a provided string is a valid non-zero Ethereum address.
+ *
+ * @param value Address candidate to validate
+ */
 function isUsableAddress(value: string | undefined): value is string {
   if (!value) {
     return false;
   }
   const normalized = value.toLowerCase();
   const isHexAddress = normalized.startsWith("0x") && normalized.length === 42;
+
   if (!isHexAddress) {
     return false;
   }

@@ -3,19 +3,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import {
-  ChainlinkFeedAssetConfig,
-  HardPegAssetConfig,
-  OracleAggregatorConfig,
-  OracleWrapperDeploymentConfig,
-} from "../../config/types";
-import {
-  DETH_TOKEN_ID,
-  ETH_API3_WRAPPER_V1_1_ID,
-  ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-  ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
-  ETH_HARD_PEG_WRAPPER_V1_1_ID,
-} from "../../typescript/deploy-ids";
+import { ChainlinkFeedAssetConfig, HardPegAssetConfig, OracleAggregatorConfig, OracleWrapperDeploymentConfig } from "../../config/types";
+import { DETH_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
 
 type ChainlinkAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>["assets"]>;
@@ -28,6 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const config = await getConfig(hre);
   const oracleConfig = config.oracleAggregators.ETH;
 
+  // Keep the deployer as the initial admin; governance migration happens manually post-deploy.
   await deployChainlinkWrapper(hre, oracleConfig, deployer, signer);
   await deployApi3Wrapper(hre, oracleConfig, deployer);
   await deployCompositeWrapper(hre, oracleConfig, deployer);
@@ -37,14 +27,23 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
+/**
+ * Deploys the Chainlink wrapper contract and configures feeds with the deployer retaining admin control.
+ *
+ * @param hre Hardhat runtime environment
+ * @param oracleConfig Oracle configuration for the current network
+ * @param deployer Deployer address responsible for managing the wrapper
+ * @param signer Ethers signer bound to the deployer
+ */
 async function deployChainlinkWrapper(
   hre: HardhatRuntimeEnvironment,
   oracleConfig: OracleAggregatorConfig,
   deployer: string,
   signer: any
-) {
+): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.chainlink;
   const assets = (wrapperConfig?.assets as ChainlinkAssetMap | undefined) || {};
+
   if (!wrapperConfig || Object.keys(assets).length === 0) {
     return;
   }
@@ -54,7 +53,7 @@ async function deployChainlinkWrapper(
   const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
     from: deployer,
     contract: "ChainlinkFeedWrapperV1_1",
-    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, wrapperConfig.initialAdmin ?? deployer],
+    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
     log: true,
     autoMine: true,
   });
@@ -84,13 +83,17 @@ async function deployChainlinkWrapper(
   }
 }
 
-async function deployApi3Wrapper(
-  hre: HardhatRuntimeEnvironment,
-  oracleConfig: OracleAggregatorConfig,
-  deployer: string
-) {
+/**
+ * Deploys the API3 wrapper contract and leaves the deployer as the temporary admin.
+ *
+ * @param hre Hardhat runtime environment
+ * @param oracleConfig Oracle configuration for the current network
+ * @param deployer Deployer address responsible for managing the wrapper
+ */
+async function deployApi3Wrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.api3;
   const assets = wrapperConfig?.assets || {};
+
   if (!wrapperConfig || Object.keys(assets).length === 0) {
     return;
   }
@@ -100,7 +103,7 @@ async function deployApi3Wrapper(
   await hre.deployments.deploy(wrapperConfig.deploymentId, {
     from: deployer,
     contract: "API3WrapperV1_1",
-    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, wrapperConfig.initialAdmin ?? deployer],
+    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
     log: true,
     autoMine: true,
   });
@@ -108,13 +111,21 @@ async function deployApi3Wrapper(
   // TODO: populate API3 proxy configuration when assets are defined.
 }
 
+/**
+ * Deploys the composite wrapper contract with the deployer controlling administration.
+ *
+ * @param hre Hardhat runtime environment
+ * @param oracleConfig Oracle configuration for the current network
+ * @param deployer Deployer address responsible for managing the wrapper
+ */
 async function deployCompositeWrapper(
   hre: HardhatRuntimeEnvironment,
   oracleConfig: OracleAggregatorConfig,
   deployer: string
-) {
+): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.rateComposite;
   const assets = wrapperConfig?.assets || {};
+
   if (!wrapperConfig || Object.keys(assets).length === 0) {
     return;
   }
@@ -124,7 +135,7 @@ async function deployCompositeWrapper(
   await hre.deployments.deploy(wrapperConfig.deploymentId, {
     from: deployer,
     contract: "ChainlinkRateCompositeWrapperV1_1",
-    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, wrapperConfig.initialAdmin ?? deployer],
+    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
     log: true,
     autoMine: true,
   });
@@ -132,13 +143,17 @@ async function deployCompositeWrapper(
   // TODO: wire composite feeds once configuration is provided.
 }
 
-async function deployHardPegWrapper(
-  hre: HardhatRuntimeEnvironment,
-  oracleConfig: OracleAggregatorConfig,
-  deployer: string
-) {
+/**
+ * Deploys the hard peg wrapper and configures static prices for supported assets.
+ *
+ * @param hre Hardhat runtime environment
+ * @param oracleConfig Oracle configuration for the current network
+ * @param deployer Deployer address responsible for managing the wrapper
+ */
+async function deployHardPegWrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.hardPeg;
   const assets = (wrapperConfig?.assets as HardPegAssetMap | undefined) || {};
+
   if (!wrapperConfig || Object.keys(assets).length === 0) {
     return;
   }
@@ -148,7 +163,7 @@ async function deployHardPegWrapper(
   const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
     from: deployer,
     contract: "HardPegOracleWrapperV1_1",
-    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, wrapperConfig.initialAdmin ?? deployer],
+    args: [baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
     log: true,
     autoMine: true,
   });
@@ -161,16 +176,20 @@ async function deployHardPegWrapper(
     }
 
     await (
-      await wrapper.configurePeg(
-        assetAddress,
-        assetConfig.pricePeg,
-        assetConfig.lowerGuard ?? 0n,
-        assetConfig.upperGuard ?? 0n
-      )
+      await wrapper.configurePeg(assetAddress, assetConfig.pricePeg, assetConfig.lowerGuard ?? 0n, assetConfig.upperGuard ?? 0n)
     ).wait();
   }
 }
 
+/**
+ * Resolves the Chainlink feed address for an asset, deploying a mock when requested.
+ *
+ * @param hre Hardhat runtime environment
+ * @param deployer Deployer address used for deploying mocks
+ * @param assetAddress Asset identifier being configured
+ * @param assetConfig Chainlink feed configuration for the asset
+ * @param cache Cache of previously deployed mocks to avoid duplicates
+ */
 async function ensureChainlinkFeed(
   hre: HardhatRuntimeEnvironment,
   deployer: string,
@@ -188,6 +207,7 @@ async function ensureChainlinkFeed(
 
   const mockId = assetConfig.mock.id ?? `chainlink-${assetAddress}`;
   const cacheKey = `chainlink:${mockId}`;
+
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey)!;
   }
@@ -206,6 +226,7 @@ async function ensureChainlinkFeed(
   const feed = await hre.ethers.getContractAt("MockChainlinkAggregatorV3", deployment.address, await hre.ethers.getSigner(deployer));
 
   const answer = hre.ethers.parseUnits(assetConfig.mock.value, assetConfig.mock.decimals);
+
   if (assetConfig.mock.timestampOffsetSeconds !== undefined) {
     const timestamp = BigInt(Math.floor(Date.now() / 1000) + assetConfig.mock.timestampOffsetSeconds);
     await (await feed.setMockWithTimestamp(answer, timestamp)).wait();
@@ -217,12 +238,18 @@ async function ensureChainlinkFeed(
   return deployment.address;
 }
 
+/**
+ * Checks whether a provided string is a valid non-zero Ethereum address.
+ *
+ * @param value Value to validate
+ */
 function isUsableAddress(value: string | undefined): value is string {
   if (!value) {
     return false;
   }
   const normalized = value.toLowerCase();
   const isHexAddress = normalized.startsWith("0x") && normalized.length === 42;
+
   if (!isHexAddress) {
     return false;
   }
