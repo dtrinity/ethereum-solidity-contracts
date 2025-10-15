@@ -227,7 +227,15 @@ export interface OracleAggregatorRoleConfig {
 export interface OracleWrapperDeploymentConfig<TConfig> {
   readonly deploymentId: string;
   readonly initialAdmin?: string;
-  readonly assets: Record<string, TConfig>;
+  readonly assets?: Record<string, TConfig>;
+}
+
+export interface ChainlinkFeedMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly description?: string;
+  readonly timestampOffsetSeconds?: number;
 }
 
 export interface ChainlinkFeedAssetConfig {
@@ -237,6 +245,14 @@ export interface ChainlinkFeedAssetConfig {
   readonly maxDeviationBps?: number;
   readonly minAnswer?: bigint;
   readonly maxAnswer?: bigint;
+  readonly mock?: ChainlinkFeedMockConfig;
+}
+
+export interface Api3ProxyMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly timestampOffsetSeconds?: number;
 }
 
 export interface Api3ProxyAssetConfig {
@@ -247,6 +263,14 @@ export interface Api3ProxyAssetConfig {
   readonly maxDeviationBps?: number;
   readonly minAnswer?: bigint;
   readonly maxAnswer?: bigint;
+  readonly mock?: Api3ProxyMockConfig;
+}
+
+export interface RateProviderMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly timestampOffsetSeconds?: number;
 }
 
 export interface RateCompositeAssetConfig {
@@ -260,6 +284,8 @@ export interface RateCompositeAssetConfig {
   readonly maxDeviationBps?: number;
   readonly minAnswer?: bigint;
   readonly maxAnswer?: bigint;
+  readonly priceMock?: ChainlinkFeedMockConfig;
+  readonly rateMock?: RateProviderMockConfig;
 }
 
 export interface HardPegAssetConfig {

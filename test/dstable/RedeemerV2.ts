@@ -5,7 +5,7 @@ import { Address } from "hardhat-deploy/types";
 import {
   CollateralHolderVault,
   IssuerV2,
-  OracleAggregator,
+  OracleAggregatorV1_1,
   RedeemerV2,
   TestERC20,
   TestMintableERC20,
@@ -41,7 +41,7 @@ async function calculateExpectedCollateralAmount(
   dstableAmount: bigint,
   dstableDecimals: number,
   collateralDecimals: number,
-  oracleAggregator: OracleAggregator,
+  oracleAggregator: OracleAggregatorV1_1,
   dstableAddress: string,
   collateralAddress: string
 ): Promise<bigint> {
@@ -62,7 +62,7 @@ dstableConfigs.forEach((config) => {
     let redeemer: RedeemerV2;
     let issuer: IssuerV2;
     let collateralVault: CollateralHolderVault;
-    let oracle: OracleAggregator;
+    let oracle: OracleAggregatorV1_1;
     let collateralContracts: Map<string, TestERC20> = new Map();
     let collateralInfos: Map<string, TokenInfo> = new Map();
     let dstable: TestMintableERC20;
@@ -90,7 +90,7 @@ dstableConfigs.forEach((config) => {
         await hre.deployments.get(config.oracleAggregatorId)
       ).address;
       oracle = await hre.ethers.getContractAt(
-        "OracleAggregator",
+        "OracleAggregatorV1_1",
         oracleAddress,
         await hre.ethers.getSigner(deployer)
       );

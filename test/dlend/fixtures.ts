@@ -178,7 +178,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const usdOracleAddress = (await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID))
     .address;
   const usdOracle = await hre.ethers.getContractAt(
-    "OracleAggregator",
+    "OracleAggregatorV1_1",
     usdOracleAddress,
   );
 
@@ -222,7 +222,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID))
     .address;
   const ethOracle = await hre.ethers.getContractAt(
-    "OracleAggregator",
+    "OracleAggregatorV1_1",
     ethOracleAddress,
   );
 
