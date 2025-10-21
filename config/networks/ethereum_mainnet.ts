@@ -2,7 +2,19 @@ import { ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID } from "../../typescript/deploy-ids";
+import {
+  DETH_TOKEN_ID,
+  DUSD_TOKEN_ID,
+  ETH_API3_WRAPPER_V1_1_ID,
+  ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
+  ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
+  ETH_HARD_PEG_WRAPPER_V1_1_ID,
+  INCENTIVES_PROXY_ID,
+  USD_API3_WRAPPER_V1_1_ID,
+  USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
+  USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
+  USD_HARD_PEG_WRAPPER_V1_1_ID,
+} from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { fetchTokenInfo } from "../../typescript/token/utils";
 import {
@@ -154,28 +166,72 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
     },
     oracleAggregators: {
       USD: {
-        baseCurrency: ZeroAddress, // Note that USD is represented by the zero address, per Aave's convention
+        baseCurrency: ZeroAddress,
         hardDStablePeg: 10n ** BigInt(ORACLE_AGGREGATOR_PRICE_DECIMALS),
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
-        redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: {},
-          redstoneOracleWrappersWithThresholding: {},
-          compositeRedstoneOracleWrappersWithThresholding: {},
+        roles: {
+          admins: [governanceSafeMultisig],
+          oracleManagers: [governanceSafeMultisig],
+          guardians: safeOwners,
+          globalMaxStaleTime: 3600,
         },
-        chainlinkCompositeAggregator: {},
+        wrappers: {
+          chainlink: {
+            deploymentId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          api3: {
+            deploymentId: USD_API3_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          rateComposite: {
+            deploymentId: USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          hardPeg: {
+            deploymentId: USD_HARD_PEG_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+        },
+        assets: {},
       },
       ETH: {
         hardDStablePeg: 10n ** BigInt(ORACLE_AGGREGATOR_PRICE_DECIMALS),
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
-        baseCurrency: wETHAddress, // Using WETH as base currency for Ethereum
-        redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: {
-            // PLACEHOLDER: Update with actual Ethereum oracle addresses
-            [stETHAddress]: "0x0000000000000000000000000000000000000000", // stETH/ETH Feed
-          },
-          redstoneOracleWrappersWithThresholding: {},
-          compositeRedstoneOracleWrappersWithThresholding: {},
+        baseCurrency: wETHAddress,
+        roles: {
+          admins: [governanceSafeMultisig],
+          oracleManagers: [governanceSafeMultisig],
+          guardians: safeOwners,
+          globalMaxStaleTime: 3600,
         },
+        wrappers: {
+          chainlink: {
+            deploymentId: ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          api3: {
+            deploymentId: ETH_API3_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          rateComposite: {
+            deploymentId: ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+          hardPeg: {
+            deploymentId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
+            initialAdmin: governanceSafeMultisig,
+            assets: {},
+          },
+        },
+        assets: {},
       },
     },
     dLend: {

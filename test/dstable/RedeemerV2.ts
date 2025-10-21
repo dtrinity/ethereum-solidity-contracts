@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import { CollateralHolderVault, IssuerV2, OracleAggregator, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { ONE_HUNDRED_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
   DETH_REDEEMER_CONTRACT_ID,
@@ -26,7 +26,7 @@ async function calculateExpectedCollateralAmount(
   dstableAmount: bigint,
   dstableDecimals: number,
   collateralDecimals: number,
-  oracleAggregator: OracleAggregator,
+  oracleAggregator: OracleAggregatorV1_1,
   dstableAddress: string,
   collateralAddress: string,
 ): Promise<bigint> {
@@ -43,7 +43,7 @@ dstableConfigs.forEach((config) => {
     let redeemer: RedeemerV2;
     let issuer: IssuerV2;
     let collateralVault: CollateralHolderVault;
-    let oracle: OracleAggregator;
+    let oracle: OracleAggregatorV1_1;
     let collateralContracts: Map<string, TestERC20> = new Map();
     let collateralInfos: Map<string, TokenInfo> = new Map();
     let dstable: TestMintableERC20;
@@ -62,7 +62,7 @@ dstableConfigs.forEach((config) => {
       collateralVault = await hre.ethers.getContractAt("CollateralHolderVault", vaultAddress, await hre.ethers.getSigner(deployer));
 
       const oracleAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
-      oracle = await hre.ethers.getContractAt("OracleAggregator", oracleAddress, await hre.ethers.getSigner(deployer));
+      oracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", oracleAddress, await hre.ethers.getSigner(deployer));
 
       // IssuerV2 from deployments
       const issuerAddress = (await hre.deployments.get(config.issuerContractId)).address;

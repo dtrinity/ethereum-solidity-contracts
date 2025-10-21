@@ -117,32 +117,9 @@ export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
   readonly baseCurrency: string;
-  readonly redstoneOracleAssets: {
-    plainRedstoneOracleWrappers: {
-      [key: string]: string;
-    };
-    redstoneOracleWrappersWithThresholding: {
-      [key: string]: {
-        feed: string;
-        lowerThreshold: bigint;
-        fixedPrice: bigint;
-      };
-    };
-    compositeRedstoneOracleWrappersWithThresholding: {
-      [key: string]: {
-        feedAsset: string;
-        feed1: string;
-        feed2: string;
-        lowerThresholdInBase1: bigint;
-        fixedPriceInBase1: bigint;
-        lowerThresholdInBase2: bigint;
-        fixedPriceInBase2: bigint;
-      };
-    };
-  };
-  readonly chainlinkCompositeAggregator?: {
-    [assetAddress: string]: ChainlinkCompositeAggregatorConfig;
-  };
+  readonly roles: OracleAggregatorRoleConfig;
+  readonly wrappers: OracleWrapperConfig;
+  readonly assets: Record<string, OracleAssetRoutingConfig>;
 }
 
 export interface IInterestRateStrategyParams {
@@ -240,15 +217,100 @@ export interface PendleConfig {
   readonly ptTokens: PTTokenConfig[]; // List of PT tokens to configure
 }
 
-// --- Chainlink Composite Wrapper Types ---
+export interface OracleAggregatorRoleConfig {
+  readonly admins: string[];
+  readonly oracleManagers: string[];
+  readonly guardians: string[];
+  readonly globalMaxStaleTime: number;
+}
 
-export interface ChainlinkCompositeAggregatorConfig {
-  readonly name: string; // Name of the composite wrapper (e.g., "OS_S_USD")
-  readonly feedAsset: Address; // Address of the asset being priced (e.g., wOS address)
-  readonly sourceFeed1: Address; // Address of the first Chainlink price feed (e.g., OS/S)
-  readonly sourceFeed2: Address; // Address of the second Chainlink price feed (e.g., S/USD)
-  readonly lowerThresholdInBase1: bigint; // Lower threshold for sourceFeed1 (e.g., 99000000n for 0.99)
-  readonly fixedPriceInBase1: bigint; // Fixed price for sourceFeed1 when threshold is exceeded (e.g., 100000000n for 1.00)
-  readonly lowerThresholdInBase2: bigint; // Lower threshold for sourceFeed2 (e.g., 98000000n for 0.98)
-  readonly fixedPriceInBase2: bigint; // Fixed price for sourceFeed2 when threshold is exceeded (e.g., 100000000n for 1.00)
+export interface OracleWrapperDeploymentConfig<TConfig> {
+  readonly deploymentId: string;
+  readonly initialAdmin?: string;
+  readonly assets?: Record<string, TConfig>;
+}
+
+export interface ChainlinkFeedMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly description?: string;
+  readonly timestampOffsetSeconds?: number;
+}
+
+export interface ChainlinkFeedAssetConfig {
+  readonly feed: string;
+  readonly heartbeat?: number;
+  readonly maxStaleTime?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+  readonly mock?: ChainlinkFeedMockConfig;
+}
+
+export interface Api3ProxyMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly timestampOffsetSeconds?: number;
+}
+
+export interface Api3ProxyAssetConfig {
+  readonly proxy: string;
+  readonly decimals: number;
+  readonly heartbeat?: number;
+  readonly maxStaleTime?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+  readonly mock?: Api3ProxyMockConfig;
+}
+
+export interface RateProviderMockConfig {
+  readonly id?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly timestampOffsetSeconds?: number;
+}
+
+export interface RateCompositeAssetConfig {
+  readonly priceFeed: string;
+  readonly priceFeedDecimals: number;
+  readonly rateProvider: string;
+  readonly rateDecimals: number;
+  readonly priceHeartbeat?: number;
+  readonly rateHeartbeat?: number;
+  readonly maxStaleTime?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+  readonly priceMock?: ChainlinkFeedMockConfig;
+  readonly rateMock?: RateProviderMockConfig;
+}
+
+export interface HardPegAssetConfig {
+  readonly pricePeg: bigint;
+  readonly lowerGuard?: bigint;
+  readonly upperGuard?: bigint;
+}
+
+export interface OracleWrapperConfig {
+  readonly chainlink?: OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>;
+  readonly api3?: OracleWrapperDeploymentConfig<Api3ProxyAssetConfig>;
+  readonly rateComposite?: OracleWrapperDeploymentConfig<RateCompositeAssetConfig>;
+  readonly hardPeg?: OracleWrapperDeploymentConfig<HardPegAssetConfig>;
+}
+
+export interface OracleAssetRiskConfig {
+  readonly maxStaleTime?: number;
+  readonly heartbeatOverride?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+}
+
+export interface OracleAssetRoutingConfig {
+  readonly primaryWrapperId: string;
+  readonly fallbackWrapperId?: string;
+  readonly risk?: OracleAssetRiskConfig;
 }

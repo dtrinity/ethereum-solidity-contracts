@@ -8,7 +8,7 @@ import {
   CollateralHolderVault,
   IssuerV2,
   MockAmoVault,
-  OracleAggregator,
+  OracleAggregatorV1_1,
   TestERC20,
   TestMintableERC20,
 } from "../../typechain-types";
@@ -25,7 +25,7 @@ dstableConfigs.forEach((config) => {
     let issuerContract: IssuerV2;
     let collateralVaultContract: CollateralHolderVault;
     let mockAmoVaultContract: MockAmoVault;
-    let oracleAggregatorContract: OracleAggregator;
+    let oracleAggregatorContract: OracleAggregatorV1_1;
 
     let dstableContract: TestMintableERC20;
     let dstableInfo: TokenInfo;
@@ -62,7 +62,7 @@ dstableConfigs.forEach((config) => {
       // Get the oracle aggregator
       const oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracleAggregatorContract = await hre.ethers.getContractAt(
-        "OracleAggregator",
+        "OracleAggregatorV1_1",
         oracleAggregatorAddress,
         await hre.ethers.getSigner(deployer),
       );

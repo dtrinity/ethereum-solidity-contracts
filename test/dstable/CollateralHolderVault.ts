@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import { CollateralHolderVault, OracleAggregator, TestERC20 } from "../../typechain-types";
+import { CollateralHolderVault, OracleAggregatorV1_1, TestERC20 } from "../../typechain-types";
 import { getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
 
@@ -14,7 +14,7 @@ dstableConfigs.forEach((config) => {
     let collateralVaultContract: CollateralHolderVault;
     let collateralContracts: Map<string, TestERC20> = new Map();
     let collateralInfos: Map<string, TokenInfo> = new Map();
-    let oracleAggregatorContract: OracleAggregator;
+    let oracleAggregatorContract: OracleAggregatorV1_1;
     let deployer: Address;
     let user1: Address;
     let user2: Address;
@@ -33,7 +33,7 @@ dstableConfigs.forEach((config) => {
       // Get the oracle aggregator based on the dStable configuration
       const oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracleAggregatorContract = await hre.ethers.getContractAt(
-        "OracleAggregator",
+        "OracleAggregatorV1_1",
         oracleAggregatorAddress,
         await hre.ethers.getSigner(deployer),
       );

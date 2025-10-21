@@ -3,7 +3,15 @@ import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { AmoManager, CollateralVault, IssuerV2, MockAmoVault, OracleAggregator, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import {
+  AmoManager,
+  CollateralVault,
+  IssuerV2,
+  MockAmoVault,
+  OracleAggregatorV1_1,
+  TestERC20,
+  TestMintableERC20,
+} from "../../typechain-types";
 import { getTokenContractForAddress, getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableAmoFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
 
@@ -42,7 +50,7 @@ async function runTestsForDStable(
     let issuerContract: IssuerV2;
     let dstableContract: TestMintableERC20;
     let dstableInfo: TokenInfo;
-    let oracleAggregatorContract: OracleAggregator;
+    let oracleAggregatorContract: OracleAggregatorV1_1;
     let collateralVaultContract: CollateralVault;
     let mockAmoVault: MockAmoVault;
     let amoAllocatorRole: string;
@@ -71,7 +79,7 @@ async function runTestsForDStable(
       // Get the oracle aggregator based on the dStable configuration
       const oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracleAggregatorContract = await hre.ethers.getContractAt(
-        "OracleAggregator",
+        "OracleAggregatorV1_1",
         oracleAggregatorAddress,
         await hre.ethers.getSigner(deployer),
       );

@@ -143,7 +143,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const dusdIssuerAddress = (await hre.deployments.get(DUSD_ISSUER_V2_CONTRACT_ID)).address;
   const dusdIssuer = await hre.ethers.getContractAt("IssuerV2", dusdIssuerAddress);
   const usdOracleAddress = (await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID)).address;
-  const usdOracle = await hre.ethers.getContractAt("OracleAggregator", usdOracleAddress);
+  const usdOracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", usdOracleAddress);
 
   // Get collateral token (sfrxUSD) for dUSD
   const { contract: usdCollateralToken, tokenInfo: usdCollateralInfo } = await getTokenContractForSymbol(hre, deployer, "sfrxUSD");
@@ -165,7 +165,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
   const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID)).address;
   const dsIssuer = await hre.ethers.getContractAt("IssuerV2", dsIssuerAddress);
   const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID)).address;
-  const ethOracle = await hre.ethers.getContractAt("OracleAggregator", ethOracleAddress);
+  const ethOracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", ethOracleAddress);
 
   // Get collateral token (stETH) for dETH
   const { contract: sCollateralToken, tokenInfo: sCollateralInfo } = await getTokenContractForSymbol(hre, deployer, "stETH");

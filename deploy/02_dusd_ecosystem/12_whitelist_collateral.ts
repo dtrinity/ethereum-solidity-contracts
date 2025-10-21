@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get the OracleAggregator contract
   const { address: oracleAggregatorAddress } = await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID);
   const oracleAggregator = await hre.ethers.getContractAt(
-    "OracleAggregator",
+    "OracleAggregatorV1_1",
     oracleAggregatorAddress,
     await hre.ethers.getSigner(deployer),
   );

@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import { AmoManager, CollateralHolderVault, IssuerV2, OracleAggregator, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import { AmoManager, CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
@@ -28,7 +28,7 @@ async function calculateExpectedDstableAmount(
   collateralDecimals: number,
   dstableSymbol: string,
   dstableDecimals: number,
-  oracleAggregator: OracleAggregator,
+  oracleAggregator: OracleAggregatorV1_1,
   collateralAddress: string,
   dstableAddress: string,
 ): Promise<bigint> {
@@ -50,7 +50,7 @@ async function calculateExpectedDstableFromBase(
   baseValue: bigint,
   dstableSymbol: string,
   dstableDecimals: number,
-  oracleAggregator: OracleAggregator,
+  oracleAggregator: OracleAggregatorV1_1,
   dstableAddress: string,
 ): Promise<bigint> {
   const dstablePrice = await oracleAggregator.getAssetPrice(dstableAddress);
@@ -65,7 +65,7 @@ dstableConfigs.forEach((config) => {
     let issuerV2: IssuerV2;
     let collateralVaultContract: CollateralHolderVault;
     let amoManagerContract: AmoManager;
-    let oracleAggregatorContract: OracleAggregator;
+    let oracleAggregatorContract: OracleAggregatorV1_1;
     let collateralContracts: Map<string, TestERC20> = new Map();
     let collateralInfos: Map<string, TokenInfo> = new Map();
     let dstableContract: TestMintableERC20;
@@ -95,7 +95,7 @@ dstableConfigs.forEach((config) => {
       // Get the oracle aggregator based on the dStable configuration
       const oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracleAggregatorContract = await hre.ethers.getContractAt(
-        "OracleAggregator",
+        "OracleAggregatorV1_1",
         oracleAggregatorAddress,
         await hre.ethers.getSigner(deployer),
       );

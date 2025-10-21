@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 
-import { AaveOracle, OracleAggregator } from "../../typechain-types";
+import { AaveOracle, OracleAggregatorV1_1 } from "../../typechain-types";
 import { POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
 import { dLendFixture, DLendFixtureResult } from "./fixtures";
 
@@ -11,7 +11,7 @@ describe("AaveOracle", () => {
   let deployerSigner: SignerWithAddress;
   let user1Signer: SignerWithAddress;
   let aaveOracle: AaveOracle;
-  let oracleAggregator: OracleAggregator;
+  let oracleAggregator: OracleAggregatorV1_1;
   let fixture: DLendFixtureResult;
   let testAsset: string;
 
@@ -25,7 +25,7 @@ describe("AaveOracle", () => {
     // Load the fixture
     fixture = await dLendFixture();
     aaveOracle = await ethers.getContractAt("AaveOracle", await fixture.contracts.priceOracle.getAddress());
-    oracleAggregator = await ethers.getContractAt("OracleAggregator", await aaveOracle.getFallbackOracle());
+    oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", await aaveOracle.getFallbackOracle());
 
     // Get a test asset from the reserves list
     const reservesList = await fixture.contracts.pool.getReservesList();
