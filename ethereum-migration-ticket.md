@@ -6,6 +6,12 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 - Integrate Sonic-exclusive enhancements (Odos adapter v2 stack, updated dLoop logic, debt AMO tooling, reward infrastructure, documentation).
 - Ensure documentation and developer tooling reflect the migrated architecture; favour clean replacements over incremental merges because no contracts are live on Ethereum.
 
+# Migration Snapshot
+- **Keep (Ethereum)** Oracle Aggregator v1.1 suite and existing deployment scaffolding; treat these contracts/tests as the canonical source of truth.
+- **Adopt (Katana)** Updated common libraries, dSTAKE v2 stack, deployment/typescript scaffolding, and any refreshed shared utilities compatible with Ethereum.
+- **Adopt (Sonic)** Odos adapter v2 flow, dLoop shared logic, debt AMO contracts, and `RewardClaimable` integrations needed for the rewards stack.
+- **Shared Tools** Continue syncing `.shared/` subtree via `yarn workspace @dtrinity/shared-hardhat-tools shared:update`; do not edit the subtree directly.
+
 # Scope
 - Solidity sources under `contracts/**`
 - Deploy scripts (`deploy/**`) and TypeScript utilities (`typescript/**`, `scripts/**`)
@@ -26,19 +32,18 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 - [ ] **Contracts**
   - [x] Copy Katana’s updated common libraries (`SupportsWithdrawalFee`, `WithdrawalFeeMath`, rescue helpers) and remove superseded versions.
   - [x] Replace dSTAKE v1 with Katana’s v2 suite (token/router/collateral vault, adapters, interfaces, libraries, mocks).
-<<<<<<< HEAD
-  - [ ] Migrate oracle aggregator to the Katana layout (core contract, API3 + Chainlink wrappers, interfaces, README updates) and delete legacy v1.1 files.
-  - [ ] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
+  - [x] Align Katana oracle aggregator updates while preserving Ethereum’s v1.1 stack (core contract, API3 + Chainlink wrappers, interfaces, README updates).
+  - [x] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
   - [ ] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
   - [ ] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
 - [ ] **Deploy & tooling**
-  - [ ] Mirror Katana/Sonic deployment scripts, removing obsolete v1.1 workflows, and ensure network/task names remain accurate for Ethereum.
+  - [ ] Mirror Katana/Sonic deployment scripts while keeping Ethereum’s v1.1 oracle flows intact; ensure network/task names remain accurate for Ethereum.
   - [ ] Refresh TypeScript support files (`typescript/**`, `config/**`) to match upstream expectations.
 - [ ] **Tests**
-  - [ ] Replace dSTAKE tests with Katana’s suite; integrate new adapter, oracle, dLoop, reward, and dPOOL tests from Sonic.
+  - [ ] Replace dSTAKE tests with Katana’s v2 suite; integrate new adapter, oracle, dLoop, and reward tests from Sonic.
   - [ ] Verify Hardhat compilation and run the full test suite locally.
 - [ ] **Documentation**
-  - [ ] Overwrite design docs with the latest versions (dSTAKE, rewards, dLoop, dPOOL, rewards_claimable, vesting).
+  - [ ] Overwrite design docs with the latest versions (dSTAKE, rewards, dLoop, rewards_claimable, vesting).
   - [ ] Update repository-level docs (`docs/manual-explorer-verification.md`, any deployment guides) for new scripts/contracts.
 - [ ] **Validation**
   - [ ] Run `yarn lint`, `yarn build`, and all relevant Hardhat tests.
