@@ -26,8 +26,9 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 - [ ] **Contracts**
   - [x] Copy Katana’s updated common libraries (`SupportsWithdrawalFee`, `WithdrawalFeeMath`, rescue helpers) and remove superseded versions.
   - [x] Replace dSTAKE v1 with Katana’s v2 suite (token/router/collateral vault, adapters, interfaces, libraries, mocks).
-  - [x] Migrate oracle aggregator to the Katana layout (core contract, API3 + Chainlink wrappers, interfaces, README updates) and delete legacy v1.1 files.
-  - [x] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
+<<<<<<< HEAD
+  - [ ] Migrate oracle aggregator to the Katana layout (core contract, API3 + Chainlink wrappers, interfaces, README updates) and delete legacy v1.1 files.
+  - [ ] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
   - [ ] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
   - [ ] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
 - [ ] **Deploy & tooling**
