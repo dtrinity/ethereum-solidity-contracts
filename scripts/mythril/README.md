@@ -56,6 +56,7 @@ Script to compile all JSON files from `reports/mythril` and generate a comprehen
 ```
 
 This generates a summary at `reports/mythril_summary.md` with:
+
 - Overview statistics
 - Categorized results (Success, Compilation Errors, etc.)
 - Detailed issue information
@@ -104,6 +105,7 @@ make mythril.summary
 ### Smart Contract Discovery
 
 The script automatically finds Solidity contracts while excluding:
+
 - Mock contracts (`*/mocks/*`)
 - Testing contracts (`*/testing/*`)
 - Dependencies (`*/dependencies/*`)
@@ -115,6 +117,7 @@ The script automatically finds Solidity contracts while excluding:
 ### Parallel Execution
 
 Analysis runs in parallel using ThreadPoolExecutor with configurable worker count:
+
 - Default: 4 workers
 - Fast mode: 8 workers
 - Customizable with `--max-workers`
@@ -122,6 +125,7 @@ Analysis runs in parallel using ThreadPoolExecutor with configurable worker coun
 ### Incremental Analysis
 
 The script tracks already analyzed contracts and skips them by default:
+
 - Checks for existing JSON files in `reports/mythril/`
 - Skips contracts that have already been analyzed
 - Use `--force-reanalyze` to override this behavior
@@ -145,6 +149,7 @@ The script tracks already analyzed contracts and skips them by default:
 ### Individual Results
 
 Each contract analysis produces a JSON file at:
+
 ```
 reports/mythril/<ContractName>.json
 ```
@@ -152,6 +157,7 @@ reports/mythril/<ContractName>.json
 ### Summary Report
 
 The summary is generated at:
+
 ```
 reports/mythril_summary.md
 ```
@@ -159,6 +165,7 @@ reports/mythril_summary.md
 ### Error Logs
 
 For contracts that fail analysis, additional debug files are created:
+
 ```
 reports/mythril/<ContractName>_error.txt
 ```
@@ -200,6 +207,7 @@ reports/mythril/<ContractName>_error.txt
 ## Integration
 
 This tooling integrates seamlessly with the existing build system:
+
 - Uses the same `mythril-config.json` configuration
 - Leverages hardhat compilation
-- Follows existing directory structure and naming conventions 
+- Follows existing directory structure and naming conventions

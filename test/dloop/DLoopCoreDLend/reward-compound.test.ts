@@ -88,7 +88,7 @@ describe("DLoopCoreDLend – Reward Compounding (vault shares as exchange asset)
       await treasury.getAddress(),
       MAX_TREASURY_FEE_BPS,
       INIT_TREASURY_FEE_BPS,
-      EXCHANGE_THRESHOLD
+      EXCHANGE_THRESHOLD,
     );
 
     // Fund reward source with rewards
@@ -149,7 +149,7 @@ describe("DLoopCoreDLend – Reward Compounding (vault shares as exchange asset)
 
     await expect(dloop.connect(user).compoundRewards(below, [await rewardToken1.getAddress()], user.address)).to.be.revertedWithCustomError(
       dloop,
-      "ExchangeAmountTooLow"
+      "ExchangeAmountTooLow",
     );
   });
 

@@ -9,9 +9,9 @@ import { BaseChainlinkWrapperV1_1 } from "./BaseChainlinkWrapperV1_1.sol";
  *      direct Chainlink feeds without additional composition.
  */
 contract ChainlinkFeedWrapperV1_1 is BaseChainlinkWrapperV1_1 {
-  constructor(
-    address baseCurrency_,
-    uint256 baseCurrencyUnit_,
-    address initialAdmin
-  ) BaseChainlinkWrapperV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
+    constructor(
+        address baseCurrency_,
+        uint256 baseCurrencyUnit_,
+        address initialAdmin
+    ) BaseChainlinkWrapperV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
 }

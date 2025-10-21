@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const addressesProviderContract = await hre.ethers.getContractAt(
     "PoolAddressesProvider",
     addressesProviderDeployedResult.address,
-    deployer
+    deployer,
   );
 
   // 1. Set ACL admin on AddressesProvider

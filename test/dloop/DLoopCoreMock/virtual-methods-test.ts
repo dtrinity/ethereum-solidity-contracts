@@ -67,7 +67,7 @@ describe("DLoopCoreMock Virtual Methods Tests", function () {
         const largeAmount = ethers.parseEther("50000");
 
         await expect(dloopMock.testRepayDebtToPoolImplementation(await debtToken.getAddress(), largeAmount, user1)).to.be.revertedWith(
-          "Mock: not enough balance to repay"
+          "Mock: not enough balance to repay",
         );
       });
     });
@@ -93,7 +93,7 @@ describe("DLoopCoreMock Virtual Methods Tests", function () {
         const largeAmount = ethers.parseEther("2000000");
 
         await expect(
-          dloopMock.testWithdrawFromPoolImplementation(await collateralToken.getAddress(), largeAmount, user1)
+          dloopMock.testWithdrawFromPoolImplementation(await collateralToken.getAddress(), largeAmount, user1),
         ).to.be.revertedWith("Mock: not enough tokens in pool to withdraw");
       });
     });
@@ -106,7 +106,7 @@ describe("DLoopCoreMock Virtual Methods Tests", function () {
 
         await expect(dloopMock.getAssetPriceFromOracle(await newToken.getAddress())).to.be.revertedWithCustomError(
           dloopMock,
-          "MockPriceNotSet"
+          "MockPriceNotSet",
         );
       });
 
@@ -114,7 +114,7 @@ describe("DLoopCoreMock Virtual Methods Tests", function () {
         const largeAmount = ethers.parseEther("2000000"); // More than pool has
 
         await expect(dloopMock.testBorrowFromPoolImplementation(await debtToken.getAddress(), largeAmount, user1)).to.be.revertedWith(
-          "Mock: not enough tokens in pool to borrow"
+          "Mock: not enough tokens in pool to borrow",
         );
       });
 
@@ -122,7 +122,7 @@ describe("DLoopCoreMock Virtual Methods Tests", function () {
         const largeAmount = ethers.parseEther("50000"); // More than user has
 
         await expect(
-          dloopMock.testSupplyToPoolImplementation(await collateralToken.getAddress(), largeAmount, user1)
+          dloopMock.testSupplyToPoolImplementation(await collateralToken.getAddress(), largeAmount, user1),
         ).to.be.revertedWithCustomError(dloopMock, "NotEnoughBalanceToSupply");
       });
     });

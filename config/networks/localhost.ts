@@ -423,7 +423,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       USDS: emptyStringIfUndefined(USDSDeployment?.address),
     },
     walletAddresses: {
-      governanceMultisig: deployer,
+      governanceMultisig: user1,
       incentivesVault: deployer,
     },
     dStables: {

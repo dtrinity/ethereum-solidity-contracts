@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "network": "ethereum_mainnet",
+  "deployer": "0x0f5e3D9AEe7Ab5fDa909Af1ef147D98a7f4B3022",
+  "governance": "0x0000000000000000000000000000000000000000",
+  "defaults": {
+    "ownable": {
+      "newOwner": "{{governance}}",
+      "execution": "direct"
+    },
+    "defaultAdmin": {
+      "newAdmin": "{{governance}}",
+      "grantExecution": "direct"
+    }
+  },
+  "autoInclude": {
+    "ownable": true,
+    "defaultAdmin": true
+  },
+  "exclusions": [],
+  "overrides": [],
+  "safe": {
+    "safeAddress": "0x0000000000000000000000000000000000000000",
+    "threshold": 0,
+    "chainId": 1,
+    "description": "TODO: replace with Ethereum governance Safe details before enabling roles.revoke"
+  },
+  "output": {
+    "json": "reports/roles/ethereum-mainnet-latest.json"
+  }
+}

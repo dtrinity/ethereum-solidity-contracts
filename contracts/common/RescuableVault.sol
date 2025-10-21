@@ -27,38 +27,38 @@ import { ERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/extensions
  *      - The derived contract must implement the getRestrictedRescueTokens() function
  */
 abstract contract RescuableVault is Ownable, ReentrancyGuard {
-  using SafeERC20 for ERC20;
+    using SafeERC20 for ERC20;
 
-  /* Virtual Methods - Required to be implemented by derived contracts */
+    /* Virtual Methods - Required to be implemented by derived contracts */
 
-  /**
-   * @dev Gets the restricted rescue tokens
-   * @return address[] Restricted rescue tokens
-   */
-  function getRestrictedRescueTokens() public view virtual returns (address[] memory);
+    /**
+     * @dev Gets the restricted rescue tokens
+     * @return address[] Restricted rescue tokens
+     */
+    function getRestrictedRescueTokens() public view virtual returns (address[] memory);
 
-  /* Rescue Functions */
+    /* Rescue Functions */
 
-  /**
-   * @dev Rescues tokens accidentally sent to the contract (except for the collateral token and debt token)
-   * @param token Address of the token to rescue
-   * @param receiver Address to receive the rescued tokens
-   * @param amount Amount of tokens to rescue
-   */
-  function rescueToken(address token, address receiver, uint256 amount) public onlyOwner nonReentrant {
-    // The vault does not hold any debt token and collateral token, so it is not necessary to restrict the rescue of debt token and collateral token
-    // We can just rescue any ERC-20 token
+    /**
+     * @dev Rescues tokens accidentally sent to the contract (except for the collateral token and debt token)
+     * @param token Address of the token to rescue
+     * @param receiver Address to receive the rescued tokens
+     * @param amount Amount of tokens to rescue
+     */
+    function rescueToken(address token, address receiver, uint256 amount) public onlyOwner nonReentrant {
+        // The vault does not hold any debt token and collateral token, so it is not necessary to restrict the rescue of debt token and collateral token
+        // We can just rescue any ERC-20 token
 
-    address[] memory restrictedRescueTokens = getRestrictedRescueTokens();
+        address[] memory restrictedRescueTokens = getRestrictedRescueTokens();
 
-    // Check if the token is restricted
-    for (uint256 i = 0; i < restrictedRescueTokens.length; i++) {
-      if (token == restrictedRescueTokens[i]) {
-        revert("Cannot rescue restricted token");
-      }
+        // Check if the token is restricted
+        for (uint256 i = 0; i < restrictedRescueTokens.length; i++) {
+            if (token == restrictedRescueTokens[i]) {
+                revert("Cannot rescue restricted token");
+            }
+        }
+
+        // Rescue the token
+        ERC20(token).safeTransfer(receiver, amount);
     }
-
-    // Rescue the token
-    ERC20(token).safeTransfer(receiver, amount);
-  }
 }

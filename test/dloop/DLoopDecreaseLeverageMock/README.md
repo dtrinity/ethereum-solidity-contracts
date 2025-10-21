@@ -7,7 +7,7 @@ This directory contains comprehensive tests verifying the fix for **Issue #324: 
 The original vulnerability occurred in `DLoopDecreaseLeverageBase.sol` where:
 
 1. The contract would first transfer ALL remaining collateral tokens to `dLoopCore`
-2. Then attempt to transfer the user's entitled collateral to the receiver  
+2. Then attempt to transfer the user's entitled collateral to the receiver
 3. This caused a revert since the contract's balance was already depleted
 
 ## Fix
@@ -38,7 +38,7 @@ The fix ensures correct ordering:
 - ✅ **Verifies no `LeftoverCollateralTokensTransferred` event is emitted**
 - ✅ **Verifies transaction succeeds**
 
-### 3. `dust-leftover.test.ts` - Edge Case: Minimal Leftovers  
+### 3. `dust-leftover.test.ts` - Edge Case: Minimal Leftovers
 
 - Tests scenario with very small leftover amounts (wei-level)
 - ✅ **Verifies transaction succeeds even with dust amounts**
@@ -47,7 +47,7 @@ The fix ensures correct ordering:
 ## Key Assertions Proving Issue #324 is Fixed
 
 1. **No Revert**: All `decreaseLeverage()` calls complete successfully
-2. **User Receives Tokens**: `userCollateralAfter > userCollateralBefore`  
+2. **User Receives Tokens**: `userCollateralAfter > userCollateralBefore`
 3. **Clean Final State**: `peripheryCollateralAfter == 0` (no stuck funds)
 4. **Correct Event Ordering**: User transfer happens before leftover transfer
 5. **Value Preservation**: Total value is conserved across user and core
@@ -66,7 +66,7 @@ npx hardhat test test/dloop/DLoopDecreaseLeverageMock/happy-path.test.ts
 
 These tests provide **high confidence** that Issue #324 is resolved:
 
-- ✅ Direct reproduction of the vulnerable scenario  
+- ✅ Direct reproduction of the vulnerable scenario
 - ✅ Verification that the fix prevents the DoS
 - ✅ Edge case coverage (zero and dust leftovers)
 - ✅ Event-level verification of correct ordering

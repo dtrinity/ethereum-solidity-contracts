@@ -7,5 +7,5 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 // Deploying a separate ProxyAdmin keeps dSTAKE upgrades isolated from the
 // global DefaultProxyAdmin used elsewhere in the protocol.
 contract DStakeProxyAdmin is ProxyAdmin {
-  constructor(address initialOwner) ProxyAdmin(initialOwner) {}
+    constructor(address initialOwner) ProxyAdmin(initialOwner) {}
 }

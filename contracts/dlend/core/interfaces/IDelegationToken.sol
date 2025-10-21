@@ -23,9 +23,9 @@ pragma solidity ^0.8.20;
  * @notice Implements an interface for tokens with delegation COMP/UNI compatible
  */
 interface IDelegationToken {
-  /**
-   * @notice Delegate voting power to a delegatee
-   * @param delegatee The address of the delegatee
-   */
-  function delegate(address delegatee) external;
+    /**
+     * @notice Delegate voting power to a delegatee
+     * @param delegatee The address of the delegatee
+     */
+    function delegate(address delegatee) external;
 }

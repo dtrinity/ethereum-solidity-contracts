@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         routing.risk?.heartbeatOverride ?? 0,
         routing.risk?.maxDeviationBps ?? 0,
         routing.risk?.minAnswer ?? 0n,
-        routing.risk?.maxAnswer ?? 0n
+        routing.risk?.maxAnswer ?? 0n,
       )
     ).wait();
 

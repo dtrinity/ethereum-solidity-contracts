@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   console.log(
-    `\n🔑 ${__filename.split("/").slice(-2).join("/")}: TODO - configure role transfers for V1.1 oracle wrappers once deployment scripts are in place`
+    `\n🔑 ${__filename.split("/").slice(-2).join("/")}: TODO - configure role transfers for V1.1 oracle wrappers once deployment scripts are in place`,
   );
   return true;
 };

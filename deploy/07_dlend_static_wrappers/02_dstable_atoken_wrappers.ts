@@ -29,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const poolAddressesProviderContract = await ethers.getContractAt(
     "contracts/dlend/core/interfaces/IPoolAddressesProvider.sol:IPoolAddressesProvider",
-    poolAddressesProvider.address
+    poolAddressesProvider.address,
   );
 
   const poolAddress = await poolAddressesProviderContract.getPool();

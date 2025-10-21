@@ -18,7 +18,7 @@ import { deployDLoopIncreaseLeverageMockFixture } from "./fixtures";
 describe("DLoopIncreaseLeverageBase – double-counting collateral bug", function () {
   it("Should successfully increase leverage with a flash loan when user supplies exactly the required collateral", async function () {
     const { dloopMock, increaseLeverageMock, collateralToken, user1, debtToken } = await loadFixture(
-      deployDLoopIncreaseLeverageMockFixture
+      deployDLoopIncreaseLeverageMockFixture,
     );
 
     // 1️⃣  Move leverage below the target by increasing collateral price
@@ -50,7 +50,7 @@ describe("DLoopIncreaseLeverageBase – double-counting collateral bug", functio
       await increaseLeverageMock.connect(user1).increaseLeverage(
         requiredCollateralAmount,
         "0x", // swap data (ignored by SimpleDEXMock)
-        dloopMock
+        dloopMock,
       );
 
       // 6️⃣  Leverage must have increased compared to the pre-call state

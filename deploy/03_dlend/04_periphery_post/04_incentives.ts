@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const addressesProviderInstance = await ethers.getContractAt(
     "PoolAddressesProvider",
     addressesProvider.address,
-    await ethers.getSigner(deployer)
+    await ethers.getSigner(deployer),
   );
 
   // Deploy EmissionManager

@@ -4,6 +4,9 @@
   "author": "dTRINITY",
   "license": "MIT",
   "packageManager": "yarn@4.5.0",
+  "dependencies": {
+    "@dtrinity/shared-hardhat-tools": "portal:.shared"
+  },
   "devDependencies": {
     "@eslint/compat": "^1.2.6",
     "@eslint/eslintrc": "^3.2.0",

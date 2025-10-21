@@ -46,7 +46,7 @@ export async function deployDLoopIncreaseLeverageMockFixture(): Promise<DLoopInc
   const IncreaseMockFactory = await ethers.getContractFactory("DLoopIncreaseLeverageMock");
   const increaseLeverageMock = (await IncreaseMockFactory.deploy(
     await debtToken.getAddress(),
-    await simpleDEXMock.getAddress()
+    await simpleDEXMock.getAddress(),
   )) as DLoopIncreaseLeverageMock;
   await increaseLeverageMock.waitForDeployment();
 

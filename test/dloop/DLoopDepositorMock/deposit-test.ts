@@ -94,7 +94,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.depositAmount,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         // Get initial balances
@@ -108,7 +108,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
           user.address,
           minOutputShares,
           "0x", // No specific swap data needed for SimpleDEXMock
-          dloopMock
+          dloopMock,
         );
 
         // Verify user collateral balance decreased by deposit amount
@@ -122,7 +122,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         expect(actualShares).to.be.lte((expectedShares * 101n) / 100n); // No more than 1% above expected
         expect(actualShares).to.be.closeTo(
           testCase.expectedReceivedShares,
-          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Verify core vault received leveraged collateral amount
@@ -137,7 +137,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const currentLeverage = await dloopMock.getCurrentLeverageBps();
         expect(currentLeverage).to.be.closeTo(
           BigInt(testCase.expectedLeverageBps),
-          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance
+          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance
         );
 
         // Verify shares are reasonable compared to deposit amount
@@ -189,7 +189,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.depositAmount,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         // Perform leveraged deposit
@@ -201,7 +201,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         expect(actualShares).to.be.gte(minOutputShares);
         expect(actualShares).to.be.closeTo(
           testCase.expectedReceivedShares,
-          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Flash lender balance should return to approximately the same level
@@ -209,7 +209,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const finalFlashLenderBalance = await flashLender.balanceOf(await flashLender.getAddress());
         expect(finalFlashLenderBalance).to.be.closeTo(
           initialFlashLenderBalance,
-          ethers.parseEther("1") // Allow 1 ETH tolerance for fees
+          ethers.parseEther("1"), // Allow 1 ETH tolerance for fees
         );
       });
     }
@@ -319,7 +319,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.depositAmount,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         // Perform leveraged deposit
@@ -339,7 +339,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         expect(actualShares).to.be.gte(minOutputShares);
         expect(actualShares).to.be.closeTo(
           testCase.expectedReceivedShares,
-          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Reset to default values for next test
@@ -399,7 +399,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
           await expect(dLoopDepositorMock.connect(user1).deposit(actualDepositAmount, user1.address, 0, "0x", dloopMock)).to.be.reverted;
         } else {
           await expect(
-            dLoopDepositorMock.connect(user1).deposit(actualDepositAmount, user1.address, 0, "0x", dloopMock)
+            dLoopDepositorMock.connect(user1).deposit(actualDepositAmount, user1.address, 0, "0x", dloopMock),
           ).to.be.revertedWithCustomError(errorContract, testCase.expectedError);
         }
       });
@@ -428,7 +428,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const impossibleMinimum = estimatedShares * BigInt(testCase.unreasonableMultiplier);
 
         await expect(
-          dLoopDepositorMock.connect(user1).deposit(testCase.depositAmount, user1.address, impossibleMinimum, "0x", dloopMock)
+          dLoopDepositorMock.connect(user1).deposit(testCase.depositAmount, user1.address, impossibleMinimum, "0x", dloopMock),
         ).to.be.revertedWithCustomError(dLoopDepositorMock, testCase.expectedError);
       }
     });
@@ -537,12 +537,12 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares1 = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.firstDeposit.amount,
           0.1 * ONE_PERCENT_BPS,
-          dloopMock
+          dloopMock,
         );
         const minOutputShares2 = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.secondDeposit.amount,
           0.1 * ONE_PERCENT_BPS,
-          dloopMock
+          dloopMock,
         );
 
         // First deposit
@@ -553,7 +553,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const leverageAfterFirst = await dloopMock.getCurrentLeverageBps();
         expect(leverageAfterFirst).to.be.closeTo(
           BigInt(testCase.expectedLeverageBps),
-          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance
+          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance
         );
 
         // Second deposit
@@ -566,7 +566,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         // Leverage should be maintained close to target
         expect(leverageAfterSecond).to.be.closeTo(
           leverageAfterFirst,
-          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance
+          BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance
         );
       }
     });
@@ -605,7 +605,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.depositAmount,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         const tx = await dLoopDepositorMock.connect(user1).deposit(testCase.depositAmount, user1.address, minOutputShares, "0x", dloopMock);
@@ -617,7 +617,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         expect(actualShares).to.be.gte(minOutputShares);
         expect(actualShares).to.be.closeTo(
           testCase.expectedReceivedShares,
-          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS) // 0.1% tolerance for slippage and fees
+          (testCase.expectedReceivedShares * BigInt(ONE_PERCENT_BPS)) / BigInt(0.1 * ONE_HUNDRED_PERCENT_BPS), // 0.1% tolerance for slippage and fees
         );
 
         // Verify any leftover debt after flash loan repay was sent to receiver
@@ -638,7 +638,7 @@ describe("DLoopDepositorMock Deposit Tests", function () {
         const minOutputShares = await dLoopDepositorMock.calculateMinOutputShares(
           testCase.depositAmount,
           testCase.slippagePercentage,
-          dloopMock
+          dloopMock,
         );
 
         const receiverDebtBefore = await debtToken.balanceOf(user1.address);

@@ -20,14 +20,14 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
     it("error: C=0", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 0n, 0n, 0n)
+        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 0n, 0n, 0n),
       ).to.be.revertedWithCustomError(harness, "TotalCollateralBaseIsZero");
     });
 
     it("error: C<D", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 1000n, 1001n, 0n)
+        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 1000n, 1001n, 0n),
       ).to.be.revertedWithCustomError(harness, "TotalCollateralBaseIsLessThanTotalDebtBase");
     });
 
@@ -58,7 +58,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
     it("already near target (tiny)", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 1_000_001n, 500_001n, 0n)
+        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(2n * SCALE, 1_000_001n, 500_001n, 0n),
       ).to.be.revertedWithPanic(0x11);
     });
 
@@ -71,14 +71,14 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
     it("tiny surplus", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(10n * SCALE, 1_000_000n, 999_999n, 0n)
+        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(10n * SCALE, 1_000_000n, 999_999n, 0n),
       ).to.be.revertedWithPanic(0x11);
     });
 
     it("with subsidy rounding up", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(3n * SCALE, 1_000_000n, 750_000n, 3_333n)
+        harness.getCollateralTokenDepositAmountToReachTargetLeveragePublic(3n * SCALE, 1_000_000n, 750_000n, 3_333n),
       ).to.be.revertedWithPanic(0x11);
     });
   });
@@ -166,7 +166,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
         18,
         pow10(18n),
         18,
-        pow10(18n)
+        pow10(18n),
       );
       const baseFromToken = await harness.convertFromTokenAmountToBaseCurrencyPublic(tokenOut, 18, pow10(18n));
       const diff = baseExpected > baseFromToken ? baseExpected - baseFromToken : baseFromToken - baseExpected;
@@ -193,7 +193,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
         18,
         pow10(18n),
         18,
-        5n * pow10(17n)
+        5n * pow10(17n),
       );
       const baseFromToken = await harness.convertFromTokenAmountToBaseCurrencyPublic(tokenOut, 18, 5n * pow10(17n));
       const diff = baseExpected > baseFromToken ? baseExpected - baseFromToken : baseFromToken - baseExpected;
@@ -210,7 +210,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
         18,
         pow10(18n),
         18,
-        2n * pow10(18n)
+        2n * pow10(18n),
       );
       const baseFromToken = await harness.convertFromTokenAmountToBaseCurrencyPublic(tokenOut, 18, 2n * pow10(18n));
       const diff = baseExpected > baseFromToken ? baseExpected - baseFromToken : baseFromToken - baseExpected;
@@ -267,7 +267,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
         18,
         pow10(18n),
         18,
-        pow10(18n)
+        pow10(18n),
       );
       const baseFromToken = await harness.convertFromTokenAmountToBaseCurrencyPublic(tokenOut, 18, pow10(18n));
       const diff = baseExpected > baseFromToken ? baseExpected - baseFromToken : baseFromToken - baseExpected;
@@ -277,7 +277,7 @@ describe("DLoopCoreLogic - Increase Leverage", () => {
     it("error: zero input collateral", async () => {
       const { harness } = await deployHarness();
       await expect(
-        harness.getDebtBorrowTokenAmountToIncreaseLeveragePublic(0, 0, 18, pow10(18n), 18, pow10(18n))
+        harness.getDebtBorrowTokenAmountToIncreaseLeveragePublic(0, 0, 18, pow10(18n), 18, pow10(18n)),
       ).to.be.revertedWithCustomError(harness, "InputCollateralTokenAmountIsZero");
     });
   });

@@ -95,14 +95,14 @@ export async function deployDLoopDecreaseLeverageFixture(): Promise<DLoopDecreas
     MAX_SUBSIDY_BPS,
     0, // minDeviationBps
     0, // withdrawalFeeBps
-    mockPool
+    mockPool,
   );
 
   // Deploy DLoopDecreaseLeverageMock
   const DLoopDecreaseLeverageMockFactory = await ethers.getContractFactory("DLoopDecreaseLeverageMock");
   const decreaseLeverageMock = await DLoopDecreaseLeverageMockFactory.deploy(
     await flashLender.getAddress(),
-    await simpleDEXMock.getAddress()
+    await simpleDEXMock.getAddress(),
   );
 
   return {
@@ -137,12 +137,12 @@ export async function testSetup(fixture: DLoopDecreaseLeverageFixture): Promise<
   await simpleDEXMock.setExchangeRate(
     await collateralToken.getAddress(),
     await debtToken.getAddress(),
-    ethers.parseEther("1") // 1 COLL = 1 DEBT
+    ethers.parseEther("1"), // 1 COLL = 1 DEBT
   );
   await simpleDEXMock.setExchangeRate(
     await debtToken.getAddress(),
     await collateralToken.getAddress(),
-    ethers.parseEther("1") // 1 DEBT = 1 COLL
+    ethers.parseEther("1"), // 1 DEBT = 1 COLL
   );
 
   // Setup token balances for users
@@ -190,7 +190,7 @@ export async function testSetup(fixture: DLoopDecreaseLeverageFixture): Promise<
 export async function createLeveragePosition(
   fixture: DLoopDecreaseLeverageFixture,
   user: HardhatEthersSigner,
-  depositAmount: bigint
+  depositAmount: bigint,
 ): Promise<{ shares: bigint; borrowedDebt: bigint }> {
   const { dloopCoreMock } = fixture;
 
@@ -219,7 +219,7 @@ export async function createLeveragePosition(
 export async function createImbalancedLeveragePosition(
   fixture: DLoopDecreaseLeverageFixture,
   user: HardhatEthersSigner,
-  depositAmount: bigint
+  depositAmount: bigint,
 ): Promise<{
   shares: bigint;
   borrowedDebt: bigint;

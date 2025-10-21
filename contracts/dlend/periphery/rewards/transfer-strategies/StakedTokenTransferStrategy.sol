@@ -31,52 +31,52 @@ import { IERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts
  * @author Aave
  **/
 contract StakedTokenTransferStrategy is TransferStrategyBase, IStakedTokenTransferStrategy {
-  using GPv2SafeERC20 for IERC20;
+    using GPv2SafeERC20 for IERC20;
 
-  IStakedToken internal immutable STAKE_CONTRACT;
-  address internal immutable UNDERLYING_TOKEN;
+    IStakedToken internal immutable STAKE_CONTRACT;
+    address internal immutable UNDERLYING_TOKEN;
 
-  constructor(
-    address incentivesController,
-    address rewardsAdmin,
-    IStakedToken stakeToken
-  ) TransferStrategyBase(incentivesController, rewardsAdmin) {
-    STAKE_CONTRACT = stakeToken;
-    UNDERLYING_TOKEN = STAKE_CONTRACT.STAKED_TOKEN();
+    constructor(
+        address incentivesController,
+        address rewardsAdmin,
+        IStakedToken stakeToken
+    ) TransferStrategyBase(incentivesController, rewardsAdmin) {
+        STAKE_CONTRACT = stakeToken;
+        UNDERLYING_TOKEN = STAKE_CONTRACT.STAKED_TOKEN();
 
-    IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), type(uint256).max);
-  }
+        IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), type(uint256).max);
+    }
 
-  /// @inheritdoc TransferStrategyBase
-  function performTransfer(
-    address to,
-    address reward,
-    uint256 amount
-  ) external override(TransferStrategyBase, ITransferStrategyBase) onlyIncentivesController returns (bool) {
-    require(reward == address(STAKE_CONTRACT), "REWARD_TOKEN_NOT_STAKE_CONTRACT");
+    /// @inheritdoc TransferStrategyBase
+    function performTransfer(
+        address to,
+        address reward,
+        uint256 amount
+    ) external override(TransferStrategyBase, ITransferStrategyBase) onlyIncentivesController returns (bool) {
+        require(reward == address(STAKE_CONTRACT), "REWARD_TOKEN_NOT_STAKE_CONTRACT");
 
-    STAKE_CONTRACT.stake(to, amount);
+        STAKE_CONTRACT.stake(to, amount);
 
-    return true;
-  }
+        return true;
+    }
 
-  /// @inheritdoc IStakedTokenTransferStrategy
-  function renewApproval() external onlyRewardsAdmin {
-    IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), type(uint256).max);
-  }
+    /// @inheritdoc IStakedTokenTransferStrategy
+    function renewApproval() external onlyRewardsAdmin {
+        IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), type(uint256).max);
+    }
 
-  /// @inheritdoc IStakedTokenTransferStrategy
-  function dropApproval() external onlyRewardsAdmin {
-    IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), 0);
-  }
+    /// @inheritdoc IStakedTokenTransferStrategy
+    function dropApproval() external onlyRewardsAdmin {
+        IERC20(UNDERLYING_TOKEN).approve(address(STAKE_CONTRACT), 0);
+    }
 
-  /// @inheritdoc IStakedTokenTransferStrategy
-  function getStakeContract() external view returns (address) {
-    return address(STAKE_CONTRACT);
-  }
+    /// @inheritdoc IStakedTokenTransferStrategy
+    function getStakeContract() external view returns (address) {
+        return address(STAKE_CONTRACT);
+    }
 
-  /// @inheritdoc IStakedTokenTransferStrategy
-  function getUnderlyingToken() external view returns (address) {
-    return UNDERLYING_TOKEN;
-  }
+    /// @inheritdoc IStakedTokenTransferStrategy
+    function getUnderlyingToken() external view returns (address) {
+        return UNDERLYING_TOKEN;
+    }
 }

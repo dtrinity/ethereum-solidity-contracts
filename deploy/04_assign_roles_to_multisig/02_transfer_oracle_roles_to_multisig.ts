@@ -56,7 +56,7 @@ async function transferOracleAggregatorRoles(
   oracleType: string,
   deployerSigner: Signer,
   governanceMultisig: string,
-  deployer: string
+  deployer: string,
 ): Promise<boolean> {
   const { deployments, ethers } = hre;
 

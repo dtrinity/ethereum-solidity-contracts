@@ -41,7 +41,7 @@ describe("OracleAggregatorV1_1", () => {
       [deployer.address],
       [manager.address],
       [guardian.address],
-      3600
+      3600,
     );
 
     const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
@@ -51,9 +51,7 @@ describe("OracleAggregatorV1_1", () => {
     const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
     wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
 
-    await wrapper
-      .connect(manager)
-      .configureFeed(asset, mockFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
+    await wrapper.connect(manager).configureFeed(asset, mockFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
 
     await aggregator.connect(manager).setOracle(asset, wrapper.target);
   });
@@ -97,9 +95,7 @@ describe("OracleAggregatorV1_1", () => {
 
     const fallbackWrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
     const fallbackWrapper = await fallbackWrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
-    await fallbackWrapper
-      .connect(manager)
-      .configureFeed(asset, fallbackFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
+    await fallbackWrapper.connect(manager).configureFeed(asset, fallbackFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
 
     await aggregator.connect(manager).setFallbackOracle(asset, fallbackWrapper.target);
     await mockFeed.setMock(0);
@@ -131,22 +127,20 @@ describe("OracleAggregatorV1_1", () => {
   });
 
   it("rejects fallback matching primary", async () => {
-    await expect(
-      aggregator.connect(manager).setFallbackOracle(asset, wrapper.target)
-    ).to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary").withArgs(asset, wrapper.target);
+    await expect(aggregator.connect(manager).setFallbackOracle(asset, wrapper.target))
+      .to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary")
+      .withArgs(asset, wrapper.target);
 
     const otherAsset = ethers.Wallet.createRandom().address;
-    await expect(
-      aggregator
-        .connect(manager)
-        .configureAsset(otherAsset, wrapper.target, wrapper.target, 0, 0, 0, 0, 0)
-    ).to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary").withArgs(otherAsset, wrapper.target);
+    await expect(aggregator.connect(manager).configureAsset(otherAsset, wrapper.target, wrapper.target, 0, 0, 0, 0, 0))
+      .to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary")
+      .withArgs(otherAsset, wrapper.target);
   });
 
   it("rejects zero oracle address", async () => {
-    await expect(
-      aggregator.connect(manager).setOracle(asset, ethers.ZeroAddress)
-    ).to.be.revertedWithCustomError(aggregator, "ZeroAddress").withArgs("oracle");
+    await expect(aggregator.connect(manager).setOracle(asset, ethers.ZeroAddress))
+      .to.be.revertedWithCustomError(aggregator, "ZeroAddress")
+      .withArgs("oracle");
   });
 
   it("honours heartbeat override", async () => {
@@ -234,19 +228,7 @@ describe("Oracle wrappers", () => {
     const wrapperFactory = await ethers.getContractFactory("ChainlinkRateCompositeWrapperV1_1");
     const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as ChainlinkRateCompositeWrapperV1_1;
     const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configureComposite(
-      asset,
-      priceFeed.target,
-      8,
-      rateProvider.target,
-      18,
-      60,
-      60,
-      0,
-      0,
-      0,
-      0
-    );
+    await wrapper.connect(owner).configureComposite(asset, priceFeed.target, 8, rateProvider.target, 18, 60, 60, 0, 0, 0, 0);
 
     const info = await wrapper.getPriceInfo(asset);
     expect(info.isAlive).to.equal(true);

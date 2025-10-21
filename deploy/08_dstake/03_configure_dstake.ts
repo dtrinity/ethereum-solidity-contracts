@@ -79,12 +79,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const dstakeToken = await ethers.getContractAt(
       "DStakeToken",
       dstakeTokenDeployment.address,
-      await ethers.getSigner(deployer) // Use deployer as signer for read calls
+      await ethers.getSigner(deployer), // Use deployer as signer for read calls
     );
     const collateralVault = await ethers.getContractAt(
       "DStakeCollateralVault",
       collateralVaultDeployment.address,
-      await ethers.getSigner(deployer) // Use deployer as signer for read calls
+      await ethers.getSigner(deployer), // Use deployer as signer for read calls
     );
 
     // --- Configure DStakeToken ---
@@ -131,11 +131,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         console.log(`    ➕ Added adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} to ${routerDeploymentName}`);
       } else if (existingAdapter !== adapterDeployment.address) {
         throw new Error(
-          `⚠️ Adapter for asset ${vaultAssetAddress} in router is already set to ${existingAdapter} but config expects ${adapterDeployment.address}. Manual intervention may be required.`
+          `⚠️ Adapter for asset ${vaultAssetAddress} in router is already set to ${existingAdapter} but config expects ${adapterDeployment.address}. Manual intervention may be required.`,
         );
       } else {
         console.log(
-          `    👍 Adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} already configured correctly in ${routerDeploymentName}`
+          `    👍 Adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} already configured correctly in ${routerDeploymentName}`,
         );
       }
     }

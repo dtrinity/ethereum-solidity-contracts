@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "network": "ethereum_testnet",
+  "deployer": "0xd2f775Ff2cD41bfe43C7A8c016eD10393553fe44",
+  "governance": "0xd2f775Ff2cD41bfe43C7A8c016eD10393553fe44",
+  "defaults": {
+    "ownable": {
+      "newOwner": "{{governance}}",
+      "execution": "direct"
+    },
+    "defaultAdmin": {
+      "newAdmin": "{{governance}}",
+      "grantExecution": "direct"
+    }
+  },
+  "autoInclude": {
+    "ownable": true,
+    "defaultAdmin": true
+  },
+  "exclusions": [],
+  "overrides": [],
+  "output": {
+    "json": "reports/roles/ethereum-testnet-latest.json"
+  }
+}

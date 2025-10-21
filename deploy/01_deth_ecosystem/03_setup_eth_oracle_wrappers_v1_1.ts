@@ -39,7 +39,7 @@ async function deployChainlinkWrapper(
   hre: HardhatRuntimeEnvironment,
   oracleConfig: OracleAggregatorConfig,
   deployer: string,
-  signer: any
+  signer: any,
 ): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.chainlink;
   const assets = (wrapperConfig?.assets as ChainlinkAssetMap | undefined) || {};
@@ -77,7 +77,7 @@ async function deployChainlinkWrapper(
         assetConfig.maxStaleTime ?? 0,
         assetConfig.maxDeviationBps ?? 0,
         assetConfig.minAnswer ?? 0n,
-        assetConfig.maxAnswer ?? 0n
+        assetConfig.maxAnswer ?? 0n,
       )
     ).wait();
   }
@@ -121,7 +121,7 @@ async function deployApi3Wrapper(hre: HardhatRuntimeEnvironment, oracleConfig: O
 async function deployCompositeWrapper(
   hre: HardhatRuntimeEnvironment,
   oracleConfig: OracleAggregatorConfig,
-  deployer: string
+  deployer: string,
 ): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers.rateComposite;
   const assets = wrapperConfig?.assets || {};
@@ -195,7 +195,7 @@ async function ensureChainlinkFeed(
   deployer: string,
   assetAddress: string,
   assetConfig: ChainlinkFeedAssetConfig,
-  cache: Map<string, string>
+  cache: Map<string, string>,
 ): Promise<string> {
   if (assetConfig.feed && isUsableAddress(assetConfig.feed)) {
     return assetConfig.feed;

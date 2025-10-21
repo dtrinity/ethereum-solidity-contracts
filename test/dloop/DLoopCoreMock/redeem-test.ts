@@ -262,7 +262,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
         // Check leverage preservation: after redeem, leverage should remain the same as before redeem
         expect(leverageAfterRedeem).to.be.closeTo(
           leverageBeforeRedeem,
-          BigInt(2 * ONE_PERCENT_BPS) // Allow 2% tolerance for calculation precision
+          BigInt(2 * ONE_PERCENT_BPS), // Allow 2% tolerance for calculation precision
         );
       });
     }
@@ -413,7 +413,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
         // Check leverage preservation: after redeem, leverage should remain the same as before redeem
         expect(leverageAfterRedeem).to.be.closeTo(
           leverageBeforeRedeem,
-          BigInt(2 * ONE_PERCENT_BPS) // Allow 2% tolerance for calculation precision with price changes
+          BigInt(2 * ONE_PERCENT_BPS), // Allow 2% tolerance for calculation precision with price changes
         );
 
         // Verify leverage is within reasonable bounds
@@ -499,7 +499,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
         if (testCase.shouldFail) {
           await expect(dloopMock.connect(user).redeem(testCase.redeemShares, userAddress, userAddress)).to.be.revertedWithCustomError(
             dloopMock,
-            "ERC4626ExceededMaxRedeem"
+            "ERC4626ExceededMaxRedeem",
           );
         } else {
           // Get leverage before redeem (after rebalancing)
@@ -528,7 +528,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
           // Check leverage preservation: after redeem, leverage should remain the same as before redeem
           expect(leverageAfterRedeem).to.be.closeTo(
             leverageBeforeRedeem,
-            BigInt(ONE_PERCENT_BPS) // Allow 1% tolerance
+            BigInt(ONE_PERCENT_BPS), // Allow 1% tolerance
           );
 
           // Verify vault remains balanced after redeem
@@ -552,11 +552,11 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Extreme price change that creates severe imbalance
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseUnits("0.95", 8) // Collateral drops 5%
+        ethers.parseUnits("0.95", 8), // Collateral drops 5%
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(),
-        ethers.parseUnits("1.1", 8) // Debt increases 10%
+        ethers.parseUnits("1.1", 8), // Debt increases 10%
       );
 
       // Verify extreme imbalance
@@ -566,7 +566,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Any redeem attempt should fail
       await expect(dloopMock.connect(user).redeem(ethers.parseEther("10"), userAddress, userAddress)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxRedeem"
+        "ERC4626ExceededMaxRedeem",
       );
     });
 
@@ -589,11 +589,11 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Create imbalance with price changes
       await dloopMock.setMockPrice(
         await collateralToken.getAddress(),
-        ethers.parseUnits("0.85", 8) // Collateral drops
+        ethers.parseUnits("0.85", 8), // Collateral drops
       );
       await dloopMock.setMockPrice(
         await debtToken.getAddress(),
-        ethers.parseUnits("1.15", 8) // Debt increases
+        ethers.parseUnits("1.15", 8), // Debt increases
       );
 
       // Verify imbalance affects all users
@@ -605,12 +605,12 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       const redeemAmount = ethers.parseEther("20");
       await expect(dloopMock.connect(user1).redeem(redeemAmount, user1.address, user1.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxRedeem"
+        "ERC4626ExceededMaxRedeem",
       );
 
       await expect(dloopMock.connect(user2).redeem(redeemAmount, user2.address, user2.address)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxRedeem"
+        "ERC4626ExceededMaxRedeem",
       );
     });
   });
@@ -737,7 +737,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
         // from caller (relayer) instead of owner, even though owner has approved the vault
         await expect(dloopMock.connect(relayer).redeem(testCase.sharesToRedeem, ownerAddress, ownerAddress)).to.be.revertedWithCustomError(
           dloopMock,
-          "InsufficientAllowanceOfDebtAssetToRepay"
+          "InsufficientAllowanceOfDebtAssetToRepay",
         );
 
         // Verify balances remain unchanged after failed delegated redeem
@@ -875,7 +875,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Delegated redeem should fail due to insufficient allowance
       await expect(dloopMock.connect(relayer).redeem(sharesToRedeem, ownerAddress, ownerAddress)).to.be.revertedWithCustomError(
         dloopMock,
-        "InsufficientAllowanceOfDebtAssetToRepay"
+        "InsufficientAllowanceOfDebtAssetToRepay",
       );
     });
 
@@ -930,7 +930,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Delegated redeem should fail due to insufficient balance
       await expect(dloopMock.connect(relayer).redeem(sharesToRedeem, ownerAddress, ownerAddress)).to.be.revertedWithCustomError(
         debtToken,
-        "ERC20InsufficientBalance"
+        "ERC20InsufficientBalance",
       );
     });
 
@@ -976,7 +976,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Delegated redeem should fail due to insufficient share allowance
       await expect(dloopMock.connect(relayer).redeem(sharesToRedeem, ownerAddress, ownerAddress)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC20InsufficientAllowance"
+        "ERC20InsufficientAllowance",
       );
     });
   });
@@ -998,7 +998,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       const excessiveRedeemAmount = ethers.parseEther("100");
       await expect(dloopMock.connect(user).redeem(excessiveRedeemAmount, userAddress, userAddress)).to.be.revertedWithCustomError(
         dloopMock,
-        "ERC4626ExceededMaxRedeem"
+        "ERC4626ExceededMaxRedeem",
       );
     });
 
@@ -1027,7 +1027,7 @@ describe.skip("DLoopCoreMock Redeem Tests", function () {
       // Do not approve debt tokens for repayment
       await expect(dloopMock.connect(user).redeem(redeemShares, userAddress, userAddress)).to.be.revertedWithCustomError(
         dloopMock,
-        "InsufficientAllowanceOfDebtAssetToRepay"
+        "InsufficientAllowanceOfDebtAssetToRepay",
       );
     });
 

@@ -74,7 +74,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Set protocol Flash Loan Premium
   const updateFlashloanPremiumToProtocolResponse = await poolConfiguratorContract.updateFlashloanPremiumToProtocol(
-    flashLoanPremium.protocol
+    flashLoanPremium.protocol,
   );
   await updateFlashloanPremiumToProtocolResponse.wait();
 

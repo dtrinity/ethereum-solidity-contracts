@@ -31,7 +31,7 @@ describe.skip("DLoopCoreMock Rebalance Calculation Tests", function () {
     _otherToken = await TestMintableERC20Factory.deploy(
       "Other Token",
       "OTHER",
-      8 // Different decimals for testing
+      8, // Different decimals for testing
     );
   });
 
@@ -384,7 +384,7 @@ describe.skip("DLoopCoreMock Rebalance Calculation Tests", function () {
 
             // Make sure the expected amount leads to the target leverage
             const [totalCollateralInBase, totalDebtInBase] = await dloopMock.getTotalCollateralAndDebtOfUserInBase(
-              await dloopMock.getAddress()
+              await dloopMock.getAddress(),
             );
 
             // Leverage validation to make sure the new leverage is close to the target leverage
@@ -397,7 +397,7 @@ describe.skip("DLoopCoreMock Rebalance Calculation Tests", function () {
               totalCollateralInBase,
               totalDebtInBase,
               subsidyBps,
-              BigInt(TARGET_LEVERAGE_BPS)
+              BigInt(TARGET_LEVERAGE_BPS),
             );
           });
         }
@@ -1122,7 +1122,7 @@ async function validateRebalanceLeverage(
   totalCollateralInBase: bigint,
   totalDebtInBase: bigint,
   subsidyBps: bigint,
-  targetLeverage: bigint
+  targetLeverage: bigint,
 ): Promise<void> {
   if (direction === 0n) {
     // If no rebalance is needed, there is no rebalance and no validation is needed
@@ -1136,7 +1136,7 @@ async function validateRebalanceLeverage(
 
   let rebalanceAmountInBase = await dloopMock.convertFromTokenAmountToBaseCurrency(
     requiredCollateralTokenAmount,
-    await collateralToken.getAddress()
+    await collateralToken.getAddress(),
   );
 
   // If useVaultTokenBalance is true, we need to add the vault token balance to the rebalance amount
@@ -1146,7 +1146,7 @@ async function validateRebalanceLeverage(
     if (vaultCollateralBalance > 0n) {
       const valutCollateralBalanceInBase = await dloopMock.convertFromTokenAmountToBaseCurrency(
         vaultCollateralBalance,
-        await collateralToken.getAddress()
+        await collateralToken.getAddress(),
       );
       rebalanceAmountInBase += valutCollateralBalanceInBase;
     }
@@ -1166,6 +1166,6 @@ async function validateRebalanceLeverage(
       (direction * rebalanceAmountInBase * (oneHundredPercentBps + subsidyBps)) / oneHundredPercentBps);
   expect(newLeverage).to.be.closeTo(
     targetLeverage,
-    ONE_BPS_UNIT // very small tolerance
+    ONE_BPS_UNIT, // very small tolerance
   );
 }
