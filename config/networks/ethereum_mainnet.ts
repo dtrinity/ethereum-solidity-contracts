@@ -7,6 +7,8 @@ import { Config } from "../types";
 /**
  * Placeholder Ethereum mainnet configuration.
  * Actual contract addresses and oracle wiring will be filled in once deployments are scheduled.
+ *
+ * @param _hre - Hardhat runtime environment (unused placeholder for future wiring).
  */
 export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config> {
   return {

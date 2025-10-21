@@ -115,7 +115,12 @@ function formatGas(gas: bigint): string {
   const reversed = asString.split("").reverse();
   const chunks: string[] = [];
   for (let i = 0; i < reversed.length; i += 3) {
-    chunks.push(reversed.slice(i, i + 3).reverse().join(""));
+    chunks.push(
+      reversed
+        .slice(i, i + 3)
+        .reverse()
+        .join(""),
+    );
   }
   return chunks.reverse().join(",");
 }
@@ -131,9 +136,7 @@ async function loadDeploymentEntries(deploymentsDir: string): Promise<GasEntry[]
       const raw = await fs.readFile(file, "utf8");
       const data = JSON.parse(raw);
       const gasValue =
-        parseGasValue(data?.receipt?.gasUsed) ??
-        parseGasValue(data?.gasUsed) ??
-        parseGasValue(data?.receipt?.cumulativeGasUsed);
+        parseGasValue(data?.receipt?.gasUsed) ?? parseGasValue(data?.gasUsed) ?? parseGasValue(data?.receipt?.cumulativeGasUsed);
 
       if (gasValue === null) {
         continue;
@@ -219,4 +222,3 @@ main().catch((error) => {
   console.error("Unhandled error while estimating deployment gas:", error);
   process.exitCode = 1;
 });
-

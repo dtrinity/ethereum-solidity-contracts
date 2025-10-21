@@ -7,6 +7,8 @@ import { Config } from "../types";
 /**
  * Lightweight configuration for Ethereum test environments.
  * Replace placeholder addresses as on-chain deployments become available.
+ *
+ * @param _hre - Hardhat runtime environment (unused placeholder for future wiring).
  */
 export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config> {
   return {

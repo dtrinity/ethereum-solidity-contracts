@@ -34,7 +34,7 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
   - [x] Replace dSTAKE v1 with Katana’s v2 suite (token/router/collateral vault, adapters, interfaces, libraries, mocks).
   - [x] Align Katana oracle aggregator updates while preserving Ethereum’s v1.1 stack (core contract, API3 + Chainlink wrappers, interfaces, README updates).
   - [x] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
-  - [ ] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
+  - [x] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
   - [ ] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
 - [ ] **Deploy & tooling**
   - [ ] Mirror Katana/Sonic deployment scripts while keeping Ethereum’s v1.1 oracle flows intact; ensure network/task names remain accurate for Ethereum.
@@ -53,3 +53,9 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 - Copy upstream assets verbatim when possible; manual retyping of long scripts introduced avoidable typos and wasted cycles.
 - Ensure prerequisite configs (e.g. `config/networks/katana_*.ts`) land before running migrated scripts to avoid missing-module failures.
 - Smoke-test new utilities against existing deployments (`yarn gas-estimate -n ethereum_testnet`) immediately so peer dependencies and runtime expectations surface early.
+
+# Progress Notes (Rewards Stack)
+- Ported MetaMorpho reward manager, shared `RewardClaimable`, and morpho mocks from Katana/Sonic; added canonical MetaMorpho reward tests to exercise the claim/compound path while leaving the oracle v1.1 wiring untouched.
+
+# Lessons Learned (Rewards Stack)
+- MetaMorpho flows rely on URD-driven balances—tests must stage claims against the manager contract directly to avoid regressions like the collateral vault merkle bypass.
