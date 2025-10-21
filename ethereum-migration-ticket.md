@@ -24,7 +24,7 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
   - [x] Sync `package.json`, `yarn.lock`, and config files with upstream changes (retain Ethereum RPC/network entries as required).
   - [x] Bring in new scripts (`scripts/mainnet-gas-estimation.ts`, helper shell scripts) and update `Makefile` targets if necessary.
 - [ ] **Contracts**
-  - [ ] Copy Katana’s updated common libraries (`SupportsWithdrawalFee`, `WithdrawalFeeMath`, rescue helpers) and remove superseded versions.
+  - [x] Copy Katana’s updated common libraries (`SupportsWithdrawalFee`, `WithdrawalFeeMath`, rescue helpers) and remove superseded versions.
   - [ ] Replace dSTAKE v1 with Katana’s v2 suite (token/router/collateral vault, adapters, interfaces, libraries, mocks).
   - [ ] Migrate oracle aggregator to the Katana layout (core contract, API3 + Chainlink wrappers, interfaces, README updates) and delete legacy v1.1 files.
   - [ ] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
