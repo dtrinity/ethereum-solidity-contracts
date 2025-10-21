@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,17 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+/**
+ * @title MockAPI3ServerV1
+ * @notice A simple mock of the API3 server V1 for testing purposes
+ * @dev This is just a placeholder contract to simulate the API3 server on mainnet
+ */
+contract MockAPI3ServerV1 {
+    // This is just a placeholder contract
+    // The actual API3 server has many functions, but we don't need them for our tests
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
-
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
-
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    }
-
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
-        }
-
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
-    }
-
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
-    }
-
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    // This function is just to make sure the contract can be deployed
+    function version() external pure returns (string memory) {
+        return "1.0.0";
     }
 }

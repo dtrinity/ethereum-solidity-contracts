@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,27 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+import { IProxy } from "../../oracle_aggregator/interface/api3/IProxy.sol";
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
+contract MockAPI3Oracle is IProxy {
+    int224 private mockPrice;
+    uint32 private mockTimestamp;
+    address private immutable api3ServerV1Address;
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
-
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
+    constructor(address _api3ServerV1Address) {
+        api3ServerV1Address = _api3ServerV1Address;
     }
 
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
-        }
-
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
+    function setMock(int224 _price, uint32 _timestamp) external {
+        mockPrice = _price;
+        mockTimestamp = _timestamp;
     }
 
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
+    function read() external view override returns (int224 value, uint32 timestamp) {
+        return (mockPrice, mockTimestamp);
     }
 
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    function api3ServerV1() external view override returns (address) {
+        return api3ServerV1Address;
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,35 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+import "../interface/IOracleWrapper.sol";
 
-contract MockOracleAggregator is IOracleWrapper {
+contract HardPegOracleWrapper is IOracleWrapper {
+    uint256 public immutable pricePeg;
     address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
+    uint256 public BASE_CURRENCY_UNIT;
 
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
+    constructor(address _baseCurrency, uint256 _baseCurrencyUnit, uint256 _pricePeg) {
         BASE_CURRENCY = _baseCurrency;
         BASE_CURRENCY_UNIT = _baseCurrencyUnit;
+        pricePeg = _pricePeg;
     }
 
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
-        }
-
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
+    /**
+     * @dev Get the price info of an asset
+     */
+    function getPriceInfo(
+        address // asset
+    ) external view returns (uint256 price, bool isAlive) {
+        return (pricePeg, true);
     }
 
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
-    }
-
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    /**
+     * @dev Get the price of an asset
+     */
+    function getAssetPrice(
+        address // asset
+    ) external view override returns (uint256) {
+        return pricePeg;
     }
 }

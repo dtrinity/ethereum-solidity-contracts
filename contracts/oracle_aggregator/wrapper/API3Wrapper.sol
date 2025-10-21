@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,35 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+import { IProxy } from "../interface/api3/IProxy.sol";
+import "../interface/api3/BaseAPI3Wrapper.sol";
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
+/**
+ * @title API3Wrapper
+ * @dev Implementation of IAPI3Wrapper for standard API3 oracles
+ */
+contract API3Wrapper is BaseAPI3Wrapper {
+    mapping(address => IProxy) public assetToProxy;
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
+    error ProxyNotSet(address asset);
 
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    }
+    constructor(address baseCurrency, uint256 _baseCurrencyUnit) BaseAPI3Wrapper(baseCurrency, _baseCurrencyUnit) {}
 
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
+    function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
+        IProxy api3Proxy = assetToProxy[asset];
+        if (address(api3Proxy) == address(0)) {
+            revert ProxyNotSet(asset);
         }
 
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
+        (int224 value, uint32 timestamp) = api3Proxy.read();
+        price = value > 0 ? uint256(uint224(value)) : 0;
+
+        isAlive = price > 0 && timestamp + API3_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
+
+        price = _convertToBaseCurrencyUnit(price);
     }
 
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
-    }
-
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    function setProxy(address asset, address proxy) external onlyRole(ORACLE_MANAGER_ROLE) {
+        assetToProxy[asset] = IProxy(proxy);
     }
 }

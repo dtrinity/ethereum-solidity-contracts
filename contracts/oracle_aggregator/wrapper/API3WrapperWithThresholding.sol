@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,44 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+import "./API3Wrapper.sol";
+import "./ThresholdingUtils.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
+contract API3WrapperWithThresholding is API3Wrapper, ThresholdingUtils {
+    /* State */
+    mapping(address => ThresholdConfig) public assetThresholds;
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
+    /* Events */
+    event ThresholdConfigSet(address indexed asset, uint256 lowerThresholdInBase, uint256 fixedPriceInBase);
+    event ThresholdConfigRemoved(address indexed asset);
 
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    }
+    constructor(address baseCurrency, uint256 _baseCurrencyUnit) API3Wrapper(baseCurrency, _baseCurrencyUnit) {}
 
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
+    function getPriceInfo(address asset) public view override returns (uint256 price, bool isAlive) {
+        (price, isAlive) = super.getPriceInfo(asset);
+        if (isAlive) {
+            ThresholdConfig memory config = assetThresholds[asset];
+            if (config.lowerThresholdInBase > 0) {
+                price = _applyThreshold(price, config);
+            }
         }
-
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
     }
 
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
+    function setThresholdConfig(
+        address asset,
+        uint256 lowerThresholdInBase,
+        uint256 fixedPriceInBase
+    ) external onlyRole(ORACLE_MANAGER_ROLE) {
+        assetThresholds[asset] = ThresholdConfig({
+            lowerThresholdInBase: lowerThresholdInBase,
+            fixedPriceInBase: fixedPriceInBase
+        });
+        emit ThresholdConfigSet(asset, lowerThresholdInBase, fixedPriceInBase);
     }
 
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    function removeThresholdConfig(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
+        delete assetThresholds[asset];
+        emit ThresholdConfigRemoved(asset);
     }
 }

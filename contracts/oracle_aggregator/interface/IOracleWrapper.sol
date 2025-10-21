@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,36 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+/**
+ * @dev Interface for the individual oracle wrappers, to unify interface between different oracle providers
+ */
+interface IOracleWrapper {
+    /**
+     * @notice Returns the base currency address
+     * @dev Address 0x0 is commonly used for USD, but can be any token address based on the implementation.
+     * @return Returns the base currency address.
+     */
+    function BASE_CURRENCY() external view returns (address);
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
+    /**
+     * @notice Returns the base currency unit
+     * @dev Represents the decimal precision of the base currency (e.g., 1e8 for USD, 1e18 for ETH).
+     * @return Returns the base currency unit.
+     */
+    function BASE_CURRENCY_UNIT() external view returns (uint256);
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
+    /**
+     * @notice Returns the asset price in the base currency
+     * @param asset The address of the asset
+     * @return The price of the asset
+     */
+    function getAssetPrice(address asset) external view returns (uint256);
 
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    }
-
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
-        }
-
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
-    }
-
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
-    }
-
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
-        }
-
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
-
-        return _price;
-    }
-
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
-    }
+    /**
+     * @notice Returns the price and alive status of an asset
+     * @param asset The address of the asset
+     * @return price The price of the asset
+     * @return isAlive The alive status of the asset
+     */
+    function getPriceInfo(address asset) external view returns (uint256 price, bool isAlive);
 }

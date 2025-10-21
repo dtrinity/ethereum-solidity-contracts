@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,52 +17,46 @@
 
 pragma solidity ^0.8.20;
 
-import { IOracleWrapper } from "../../oracle_aggregator/interface/IOracleWrapper.sol";
+import "../interface/chainlink/BaseChainlinkWrapper.sol";
+import "../interface/chainlink/IPriceFeed.sol";
 
-contract MockOracleAggregator is IOracleWrapper {
-    address public immutable BASE_CURRENCY;
-    uint256 public immutable BASE_CURRENCY_UNIT;
+/**
+ * @title RedstoneChainlinkWrapper
+ * @dev Implementation of BaseChainlinkWrapper for Redstone oracle feeds that follow Chainlink AggregatorV3Interface
+ */
+contract RedstoneChainlinkWrapper is BaseChainlinkWrapper {
+    mapping(address => IPriceFeed) public assetToFeed;
 
-    mapping(address => uint256) public prices;
-    mapping(address => bool) public isAlive;
+    constructor(
+        address baseCurrency,
+        uint256 _baseCurrencyUnit
+    ) BaseChainlinkWrapper(baseCurrency, _baseCurrencyUnit) {}
 
-    constructor(address _baseCurrency, uint256 _baseCurrencyUnit) {
-        BASE_CURRENCY = _baseCurrency;
-        BASE_CURRENCY_UNIT = _baseCurrencyUnit;
-    }
-
-    function setAssetPrice(address _asset, uint256 _price) external {
-        if (_asset == BASE_CURRENCY) {
-            revert("Cannot set price for base currency");
+    function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
+        IPriceFeed feed = assetToFeed[asset];
+        if (address(feed) == address(0)) {
+            revert FeedNotSet(asset);
         }
 
-        prices[_asset] = _price;
-        isAlive[_asset] = true;
-    }
+        (, int256 answer, , uint256 updatedAt, ) = feed.latestRoundData();
 
-    function setAssetAlive(address _asset, bool _isAlive) external {
-        isAlive[_asset] = _isAlive;
-    }
-
-    function getAssetPrice(address _asset) external view override returns (uint256) {
-        if (_asset == BASE_CURRENCY) {
-            return BASE_CURRENCY_UNIT;
+        // Validate the oracle data
+        if (answer <= 0) {
+            revert InvalidPrice();
         }
 
-        uint256 _price = prices[_asset];
-        require(isAlive[_asset], "Price feed is not alive");
+        price = uint256(answer);
+        isAlive = updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
 
-        return _price;
+        price = _convertToBaseCurrencyUnit(price);
     }
 
-    function getPriceInfo(address _asset) external view override returns (uint256 price, bool _isAlive) {
-        if (_asset == BASE_CURRENCY) {
-            return (BASE_CURRENCY_UNIT, true);
-        }
-
-        price = prices[_asset];
-        _isAlive = isAlive[_asset];
-
-        return (price, _isAlive);
+    /**
+     * @notice Sets the price feed for an asset
+     * @param asset The address of the asset
+     * @param feed The address of the Redstone Chainlink-compatible price feed
+     */
+    function setFeed(address asset, address feed) external onlyRole(ORACLE_MANAGER_ROLE) {
+        assetToFeed[asset] = IPriceFeed(feed);
     }
 }
