@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0
+// SPDX-License-Identifier: MIT
 /* ———————————————————————————————————————————————————————————————————————————————— *
  *    _____     ______   ______     __     __   __     __     ______   __  __       *
  *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
@@ -17,47 +17,42 @@
 
 pragma solidity ^0.8.20;
 
-import { IBaseOdosAdapter } from "./IBaseOdosAdapter.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Rescuable } from "contracts/common/Rescuable.sol";
 
 /**
- * @title IOdosRepayAdapter
- * @notice Interface for the OdosRepayAdapter
+ * @title RescuableVault
+ * @dev A helper contract for rescuing tokens accidentally sent to the contract
+ *      - The derived contract must implement the isRescuableToken() function from Rescuable
  */
-interface IOdosRepayAdapter is IBaseOdosAdapter {
-    /**
-     * @dev Custom error for insufficient amount to repay
-     * @param amountReceived The amount received from the swap
-     * @param amountToRepay The amount needed to repay
-     */
-    error InsufficientAmountToRepay(uint256 amountReceived, uint256 amountToRepay);
+abstract contract RescuableVault is AccessControl, ReentrancyGuard, Rescuable {
+    bytes32 public constant RESCUER_ADMIN_ROLE = keccak256("RESCUER_ADMIN_ROLE");
+    bytes32 public constant RESCUER_ROLE = keccak256("RESCUER_ROLE");
 
-    /**
-     * @dev Struct for repay parameters
-     * @param collateralAsset The address of the collateral asset
-     * @param collateralAmount The amount of collateral to swap
-     * @param debtAsset The address of the debt asset
-     * @param repayAmount The amount of debt to repay
-     * @param rateMode The rate mode of the debt (1 = stable, 2 = variable)
-     * @param user The address of the user
-     * @param minAmountToReceive The minimum amount to receive from the swap
-     * @param swapData The encoded swap data for Odos
-     */
-    struct RepayParams {
-        address collateralAsset;
-        uint256 collateralAmount;
-        address debtAsset;
-        uint256 repayAmount;
-        uint256 rateMode;
-        address user;
-        uint256 minAmountToReceive;
-        bytes swapData;
+    constructor() {
+        _setRoleAdmin(RESCUER_ADMIN_ROLE, RESCUER_ADMIN_ROLE);
+        _setRoleAdmin(RESCUER_ROLE, RESCUER_ADMIN_ROLE);
+        _grantRole(RESCUER_ADMIN_ROLE, _msgSender());
+        _grantRole(RESCUER_ROLE, _msgSender());
     }
 
+    /* Rescue Functions */
+
     /**
-     * @dev Swaps collateral for another asset and uses that asset to repay a debt
-     * @param repayParams The parameters of the repay
-     * @param permitInput The parameters of the permit signature, to approve collateral aToken
-     * @return uint256 The amount repaid
+     * @dev Rescues tokens accidentally sent to the contract (except for the collateral token and debt token)
+     * @param token Address of the token to rescue
+     * @param receiver Address to receive the rescued tokens
+     * @param amount Amount of tokens to rescue
      */
-    function swapAndRepay(RepayParams memory repayParams, PermitInput memory permitInput) external returns (uint256);
+    function rescueToken(address token, address receiver, uint256 amount) public onlyRole(RESCUER_ROLE) nonReentrant {
+        // Expose the internal rescue token function of Rescuable
+        _rescueToken(token, receiver, amount);
+    }
+
+    // Rescue ETH
+    function rescueNative(address receiver, uint256 amount) public onlyRole(RESCUER_ROLE) nonReentrant {
+        // Expose the internal rescue native function of Rescuable
+        _rescueNative(receiver, amount);
+    }
 }

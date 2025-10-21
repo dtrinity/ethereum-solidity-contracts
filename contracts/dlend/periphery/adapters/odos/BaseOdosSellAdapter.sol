@@ -1,19 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-/* ———————————————————————————————————————————————————————————————————————————————— *
- *    _____     ______   ______     __     __   __     __     ______   __  __       *
- *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
- *   \ \ \/\ \ \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \     *
- *    \ \____-    \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\    *
- *     \/____/     \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/    *
- *                                                                                  *
- * ————————————————————————————————— dtrinity.org ————————————————————————————————— *
- *                                                                                  *
- *                                         ▲                                        *
- *                                        ▲ ▲                                       *
- *                                                                                  *
- * ———————————————————————————————————————————————————————————————————————————————— *
- * dTRINITY Protocol: https://github.com/dtrinity                                   *
- * ———————————————————————————————————————————————————————————————————————————————— */
+// This is the vulnerable contract, we kept this to explain the exploitation vector
 
 pragma solidity ^0.8.20;
 
@@ -65,7 +51,7 @@ abstract contract BaseOdosSellAdapter is BaseOdosSwapAdapter {
         uint256 amountToSwap,
         uint256 minAmountToReceive,
         bytes memory swapData
-    ) internal returns (uint256 amountReceived) {
+    ) internal virtual returns (uint256 amountReceived) {
         uint256 balanceBeforeAssetFrom = assetToSwapFrom.balanceOf(address(this));
         uint256 balanceBeforeAssetTo = assetToSwapTo.balanceOf(address(this));
 
@@ -85,7 +71,15 @@ abstract contract BaseOdosSellAdapter is BaseOdosSwapAdapter {
             swapData
         );
 
-        amountReceived = assetToSwapTo.balanceOf(address(this)) - balanceBeforeAssetTo;
+        uint256 balanceAfterAssetTo = assetToSwapTo.balanceOf(address(this));
+
+        if (balanceAfterAssetTo >= balanceBeforeAssetTo) {
+            amountReceived = balanceAfterAssetTo - balanceBeforeAssetTo;
+        } else if (tokenIn == tokenOut) {
+            amountReceived = minAmountToReceive;
+        } else {
+            revert InsufficientBalanceBeforeSwap(balanceAfterAssetTo, balanceBeforeAssetTo);
+        }
 
         emit Bought(tokenIn, tokenOut, amountSpent, amountReceived);
     }

@@ -6,12 +6,14 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
 import { PercentageMath } from "contracts/dlend/core/protocol/libraries/math/PercentageMath.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { DLoopCoreLogic } from "../../DLoopCoreLogic.sol";
+import { RescuableVault } from "contracts/vaults/dloop/shared/RescuableVault.sol";
 
 /**
  * @title DLoopCoreMock
  * @dev Simple mock implementation of DLoopCoreBase for testing
  */
-contract DLoopCoreMock is DLoopCoreBase {
+contract DLoopCoreMock is DLoopCoreBase, RescuableVault {
     // Errors
     error NotEnoughBalanceToSupply(address user, string tokenSymbol, uint256 balance, uint256 amount);
     error MockPriceNotSet(address asset);
@@ -23,6 +25,9 @@ contract DLoopCoreMock is DLoopCoreBase {
     mapping(address => mapping(address => uint256)) private mockDebt; // user => token => amount
     mapping(address => address[]) private mockDebtTokens; // user => tokens
     address public mockPool;
+
+    // Mock state for additional rescue tokens
+    address[] private mockAdditionalRescueTokens;
 
     // This is used to test the supply, borrow, repay, withdraw wrapper validation
     uint256 public transferPortionBps;
@@ -143,11 +148,18 @@ contract DLoopCoreMock is DLoopCoreBase {
     // --- Overrides ---
 
     /**
-     * @inheritdoc DLoopCoreBase
-     * @return address[] Additional rescue tokens
+     * @dev Do not rescue the mock additional rescue tokens
+     *      - Implement this method from RescuableVault
+     * @param token Address of the token to check
+     * @return bool True if the token is a restricted rescue token, false otherwise
      */
-    function _getAdditionalRescueTokensImplementation() internal pure override returns (address[] memory) {
-        return new address[](0);
+    function isRescuableToken(address token) public view override returns (bool) {
+        for (uint256 i = 0; i < mockAdditionalRescueTokens.length; i++) {
+            if (token == mockAdditionalRescueTokens[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function _getAssetPriceFromOracleImplementation(address asset) internal view override returns (uint256) {
@@ -297,35 +309,6 @@ contract DLoopCoreMock is DLoopCoreBase {
         return debtTokenAmount;
     }
 
-    /**
-     * @inheritdoc DLoopCoreBase
-     */
-    function getTotalCollateralAndDebtOfUserInBase(
-        address user
-    ) public view override returns (uint256 totalCollateralBase, uint256 totalDebtBase) {
-        // Sum collateral across all collateral tokens tracked for user
-        address[] memory collateralTokens = mockCollateralTokens[user];
-        for (uint256 i = 0; i < collateralTokens.length; i++) {
-            address token = collateralTokens[i];
-            uint256 amount = mockCollateral[user][token];
-            if (amount > 0) {
-                totalCollateralBase += convertFromTokenAmountToBaseCurrency(amount, token);
-            }
-        }
-
-        // Sum debt across all debt tokens tracked for user
-        address[] memory debtTokens = mockDebtTokens[user];
-        for (uint256 j = 0; j < debtTokens.length; j++) {
-            address token = debtTokens[j];
-            uint256 amount = mockDebt[user][token];
-            if (amount > 0) {
-                totalDebtBase += convertFromTokenAmountToBaseCurrency(amount, token);
-            }
-        }
-
-        return (totalCollateralBase, totalDebtBase);
-    }
-
     // --- Test-only public wrappers for internal pool logic ---
     function testSupplyToPool(address token, uint256 amount, address onBehalfOf) external {
         _supplyToPool(token, amount, onBehalfOf);
@@ -346,10 +329,10 @@ contract DLoopCoreMock is DLoopCoreBase {
     // --- Additional Test Wrappers for Internal Methods ---
 
     /**
-     * @dev Test wrapper for _getAdditionalRescueTokensImplementation
+     * @dev Test wrapper for isRescuableToken
      */
-    function testGetAdditionalRescueTokensImplementation() external pure returns (address[] memory) {
-        return _getAdditionalRescueTokensImplementation();
+    function testisRescuableToken(address token) external view returns (bool) {
+        return isRescuableToken(token);
     }
 
     /**
@@ -378,6 +361,27 @@ contract DLoopCoreMock is DLoopCoreBase {
      */
     function testWithdrawFromPoolImplementation(address token, uint256 amount, address onBehalfOf) external {
         _withdrawFromPoolImplementation(token, amount, onBehalfOf);
+    }
+
+    /**
+     * Just for testing to avoid deploying another contract just for testing this method
+     *
+     * @dev Test wrapper for DLoopCoreLogic.getBorrowAmountThatKeepCurrentLeverage
+     */
+    function testGetBorrowAmountThatKeepCurrentLeverage(
+        uint256 amount,
+        uint256 currentLeverageBpsBeforeSupply
+    ) external view returns (uint256) {
+        return
+            DLoopCoreLogic.getBorrowAmountThatKeepCurrentLeverage(
+                amount,
+                currentLeverageBpsBeforeSupply,
+                targetLeverageBps,
+                ERC20(collateralToken).decimals(),
+                getAssetPriceFromOracle(address(collateralToken)),
+                ERC20(debtToken).decimals(),
+                getAssetPriceFromOracle(address(debtToken))
+            );
     }
 
     // --- Mock State Getters for Testing ---
@@ -418,4 +422,29 @@ contract DLoopCoreMock is DLoopCoreBase {
         if (price == 0) revert MockPriceNotSet(asset);
         return price;
     }
+
+    /**
+     * @dev Set additional rescue tokens for testing
+     * @param tokens Array of token addresses to be treated as additional rescue tokens
+     */
+    function setMockAdditionalRescueTokens(address[] calldata tokens) external {
+        // Clear existing tokens
+        delete mockAdditionalRescueTokens;
+
+        // Add new tokens
+        for (uint256 i = 0; i < tokens.length; i++) {
+            mockAdditionalRescueTokens.push(tokens[i]);
+        }
+    }
+
+    /**
+     * @dev Get the current mock additional rescue tokens
+     * @return Array of additional rescue token addresses
+     */
+    function getMockAdditionalRescueTokens() external view returns (address[] memory) {
+        return mockAdditionalRescueTokens;
+    }
+
+    // Allow receiving native tokens for testing rescue functionality
+    receive() external payable {}
 }

@@ -17,7 +17,7 @@
 
 pragma solidity ^0.8.20;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -25,8 +25,9 @@ import { IERC3156FlashBorrower } from "./interface/flashloan/IERC3156FlashBorrow
 import { IERC3156FlashLender } from "./interface/flashloan/IERC3156FlashLender.sol";
 import { DLoopCoreBase } from "../core/DLoopCoreBase.sol";
 import { SwappableVault } from "contracts/common/SwappableVault.sol";
-import { RescuableVault } from "contracts/common/RescuableVault.sol";
 import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
+import { SharedLogic } from "./helper/SharedLogic.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title DLoopDecreaseLeverageBase
@@ -39,14 +40,17 @@ import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
  */
 abstract contract DLoopDecreaseLeverageBase is
     IERC3156FlashBorrower,
-    Ownable,
+    AccessControl,
     ReentrancyGuard,
     SwappableVault,
-    RescuableVault
+    Pausable
 {
     using SafeERC20 for ERC20;
 
     /* Constants */
+
+    bytes32 public constant DLOOP_ADMIN_ROLE = keccak256("DLOOP_ADMIN_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     bytes32 public constant FLASHLOAN_CALLBACK = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -59,7 +63,7 @@ abstract contract DLoopDecreaseLeverageBase is
     error UnknownLender(address msgSender, address flashLender);
     error UnknownInitiator(address initiator, address thisContract);
     error IncompatibleDLoopCoreDebtToken(address currentDebtToken, address dLoopCoreDebtToken);
-    error CollateralTokenBalanceNotIncreasedAfterDecreaseLeverage(
+    error CollateralTokenBalanceDecreasedAfterDecreaseLeverage(
         uint256 collateralTokenBalanceBeforeDecrease,
         uint256 collateralTokenBalanceAfterDecrease
     );
@@ -74,6 +78,8 @@ abstract contract DLoopDecreaseLeverageBase is
         uint256 amount,
         address indexed receiver
     );
+
+    event LeftoverDebtTokensTransferred(address indexed debtToken, uint256 amount, address indexed receiver);
 
     /* Structs */
 
@@ -98,19 +104,28 @@ abstract contract DLoopDecreaseLeverageBase is
      * @dev Constructor for the DLoopDecreaseLeverageBase contract
      * @param _flashLender Address of the flash loan provider
      */
-    constructor(IERC3156FlashLender _flashLender) Ownable(msg.sender) {
+    constructor(IERC3156FlashLender _flashLender) {
         flashLender = _flashLender;
+        _setRoleAdmin(DLOOP_ADMIN_ROLE, DLOOP_ADMIN_ROLE);
+        _setRoleAdmin(PAUSER_ROLE, DLOOP_ADMIN_ROLE);
+        _grantRole(DLOOP_ADMIN_ROLE, _msgSender());
+        _grantRole(PAUSER_ROLE, _msgSender());
     }
 
-    /* RescuableVault Override */
+    /** Pausable Functions */
 
     /**
-     * @dev Gets the restricted rescue tokens
-     * @return restrictedTokens Restricted rescue tokens
+     * @dev Pauses the contract (exposes the internal pause function of Pausable)
      */
-    function getRestrictedRescueTokens() public view virtual override returns (address[] memory restrictedTokens) {
-        // Return empty array as we no longer handle leftover collateral tokens
-        return new address[](0);
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract (exposes the internal unpause function of Pausable)
+     */
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
     }
 
     /* Decrease Leverage */
@@ -130,7 +145,18 @@ abstract contract DLoopDecreaseLeverageBase is
         uint256 rebalanceDebtAmount,
         bytes calldata collateralToDebtTokenSwapData,
         DLoopCoreBase dLoopCore
-    ) public nonReentrant returns (uint256 receivedCollateralTokenAmount) {
+    ) public nonReentrant whenNotPaused returns (uint256 receivedCollateralTokenAmount) {
+        ERC20 collateralToken = dLoopCore.collateralToken();
+        ERC20 debtToken = dLoopCore.debtToken();
+
+        // Track the token balances before the decrease leverage
+        SharedLogic.TokenBalancesBeforeAfter memory collateralTokenBalancesBeforeAfter;
+        collateralTokenBalancesBeforeAfter.token = collateralToken;
+        collateralTokenBalancesBeforeAfter.tokenBalanceBefore = collateralToken.balanceOf(address(this));
+        SharedLogic.TokenBalancesBeforeAfter memory debtTokenBalancesBeforeAfter;
+        debtTokenBalancesBeforeAfter.token = debtToken;
+        debtTokenBalancesBeforeAfter.tokenBalanceBefore = debtToken.balanceOf(address(this));
+
         // Record initial leverage
         uint256 leverageBeforeDecrease = dLoopCore.getCurrentLeverageBps();
 
@@ -139,7 +165,7 @@ abstract contract DLoopDecreaseLeverageBase is
             _decreaseLeverageWithFlashLoan(rebalanceDebtAmount, collateralToDebtTokenSwapData, dLoopCore);
         } else {
             // No flash loan needed, direct decrease leverage
-            _decreaseLeverageWithoutFlashLoan(dLoopCore, currentDebtTokenBalance);
+            _decreaseLeverageWithoutFlashLoan(dLoopCore, rebalanceDebtAmount);
         }
 
         // Verify leverage decreased
@@ -148,16 +174,34 @@ abstract contract DLoopDecreaseLeverageBase is
             revert LeverageNotDecreased(leverageBeforeDecrease, leverageAfterDecrease);
         }
 
-        ERC20 collateralToken = dLoopCore.collateralToken();
-
-        // Transfer received collateral tokens to user
-        collateralToken.safeTransfer(msg.sender, receivedCollateralTokenAmount);
+        // Track the token balances after the decrease leverage
+        collateralTokenBalancesBeforeAfter.tokenBalanceAfter = collateralToken.balanceOf(address(this));
+        debtTokenBalancesBeforeAfter.tokenBalanceAfter = debtToken.balanceOf(address(this));
 
         // Transfer any leftover collateral tokens directly to the user
-        uint256 leftoverAmount = collateralToken.balanceOf(address(this));
-        if (leftoverAmount > 0) {
-            collateralToken.safeTransfer(msg.sender, leftoverAmount);
-            emit LeftoverCollateralTokensTransferred(address(collateralToken), leftoverAmount, msg.sender);
+        {
+            (uint256 leftoverCollateralTokenAmount, bool success) = SharedLogic.transferLeftoverTokens(
+                collateralTokenBalancesBeforeAfter,
+                msg.sender
+            );
+            if (success) {
+                emit LeftoverCollateralTokensTransferred(
+                    address(collateralToken),
+                    leftoverCollateralTokenAmount,
+                    msg.sender
+                );
+            }
+        }
+
+        // Transfer any leftover debt tokens directly to the user
+        {
+            (uint256 leftoverDebtTokenAmount, bool success) = SharedLogic.transferLeftoverTokens(
+                debtTokenBalancesBeforeAfter,
+                msg.sender
+            );
+            if (success) {
+                emit LeftoverDebtTokensTransferred(address(debtToken), leftoverDebtTokenAmount, msg.sender);
+            }
         }
 
         return receivedCollateralTokenAmount;
@@ -179,7 +223,7 @@ abstract contract DLoopDecreaseLeverageBase is
         uint256, // amount (flash loan amount)
         uint256 fee,
         bytes calldata data
-    ) external override returns (bytes32) {
+    ) external override whenNotPaused returns (bytes32) {
         // This function does not need nonReentrant as the flash loan will be called by decreaseLeverage() public
         // function, which is already protected by nonReentrant
         // Moreover, this function is only be able to be called by the address(this) (check the initiator condition)
@@ -208,10 +252,10 @@ abstract contract DLoopDecreaseLeverageBase is
             0 // No min amount check here, will be checked in main function
         );
 
-        // Verify we received collateral tokens
+        // Verify the collateral token balance does not decrease after decrease leverage
         uint256 collateralTokenBalanceAfterDecrease = collateralToken.balanceOf(address(this));
-        if (collateralTokenBalanceAfterDecrease <= collateralTokenBalanceBeforeDecrease) {
-            revert CollateralTokenBalanceNotIncreasedAfterDecreaseLeverage(
+        if (collateralTokenBalanceAfterDecrease < collateralTokenBalanceBeforeDecrease) {
+            revert CollateralTokenBalanceDecreasedAfterDecreaseLeverage(
                 collateralTokenBalanceBeforeDecrease,
                 collateralTokenBalanceAfterDecrease
             );
@@ -287,10 +331,10 @@ abstract contract DLoopDecreaseLeverageBase is
             0 // no need to have slippage protection here
         );
 
-        // Make sure the collateral token balance increased after decrease leverage
+        // Make sure the collateral token balance does not decrease after decrease leverage
         uint256 collateralTokenBalanceAfterDecrease = collateralToken.balanceOf(address(this));
-        if (collateralTokenBalanceAfterDecrease <= collateralTokenBalanceBeforeDecrease) {
-            revert CollateralTokenBalanceNotIncreasedAfterDecreaseLeverage(
+        if (collateralTokenBalanceAfterDecrease < collateralTokenBalanceBeforeDecrease) {
+            revert CollateralTokenBalanceDecreasedAfterDecreaseLeverage(
                 collateralTokenBalanceBeforeDecrease,
                 collateralTokenBalanceAfterDecrease
             );

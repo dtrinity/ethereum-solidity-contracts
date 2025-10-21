@@ -17,27 +17,36 @@
 
 pragma solidity ^0.8.20;
 
-import { IBaseOdosAdapter } from "./IBaseOdosAdapter.sol";
+import { IBaseOdosAdapterV2 } from "./IBaseOdosAdapterV2.sol";
 
 /**
- * @title IOdosWithdrawSwapAdapter
- * @notice Defines the basic interface for OdosWithdrawSwapAdapter
- * @dev Implement this interface to provide functionality of withdrawing from the Aave Pool and swapping to another asset
- **/
-interface IOdosWithdrawSwapAdapter is IBaseOdosAdapter {
-    struct WithdrawSwapParams {
-        address oldAsset; // the asset to withdraw and swap from
-        uint256 oldAssetAmount; // the amount to withdraw
-        address newAsset; // the asset to swap to
-        uint256 minAmountToReceive; // the minimum amount of new asset to receive
-        address user; // the address of user
-        bytes swapData; // the swap data for Odos
+ * @title IOdosWithdrawSwapAdapterV2
+ * @notice Interface for the OdosWithdrawSwapAdapterV2 with PT token support
+ * @dev V2 interface with PT token functionality via composed swaps
+ */
+interface IOdosWithdrawSwapAdapterV2 is IBaseOdosAdapterV2 {
+    /**
+     * @dev Enhanced withdraw swap parameters for V2 with PT support
+     * @param oldAsset The asset to withdraw and swap from
+     * @param oldAssetAmount The amount to withdraw
+     * @param newAsset The asset to swap to (can be PT token)
+     * @param minAmountToReceive The minimum amount of new asset to receive
+     * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
+     * @param allBalanceOffset offset to all balance of the user
+     */
+    struct WithdrawSwapParamsV2 {
+        address oldAsset;
+        uint256 oldAssetAmount;
+        address newAsset;
+        uint256 minAmountToReceive;
+        bytes swapData;
+        uint256 allBalanceOffset;
     }
 
     /**
-     * @notice Withdraws and swaps an asset that is supplied to the Aave Pool
+     * @notice Withdraws and swaps an asset that is supplied to the Aave Pool with PT token support
      * @param withdrawSwapParams struct describing the withdraw swap
      * @param permitInput optional permit for collateral aToken
      */
-    function withdrawAndSwap(WithdrawSwapParams memory withdrawSwapParams, PermitInput memory permitInput) external;
+    function withdrawAndSwap(WithdrawSwapParamsV2 memory withdrawSwapParams, PermitInput memory permitInput) external;
 }

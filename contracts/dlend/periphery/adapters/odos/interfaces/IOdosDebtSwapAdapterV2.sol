@@ -17,13 +17,14 @@
 
 pragma solidity ^0.8.20;
 
-import { IBaseOdosAdapter } from "./IBaseOdosAdapter.sol";
+import { IBaseOdosAdapterV2 } from "./IBaseOdosAdapterV2.sol";
 
 /**
- * @title IOdosDebtSwapAdapter
- * @notice Interface for the OdosDebtSwapAdapter
+ * @title IOdosDebtSwapAdapterV2
+ * @notice Interface for the OdosDebtSwapAdapterV2 with PT token support
+ * @dev V2 interface with PT token functionality via composed swaps
  */
-interface IOdosDebtSwapAdapter is IBaseOdosAdapter {
+interface IOdosDebtSwapAdapterV2 is IBaseOdosAdapterV2 {
     /* Structs */
     /**
      * @dev Struct to hold credit delegation data
@@ -44,17 +45,18 @@ interface IOdosDebtSwapAdapter is IBaseOdosAdapter {
     }
 
     /**
-     * @dev Struct to hold the debt swap parameters
-     * @param debtAsset The address of the debt asset
+     * @dev Enhanced debt swap parameters for V2 with PT support
+     * @param debtAsset The address of the debt asset (can be PT token)
      * @param debtRepayAmount The amount of debt to repay
      * @param debtRateMode The rate mode of the debt
-     * @param newDebtAsset The address of the new debt asset
+     * @param newDebtAsset The address of the new debt asset (can be PT token)
      * @param maxNewDebtAmount The maximum amount of new debt
      * @param extraCollateralAsset The address of the extra collateral asset
      * @param extraCollateralAmount The amount of extra collateral
-     * @param swapData The encoded swap data for Odos
+     * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
+     * @param allBalanceOffset offset to all balance of the user
      */
-    struct DebtSwapParams {
+    struct DebtSwapParamsV2 {
         address debtAsset;
         uint256 debtRepayAmount;
         uint256 debtRateMode;
@@ -63,19 +65,21 @@ interface IOdosDebtSwapAdapter is IBaseOdosAdapter {
         address extraCollateralAsset;
         uint256 extraCollateralAmount;
         bytes swapData;
+        uint256 allBalanceOffset;
     }
 
     /**
-     * @dev Struct to hold flash loan parameters
+     * @dev Enhanced flash loan parameters for V2 with PT support
      * @param debtAsset The address of the debt asset
      * @param debtRepayAmount The amount of debt to repay
      * @param debtRateMode The rate mode of the debt
      * @param nestedFlashloanDebtAsset The address of the nested flashloan debt asset
      * @param nestedFlashloanDebtAmount The amount of nested flashloan debt
      * @param user The address of the user
-     * @param swapData The encoded swap data for Odos
+     * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
+     * @param allBalanceOffset offset to all balance of the user
      */
-    struct FlashParams {
+    struct FlashParamsV2 {
         address debtAsset;
         uint256 debtRepayAmount;
         uint256 debtRateMode;
@@ -83,16 +87,17 @@ interface IOdosDebtSwapAdapter is IBaseOdosAdapter {
         uint256 nestedFlashloanDebtAmount;
         address user;
         bytes swapData;
+        uint256 allBalanceOffset;
     }
 
     /**
-     * @dev Swaps one type of debt to another
-     * @param debtSwapParams The debt swap parameters
+     * @dev Swaps one type of debt to another with PT token support
+     * @param debtSwapParams The enhanced debt swap parameters
      * @param creditDelegationPermit The credit delegation permit
      * @param collateralATokenPermit The collateral aToken permit
      */
     function swapDebt(
-        DebtSwapParams memory debtSwapParams,
+        DebtSwapParamsV2 memory debtSwapParams,
         CreditDelegationInput memory creditDelegationPermit,
         PermitInput memory collateralATokenPermit
     ) external;

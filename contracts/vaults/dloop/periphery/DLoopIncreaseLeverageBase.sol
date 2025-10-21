@@ -17,7 +17,7 @@
 
 pragma solidity ^0.8.20;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -25,8 +25,9 @@ import { IERC3156FlashBorrower } from "./interface/flashloan/IERC3156FlashBorrow
 import { IERC3156FlashLender } from "./interface/flashloan/IERC3156FlashLender.sol";
 import { DLoopCoreBase } from "../core/DLoopCoreBase.sol";
 import { SwappableVault } from "contracts/common/SwappableVault.sol";
-import { RescuableVault } from "contracts/common/RescuableVault.sol";
 import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
+import { SharedLogic } from "./helper/SharedLogic.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title DLoopIncreaseLeverageBase
@@ -39,14 +40,17 @@ import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
  */
 abstract contract DLoopIncreaseLeverageBase is
     IERC3156FlashBorrower,
-    Ownable,
+    AccessControl,
     ReentrancyGuard,
     SwappableVault,
-    RescuableVault
+    Pausable
 {
     using SafeERC20 for ERC20;
 
     /* Constants */
+
+    bytes32 public constant DLOOP_ADMIN_ROLE = keccak256("DLOOP_ADMIN_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     bytes32 public constant FLASHLOAN_CALLBACK = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
@@ -75,6 +79,11 @@ abstract contract DLoopIncreaseLeverageBase is
 
     /* Events */
 
+    event LeftoverCollateralTokensTransferred(
+        address indexed collateralToken,
+        uint256 amount,
+        address indexed receiver
+    );
     event LeftoverDebtTokensTransferred(address indexed debtToken, uint256 amount, address indexed receiver);
 
     /* Structs */
@@ -90,19 +99,28 @@ abstract contract DLoopIncreaseLeverageBase is
      * @dev Constructor for the DLoopIncreaseLeverageBase contract
      * @param _flashLender Address of the flash loan provider
      */
-    constructor(IERC3156FlashLender _flashLender) Ownable(msg.sender) {
+    constructor(IERC3156FlashLender _flashLender) {
         flashLender = _flashLender;
+        _setRoleAdmin(DLOOP_ADMIN_ROLE, DLOOP_ADMIN_ROLE);
+        _setRoleAdmin(PAUSER_ROLE, DLOOP_ADMIN_ROLE);
+        _grantRole(DLOOP_ADMIN_ROLE, _msgSender());
+        _grantRole(PAUSER_ROLE, _msgSender());
     }
 
-    /* RescuableVault Override */
+    /** Pausable Functions */
 
     /**
-     * @dev Gets the restricted rescue tokens
-     * @return restrictedTokens Restricted rescue tokens
+     * @dev Pauses the contract (exposes the internal pause function of Pausable)
      */
-    function getRestrictedRescueTokens() public view virtual override returns (address[] memory restrictedTokens) {
-        // Return empty array as we no longer handle leftover debt tokens
-        return new address[](0);
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract (exposes the internal unpause function of Pausable)
+     */
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
     }
 
     /* Increase Leverage */
@@ -124,11 +142,20 @@ abstract contract DLoopIncreaseLeverageBase is
         uint256 rebalanceCollateralAmount,
         bytes calldata debtTokenToCollateralSwapData,
         DLoopCoreBase dLoopCore
-    ) public nonReentrant returns (uint256 receivedDebtTokenAmount) {
+    ) public nonReentrant whenNotPaused returns (uint256 receivedDebtTokenAmount) {
+        ERC20 collateralToken = dLoopCore.collateralToken();
+        ERC20 debtToken = dLoopCore.debtToken();
+
+        // Track the token balances before the deposit
+        SharedLogic.TokenBalancesBeforeAfter memory collateralTokenBalancesBeforeAfter;
+        collateralTokenBalancesBeforeAfter.token = collateralToken;
+        collateralTokenBalancesBeforeAfter.tokenBalanceBefore = collateralToken.balanceOf(address(this));
+        SharedLogic.TokenBalancesBeforeAfter memory debtTokenBalancesBeforeAfter;
+        debtTokenBalancesBeforeAfter.token = debtToken;
+        debtTokenBalancesBeforeAfter.tokenBalanceBefore = debtToken.balanceOf(address(this));
+
         // Record initial leverage
         uint256 leverageBeforeIncrease = dLoopCore.getCurrentLeverageBps();
-
-        ERC20 collateralToken = dLoopCore.collateralToken();
 
         uint256 currentCollateralTokenBalance = collateralToken.balanceOf(address(this));
         if (rebalanceCollateralAmount > currentCollateralTokenBalance) {
@@ -137,7 +164,7 @@ abstract contract DLoopIncreaseLeverageBase is
         } else {
             // This case is free money, no need to have flash loan
             // The caller will receive all the borrowed debt tokens
-            _increaseLeverageWithoutFlashLoan(dLoopCore, currentCollateralTokenBalance);
+            _increaseLeverageWithoutFlashLoan(dLoopCore, rebalanceCollateralAmount);
         }
 
         // Verify leverage increased
@@ -146,6 +173,10 @@ abstract contract DLoopIncreaseLeverageBase is
             revert LeverageNotIncreased(leverageBeforeIncrease, leverageAfterIncrease);
         }
 
+        // Track the token balances after the increase leverage
+        debtTokenBalancesBeforeAfter.tokenBalanceAfter = debtToken.balanceOf(address(this));
+        collateralTokenBalancesBeforeAfter.tokenBalanceAfter = collateralToken.balanceOf(address(this));
+
         // Transfer any leftover debt tokens directly to the user
         //   + If it is the case without flash loan, the leftover amount will be
         //     value equals to the currentCollateralTokenBalance, but in debt token
@@ -153,11 +184,29 @@ abstract contract DLoopIncreaseLeverageBase is
         //   + If it is the case with flash loan, the leftover amount will be
         //     subsidy in debt token, plus the positive slippage in debt token
         //     during swapping.
-        ERC20 debtToken = dLoopCore.debtToken();
-        receivedDebtTokenAmount = debtToken.balanceOf(address(this));
-        if (receivedDebtTokenAmount > 0) {
-            debtToken.safeTransfer(msg.sender, receivedDebtTokenAmount);
-            emit LeftoverDebtTokensTransferred(address(debtToken), receivedDebtTokenAmount, msg.sender);
+        {
+            (uint256 leftoverDebtTokenAmount, bool success) = SharedLogic.transferLeftoverTokens(
+                debtTokenBalancesBeforeAfter,
+                msg.sender
+            );
+            if (success) {
+                emit LeftoverDebtTokensTransferred(address(debtToken), leftoverDebtTokenAmount, msg.sender);
+            }
+        }
+
+        // Transfer any leftover collateral tokens directly to the user
+        {
+            (uint256 leftoverCollateralTokenAmount, bool success) = SharedLogic.transferLeftoverTokens(
+                collateralTokenBalancesBeforeAfter,
+                msg.sender
+            );
+            if (success) {
+                emit LeftoverCollateralTokensTransferred(
+                    address(collateralToken),
+                    leftoverCollateralTokenAmount,
+                    msg.sender
+                );
+            }
         }
 
         return receivedDebtTokenAmount;
@@ -179,7 +228,7 @@ abstract contract DLoopIncreaseLeverageBase is
         uint256 /* amount */,
         uint256 fee,
         bytes calldata data
-    ) external override returns (bytes32) {
+    ) external override whenNotPaused returns (bytes32) {
         // This function does not need nonReentrant as the flash loan will be called by increaseLeverage() public
         // function, which is already protected by nonReentrant
         // Moreover, this function is only be able to be called by the address(this) (check the initiator condition)
@@ -270,6 +319,9 @@ abstract contract DLoopIncreaseLeverageBase is
             requiredFlashLoanAmountInBase,
             address(debtToken)
         );
+
+        // Multiply by 2 to avoid overflow issue
+        requiredFlashLoanAmount *= 2;
 
         // Check if flash loan amount is available
         uint256 maxFlashLoanAmount = flashLender.maxFlashLoan(address(debtToken)) / 10; // Only flash loan 1/10 of the max amount to avoid overflow issue

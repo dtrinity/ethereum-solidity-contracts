@@ -18,77 +18,34 @@
 pragma solidity ^0.8.20;
 
 import { DataTypes } from "contracts/dlend/core/protocol/libraries/types/DataTypes.sol";
-import { IOdosRepayAdapter } from "./interfaces/IOdosRepayAdapter.sol";
-import { BaseOdosSellAdapter } from "./BaseOdosSellAdapter.sol";
-import { SafeERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts/SafeERC20.sol";
-import { IERC20WithPermit } from "contracts/dlend/core/interfaces/IERC20WithPermit.sol";
-import { IOdosRouterV2 } from "contracts/odos/interface/IOdosRouterV2.sol";
-import { IERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts/IERC20.sol";
 import { IERC20Detailed } from "contracts/dlend/core/dependencies/openzeppelin/contracts/IERC20Detailed.sol";
 import { IPoolAddressesProvider } from "contracts/dlend/core/interfaces/IPoolAddressesProvider.sol";
+import { BaseOdosSellAdapterV2 } from "./BaseOdosSellAdapterV2.sol";
+import { SafeERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts/SafeERC20.sol";
+import { ReentrancyGuard } from "../../dependencies/openzeppelin/ReentrancyGuard.sol";
+import { IOdosWithdrawSwapAdapterV2 } from "./interfaces/IOdosWithdrawSwapAdapterV2.sol";
+import { IOdosRouterV2 } from "contracts/odos/interface/IOdosRouterV2.sol";
+import { IERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts/IERC20.sol";
 
 /**
- * @title OdosRepayAdapter
- * @notice Implements the logic for repaying a debt using a different asset as source
+ * @title OdosWithdrawSwapAdapterV2
+ * @notice Adapter to withdraw and swap using Odos with PT token support
+ * @dev Supports regular tokens and PT tokens through composed Pendle + Odos swaps
  */
-contract OdosRepayAdapter is BaseOdosSellAdapter, IOdosRepayAdapter {
+contract OdosWithdrawSwapAdapterV2 is BaseOdosSellAdapterV2, ReentrancyGuard, IOdosWithdrawSwapAdapterV2 {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20WithPermit;
+
+    // unique identifier to track usage via events
+    uint16 public constant REFERRER = 43983; // Different from other V2 adapters
 
     constructor(
         IPoolAddressesProvider addressesProvider,
         address pool,
-        IOdosRouterV2 _swapRouter,
+        IOdosRouterV2 swapRouter,
+        address pendleRouter,
         address owner
-    ) BaseOdosSellAdapter(addressesProvider, pool, _swapRouter) {
+    ) BaseOdosSellAdapterV2(addressesProvider, pool, swapRouter, pendleRouter) {
         transferOwnership(owner);
-    }
-
-    /**
-     * @dev Swaps collateral for another asset with Odos, and uses that asset to repay a debt.
-     * @param repayParams The parameters of the repay
-     * @param permitInput The parameters of the permit signature, to approve collateral aToken
-     * @return the amount repaid
-     */
-    function swapAndRepay(RepayParams memory repayParams, PermitInput memory permitInput) external returns (uint256) {
-        address collateralAsset = repayParams.collateralAsset;
-        address debtAsset = repayParams.debtAsset;
-
-        // The swapAndRepay will pull the tokens from the user aToken with approve() or permit()
-        uint256 collateralATokenAmount = _pullATokenAndWithdraw(
-            collateralAsset,
-            msg.sender,
-            repayParams.collateralAmount,
-            permitInput
-        );
-
-        // Swap collateral to get the debt asset
-        uint256 amountOut = _sellOnOdos(
-            IERC20Detailed(collateralAsset),
-            IERC20Detailed(debtAsset),
-            collateralATokenAmount,
-            repayParams.minAmountToReceive,
-            repayParams.swapData
-        );
-
-        // Check if the swap provides the necessary repay amount
-        if (amountOut < repayParams.repayAmount) {
-            revert InsufficientAmountToRepay(amountOut, repayParams.repayAmount);
-        }
-
-        // Check and renew allowance if necessary
-        _conditionalRenewAllowance(debtAsset, amountOut);
-
-        // Repay the debt to the POOL
-        POOL.repay(debtAsset, repayParams.repayAmount, repayParams.rateMode, repayParams.user);
-
-        // Send remaining debt asset to the msg.sender
-        uint256 remainingBalance = IERC20Detailed(debtAsset).balanceOf(address(this));
-        if (remainingBalance > 0) {
-            IERC20(debtAsset).safeTransfer(msg.sender, remainingBalance);
-        }
-
-        return amountOut;
     }
 
     /**
@@ -110,5 +67,56 @@ contract OdosRepayAdapter is BaseOdosSellAdapter, IOdosRepayAdapter {
      */
     function _supply(address asset, uint256 amount, address to, uint16 referralCode) internal override {
         POOL.supply(asset, amount, to, referralCode);
+    }
+
+    /**
+     * @notice Sets the oracle price deviation tolerance (governance only)
+     * @dev Cannot exceed MAX_ORACLE_PRICE_TOLERANCE_BPS (5%)
+     * @param newToleranceBps New tolerance in basis points (e.g., 300 = 3%)
+     */
+    function setOraclePriceTolerance(uint256 newToleranceBps) external onlyOwner {
+        _setOraclePriceTolerance(newToleranceBps);
+    }
+
+    /// @inheritdoc IOdosWithdrawSwapAdapterV2
+    function withdrawAndSwap(
+        WithdrawSwapParamsV2 memory withdrawSwapParams,
+        PermitInput memory permitInput
+    ) external nonReentrant whenNotPaused {
+        address user = msg.sender; // Capture the actual caller
+
+        (, , address aToken) = _getReserveData(withdrawSwapParams.oldAsset);
+        if (withdrawSwapParams.allBalanceOffset != 0) {
+            uint256 balance = IERC20(aToken).balanceOf(user);
+            withdrawSwapParams.oldAssetAmount = balance;
+        }
+
+        // Record balance before pulling assets for leftover calculation
+        uint256 oldAssetBalanceBefore = IERC20(withdrawSwapParams.oldAsset).balanceOf(address(this));
+
+        // pulls liquidity asset from the user and withdraw
+        _pullATokenAndWithdraw(withdrawSwapParams.oldAsset, user, withdrawSwapParams.oldAssetAmount, permitInput);
+
+        // Use adaptive swap which handles both regular and PT token swaps intelligently
+        uint256 amountReceived = _executeAdaptiveSwap(
+            IERC20Detailed(withdrawSwapParams.oldAsset),
+            IERC20Detailed(withdrawSwapParams.newAsset),
+            withdrawSwapParams.oldAssetAmount,
+            withdrawSwapParams.minAmountToReceive,
+            withdrawSwapParams.swapData
+        );
+
+        // Handle leftover old asset by re-supplying to pool (in case swap used less than expected)
+        uint256 oldAssetBalanceAfter = IERC20(withdrawSwapParams.oldAsset).balanceOf(address(this));
+        uint256 oldAssetExcess = oldAssetBalanceAfter > oldAssetBalanceBefore
+            ? oldAssetBalanceAfter - oldAssetBalanceBefore
+            : 0;
+        if (oldAssetExcess > 0) {
+            _conditionalRenewAllowance(withdrawSwapParams.oldAsset, oldAssetExcess);
+            _supply(withdrawSwapParams.oldAsset, oldAssetExcess, user, REFERRER);
+        }
+
+        // transfer new asset to the user
+        IERC20(withdrawSwapParams.newAsset).safeTransfer(user, amountReceived);
     }
 }

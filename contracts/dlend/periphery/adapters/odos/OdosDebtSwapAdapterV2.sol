@@ -20,8 +20,8 @@ pragma solidity ^0.8.20;
 import { IERC20Detailed } from "contracts/dlend/core/dependencies/openzeppelin/contracts/IERC20Detailed.sol";
 import { IERC20WithPermit } from "contracts/dlend/core/interfaces/IERC20WithPermit.sol";
 import { ICreditDelegationToken } from "contracts/dlend/core/interfaces/ICreditDelegationToken.sol";
-import { BaseOdosBuyAdapter } from "./BaseOdosBuyAdapter.sol";
-import { IOdosDebtSwapAdapter } from "./interfaces/IOdosDebtSwapAdapter.sol";
+import { BaseOdosBuyAdapterV2 } from "./BaseOdosBuyAdapterV2.sol";
+import { IOdosDebtSwapAdapterV2 } from "./interfaces/IOdosDebtSwapAdapterV2.sol";
 import { ReentrancyGuard } from "../../dependencies/openzeppelin/ReentrancyGuard.sol";
 import { IOdosRouterV2 } from "contracts/odos/interface/IOdosRouterV2.sol";
 import { IAaveFlashLoanReceiver } from "../curve/interfaces/IAaveFlashLoanReceiver.sol";
@@ -30,21 +30,28 @@ import { IPoolAddressesProvider } from "contracts/dlend/core/interfaces/IPoolAdd
 import { DataTypes } from "contracts/dlend/core/protocol/libraries/types/DataTypes.sol";
 
 /**
- * @title OdosDebtSwapAdapter
- * @notice Odos Adapter to perform a swap of debt to another debt.
- **/
-contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashLoanReceiver, IOdosDebtSwapAdapter {
+ * @title OdosDebtSwapAdapterV2
+ * @notice Odos Adapter to perform a swap of debt to another debt with PT token support
+ * @dev Supports regular tokens and PT tokens through composed Pendle + Odos swaps
+ */
+contract OdosDebtSwapAdapterV2 is
+    BaseOdosBuyAdapterV2,
+    ReentrancyGuard,
+    IAaveFlashLoanReceiver,
+    IOdosDebtSwapAdapterV2
+{
     using SafeERC20 for IERC20WithPermit;
 
-    // unique identifier to track usage via flashloan events
-    uint16 public constant REFERRER = 5936; // uint16(uint256(keccak256(abi.encode('debt-swap-adapter'))) / type(uint16).max)
+    // unique identifier to track usage via flashloan events - different from V1
+    uint16 public constant REFERRER = 5937; // Incremented from V1 to distinguish V2 usage
 
     constructor(
         IPoolAddressesProvider addressesProvider,
         address pool,
         IOdosRouterV2 _swapRouter,
+        address _pendleRouter,
         address owner
-    ) BaseOdosBuyAdapter(addressesProvider, pool, _swapRouter) {
+    ) BaseOdosBuyAdapterV2(addressesProvider, pool, _swapRouter, _pendleRouter) {
         transferOwnership(owner);
         // set initial approval for all reserves
         address[] memory reserves = POOL.getReservesList();
@@ -75,21 +82,27 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
     }
 
     /**
-     * @dev Swaps one type of debt to another. Therefore this methods performs the following actions in order:
-     * 1. Delegate credit in new debt
-     * 2. Flashloan in new debt
-     * 3. swap new debt to old debt
-     * 4. repay old debt
-     * @param debtSwapParams the parameters describing the swap
+     * @notice Sets the oracle price deviation tolerance (governance only)
+     * @dev Cannot exceed MAX_ORACLE_PRICE_TOLERANCE_BPS (5%)
+     * @param newToleranceBps New tolerance in basis points (e.g., 300 = 3%)
+     */
+    function setOraclePriceTolerance(uint256 newToleranceBps) external onlyOwner {
+        _setOraclePriceTolerance(newToleranceBps);
+    }
+
+    /**
+     * @dev Swaps one type of debt to another with PT token support
+     * @param debtSwapParams the enhanced parameters describing the swap
      * @param creditDelegationPermit optional permit for credit delegation
      * @param collateralATokenPermit optional permit for collateral aToken
      */
     function swapDebt(
-        DebtSwapParams memory debtSwapParams,
+        DebtSwapParamsV2 memory debtSwapParams,
         CreditDelegationInput memory creditDelegationPermit,
         PermitInput memory collateralATokenPermit
-    ) external {
+    ) external nonReentrant whenNotPaused {
         uint256 excessBefore = IERC20Detailed(debtSwapParams.newDebtAsset).balanceOf(address(this));
+
         // delegate credit
         if (creditDelegationPermit.deadline != 0) {
             ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
@@ -102,6 +115,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
                 creditDelegationPermit.s
             );
         }
+
         // Default to the entire debt if an amount greater than it is passed.
         (address vToken, address sToken, ) = _getReserveData(debtSwapParams.debtAsset);
         uint256 maxDebtRepayAmount = debtSwapParams.debtRateMode == 2
@@ -111,14 +125,16 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
         if (debtSwapParams.debtRepayAmount > maxDebtRepayAmount) {
             debtSwapParams.debtRepayAmount = maxDebtRepayAmount;
         }
-        FlashParams memory flashParams = FlashParams({
+
+        FlashParamsV2 memory flashParams = FlashParamsV2({
             debtAsset: debtSwapParams.debtAsset,
             debtRepayAmount: debtSwapParams.debtRepayAmount,
             debtRateMode: debtSwapParams.debtRateMode,
             nestedFlashloanDebtAsset: address(0),
             nestedFlashloanDebtAmount: 0,
             user: msg.sender,
-            swapData: debtSwapParams.swapData
+            swapData: debtSwapParams.swapData,
+            allBalanceOffset: debtSwapParams.allBalanceOffset
         });
 
         // If we need extra collateral, execute the flashloan with the collateral asset instead of the debt asset.
@@ -155,7 +171,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
         }
     }
 
-    function _flash(FlashParams memory flashParams, address asset, uint256 amount) internal virtual {
+    function _flash(FlashParamsV2 memory flashParams, address asset, uint256 amount) internal virtual {
         bytes memory params = abi.encode(flashParams);
         address[] memory assets = new address[](1);
         assets[0] = asset;
@@ -167,7 +183,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
         POOL.flashLoan(address(this), assets, amounts, modes, address(this), params, REFERRER);
     }
 
-    function _nestedFlash(address asset, uint256 amount, FlashParams memory params) internal {
+    function _nestedFlash(address asset, uint256 amount, FlashParamsV2 memory params) internal {
         bytes memory innerParams = abi.encode(params);
         address[] memory assets = new address[](1);
         assets[0] = asset;
@@ -193,7 +209,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
         address asset = assets[0];
         uint256 amountToReturn = amount + premiums[0];
 
-        FlashParams memory flashParams = abi.decode(params, (FlashParams));
+        FlashParamsV2 memory flashParams = abi.decode(params, (FlashParamsV2));
 
         // nested flashloan when using extra collateral
         if (flashParams.nestedFlashloanDebtAsset != address(0)) {
@@ -202,14 +218,15 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
             IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), flashParams.debtRepayAmount);
             POOL.withdraw(asset, flashParams.debtRepayAmount, address(this));
 
-            FlashParams memory innerFlashParams = FlashParams({
+            FlashParamsV2 memory innerFlashParams = FlashParamsV2({
                 debtAsset: flashParams.debtAsset,
                 debtRepayAmount: flashParams.debtRepayAmount,
                 debtRateMode: flashParams.debtRateMode,
                 nestedFlashloanDebtAsset: address(0),
                 nestedFlashloanDebtAmount: 0,
                 user: flashParams.user,
-                swapData: flashParams.swapData
+                swapData: flashParams.swapData,
+                allBalanceOffset: flashParams.allBalanceOffset
             });
             _nestedFlash(flashParams.nestedFlashloanDebtAsset, flashParams.nestedFlashloanDebtAmount, innerFlashParams);
 
@@ -219,14 +236,14 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
                 "Insufficient amount to repay flashloan"
             );
 
-            IERC20WithPermit(asset).safeApprove(address(POOL), amountToReturn);
+            _conditionalRenewAllowance(asset, amountToReturn);
             return true;
         }
 
-        // Executing the original flashloan
+        // Executing the original flashloan with PT-aware swap logic
         {
-            // Swap debt
-            _buyOnOdos(
+            // Use adaptive buy which handles both regular and PT token swaps intelligently
+            _executeAdaptiveBuy(
                 IERC20Detailed(asset),
                 IERC20Detailed(flashParams.debtAsset),
                 amount,
@@ -235,7 +252,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
             );
 
             // Repay old debt
-            IERC20WithPermit(flashParams.debtAsset).safeApprove(address(POOL), flashParams.debtRepayAmount);
+            _conditionalRenewAllowance(flashParams.debtAsset, flashParams.debtRepayAmount);
             POOL.repay(flashParams.debtAsset, flashParams.debtRepayAmount, flashParams.debtRateMode, flashParams.user);
 
             // Borrow new debt to repay flashloan
@@ -253,7 +270,7 @@ contract OdosDebtSwapAdapter is BaseOdosBuyAdapter, ReentrancyGuard, IAaveFlashL
                 "Insufficient amount to repay flashloan"
             );
 
-            IERC20WithPermit(asset).safeApprove(address(POOL), amountToReturn);
+            _conditionalRenewAllowance(asset, amountToReturn);
             return true;
         }
     }
