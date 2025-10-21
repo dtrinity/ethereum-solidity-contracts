@@ -62,6 +62,7 @@ describe("DLoopCoreDLend – Reward Compounding (vault shares as exchange asset)
 
     // DLoopCoreDLend harness deployment (link required DLoopCoreLogic library)
     const baseFactory = await ethers.getContractFactory("DLoopCoreDLendHarness");
+
     if (baseFactory.bytecode.includes("__$")) {
       const DLoopCoreLogicFactory = await ethers.getContractFactory("DLoopCoreLogic");
       const dloopCoreLogicLib = await DLoopCoreLogicFactory.deploy();

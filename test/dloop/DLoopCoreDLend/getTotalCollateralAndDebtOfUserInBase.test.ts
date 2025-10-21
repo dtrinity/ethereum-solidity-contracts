@@ -77,6 +77,7 @@ describe("DLoopCoreDLend.getTotalCollateralAndDebtOfUserInBase — per-asset onl
 
     // Deploy DLoopCoreLogic library only if linking is required
     const baseFactory = await ethers.getContractFactory("DLoopCoreDLendHarness");
+
     if (baseFactory.bytecode.includes("__$")) {
       const DLoopCoreLogicFactory = await ethers.getContractFactory("DLoopCoreLogic");
       const dloopCoreLogicLib = await DLoopCoreLogicFactory.deploy();

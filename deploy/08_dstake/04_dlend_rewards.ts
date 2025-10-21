@@ -42,20 +42,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const reserveTokens = await poolDataProviderContract.getReserveTokensAddresses(underlyingStablecoinAddress);
     const aTokenAddress = reserveTokens.aTokenAddress;
 
-    const {
-      managedStrategyShare,
-      treasury,
-      maxTreasuryFeeBps,
-      initialTreasuryFeeBps,
-      initialExchangeThreshold,
-    } = rewardManagerConfig;
+    const { managedStrategyShare, treasury, maxTreasuryFeeBps, initialTreasuryFeeBps, initialExchangeThreshold } = rewardManagerConfig;
 
     let dLendAssetToClaimFor = rewardManagerConfig.dLendAssetToClaimFor;
+
     if (!dLendAssetToClaimFor || dLendAssetToClaimFor === ethers.ZeroAddress) {
       dLendAssetToClaimFor = aTokenAddress;
     }
 
     let dLendRewardsController = rewardManagerConfig.dLendRewardsController;
+
     if (!dLendRewardsController || dLendRewardsController === ethers.ZeroAddress) {
       dLendRewardsController = incentivesProxyDeployment.address;
     }
@@ -72,10 +68,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ) {
       const missing: string[] = [];
       if (!managedStrategyShare || managedStrategyShare === ethers.ZeroAddress) missing.push("managedStrategyShare");
-      if (!dLendAssetToClaimFor || dLendAssetToClaimFor === ethers.ZeroAddress)
-        missing.push("dLendAssetToClaimFor (aToken)");
-      if (!dLendRewardsController || dLendRewardsController === ethers.ZeroAddress)
-        missing.push("dLendRewardsController");
+      if (!dLendAssetToClaimFor || dLendAssetToClaimFor === ethers.ZeroAddress) missing.push("dLendAssetToClaimFor (aToken)");
+      if (!dLendRewardsController || dLendRewardsController === ethers.ZeroAddress) missing.push("dLendRewardsController");
       if (!treasury || treasury === ethers.ZeroAddress) missing.push("treasury");
 
       throw new Error(`Missing critical addresses in dLendRewardManager config for ${instanceKey}: ${missing.join(", ")}`);
@@ -120,12 +114,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const underlyingStablecoinAddress = instanceConfig.dStable; // from parent DStakeInstanceConfig
 
     let dLendAssetToClaimForAddress = rewardManagerConfig.dLendAssetToClaimFor;
+
     if (!dLendAssetToClaimForAddress || dLendAssetToClaimForAddress === ethers.ZeroAddress) {
       const poolDataProviderDeployment = await deployments.get(POOL_DATA_PROVIDER_ID);
-      const poolDataProviderContract = await ethers.getContractAt(
-        "AaveProtocolDataProvider",
-        poolDataProviderDeployment.address,
-      );
+      const poolDataProviderContract = await ethers.getContractAt("AaveProtocolDataProvider", poolDataProviderDeployment.address);
       const reserveTokens = await poolDataProviderContract.getReserveTokensAddresses(underlyingStablecoinAddress);
       dLendAssetToClaimForAddress = reserveTokens.aTokenAddress;
     }
@@ -138,6 +130,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     let rewardsControllerAddress = rewardManagerConfig.dLendRewardsController;
+
     if (!rewardsControllerAddress || rewardsControllerAddress === ethers.ZeroAddress) {
       const incentivesProxyDeployment = await deployments.get(INCENTIVES_PROXY_ID);
       rewardsControllerAddress = incentivesProxyDeployment.address;

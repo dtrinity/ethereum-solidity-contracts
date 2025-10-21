@@ -63,12 +63,13 @@ contract DLoopRedeemerMock is DLoopRedeemerBase {
         // Approve the SimpleDEXMock to spend the input token
         inputToken.forceApprove(address(simpleDEXMock), amountInMaximum);
 
-        return simpleDEXMock.executeSwapExactOutput(
-            IERC20Metadata(address(inputToken)),
-            IERC20Metadata(address(outputToken)),
-            amountOut,
-            amountInMaximum,
-            receiver
-        );
+        return
+            simpleDEXMock.executeSwapExactOutput(
+                IERC20Metadata(address(inputToken)),
+                IERC20Metadata(address(outputToken)),
+                amountOut,
+                amountInMaximum,
+                receiver
+            );
     }
 }

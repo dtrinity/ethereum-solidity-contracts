@@ -69,12 +69,13 @@ contract DLoopDecreaseLeverageMock is DLoopDecreaseLeverageBase {
         if (amountOut == 0) {
             return 0;
         }
-        return simpleDEXMock.executeSwapExactOutput(
-            IERC20Metadata(address(inputToken)),
-            IERC20Metadata(address(outputToken)),
-            amountOut,
-            amountInMaximum, // maxInputAmount
-            receiver
-        );
+        return
+            simpleDEXMock.executeSwapExactOutput(
+                IERC20Metadata(address(inputToken)),
+                IERC20Metadata(address(outputToken)),
+                amountOut,
+                amountInMaximum, // maxInputAmount
+                receiver
+            );
     }
 }

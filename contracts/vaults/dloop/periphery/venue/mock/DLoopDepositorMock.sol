@@ -76,12 +76,13 @@ contract DLoopDepositorMock is DLoopDepositorBase {
             "Approve simpleDEXMock to spend input token failed"
         );
 
-        return simpleDEXMock.executeSwapExactOutput(
-            IERC20Metadata(address(inputToken)),
-            IERC20Metadata(address(outputToken)),
-            amountOut,
-            amountInMaximum,
-            receiver
-        );
+        return
+            simpleDEXMock.executeSwapExactOutput(
+                IERC20Metadata(address(inputToken)),
+                IERC20Metadata(address(outputToken)),
+                amountOut,
+                amountInMaximum,
+                receiver
+            );
     }
 }

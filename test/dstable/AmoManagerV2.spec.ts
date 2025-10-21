@@ -111,10 +111,7 @@ function runTestsForDStable(
       await amoDebtToken.waitForDeployment();
 
       // Deploy HardPegOracleWrapperV1_1 for the debt token (returns fixed price of 1.0)
-      const HardPegOracleFactory = await hre.ethers.getContractFactory(
-        "HardPegOracleWrapperV1_1",
-        await hre.ethers.getSigner(deployer),
-      );
+      const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
       const hardPegOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
       await hardPegOracle.waitForDeployment();
       await hardPegOracle.configurePeg(await amoDebtToken.getAddress(), baseCurrencyUnit, 0, 0);
@@ -534,7 +531,10 @@ function runTestsForDStable(
         it("should allow operations when prices remain within tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
+          const HardPegOracleFactory = await hre.ethers.getContractFactory(
+            "HardPegOracleWrapperV1_1",
+            await hre.ethers.getSigner(deployer),
+          );
 
           const mildDriftPrice = (baseCurrencyUnit * 1005n) / 1000n; // +0.5%
           const mildDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
@@ -548,7 +548,10 @@ function runTestsForDStable(
         it("should revert when dStable price exceeds tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
+          const HardPegOracleFactory = await hre.ethers.getContractFactory(
+            "HardPegOracleWrapperV1_1",
+            await hre.ethers.getSigner(deployer),
+          );
 
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
           const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
@@ -566,7 +569,10 @@ function runTestsForDStable(
         it("should revert when debt token price exceeds tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
+          const HardPegOracleFactory = await hre.ethers.getContractFactory(
+            "HardPegOracleWrapperV1_1",
+            await hre.ethers.getSigner(deployer),
+          );
 
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
           const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
@@ -584,7 +590,10 @@ function runTestsForDStable(
         it("should respect updated peg deviation tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
+          const HardPegOracleFactory = await hre.ethers.getContractFactory(
+            "HardPegOracleWrapperV1_1",
+            await hre.ethers.getSigner(deployer),
+          );
 
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
           const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
@@ -600,7 +609,10 @@ function runTestsForDStable(
         it("should allow disabling peg guard by setting tolerance to zero", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
+          const HardPegOracleFactory = await hre.ethers.getContractFactory(
+            "HardPegOracleWrapperV1_1",
+            await hre.ethers.getSigner(deployer),
+          );
 
           const severeDriftPrice = (baseCurrencyUnit * 105n) / 100n; // +5%
           const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);

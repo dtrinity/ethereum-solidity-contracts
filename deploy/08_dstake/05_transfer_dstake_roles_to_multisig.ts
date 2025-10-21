@@ -83,11 +83,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (vaultDeployment) {
         console.log(`  📄 VAULT ROLES: ${vaultId}`);
-        const vaultContract = await ethers.getContractAt(
-          "DStakeCollateralVaultV2",
-          vaultDeployment.address,
-          deployerSigner,
-        );
+        const vaultContract = await ethers.getContractAt("DStakeCollateralVaultV2", vaultDeployment.address, deployerSigner);
 
         const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
 

@@ -24,14 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Deploy the USD-specific OracleAggregatorV1_1
   await hre.deployments.deploy(USD_ORACLE_AGGREGATOR_ID, {
     from: deployer,
-    args: [
-      oracleConfig.baseCurrency,
-      ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-      admins,
-      oracleManagers,
-      guardians,
-      roles.globalMaxStaleTime,
-    ],
+    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, admins, oracleManagers, guardians, roles.globalMaxStaleTime],
     contract: "OracleAggregatorV1_1",
     autoMine: true,
     log: false,

@@ -95,9 +95,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.log(
         `    ⚙️ Migrating core for ${DStakeTokenDeploymentName} to router ${routerDeployment.address} and vault ${collateralVaultDeployment.address}`,
       );
-      await dstakeToken
-        .connect(deployerSigner)
-        .migrateCore(routerDeployment.address, collateralVaultDeployment.address);
+      await dstakeToken.connect(deployerSigner).migrateCore(routerDeployment.address, collateralVaultDeployment.address);
     }
     const currentFee = await dstakeToken.withdrawalFeeBps();
 
@@ -127,9 +125,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (existingAdapter === ethers.ZeroAddress) {
         await routerContract.addAdapter(strategyShare, adapterDeployment.address);
-        console.log(
-          `    ➕ Added adapter ${adapterDeploymentName} for strategy share ${strategyShare} to ${routerDeploymentName}`,
-        );
+        console.log(`    ➕ Added adapter ${adapterDeploymentName} for strategy share ${strategyShare} to ${routerDeploymentName}`);
       } else if (existingAdapter !== adapterDeployment.address) {
         throw new Error(
           `⚠️ Adapter for strategy share ${strategyShare} in router is already set to ${existingAdapter} but config expects ${adapterDeployment.address}. Manual intervention may be required.`,

@@ -2,6 +2,11 @@ import { ethers } from "ethers";
 
 import { IInterestRateStrategyParams } from "../types";
 
+/**
+ * Convert a human-readable decimal rate string into a ray-encoded string representation.
+ *
+ * @param value Human-readable decimal value (e.g. "0.8" for 80%).
+ */
 function toRay(value: string): string {
   return ethers.parseUnits(value, 27).toString();
 }

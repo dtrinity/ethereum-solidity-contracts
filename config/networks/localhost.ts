@@ -11,8 +11,13 @@ import {
   SDUSD_DSTAKE_TOKEN_ID,
 } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
-import { rateStrategyHighLiquidityStable, rateStrategyHighLiquidityVolatile, rateStrategyMediumLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
-import { strategyDUSD, strategyDETH, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
+import {
+  rateStrategyHighLiquidityStable,
+  rateStrategyHighLiquidityVolatile,
+  rateStrategyMediumLiquidityStable,
+  rateStrategyMediumLiquidityVolatile,
+} from "../dlend/interest-rate-strategies";
+import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 /**
