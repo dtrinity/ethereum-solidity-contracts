@@ -75,16 +75,20 @@ describe("DLoopCoreDLend.getTotalCollateralAndDebtOfUserInBase — per-asset onl
     AddressesProvider = await ethers.getContractFactory("MockPoolAddressesProvider");
     addressesProvider = await AddressesProvider.deploy(await pool.getAddress(), await priceOracle.getAddress());
 
-    // Deploy and link DLoopCoreLogic library required by DLoopCoreDLendHarness
-    const DLoopCoreLogicFactory = await ethers.getContractFactory("DLoopCoreLogic");
-    const dloopCoreLogicLib = await DLoopCoreLogicFactory.deploy();
-    await dloopCoreLogicLib.waitForDeployment();
-
-    DLoopCoreDLendHarness = await ethers.getContractFactory("DLoopCoreDLendHarness", {
-      libraries: {
-        "contracts/vaults/dloop/core/DLoopCoreLogic.sol:DLoopCoreLogic": await dloopCoreLogicLib.getAddress(),
-      },
-    });
+    // Deploy DLoopCoreLogic library only if linking is required
+    const baseFactory = await ethers.getContractFactory("DLoopCoreDLendHarness");
+    if (baseFactory.bytecode.includes("__$")) {
+      const DLoopCoreLogicFactory = await ethers.getContractFactory("DLoopCoreLogic");
+      const dloopCoreLogicLib = await DLoopCoreLogicFactory.deploy();
+      await dloopCoreLogicLib.waitForDeployment();
+      DLoopCoreDLendHarness = await ethers.getContractFactory("DLoopCoreDLendHarness", {
+        libraries: {
+          "contracts/vaults/dloop/core/DLoopCoreLogic.sol:DLoopCoreLogic": await dloopCoreLogicLib.getAddress(),
+        },
+      });
+    } else {
+      DLoopCoreDLendHarness = baseFactory;
+    }
     dloop = await DLoopCoreDLendHarness.deploy(
       "DLend Vault",
       "DLV",

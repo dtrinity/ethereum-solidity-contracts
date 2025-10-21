@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const DStakeTokenDeployment = await deploy(DStakeTokenDeploymentName, {
       from: deployer,
-      contract: "DStakeToken",
+      contract: "DStakeTokenV2",
       proxy: {
         // OZ v5 TransparentUpgradeableProxy mints a dedicated ProxyAdmin internally per proxy.
         // We therefore avoid viaAdminContract and just set the initial owner for that ProxyAdmin here.
@@ -101,7 +101,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const collateralVaultDeploymentName = `DStakeCollateralVault_${instanceKey}`;
     const collateralVaultDeployment = await deploy(collateralVaultDeploymentName, {
       from: deployer,
-      contract: "DStakeCollateralVault",
+      contract: "DStakeCollateralVaultV2",
       args: [DStakeTokenDeployment.address, instanceConfig.dStable],
       log: false,
     });
@@ -109,7 +109,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const routerDeploymentName = `DStakeRouter_${instanceKey}`;
     const _routerDeployment = await deploy(routerDeploymentName, {
       from: deployer,
-      contract: "DStakeRouterDLend",
+      contract: "DStakeRouterV2",
       args: [DStakeTokenDeployment.address, collateralVaultDeployment.address],
       log: false,
     });

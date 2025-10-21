@@ -28,6 +28,7 @@ import { Compare } from "contracts/common/Compare.sol";
  */
 abstract contract SwappableVault {
     error SpentInputTokenAmountGreaterThanAmountInMaximum(uint256 spentInputTokenAmount, uint256 amountInMaximum);
+    error SpentInputTokenAmountNotEqualReturnedAmountIn(uint256 spentInputTokenAmount, uint256 returnedAmountIn);
     error ReceivedOutputTokenAmountNotEqualAmountOut(uint256 receivedOutputTokenAmount, uint256 amountOut);
     error OutputTokenBalanceNotIncreasedAfterSwap(uint256 outputTokenBalanceBefore, uint256 outputTokenBalanceAfter);
 
@@ -53,7 +54,7 @@ abstract contract SwappableVault {
         address receiver,
         uint256 deadline,
         bytes memory extraData
-    ) internal virtual;
+    ) internal virtual returns (uint256 amountInReturned);
 
     /**
      * @dev The difference tolerance for the swapped output amount
@@ -90,7 +91,7 @@ abstract contract SwappableVault {
         uint256 outputTokenBalanceBefore = outputToken.balanceOf(address(this));
 
         // Perform the swap
-        _swapExactOutputImplementation(
+        uint256 amountInReturned = _swapExactOutputImplementation(
             inputToken,
             outputToken,
             amountOut,
@@ -132,6 +133,18 @@ abstract contract SwappableVault {
             }
             if (!outCheck.toleranceOk) {
                 revert ReceivedOutputTokenAmountNotEqualAmountOut(outCheck.observedDelta, amountOut);
+            }
+        }
+
+        if (spentInputTokenAmount > amountInReturned) {
+            uint256 diff = spentInputTokenAmount - amountInReturned;
+            if (diff > BALANCE_DIFF_TOLERANCE) {
+                revert SpentInputTokenAmountNotEqualReturnedAmountIn(spentInputTokenAmount, amountInReturned);
+            }
+        } else {
+            uint256 diff = amountInReturned - spentInputTokenAmount;
+            if (diff > BALANCE_DIFF_TOLERANCE) {
+                revert SpentInputTokenAmountNotEqualReturnedAmountIn(spentInputTokenAmount, amountInReturned);
             }
         }
 

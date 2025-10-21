@@ -105,9 +105,9 @@ contract DLoopRedeemerOdos is DLoopRedeemerBase, RescuableVault {
         address receiver,
         uint256 deadline,
         bytes memory underlyingToDStableSwapData
-    ) internal override {
+    ) internal override returns (uint256) {
         // Do not need to track the spent input token amount, it will be checked in the SwappableVault contract
-        OdosSwapLogic.swapExactOutput(
+        return OdosSwapLogic.swapExactOutput(
             inputToken,
             outputToken,
             amountOut,

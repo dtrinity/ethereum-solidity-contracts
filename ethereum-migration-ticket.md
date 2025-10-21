@@ -35,7 +35,7 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
   - [x] Align Katana oracle aggregator updates while preserving Ethereum’s v1.1 stack (core contract, API3 + Chainlink wrappers, interfaces, README updates).
   - [x] Import Sonic’s Odos adapter v2 stack and associated helpers; align dLoop contracts with the new swap logic.
   - [x] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
-  - [ ] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
+  - [x] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
 - [ ] **Deploy & tooling**
   - [ ] Mirror Katana/Sonic deployment scripts while keeping Ethereum’s v1.1 oracle flows intact; ensure network/task names remain accurate for Ethereum.
   - [ ] Refresh TypeScript support files (`typescript/**`, `config/**`) to match upstream expectations.
@@ -56,6 +56,10 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 
 # Progress Notes (Rewards Stack)
 - Ported MetaMorpho reward manager, shared `RewardClaimable`, and morpho mocks from Katana/Sonic; added canonical MetaMorpho reward tests to exercise the claim/compound path while leaving the oracle v1.1 wiring untouched.
+- Ported the Sonic debt AMO suite (AmoManagerV2, AmoDebtToken, deployment scripts, and TypeScript helpers), wired new hard peg oracles, and synced dStake reward tooling so deployment + unit specs pass under the localhost fixture.
 
 # Lessons Learned (Rewards Stack)
 - MetaMorpho flows rely on URD-driven balances—tests must stage claims against the manager contract directly to avoid regressions like the collateral vault merkle bypass.
+# Lessons Learned (Debt AMO)
+- Hard peg wrappers in OracleAggregator v1.1 no longer take an initial price; remember to configure pegs post-deployment when standing up local fixtures.
+- dStake V2 splits router and collateral vault roles with new adapter plumbing; scripts/tests must prefer the `*_V2` contracts and strategy share APIs.

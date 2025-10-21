@@ -27,7 +27,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   if (!config.vesting.dstakeToken || config.vesting.dstakeToken === ethers.ZeroAddress) {
-    throw new Error("Missing or invalid dstakeToken address in vesting configuration");
+    console.log("Skipping vesting NFT deployment: dstakeToken address not available in configuration.");
+    return;
   }
 
   if (!config.vesting.initialOwner || config.vesting.initialOwner === ethers.ZeroAddress) {

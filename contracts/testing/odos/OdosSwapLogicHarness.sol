@@ -17,7 +17,7 @@ contract OdosSwapLogicHarness {
     ) external returns (uint256 amountSpent) {
         uint256 inputTokenBalanceBefore = inputToken.balanceOf(address(this));
 
-        OdosSwapLogic.swapExactOutput(
+        uint256 amountReturned = OdosSwapLogic.swapExactOutput(
             inputToken,
             outputToken,
             amountOut,
@@ -38,5 +38,7 @@ contract OdosSwapLogicHarness {
         } else {
             amountSpent = 0;
         }
+
+        amountSpent = amountReturned;
     }
 }

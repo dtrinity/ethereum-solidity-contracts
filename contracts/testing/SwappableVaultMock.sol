@@ -68,7 +68,7 @@ contract SwappableVaultMock is SwappableVault {
         address, // receiver
         uint256, // deadline
         bytes memory // extraData
-    ) internal override {
+    ) internal override returns (uint256) {
         if (_shouldRevert) {
             revert(_revertMessage);
         }
@@ -88,6 +88,8 @@ contract SwappableVaultMock is SwappableVault {
             // Mint tokens to this contract to simulate receiving them from swap
             IMintableERC20(address(outputToken)).mint(address(this), actualAmountOut);
         }
+
+        return _amountInToReturn;
     }
 
     /**

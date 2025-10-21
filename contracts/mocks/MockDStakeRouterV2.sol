@@ -21,6 +21,7 @@ contract MockDStakeRouterV2 is IDStakeRouterV2, SupportsWithdrawalFee {
     address public override dStakeToken;
     IDStakeCollateralVaultV2 public override collateralVault;
     IERC20 public immutable asset;
+    address public defaultStrategyShare;
 
     bool public override paused;
     uint256 private managedAssets;
@@ -107,6 +108,14 @@ contract MockDStakeRouterV2 is IDStakeRouterV2, SupportsWithdrawalFee {
 
     function strategyShareToAdapter(address) external pure override returns (address) {
         return address(0);
+    }
+
+    function defaultDepositStrategyShare() external view override returns (address) {
+        return defaultStrategyShare;
+    }
+
+    function setDefaultStrategyShare(address share) external onlyOwner {
+        defaultStrategyShare = share;
     }
 
     function handleDeposit(address, uint256 assets, uint256, address) external override onlyDStakeToken {

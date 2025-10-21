@@ -114,6 +114,76 @@ export interface WalletAddresses {
   readonly incentivesVault: string;
 }
 
+export interface OracleWrapperDeploymentConfig<TAssetConfig> {
+  readonly deploymentId: string;
+  readonly adminRole?: string;
+  readonly assets?: {
+    [assetAddress: string]: TAssetConfig;
+  };
+}
+
+export interface ChainlinkFeedMockConfig {
+  readonly id?: string;
+  readonly description?: string;
+  readonly decimals: number;
+  readonly value: string;
+  readonly timestampOffsetSeconds?: number;
+}
+
+export interface ChainlinkFeedAssetConfig {
+  readonly feed?: string;
+  readonly feedDeploymentId?: string;
+  readonly heartbeat?: number;
+  readonly maxStaleTime?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+  readonly mock?: ChainlinkFeedMockConfig;
+}
+
+export interface ChainlinkRateCompositeAssetConfig {
+  readonly feedAsset?: string;
+  readonly sourceFeed1?: string;
+  readonly sourceFeed2?: string;
+  readonly lowerThresholdInBase1?: bigint;
+  readonly fixedPriceInBase1?: bigint;
+  readonly lowerThresholdInBase2?: bigint;
+  readonly fixedPriceInBase2?: bigint;
+}
+
+export interface Api3FeedAssetConfig {
+  readonly proxy?: string;
+  readonly lowerThreshold?: bigint;
+  readonly fixedPrice?: bigint;
+  readonly mock?: {
+    readonly id?: string;
+    readonly description?: string;
+    readonly decimals: number;
+    readonly value: string;
+    readonly timestampOffsetSeconds?: number;
+  };
+}
+
+export interface HardPegAssetConfig {
+  readonly pricePeg: bigint;
+  readonly lowerGuard?: bigint;
+  readonly upperGuard?: bigint;
+}
+
+export interface OracleAssetRiskConfig {
+  readonly maxStaleTime?: number;
+  readonly heartbeatOverride?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+}
+
+export interface OracleAssetRouting {
+  readonly primaryWrapperId: string;
+  readonly fallbackWrapperId?: string;
+  readonly risk?: OracleAssetRiskConfig;
+}
+
 export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
@@ -167,6 +237,21 @@ export interface OracleAggregatorConfig {
   readonly chainlinkCompositeAggregator?: {
     [assetAddress: string]: ChainlinkCompositeAggregatorConfig;
   };
+  readonly wrappers?: {
+    chainlink?: OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>;
+    api3?: OracleWrapperDeploymentConfig<Api3FeedAssetConfig>;
+    rateComposite?: OracleWrapperDeploymentConfig<ChainlinkRateCompositeAssetConfig>;
+    hardPeg?: OracleWrapperDeploymentConfig<HardPegAssetConfig>;
+  };
+  readonly assets?: {
+    [assetAddress: string]: OracleAssetRouting;
+  };
+  readonly roles?: {
+    admins: string[];
+    oracleManagers: string[];
+    guardians: string[];
+    globalMaxStaleTime: number;
+  };
 }
 
 export interface IInterestRateStrategyParams {
@@ -211,6 +296,7 @@ export interface IReserveParams extends IReserveBorrowParams, IReserveCollateral
 export interface DStakeAdapterConfig {
   readonly strategyShare: Address; // Address of the strategy share token (e.g., wddUSD)
   readonly adapterContract: string; // Contract name for deployment (e.g., dLendConversionAdapter)
+  readonly vaultAsset?: Address; // Underlying asset handled by the adapter (if applicable)
 }
 
 export interface DStakeIdleVaultConfig {
@@ -244,6 +330,7 @@ export interface DStakeInstanceConfig {
   readonly initialWithdrawalFeeBps: number;
   readonly adapters: DStakeAdapterConfig[]; // List of supported adapters/strategy shares
   readonly defaultDepositStrategyShare: Address; // Initial default strategy share for deposits
+  readonly defaultDepositVaultAsset?: Address; // Asset used for vault deposits when configuring adapters
   readonly collateralExchangers: Address[]; // List of allowed exchanger addresses
   readonly collateralVault?: Address; // The DStakeCollateralVaultV2 for this instance (needed for adapter deployment)
   readonly dLendRewardManager?: DLendRewardManagerConfig; // Added for dLend rewards

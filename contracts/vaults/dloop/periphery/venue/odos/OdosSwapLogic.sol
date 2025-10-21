@@ -63,7 +63,7 @@ library OdosSwapLogic {
         uint256, // deadline, not used in Odos
         bytes memory swapData,
         IOdosRouterV2 odosRouter
-    ) external {
+    ) external returns (uint256 actualAmountSpent) {
         // We do not need to track the spent input token amount, it will be checked in the SwappableVault contract
 
         // Measure the contract’s balance, not the receiver’s, because Odos router sends the
@@ -72,7 +72,7 @@ library OdosSwapLogic {
 
         // Use the OdosSwapUtils library to execute the swap
         // Do not use the returned spent input token amount from executeSwapOperation, as it is not reliable
-        OdosSwapUtils.executeSwapOperation(
+        actualAmountSpent = OdosSwapUtils.executeSwapOperation(
             odosRouter,
             address(inputToken),
             address(outputToken),
@@ -100,5 +100,6 @@ library OdosSwapLogic {
         if (surplus > 0 && receiver != address(this)) {
             ERC20(outputToken).safeTransfer(receiver, surplus);
         }
+        return actualAmountSpent;
     }
 }

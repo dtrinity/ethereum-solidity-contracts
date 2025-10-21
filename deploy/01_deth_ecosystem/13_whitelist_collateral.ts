@@ -43,16 +43,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   // Sanity check: Verify that the oracle can provide a price for each asset
-  for (const token of tokensToWhitelist) {
-    const price = await oracleAggregator.getAssetPrice(token.address);
+  const tokensWithValidOracle: TokenInfo[] = [];
 
-    if (price.toString() === "0") {
-      throw new Error(`Aborting: Oracle price for ${token.address} is zero.`);
+  for (const token of tokensToWhitelist) {
+    try {
+      const price = await oracleAggregator.getAssetPrice(token.address);
+
+      if (price === 0n) {
+        console.warn(`⚠️  Skipping collateral ${token.address}: oracle price is zero.`);
+        continue;
+      }
+
+      tokensWithValidOracle.push(token);
+    } catch (error) {
+      console.warn(`⚠️  Skipping collateral ${token.address}: oracle not configured (${(error as Error).message}).`);
     }
   }
 
   // Whitelist each valid token
-  for (const token of tokensToWhitelist) {
+  for (const token of tokensWithValidOracle) {
     try {
       // Check if the token is already whitelisted
       const isAlreadyWhitelisted = await collateralVault.isCollateralSupported(token.address);

@@ -33,6 +33,8 @@ interface IDStakeRouterV2 {
 
     function strategyShareToAdapter(address strategyShare) external view returns (address);
 
+    function defaultDepositStrategyShare() external view returns (address);
+
     // --- Token Hooks ---
     function handleDeposit(address initiator, uint256 assets, uint256 shares, address receiver) external;
 
