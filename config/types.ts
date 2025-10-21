@@ -14,7 +14,7 @@ export interface Config {
   readonly dStables: {
     [key: string]: DStableConfig;
   };
-  readonly dLend: DLendConfig;
+  readonly dLend?: DLendConfig;
   readonly odos?: {
     readonly router: string;
   };
@@ -39,6 +39,7 @@ export interface Config {
     [key: string]: DStakeInstanceConfig; // e.g., sdUSD, sdETH
   };
   readonly vesting?: VestingConfig;
+  readonly morpho?: MorphoConfig;
 }
 
 // Configuration for mocking infrastructure on local and test networks
@@ -117,9 +118,55 @@ export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
   readonly baseCurrency: string;
-  readonly roles: OracleAggregatorRoleConfig;
-  readonly wrappers: OracleWrapperConfig;
-  readonly assets: Record<string, OracleAssetRoutingConfig>;
+  readonly api3OracleAssets: {
+    plainApi3OracleWrappers: {
+      [key: string]: string;
+    };
+    api3OracleWrappersWithThresholding: {
+      [key: string]: {
+        proxy: string;
+        lowerThreshold: bigint;
+        fixedPrice: bigint;
+      };
+    };
+    compositeApi3OracleWrappersWithThresholding: {
+      [key: string]: {
+        feedAsset: string;
+        proxy1: string;
+        proxy2: string;
+        lowerThresholdInBase1: bigint;
+        fixedPriceInBase1: bigint;
+        lowerThresholdInBase2: bigint;
+        fixedPriceInBase2: bigint;
+      };
+    };
+  };
+  readonly redstoneOracleAssets: {
+    plainRedstoneOracleWrappers: {
+      [key: string]: string;
+    };
+    redstoneOracleWrappersWithThresholding: {
+      [key: string]: {
+        feed: string;
+        lowerThreshold: bigint;
+        fixedPrice: bigint;
+      };
+    };
+    compositeRedstoneOracleWrappersWithThresholding: {
+      [key: string]: {
+        feedAsset: string;
+        feed1: string;
+        feed2: string;
+        lowerThresholdInBase1: bigint;
+        fixedPriceInBase1: bigint;
+        lowerThresholdInBase2: bigint;
+        fixedPriceInBase2: bigint;
+      };
+    };
+  };
+  readonly chainlinkCompositeAggregator?: {
+    [assetAddress: string]: ChainlinkCompositeAggregatorConfig;
+  };
 }
 
 export interface IInterestRateStrategyParams {
@@ -162,12 +209,22 @@ export interface IReserveParams extends IReserveBorrowParams, IReserveCollateral
 // --- dStake Types ---
 
 export interface DStakeAdapterConfig {
-  readonly vaultAsset: Address; // Address of the vault asset (e.g., wddUSD)
+  readonly strategyShare: Address; // Address of the strategy share token (e.g., wddUSD)
   readonly adapterContract: string; // Contract name for deployment (e.g., dLendConversionAdapter)
 }
 
+export interface DStakeIdleVaultConfig {
+  readonly name?: string; // Optional name override for the idle vault token
+  readonly symbol?: string; // Optional symbol override for the idle vault token
+  readonly admin?: Address; // Optional admin override; defaults to the instance initialAdmin
+  readonly rewardManager?: Address; // Optional reward manager override; defaults to admin
+  readonly emissionStart?: number; // Optional initial emission start timestamp
+  readonly emissionEnd?: number; // Optional initial emission end timestamp
+  readonly emissionPerSecond?: string; // Optional initial emission rate (string to avoid precision issues)
+}
+
 export interface DLendRewardManagerConfig {
-  readonly managedVaultAsset: Address; // Address of the StaticATokenLM wrapper this manager handles (e.g. wddUSD)
+  readonly managedStrategyShare: Address; // Address of the StaticATokenLM wrapper this manager handles (e.g. wddUSD)
   readonly dLendAssetToClaimFor: Address; // Address of the underlying aToken in dLEND (e.g. aDUSD)
   readonly dLendRewardsController: Address; // Address of the dLEND RewardsController
   readonly treasury: Address; // Address for treasury fees
@@ -180,16 +237,17 @@ export interface DLendRewardManagerConfig {
 
 export interface DStakeInstanceConfig {
   readonly dStable: Address; // Address of the underlying stable token (e.g., dUSD, dETH)
-  readonly name: string; // Name for DStakeToken (e.g., "Staked dUSD")
-  readonly symbol: string; // Symbol for DStakeToken (e.g., "sdUSD")
+  readonly name: string; // Name for DStakeTokenV2 (e.g., "Staked dUSD")
+  readonly symbol: string; // Symbol for DStakeTokenV2 (e.g., "sdUSD")
   readonly initialAdmin: Address;
   readonly initialFeeManager: Address;
   readonly initialWithdrawalFeeBps: number;
-  readonly adapters: DStakeAdapterConfig[]; // List of supported adapters/vault assets
-  readonly defaultDepositVaultAsset: Address; // Initial default vault asset for deposits
+  readonly adapters: DStakeAdapterConfig[]; // List of supported adapters/strategy shares
+  readonly defaultDepositStrategyShare: Address; // Initial default strategy share for deposits
   readonly collateralExchangers: Address[]; // List of allowed exchanger addresses
-  readonly collateralVault?: Address; // The DStakeCollateralVault for this instance (needed for adapter deployment)
+  readonly collateralVault?: Address; // The DStakeCollateralVaultV2 for this instance (needed for adapter deployment)
   readonly dLendRewardManager?: DLendRewardManagerConfig; // Added for dLend rewards
+  readonly idleVault?: DStakeIdleVaultConfig; // Optional idle vault configuration
 }
 
 export interface VestingConfig {
@@ -217,100 +275,34 @@ export interface PendleConfig {
   readonly ptTokens: PTTokenConfig[]; // List of PT tokens to configure
 }
 
-export interface OracleAggregatorRoleConfig {
-  readonly admins: string[];
-  readonly oracleManagers: string[];
-  readonly guardians: string[];
-  readonly globalMaxStaleTime: number;
+// --- Chainlink Composite Wrapper Types ---
+
+export interface ChainlinkCompositeAggregatorConfig {
+  readonly name: string; // Name of the composite wrapper (e.g., "OS_S_USD")
+  readonly feedAsset: Address; // Address of the asset being priced (e.g., wOS address)
+  readonly sourceFeed1: Address; // Address of the first Chainlink price feed (e.g., OS/S)
+  readonly sourceFeed2: Address; // Address of the second Chainlink price feed (e.g., S/USD)
+  readonly lowerThresholdInBase1: bigint; // Lower threshold for sourceFeed1 (e.g., 99000000n for 0.99)
+  readonly fixedPriceInBase1: bigint; // Fixed price for sourceFeed1 when threshold is exceeded (e.g., 100000000n for 1.00)
+  readonly lowerThresholdInBase2: bigint; // Lower threshold for sourceFeed2 (e.g., 98000000n for 0.98)
+  readonly fixedPriceInBase2: bigint; // Fixed price for sourceFeed2 when threshold is exceeded (e.g., 100000000n for 1.00)
 }
 
-export interface OracleWrapperDeploymentConfig<TConfig> {
-  readonly deploymentId: string;
-  readonly initialAdmin?: string;
-  readonly assets?: Record<string, TConfig>;
+// --- Morpho Types ---
+
+export interface MorphoMarketConfig {
+  readonly name: string; // Human-readable name for the market
+  readonly symbol: string; // Symbol for the vault token
+  readonly loanToken: Address; // The token being supplied/borrowed (e.g., dUSD)
+  readonly collateralToken: Address; // The collateral token (can be zero address for pure supply)
+  readonly oracle: Address; // Oracle address for the market
+  readonly irm: Address; // Interest rate model address
+  readonly lltv: number; // Loan-to-value ratio (in basis points or as configured by Morpho)
 }
 
-export interface ChainlinkFeedMockConfig {
-  readonly id?: string;
-  readonly decimals: number;
-  readonly value: string;
-  readonly description?: string;
-  readonly timestampOffsetSeconds?: number;
-}
-
-export interface ChainlinkFeedAssetConfig {
-  readonly feed: string;
-  readonly heartbeat?: number;
-  readonly maxStaleTime?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-  readonly mock?: ChainlinkFeedMockConfig;
-}
-
-export interface Api3ProxyMockConfig {
-  readonly id?: string;
-  readonly decimals: number;
-  readonly value: string;
-  readonly timestampOffsetSeconds?: number;
-}
-
-export interface Api3ProxyAssetConfig {
-  readonly proxy: string;
-  readonly decimals: number;
-  readonly heartbeat?: number;
-  readonly maxStaleTime?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-  readonly mock?: Api3ProxyMockConfig;
-}
-
-export interface RateProviderMockConfig {
-  readonly id?: string;
-  readonly decimals: number;
-  readonly value: string;
-  readonly timestampOffsetSeconds?: number;
-}
-
-export interface RateCompositeAssetConfig {
-  readonly priceFeed: string;
-  readonly priceFeedDecimals: number;
-  readonly rateProvider: string;
-  readonly rateDecimals: number;
-  readonly priceHeartbeat?: number;
-  readonly rateHeartbeat?: number;
-  readonly maxStaleTime?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-  readonly priceMock?: ChainlinkFeedMockConfig;
-  readonly rateMock?: RateProviderMockConfig;
-}
-
-export interface HardPegAssetConfig {
-  readonly pricePeg: bigint;
-  readonly lowerGuard?: bigint;
-  readonly upperGuard?: bigint;
-}
-
-export interface OracleWrapperConfig {
-  readonly chainlink?: OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>;
-  readonly api3?: OracleWrapperDeploymentConfig<Api3ProxyAssetConfig>;
-  readonly rateComposite?: OracleWrapperDeploymentConfig<RateCompositeAssetConfig>;
-  readonly hardPeg?: OracleWrapperDeploymentConfig<HardPegAssetConfig>;
-}
-
-export interface OracleAssetRiskConfig {
-  readonly maxStaleTime?: number;
-  readonly heartbeatOverride?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-}
-
-export interface OracleAssetRoutingConfig {
-  readonly primaryWrapperId: string;
-  readonly fallbackWrapperId?: string;
-  readonly risk?: OracleAssetRiskConfig;
+export interface MorphoConfig {
+  readonly morphoAddress: Address; // Address of the Morpho Blue contract
+  readonly markets: {
+    [key: string]: MorphoMarketConfig; // e.g., "dUSD_market"
+  };
 }

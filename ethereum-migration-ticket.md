@@ -20,8 +20,8 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 - Revised design docs capturing the new architecture and removing v1 references.
 
 # Implementation Checklist
-- [ ] **Environment prep**
-  - [ ] Sync `package.json`, `yarn.lock`, and config files with upstream changes (retain Ethereum RPC/network entries as required).
+- [x] **Environment prep**
+  - [x] Sync `package.json`, `yarn.lock`, and config files with upstream changes (retain Ethereum RPC/network entries as required).
   - [x] Bring in new scripts (`scripts/mainnet-gas-estimation.ts`, helper shell scripts) and update `Makefile` targets if necessary.
 - [ ] **Contracts**
   - [ ] Copy Katana’s updated common libraries (`SupportsWithdrawalFee`, `WithdrawalFeeMath`, rescue helpers) and remove superseded versions.

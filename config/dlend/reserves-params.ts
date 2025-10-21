@@ -1,101 +1,102 @@
+import { IReserveParams } from "../types";
 import {
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
   rateStrategyMediumLiquidityStable,
   rateStrategyMediumLiquidityVolatile,
 } from "./interest-rate-strategies";
-import { eContractid, IReserveParams } from "./types";
 
-// Explainer: https://docs.aave.com/developers/guides/governance-guide/asset-listing
-const baseDStableConfig: IReserveParams = {
-  strategy: rateStrategyHighLiquidityStable,
-  // CAUTION: If LTV is > 0, people may loop and dillute other borrowers
-  baseLTVAsCollateral: "0", // 0 Don't allow dStable as collateral to prevent subsidy syphoning
-  liquidationThreshold: "0", // Set to 0% because some helper contracts rely on this to determine if collateral is enabled
-  liquidationBonus: "0", // Must be 0% if liquidationThreshold is 0%
-  liquidationProtocolFee: "0",
-  borrowingEnabled: true,
-  stableBorrowRateEnabled: false, // No stable rates due to vulnerability
-  flashLoanEnabled: true,
-  reserveDecimals: "18",
-  aTokenImpl: eContractid.AToken,
-  reserveFactor: "1000", // 1000 bps = 10%
-  supplyCap: "0", // these are decimal units, not raw on-chain integer values
-  borrowCap: "0",
-  debtCeiling: "0",
-  borrowableIsolation: false,
-};
-
+// dUSD reserve parameters
 export const strategyDUSD: IReserveParams = {
-  ...baseDStableConfig,
-  supplyCap: "2500000", // Specific to dUSD
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "0.1", // 10%
+  supplyCap: "1000000", // 1M
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false, // Disabled due to exploit concerns
+  reserveDecimals: "18",
+  borrowCap: "800000", // 800K
+  debtCeiling: "0", // No isolation mode
+  borrowableIsolation: false,
+  flashLoanEnabled: true,
+  baseLTVAsCollateral: "0.8", // 80%
+  liquidationThreshold: "0.85", // 85%
+  liquidationBonus: "0.05", // 5%
+  liquidationProtocolFee: "0.1", // 10%
+  strategy: rateStrategyHighLiquidityStable,
 };
 
+// dETH reserve parameters
 export const strategyDETH: IReserveParams = {
-  ...baseDStableConfig,
-  supplyCap: "500", // Specific to dETH
-};
-
-export const strategyWETH: IReserveParams = {
-  strategy: rateStrategyHighLiquidityVolatile,
-  baseLTVAsCollateral: "8000",
-  liquidationThreshold: "8500",
-  liquidationBonus: "10500",
-  liquidationProtocolFee: "7000", // 70%
-  borrowingEnabled: false,
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "0.15", // 15%
+  supplyCap: "500", // 500 dETH
+  borrowingEnabled: true,
   stableBorrowRateEnabled: false,
-  flashLoanEnabled: true,
   reserveDecimals: "18",
-  aTokenImpl: eContractid.AToken,
-  reserveFactor: "1000",
-  supplyCap: "500",
-  borrowCap: "0",
+  borrowCap: "400", // 400 dETH
   debtCeiling: "0",
   borrowableIsolation: false,
-};
-
-const baseYieldBearingStablecoinConfig: IReserveParams = {
-  strategy: rateStrategyMediumLiquidityStable,
-  baseLTVAsCollateral: "8000",
-  liquidationThreshold: "8500",
-  liquidationBonus: "10500",
-  liquidationProtocolFee: "7000", // 70%
-  borrowingEnabled: false,
-  stableBorrowRateEnabled: false,
   flashLoanEnabled: true,
-  reserveDecimals: "18",
-  aTokenImpl: eContractid.AToken,
-  reserveFactor: "1000",
-  supplyCap: "0", // these are decimal units, not raw on-chain integer values
-  borrowCap: "0",
-  debtCeiling: "0",
-  borrowableIsolation: false,
-};
-
-export const strategySFRXUSD: IReserveParams = {
-  ...baseYieldBearingStablecoinConfig,
-  supplyCap: "1000000", // Specific to sfrxUSD
-};
-
-export const strategyETHLST: IReserveParams = {
+  baseLTVAsCollateral: "0.75", // 75%
+  liquidationThreshold: "0.8", // 80%
+  liquidationBonus: "0.06", // 6%
+  liquidationProtocolFee: "0.1",
   strategy: rateStrategyMediumLiquidityVolatile,
-  baseLTVAsCollateral: "8000",
-  liquidationThreshold: "8500",
-  liquidationBonus: "10500",
-  liquidationProtocolFee: "7000", // 70%
-  borrowingEnabled: false,
-  stableBorrowRateEnabled: false,
-  flashLoanEnabled: true,
-  reserveDecimals: "18",
-  aTokenImpl: eContractid.AToken,
-  reserveFactor: "1000",
-  supplyCap: "300",
-  borrowCap: "0",
-  debtCeiling: "0",
-  borrowableIsolation: false,
 };
 
+// WETH reserve parameters
+export const strategyWETH: IReserveParams = {
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "0.1", // 10%
+  supplyCap: "1000", // 1K WETH
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: "18",
+  borrowCap: "800", // 800 WETH
+  debtCeiling: "0",
+  borrowableIsolation: false,
+  flashLoanEnabled: true,
+  baseLTVAsCollateral: "0.8", // 80%
+  liquidationThreshold: "0.825", // 82.5%
+  liquidationBonus: "0.05", // 5%
+  liquidationProtocolFee: "0.1",
+  strategy: rateStrategyHighLiquidityVolatile,
+};
+
+// stETH reserve parameters
 export const strategySTETH: IReserveParams = {
-  ...strategyETHLST,
-  supplyCap: "5000000", // Specific to stS
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "0.15", // 15%
+  supplyCap: "1000", // 1K stETH
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: "18",
+  borrowCap: "200", // 200 stETH (lower due to volatility)
+  debtCeiling: "0",
+  borrowableIsolation: false,
+  flashLoanEnabled: true,
+  baseLTVAsCollateral: "0.69", // 69%
+  liquidationThreshold: "0.79", // 79%
+  liquidationBonus: "0.075", // 7.5%
+  liquidationProtocolFee: "0.1",
+  strategy: rateStrategyMediumLiquidityVolatile,
+};
+
+// sfrxUSD reserve parameters
+export const strategySFRXUSD: IReserveParams = {
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "0.2", // 20%
+  supplyCap: "500000", // 500K sfrxUSD
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: "18",
+  borrowCap: "400000", // 400K sfrxUSD
+  debtCeiling: "0",
+  borrowableIsolation: false,
+  flashLoanEnabled: true,
+  baseLTVAsCollateral: "0.75", // 75%
+  liquidationThreshold: "0.8", // 80%
+  liquidationBonus: "0.06", // 6%
+  liquidationProtocolFee: "0.1",
+  strategy: rateStrategyMediumLiquidityStable,
 };

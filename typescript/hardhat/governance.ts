@@ -3,13 +3,14 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { SafeManager } from "../safe/SafeManager";
 import { SafeConfig, SafeTransactionBatch, SafeTransactionData } from "../safe/types";
+import { isMainnet } from "./deploy";
 
 /**
  * GovernanceExecutor decides whether to execute operations directly
  * (using signer) or to queue them as Safe transactions for multisig execution.
  *
  * Behavior:
- * - By default, enables Safe queueing only on Ethereum mainnet (chainId 1)
+ * - By default, enables Safe queueing only on Katana mainnet (chainId 99999)
  *   when a `safeConfig` is provided. You can override by setting USE_SAFE=true
  *   in env to force Safe usage on other networks.
  * - For non-Safe mode, direct calls are attempted; on failure, the helper
@@ -27,10 +28,10 @@ export class GovernanceExecutor {
     this.signer = signer;
 
     const envForce = process.env.USE_SAFE?.toLowerCase() === "true";
-    const chainIdStr = String(hre.network.config.chainId ?? "");
-    const isEthereumMainnet = chainIdStr === "1";
+    // Enable Safe governance on mainnet by default (using shared helper), or when forced via env
+    const isMainnetNetwork = isMainnet(hre.network.name);
 
-    this.useSafe = Boolean(safeConfig) && (isEthereumMainnet || envForce);
+    this.useSafe = Boolean(safeConfig) && (isMainnetNetwork || envForce);
 
     if (this.useSafe && safeConfig) {
       this.safeManager = new SafeManager(hre, signer, { safeConfig });

@@ -2,29 +2,9 @@ import { ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import {
-  DETH_TOKEN_ID,
-  DUSD_TOKEN_ID,
-  ETH_API3_WRAPPER_V1_1_ID,
-  ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-  ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
-  ETH_HARD_PEG_WRAPPER_V1_1_ID,
-  INCENTIVES_PROXY_ID,
-  SDUSD_DSTAKE_TOKEN_ID,
-  USD_API3_WRAPPER_V1_1_ID,
-  USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-  USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
-  USD_HARD_PEG_WRAPPER_V1_1_ID,
-} from "../../typescript/deploy-ids";
+import { DETH_TOKEN_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID, SDUSD_DSTAKE_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
-import {
-  rateStrategyHighLiquidityStable,
-  rateStrategyHighLiquidityVolatile,
-  rateStrategyMediumLiquidityStable,
-  rateStrategyMediumLiquidityVolatile,
-} from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
-import { ChainlinkFeedAssetConfig, Config, HardPegAssetConfig, OracleAssetRoutingConfig } from "../types";
+import { Config } from "../types";
 
 /**
  * Get the configuration for the network
@@ -37,8 +17,9 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   const dUSDDeployment = await _hre.deployments.getOrNull(DUSD_TOKEN_ID);
   const dETHDeployment = await _hre.deployments.getOrNull(DETH_TOKEN_ID);
   const USDCDeployment = await _hre.deployments.getOrNull("USDC");
-  const USDSDeployment = await _hre.deployments.getOrNull("USDS");
-  const sUSDSDeployment = await _hre.deployments.getOrNull("sUSDS");
+  const USDTDeployment = await _hre.deployments.getOrNull("USDT");
+  const AUSDDeployment = await _hre.deployments.getOrNull("AUSD");
+  const yUSDDeployment = await _hre.deployments.getOrNull("yUSD");
   const frxUSDDeployment = await _hre.deployments.getOrNull("frxUSD");
   const sfrxUSDDeployment = await _hre.deployments.getOrNull("sfrxUSD");
   const WETHDeployment = await _hre.deployments.getOrNull("WETH");
@@ -47,6 +28,9 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   // Fetch deployed dLend StaticATokenLM wrappers
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull("dLend_ATokenWrapper_dUSD");
   const dLendATokenWrapperDSDeployment = await _hre.deployments.getOrNull("dLend_ATokenWrapper_dETH");
+
+  const idleVaultSdUSDDeployment = await _hre.deployments.getOrNull("DStakeIdleVault_sdUSD");
+  const idleVaultSdETHDeployment = await _hre.deployments.getOrNull("DStakeIdleVault_sdETH");
 
   // Fetch deployed dLend RewardsController
   const rewardsControllerDeployment = await _hre.deployments.getOrNull(INCENTIVES_PROXY_ID);
@@ -57,312 +41,19 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   // Fetch deployed dSTAKE tokens for vesting
   const sdUSDDeployment = await _hre.deployments.getOrNull(SDUSD_DSTAKE_TOKEN_ID);
 
+  // Get mock oracle deployments
+  const mockOracleNameToAddress: Record<string, string> = {};
+
+  // Get mock oracle addresses
+  const mockOracleAddressesDeployment = await _hre.deployments.getOrNull("MockOracleNameToAddress");
+
+  // Mock oracles won't exist initially, so we need to check if they do
+  if (mockOracleAddressesDeployment?.linkedData) {
+    Object.assign(mockOracleNameToAddress, mockOracleAddressesDeployment.linkedData);
+  }
+
   // Get the named accounts
   const { deployer, user1 } = await _hre.getNamedAccounts();
-
-  const defaultHeartbeat = 60;
-  const defaultMaxStale = 600;
-  const usdDefaultDeviationBps = 500;
-  const ethDefaultDeviationBps = 300;
-
-  const chainlinkUsdAssets: Record<string, ChainlinkFeedAssetConfig> = {};
-
-  if (WETHDeployment?.address) {
-    chainlinkUsdAssets[WETHDeployment.address] = {
-      feed: "mock:chainlink:WETH_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: 1_000,
-      mock: {
-        id: "WETH_USD",
-        decimals: 8,
-        value: "2500",
-        description: "WETH / USD",
-      },
-    };
-  }
-
-  if (dETHDeployment?.address) {
-    chainlinkUsdAssets[dETHDeployment.address] = {
-      feed: "mock:chainlink:dETH_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: 1_000,
-      mock: {
-        id: "dETH_USD",
-        decimals: 8,
-        value: "2500",
-        description: "dETH / USD",
-      },
-    };
-  }
-
-  if (USDCDeployment?.address) {
-    chainlinkUsdAssets[USDCDeployment.address] = {
-      feed: "mock:chainlink:USDC_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: usdDefaultDeviationBps,
-      mock: {
-        id: "USDC_USD",
-        decimals: 8,
-        value: "1",
-        description: "USDC / USD",
-      },
-    };
-  }
-
-  if (USDSDeployment?.address) {
-    chainlinkUsdAssets[USDSDeployment.address] = {
-      feed: "mock:chainlink:USDS_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: usdDefaultDeviationBps,
-      mock: {
-        id: "USDS_USD",
-        decimals: 8,
-        value: "1",
-        description: "USDS / USD",
-      },
-    };
-  }
-
-  if (sUSDSDeployment?.address) {
-    chainlinkUsdAssets[sUSDSDeployment.address] = {
-      feed: "mock:chainlink:sUSDS_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: usdDefaultDeviationBps,
-      mock: {
-        id: "sUSDS_USD",
-        decimals: 8,
-        value: "1.1",
-        description: "sUSDS / USD",
-      },
-    };
-  }
-
-  if (frxUSDDeployment?.address) {
-    chainlinkUsdAssets[frxUSDDeployment.address] = {
-      feed: "mock:chainlink:frxUSD_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: usdDefaultDeviationBps,
-      mock: {
-        id: "frxUSD_USD",
-        decimals: 8,
-        value: "1",
-        description: "frxUSD / USD",
-      },
-    };
-  }
-
-  if (sfrxUSDDeployment?.address) {
-    chainlinkUsdAssets[sfrxUSDDeployment.address] = {
-      feed: "mock:chainlink:sfrxUSD_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: usdDefaultDeviationBps,
-      mock: {
-        id: "sfrxUSD_USD",
-        decimals: 8,
-        value: "1.1",
-        description: "sfrxUSD / USD",
-      },
-    };
-  }
-
-  if (stETHDeployment?.address) {
-    chainlinkUsdAssets[stETHDeployment.address] = {
-      feed: "mock:chainlink:stETH_USD",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: 1_000,
-      mock: {
-        id: "stETH_USD",
-        decimals: 8,
-        value: "2600",
-        description: "stETH / USD",
-      },
-    };
-  }
-
-  const hardPegUsdAssets: Record<string, HardPegAssetConfig> = {};
-  hardPegUsdAssets[ZeroAddress] = {
-    pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-    lowerGuard: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-    upperGuard: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-  };
-
-  if (dUSDDeployment?.address) {
-    hardPegUsdAssets[dUSDDeployment.address] = {
-      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-      lowerGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 99n) / 100n,
-      upperGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 101n) / 100n,
-    };
-  }
-
-  const usdAggregatorAssets: Record<string, OracleAssetRoutingConfig> = {};
-  usdAggregatorAssets[ZeroAddress] = {
-    primaryWrapperId: USD_HARD_PEG_WRAPPER_V1_1_ID,
-    risk: {
-      maxDeviationBps: 0,
-    },
-  };
-
-  if (dUSDDeployment?.address) {
-    usdAggregatorAssets[dUSDDeployment.address] = {
-      primaryWrapperId: USD_HARD_PEG_WRAPPER_V1_1_ID,
-      risk: {
-        maxDeviationBps: 100,
-      },
-    };
-  }
-
-  if (USDCDeployment?.address) {
-    usdAggregatorAssets[USDCDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: usdDefaultDeviationBps,
-      },
-    };
-  }
-
-  if (USDSDeployment?.address) {
-    usdAggregatorAssets[USDSDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: usdDefaultDeviationBps,
-      },
-    };
-  }
-
-  if (sUSDSDeployment?.address) {
-    usdAggregatorAssets[sUSDSDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: usdDefaultDeviationBps,
-      },
-    };
-  }
-
-  if (frxUSDDeployment?.address) {
-    usdAggregatorAssets[frxUSDDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: usdDefaultDeviationBps,
-      },
-    };
-  }
-
-  if (sfrxUSDDeployment?.address) {
-    usdAggregatorAssets[sfrxUSDDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: usdDefaultDeviationBps,
-      },
-    };
-  }
-
-  if (WETHDeployment?.address) {
-    usdAggregatorAssets[WETHDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: 1_000,
-      },
-    };
-  }
-
-  if (dETHDeployment?.address) {
-    usdAggregatorAssets[dETHDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: 1_000,
-      },
-    };
-  }
-
-  if (stETHDeployment?.address) {
-    usdAggregatorAssets[stETHDeployment.address] = {
-      primaryWrapperId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: 1_000,
-      },
-    };
-  }
-
-  const chainlinkEthAssets: Record<string, ChainlinkFeedAssetConfig> = {};
-
-  if (stETHDeployment?.address) {
-    chainlinkEthAssets[stETHDeployment.address] = {
-      feed: "mock:chainlink:stETH_WETH",
-      heartbeat: defaultHeartbeat,
-      maxStaleTime: defaultMaxStale,
-      maxDeviationBps: ethDefaultDeviationBps,
-      mock: {
-        id: "stETH_WETH",
-        decimals: 18,
-        value: "1.1",
-        description: "stETH / WETH",
-      },
-    };
-  }
-
-  const hardPegEthAssets: Record<string, HardPegAssetConfig> = {};
-
-  if (WETHDeployment?.address) {
-    hardPegEthAssets[WETHDeployment.address] = {
-      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-      lowerGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 99n) / 100n,
-      upperGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 101n) / 100n,
-    };
-  }
-
-  if (dETHDeployment?.address) {
-    hardPegEthAssets[dETHDeployment.address] = {
-      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-      lowerGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 99n) / 100n,
-      upperGuard: (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 101n) / 100n,
-    };
-  }
-
-  const ethAggregatorAssets: Record<string, OracleAssetRoutingConfig> = {};
-
-  if (WETHDeployment?.address) {
-    ethAggregatorAssets[WETHDeployment.address] = {
-      primaryWrapperId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
-      risk: {
-        maxDeviationBps: 100,
-      },
-    };
-  }
-
-  if (dETHDeployment?.address) {
-    ethAggregatorAssets[dETHDeployment.address] = {
-      primaryWrapperId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
-      risk: {
-        maxDeviationBps: 100,
-      },
-    };
-  }
-
-  if (stETHDeployment?.address) {
-    ethAggregatorAssets[stETHDeployment.address] = {
-      primaryWrapperId: ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-      risk: {
-        maxStaleTime: defaultMaxStale,
-        maxDeviationBps: ethDefaultDeviationBps,
-      },
-    };
-  }
 
   return {
     MOCK_ONLY: {
@@ -373,15 +64,21 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           decimals: 6,
           initialSupply: 1e6,
         },
-        USDS: {
-          name: "USDS Stablecoin",
-          address: USDSDeployment?.address,
+        USDT: {
+          name: "Tether USD",
+          address: USDTDeployment?.address,
+          decimals: 6,
+          initialSupply: 1e6,
+        },
+        AUSD: {
+          name: "AUSD",
+          address: AUSDDeployment?.address,
           decimals: 18,
           initialSupply: 1e6,
         },
-        sUSDS: {
-          name: "Savings USDS",
-          address: sUSDSDeployment?.address,
+        yUSD: {
+          name: "YieldFi yUSD",
+          address: yUSDDeployment?.address,
           decimals: 18,
           initialSupply: 1e6,
         },
@@ -420,7 +117,9 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address),
       USDC: emptyStringIfUndefined(USDCDeployment?.address),
-      USDS: emptyStringIfUndefined(USDSDeployment?.address),
+      USDT: emptyStringIfUndefined(USDTDeployment?.address),
+      AUSD: emptyStringIfUndefined(AUSDDeployment?.address),
+      yUSD: emptyStringIfUndefined(yUSDDeployment?.address),
     },
     walletAddresses: {
       governanceMultisig: user1,
@@ -430,21 +129,23 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       dUSD: {
         collaterals: [
           USDCDeployment?.address || ZeroAddress,
-          USDSDeployment?.address || ZeroAddress,
-          sUSDSDeployment?.address || ZeroAddress,
+          USDTDeployment?.address || ZeroAddress,
+          AUSDDeployment?.address || ZeroAddress,
           frxUSDDeployment?.address || ZeroAddress,
           sfrxUSDDeployment?.address || ZeroAddress,
+          yUSDDeployment?.address || ZeroAddress,
         ],
         initialFeeReceiver: deployer,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS, // Default for stablecoins
         collateralRedemptionFees: {
           // Stablecoins: 0.4%
           [USDCDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
-          [USDSDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
+          [USDTDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
+          [AUSDDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
           [frxUSDDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
           // Yield bearing stablecoins: 0.5%
-          [sUSDSDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
           [sfrxUSDDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
+          [yUSDDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
         },
       },
       dETH: {
@@ -464,93 +165,120 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: ZeroAddress,
-        roles: {
-          admins: [deployer],
-          oracleManagers: [deployer],
-          guardians: [user1],
-          globalMaxStaleTime: 3600,
+        api3OracleAssets: {
+          plainApi3OracleWrappers: {},
+          api3OracleWrappersWithThresholding: {
+            ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
+              ? {
+                  [frxUSDDeployment.address]: {
+                    proxy: mockOracleNameToAddress["frxUSD_USD"],
+                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  },
+                }
+              : {}),
+          },
+          compositeApi3OracleWrappersWithThresholding: {
+            ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
+              ? {
+                  [sfrxUSDDeployment.address]: {
+                    feedAsset: sfrxUSDDeployment.address,
+                    proxy1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
+                    proxy2: mockOracleNameToAddress["frxUSD_USD"],
+                    lowerThresholdInBase1: 0n,
+                    fixedPriceInBase1: 0n,
+                    lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                    fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  },
+                }
+              : {}),
+          },
         },
-        wrappers: {
-          chainlink: {
-            deploymentId: USD_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: chainlinkUsdAssets,
+        redstoneOracleAssets: {
+          plainRedstoneOracleWrappers: {
+            ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"],
+                }
+              : {}),
+            ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
+                }
+              : {}),
+            ...(yUSDDeployment?.address && mockOracleNameToAddress["yUSD_USD"]
+              ? {
+                  [yUSDDeployment.address]: mockOracleNameToAddress["yUSD_USD"],
+                }
+              : {}),
           },
-          api3: {
-            deploymentId: USD_API3_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: {},
+          redstoneOracleWrappersWithThresholding: {
+            ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
+              ? {
+                  [USDCDeployment.address]: {
+                    feed: mockOracleNameToAddress["USDC_USD"],
+                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  },
+                }
+              : {}),
+            ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
+              ? {
+                  [USDTDeployment.address]: {
+                    feed: mockOracleNameToAddress["USDT_USD"],
+                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  },
+                }
+              : {}),
+            ...(AUSDDeployment?.address && mockOracleNameToAddress["AUSD_USD"]
+              ? {
+                  [AUSDDeployment.address]: {
+                    feed: mockOracleNameToAddress["AUSD_USD"],
+                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  },
+                }
+              : {}),
           },
-          rateComposite: {
-            deploymentId: USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: {},
-          },
-          hardPeg: {
-            deploymentId: USD_HARD_PEG_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: hardPegUsdAssets,
+          compositeRedstoneOracleWrappersWithThresholding: {
+            ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [stETHDeployment.address]: {
+                    feedAsset: stETHDeployment.address,
+                    feed1: mockOracleNameToAddress["stETH_WETH"],
+                    feed2: mockOracleNameToAddress["WETH_USD"],
+                    lowerThresholdInBase1: 0n,
+                    fixedPriceInBase1: 0n,
+                    lowerThresholdInBase2: 0n,
+                    fixedPriceInBase2: 0n,
+                  },
+                }
+              : {}),
           },
         },
-        assets: usdAggregatorAssets,
       },
       ETH: {
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
-        baseCurrency: WETHDeployment?.address || ZeroAddress,
-        roles: {
-          admins: [deployer],
-          oracleManagers: [deployer],
-          guardians: [user1],
-          globalMaxStaleTime: 3600,
+        baseCurrency: WETHDeployment?.address || ZeroAddress, // Base currency is WETH
+        api3OracleAssets: {
+          plainApi3OracleWrappers: {},
+          api3OracleWrappersWithThresholding: {},
+          compositeApi3OracleWrappersWithThresholding: {},
         },
-        wrappers: {
-          chainlink: {
-            deploymentId: ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: chainlinkEthAssets,
+        redstoneOracleAssets: {
+          plainRedstoneOracleWrappers: {
+            ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
+              ? {
+                  [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"],
+                }
+              : {}),
           },
-          api3: {
-            deploymentId: ETH_API3_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: {},
-          },
-          rateComposite: {
-            deploymentId: ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: {},
-          },
-          hardPeg: {
-            deploymentId: ETH_HARD_PEG_WRAPPER_V1_1_ID,
-            initialAdmin: deployer,
-            assets: hardPegEthAssets,
-          },
+          redstoneOracleWrappersWithThresholding: {},
+          compositeRedstoneOracleWrappersWithThresholding: {},
         },
-        assets: ethAggregatorAssets,
       },
-    },
-    dLend: {
-      providerID: 1, // Arbitrary as long as we don't repeat
-      flashLoanPremium: {
-        total: 0.0005e4, // 0.05%
-        protocol: 0.0004e4, // 0.04%
-      },
-      rateStrategies: [
-        rateStrategyHighLiquidityVolatile,
-        rateStrategyMediumLiquidityVolatile,
-        rateStrategyHighLiquidityStable,
-        rateStrategyMediumLiquidityStable,
-      ],
-      reservesConfig: {
-        dUSD: strategyDUSD,
-        dETH: strategyDETH,
-        WETH: strategyWETH,
-        stETH: strategySTETH,
-        sfrxUSD: strategySFRXUSD,
-      },
-    },
-    odos: {
-      router: "", // Odos doesn't work on localhost
     },
     dStake: {
       sdUSD: {
@@ -562,15 +290,22 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
-            vaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
+            strategyShare: emptyStringIfUndefined(idleVaultSdUSDDeployment?.address),
+            adapterContract: "GenericERC4626ConversionAdapter",
+          },
+          {
+            strategyShare: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
           },
         ],
-        defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
-        collateralVault: "DStakeCollateralVault_sdUSD",
+        defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdUSDDeployment?.address || dLendATokenWrapperDUSDDeployment?.address),
+        collateralVault: "DStakeCollateralVaultV2_sdUSD",
         collateralExchangers: [user1],
+        idleVault: {
+          rewardManager: deployer,
+        },
         dLendRewardManager: {
-          managedVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address), // This should be the deployed StaticATokenLM address for dUSD
+          managedStrategyShare: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address), // This should be the deployed StaticATokenLM address for dUSD
           dLendAssetToClaimFor: emptyStringIfUndefined(aTokenDUSDDeployment?.address), // Use the deployed dLEND-dUSD aToken address
           dLendRewardsController: emptyStringIfUndefined(rewardsControllerDeployment?.address), // This will be fetched after dLend incentives deployment
           treasury: user1, // Or a dedicated treasury address
@@ -590,15 +325,22 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
-            vaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
+            strategyShare: emptyStringIfUndefined(idleVaultSdETHDeployment?.address),
+            adapterContract: "GenericERC4626ConversionAdapter",
+          },
+          {
+            strategyShare: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
           },
         ],
-        defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
-        collateralVault: "DStakeCollateralVault_sdETH",
+        defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdETHDeployment?.address || dLendATokenWrapperDSDeployment?.address),
+        collateralVault: "DStakeCollateralVaultV2_sdETH",
         collateralExchangers: [user1],
+        idleVault: {
+          rewardManager: deployer,
+        },
         dLendRewardManager: {
-          managedVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address), // This should be the deployed StaticATokenLM address for dETH
+          managedStrategyShare: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address), // This should be the deployed StaticATokenLM address for dETH
           dLendAssetToClaimFor: emptyStringIfUndefined(dETHDeployment?.address), // Use the dETH underlying asset address as a placeholder
           dLendRewardsController: emptyStringIfUndefined(rewardsControllerDeployment?.address), // This will be fetched after dLend incentives deployment
           treasury: user1, // Or a dedicated treasury address
