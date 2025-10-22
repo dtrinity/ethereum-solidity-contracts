@@ -26,13 +26,8 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     struct AggregatorAssetConfig {
         address oracle;
         address fallbackOracle;
-        uint64 maxStaleTime; // optional override; defaults to global fallback
-        uint64 heartbeatOverride; // optional heartbeat override (seconds)
-        uint16 maxDeviationBps;
-        uint192 minAnswer;
-        uint192 maxAnswer;
+        AssetConfig risk;
         bool isFrozen;
-        bool exists;
         PriceData lastGoodPrice;
     }
 
@@ -181,7 +176,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function removeAsset(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
         address previousOracle = config.oracle;
@@ -193,7 +188,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function pauseAsset(address asset) external onlyRole(GUARDIAN_ROLE) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
         if (config.isFrozen) {
@@ -210,7 +205,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function unpauseAsset(address asset) external onlyRole(GUARDIAN_ROLE) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
         if (!config.isFrozen) {
@@ -224,7 +219,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function pushFrozenPrice(address asset, uint192 price, uint64 updatedAt) external onlyRole(GUARDIAN_ROLE) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
         if (!config.isFrozen) {
@@ -241,7 +236,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function updateLastGoodPrice(address asset) external onlyRole(ORACLE_MANAGER_ROLE) returns (PriceData memory) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
         if (config.isFrozen) {
@@ -269,7 +264,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function getPriceInfo(address asset) public view override returns (PriceData memory) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
 
@@ -304,7 +299,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         for (uint256 i = 0; i < length; ++i) {
             address asset = assets[i];
             AggregatorAssetConfig storage config = _assetConfigs[asset];
-            if (!config.exists) {
+            if (!config.risk.exists) {
                 continue;
             }
 
@@ -348,14 +343,14 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
         AggregatorAssetConfig storage config = _assetConfigs[asset];
         address previousOracle = config.oracle;
-        bool previouslyConfigured = config.exists;
+        bool previouslyConfigured = config.risk.exists;
 
         if (config.fallbackOracle != address(0) && config.fallbackOracle == oracle) {
             revert FallbackMatchesPrimary(asset, oracle);
         }
 
         config.oracle = oracle;
-        config.exists = true;
+        config.risk.exists = true;
 
         if (!previouslyConfigured || previousOracle == address(0)) {
             emit OracleAdded(asset, oracle);
@@ -367,7 +362,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function _configureFallbackOracle(address asset, address fallbackOracle) private {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
 
@@ -395,7 +390,7 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         uint192 maxAnswer
     ) private {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert AssetNotConfigured(asset);
         }
 
@@ -405,12 +400,13 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         if (maxAnswer != 0 && minAnswer > maxAnswer) {
             revert InvalidAnswerBounds();
         }
+        heartbeatOverride = _requireConfiguredHeartbeat(heartbeatOverride);
 
-        config.maxStaleTime = maxStaleTime;
-        config.heartbeatOverride = heartbeatOverride;
-        config.maxDeviationBps = maxDeviationBps;
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
+        config.risk.maxStaleTime = maxStaleTime;
+        config.risk.heartbeat = heartbeatOverride;
+        config.risk.maxDeviationBps = maxDeviationBps;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
 
         emit AssetConfigUpdated(asset, maxStaleTime, heartbeatOverride, maxDeviationBps, minAnswer, maxAnswer);
     }
@@ -467,26 +463,26 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
             return false;
         }
 
-        uint64 staleThreshold = config.maxStaleTime == 0 ? globalMaxStaleTime : config.maxStaleTime;
-        uint64 heartbeat = config.heartbeatOverride == 0 ? DEFAULT_HEARTBEAT : config.heartbeatOverride;
+        uint64 staleThreshold = config.risk.maxStaleTime == 0 ? globalMaxStaleTime : config.risk.maxStaleTime;
+        uint64 heartbeat = _requireConfiguredHeartbeat(config.risk.heartbeat);
 
         if (block.timestamp - data.updatedAt > staleThreshold + heartbeat) {
             return false;
         }
 
-        if (config.minAnswer != 0 && data.price < config.minAnswer) {
+        if (config.risk.minAnswer != 0 && data.price < config.risk.minAnswer) {
             return false;
         }
-        if (config.maxAnswer != 0 && data.price > config.maxAnswer) {
+        if (config.risk.maxAnswer != 0 && data.price > config.risk.maxAnswer) {
             return false;
         }
 
-        if (config.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
+        if (config.risk.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
             uint256 difference = data.price > config.lastGoodPrice.price
                 ? data.price - config.lastGoodPrice.price
                 : config.lastGoodPrice.price - data.price;
             uint256 deviationBps = Math.mulDiv(difference, MAX_BPS, config.lastGoodPrice.price);
-            if (deviationBps > config.maxDeviationBps) {
+            if (deviationBps > config.risk.maxDeviationBps) {
                 return false;
             }
         }

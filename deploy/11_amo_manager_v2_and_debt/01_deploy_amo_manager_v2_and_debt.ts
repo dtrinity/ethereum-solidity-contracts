@@ -15,6 +15,7 @@ import {
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
+import { DEFAULT_ORACLE_HEARTBEAT_SECONDS } from "../../typescript/oracle_aggregator/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers } = hre;
@@ -88,8 +89,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         const lowerGuard = 0n;
         const upperGuard = 0n;
 
-        const assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
-        const currentOracle = assetConfig.exists ? assetConfig.oracle : ethers.ZeroAddress;
+        let assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
+        const assetConfigured = assetConfig.risk.exists;
+        const currentOracle = assetConfigured ? assetConfig.oracle : ethers.ZeroAddress;
 
         if (currentOracle !== hardPegDeployment.address) {
           const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, hardPegDeployment.address);
@@ -97,6 +99,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`  ✅ Set hard peg oracle for ${amoConfig.name} debt token`);
         } else {
           console.log(`  ✅ Hard peg oracle already configured for ${amoConfig.name} debt token`);
+        }
+
+        assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
+
+        const configuredHeartbeat = assetConfig.risk.exists ? Number(assetConfig.risk.heartbeat) : 0;
+
+        if (configuredHeartbeat === 0) {
+          const tx = await oracleAggregator.updateAssetRiskConfig(
+            debtTokenDeployment.address,
+            Number(assetConfig.risk.maxStaleTime ?? 0),
+            DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            Number(assetConfig.risk.maxDeviationBps ?? 0),
+            assetConfig.risk.minAnswer ?? 0n,
+            assetConfig.risk.maxAnswer ?? 0n,
+          );
+          await tx.wait();
+          console.log(`  ✅ Applied default heartbeat for ${amoConfig.name} debt token`);
+        } else {
+          console.log(`  ✅ Heartbeat already configured for ${amoConfig.name} debt token`);
         }
 
         const pegInfo = await hardPegWrapper.pegConfig(debtTokenDeployment.address);
