@@ -4,10 +4,16 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
+import {
+  DETH_A_TOKEN_WRAPPER_ID,
+  DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
+  DSTAKE_ROUTER_ID_PREFIX,
+  DSTAKE_TOKEN_ID_PREFIX,
+  DUSD_A_TOKEN_WRAPPER_ID,
+} from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { get } = deployments;
   const { deployer } = await getNamedAccounts();
 
   // Use deployer for all state-changing transactions. Permission migrations to the
@@ -22,83 +28,75 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     return;
   }
 
-  // Validate all configs before configuring anything
-  for (const instanceKey in config.dStake) {
-    const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
-
-    if (!instanceConfig.dStable || instanceConfig.dStable === ethers.ZeroAddress) {
-      throw new Error(`Missing dStable address for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.symbol) {
-      throw new Error(`Missing symbol for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.name) {
-      throw new Error(`Missing name for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.initialAdmin || instanceConfig.initialAdmin === ethers.ZeroAddress) {
-      throw new Error(`Missing initialAdmin for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.initialFeeManager || instanceConfig.initialFeeManager === ethers.ZeroAddress) {
-      throw new Error(`Missing initialFeeManager for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (typeof instanceConfig.initialWithdrawalFeeBps !== "number") {
-      throw new Error(`Missing initialWithdrawalFeeBps for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.adapters || !Array.isArray(instanceConfig.adapters)) {
-      throw new Error(`Missing adapters array for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.defaultDepositVaultAsset || instanceConfig.defaultDepositVaultAsset === ethers.ZeroAddress) {
-      throw new Error(`Missing defaultDepositVaultAsset for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.collateralExchangers || !Array.isArray(instanceConfig.collateralExchangers)) {
-      throw new Error(`Missing collateralExchangers array for dSTAKE instance ${instanceKey}`);
-    }
-  }
-
   // All configs are valid, proceed with configuration
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
-    const DStakeTokenDeploymentName = `DStakeToken_${instanceKey}`;
-    const collateralVaultDeploymentName = `DStakeCollateralVault_${instanceKey}`;
-    const routerDeploymentName = `DStakeRouter_${instanceKey}`;
+    const symbol = instanceConfig.symbol;
 
-    const collateralVaultDeployment = await get(collateralVaultDeploymentName);
-    const routerDeployment = await get(routerDeploymentName);
-    const dstakeTokenDeployment = await get(DStakeTokenDeploymentName);
+    if (!symbol) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: missing symbol.`);
+      continue;
+    }
+
+    if (!instanceConfig.dStable || instanceConfig.dStable === ethers.ZeroAddress) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: dStable address not configured.`);
+      continue;
+    }
+
+    if (!instanceConfig.name) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: missing token name.`);
+      continue;
+    }
+
+    if (!instanceConfig.initialAdmin || instanceConfig.initialAdmin === ethers.ZeroAddress) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: missing initialAdmin.`);
+      continue;
+    }
+
+    if (!instanceConfig.initialFeeManager || instanceConfig.initialFeeManager === ethers.ZeroAddress) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: missing initialFeeManager.`);
+      continue;
+    }
+
+    if (!Array.isArray(instanceConfig.adapters) || instanceConfig.adapters.length === 0) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: no adapters configured.`);
+      continue;
+    }
+
+    if (!Array.isArray(instanceConfig.collateralExchangers) || instanceConfig.collateralExchangers.length === 0) {
+      console.warn(`Skipping configuration for dSTAKE instance ${instanceKey}: no collateral exchangers configured.`);
+      continue;
+    }
+    const DStakeTokenDeploymentName = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
+    const collateralVaultDeploymentName = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${symbol}`;
+    const routerDeploymentName = `${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`;
+
+    const collateralVaultDeployment = await deployments.get(collateralVaultDeploymentName);
+    const routerDeployment = await deployments.get(routerDeploymentName);
+    const dstakeTokenDeployment = await deployments.get(DStakeTokenDeploymentName);
 
     // (Permissions remain with the deployer; role migration happens later.)
     // Get Typechain instances
     const dstakeToken = await ethers.getContractAt(
-      "DStakeToken",
+      "DStakeTokenV2",
       dstakeTokenDeployment.address,
       await ethers.getSigner(deployer), // Use deployer as signer for read calls
     );
     const collateralVault = await ethers.getContractAt(
-      "DStakeCollateralVault",
+      "DStakeCollateralVaultV2",
       collateralVaultDeployment.address,
       await ethers.getSigner(deployer), // Use deployer as signer for read calls
     );
 
     // --- Configure DStakeToken ---
     const currentRouter = await dstakeToken.router();
-
-    if (currentRouter !== routerDeployment.address) {
-      console.log(`    ⚙️ Setting router for ${DStakeTokenDeploymentName} to ${routerDeployment.address}`);
-      await dstakeToken.connect(deployerSigner).setRouter(routerDeployment.address);
-    }
     const currentVault = await dstakeToken.collateralVault();
 
-    if (currentVault !== collateralVaultDeployment.address) {
-      console.log(`    ⚙️ Setting collateral vault for ${DStakeTokenDeploymentName} to ${collateralVaultDeployment.address}`);
-      await dstakeToken.connect(deployerSigner).setCollateralVault(collateralVaultDeployment.address);
+    if (currentRouter !== routerDeployment.address || currentVault !== collateralVaultDeployment.address) {
+      console.log(
+        `    ⚙️ Migrating core for ${DStakeTokenDeploymentName} to router ${routerDeployment.address} and vault ${collateralVaultDeployment.address}`,
+      );
+      await dstakeToken.connect(deployerSigner).migrateCore(routerDeployment.address, collateralVaultDeployment.address);
     }
     const currentFee = await dstakeToken.withdrawalFeeBps();
 
@@ -108,7 +106,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // --- Configure DStakeCollateralVault ---
-    const routerContract = await ethers.getContractAt("DStakeRouterDLend", routerDeployment.address, deployerSigner);
+    const routerContract = await ethers.getContractAt("DStakeRouterV2", routerDeployment.address, deployerSigner);
 
     const vaultRouter = await collateralVault.router();
     const vaultRouterRole = await collateralVault.ROUTER_ROLE();
@@ -119,56 +117,121 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       await collateralVault.connect(deployerSigner).setRouter(routerDeployment.address);
     }
 
-    // --- Configure DStakeCollateralVault Adapters ---
+    // --- Configure DStakeRouter Adapters ---
+    const vaultConfigsToApply: Array<{ strategyVault: string; adapter: string; targetBps: bigint; status: number }> = [];
+
     for (const adapterConfig of instanceConfig.adapters) {
       const adapterDeploymentName = `${adapterConfig.adapterContract}_${instanceConfig.symbol}`;
-      const adapterDeployment = await get(adapterDeploymentName);
-      const vaultAssetAddress = adapterConfig.vaultAsset;
-      const existingAdapter = await routerContract.vaultAssetToAdapter(vaultAssetAddress);
+      const adapterDeployment = await deployments.getOrNull(adapterDeploymentName);
+
+      if (!adapterDeployment) {
+        throw new Error(
+          `Adapter deployment ${adapterDeploymentName} missing. Ensure wrappers are deployed before running ${routerDeploymentName}.`,
+        );
+      }
+
+      let strategyShare = adapterConfig.strategyShare;
+
+      if (!strategyShare || strategyShare === "" || strategyShare === ethers.ZeroAddress) {
+        const inferredWrapperId =
+          instanceConfig.symbol === "sdUSD"
+            ? DUSD_A_TOKEN_WRAPPER_ID
+            : instanceConfig.symbol === "sdETH"
+              ? DETH_A_TOKEN_WRAPPER_ID
+              : undefined;
+
+        if (!inferredWrapperId) {
+          throw new Error(`Unable to infer strategy share for ${adapterDeploymentName}`);
+        }
+
+        const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
+
+        if (!wrapperDeployment) {
+          throw new Error(`Wrapper deployment ${inferredWrapperId} missing for adapter ${adapterDeploymentName}`);
+        }
+
+        strategyShare = wrapperDeployment.address;
+      }
+
+      const existingAdapter = await routerContract.strategyShareToAdapter(strategyShare);
 
       if (existingAdapter === ethers.ZeroAddress) {
-        await routerContract.connect(deployerSigner).addAdapter(vaultAssetAddress, adapterDeployment.address);
-        console.log(`    ➕ Added adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} to ${routerDeploymentName}`);
+        await routerContract.addAdapter(strategyShare, adapterDeployment.address);
+        console.log(`    ➕ Added adapter ${adapterDeploymentName} for strategy share ${strategyShare} to ${routerDeploymentName}`);
       } else if (existingAdapter !== adapterDeployment.address) {
         throw new Error(
-          `⚠️ Adapter for asset ${vaultAssetAddress} in router is already set to ${existingAdapter} but config expects ${adapterDeployment.address}. Manual intervention may be required.`,
+          `⚠️ Adapter for strategy share ${strategyShare} in router is already set to ${existingAdapter} but config expects ${adapterDeployment.address}. Manual intervention may be required.`,
         );
       } else {
         console.log(
-          `    👍 Adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} already configured correctly in ${routerDeploymentName}`,
+          `    👍 Adapter ${adapterDeploymentName} for strategy share ${strategyShare} already configured correctly in ${routerDeploymentName}`,
         );
       }
+
+      const targetBps = BigInt(adapterConfig.targetBps ?? 1_000_000);
+      vaultConfigsToApply.push({ strategyVault: strategyShare, adapter: adapterDeployment.address, targetBps, status: 0 });
     }
 
-    // --- Configure DStakeRouter --- // This part already uses Typechain
-    const collateralExchangerRole = await routerContract.COLLATERAL_EXCHANGER_ROLE();
+    if (vaultConfigsToApply.length > 0) {
+      const totalTarget = vaultConfigsToApply.reduce((acc, cfg) => acc + cfg.targetBps, 0n);
+
+      if (totalTarget !== 1_000_000n) {
+        throw new Error(`Vault target allocations for ${routerDeploymentName} must sum to 1,000,000 bps (received ${totalTarget})`);
+      }
+
+      await routerContract.setVaultConfigs(
+        vaultConfigsToApply.map((cfg) => ({
+          strategyVault: cfg.strategyVault,
+          adapter: cfg.adapter,
+          targetBps: cfg.targetBps,
+          status: cfg.status,
+        })),
+      );
+      console.log(`    ⚙️ Configured ${vaultConfigsToApply.length} vault(s) for ${routerDeploymentName}`);
+    }
+
+    // --- Configure Router Roles ---
+    const strategyRebalancerRole = await routerContract.STRATEGY_REBALANCER_ROLE();
+    const defaultAdminRole = await routerContract.DEFAULT_ADMIN_ROLE();
+    const configManagerRole = await routerContract.CONFIG_MANAGER_ROLE();
+    const adapterManagerRole = await routerContract.ADAPTER_MANAGER_ROLE();
+
+    const targetAdmin = instanceConfig.initialAdmin;
+
+    if (targetAdmin && targetAdmin !== ethers.ZeroAddress) {
+      if (!(await routerContract.hasRole(defaultAdminRole, targetAdmin))) {
+        await routerContract.grantRole(defaultAdminRole, targetAdmin);
+        console.log(`    ➕ Granted DEFAULT_ADMIN_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
+      }
+
+      if (!(await routerContract.hasRole(configManagerRole, targetAdmin))) {
+        await routerContract.grantRole(configManagerRole, targetAdmin);
+        console.log(`    ➕ Granted CONFIG_MANAGER_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
+      }
+
+      if (!(await routerContract.hasRole(adapterManagerRole, targetAdmin))) {
+        await routerContract.grantRole(adapterManagerRole, targetAdmin);
+        console.log(`    ➕ Granted ADAPTER_MANAGER_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
+      }
+    }
 
     for (const exchanger of instanceConfig.collateralExchangers) {
-      const hasRole = await routerContract.hasRole(collateralExchangerRole, exchanger);
+      const hasRole = await routerContract.hasRole(strategyRebalancerRole, exchanger);
 
       if (!hasRole) {
-        await routerContract.grantRole(collateralExchangerRole, exchanger);
-        console.log(`    ➕ Granted COLLATERAL_EXCHANGER_ROLE to ${exchanger} for ${routerDeploymentName}`);
+        await routerContract.grantRole(strategyRebalancerRole, exchanger);
+        console.log(`    ➕ Granted STRATEGY_REBALANCER_ROLE to ${exchanger} for ${routerDeploymentName}`);
       }
     }
 
-    for (const adapterConfig of instanceConfig.adapters) {
-      const adapterDeploymentName = `${adapterConfig.adapterContract}_${instanceConfig.symbol}`;
-      const adapterDeployment = await get(adapterDeploymentName);
-      const vaultAssetAddress = adapterConfig.vaultAsset;
-      const currentAdapter = await routerContract.vaultAssetToAdapter(vaultAssetAddress);
+    // --- Configure Default Deposit Strategy ---
+    if (instanceConfig.defaultDepositStrategyShare && instanceConfig.defaultDepositStrategyShare !== ethers.ZeroAddress) {
+      const currentDefault = await routerContract.defaultDepositStrategyShare();
 
-      if (currentAdapter !== adapterDeployment.address) {
-        await routerContract.addAdapter(vaultAssetAddress, adapterDeployment.address);
-        console.log(`    ➕ Added adapter ${adapterDeploymentName} for asset ${vaultAssetAddress} to ${routerDeploymentName}`);
+      if (currentDefault !== instanceConfig.defaultDepositStrategyShare) {
+        await routerContract.setDefaultDepositStrategyShare(instanceConfig.defaultDepositStrategyShare);
+        console.log(`    ⚙️ Set default deposit strategy share for ${routerDeploymentName}`);
       }
-    }
-
-    const currentDefaultAsset = await routerContract.defaultDepositVaultAsset();
-
-    if (currentDefaultAsset !== instanceConfig.defaultDepositVaultAsset) {
-      await routerContract.setDefaultDepositVaultAsset(instanceConfig.defaultDepositVaultAsset);
-      console.log(`    ⚙️ Set default deposit vault asset for ${routerDeploymentName}`);
     }
   }
 

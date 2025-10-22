@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
+import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKEN_ID_PREFIX } from "../../typescript/deploy-ids";
 import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
 
 /**
@@ -33,9 +34,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const instanceConfig = config.dStake[instanceKey];
     console.log(`\n🔄 Migrating roles for dSTAKE instance ${instanceKey}…`);
 
-    const tokenId = `DStakeToken_${instanceKey}`;
-    const vaultId = `DStakeCollateralVault_${instanceKey}`;
-    const routerId = `DStakeRouter_${instanceKey}`;
+    const symbol = instanceConfig.symbol;
+    const tokenId = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
+    const vaultId = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${symbol}`;
+    const routerId = `${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`;
 
     // --- DStakeToken roles ---
     try {
@@ -43,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (tokenDeployment) {
         console.log(`  📄 TOKEN ROLES: ${tokenId}`);
-        const tokenContract = await ethers.getContractAt("DStakeToken", tokenDeployment.address, deployerSigner);
+        const tokenContract = await ethers.getContractAt("DStakeTokenV2", tokenDeployment.address, deployerSigner);
 
         const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
         const FEE_MANAGER_ROLE = await tokenContract.FEE_MANAGER_ROLE();
@@ -83,7 +85,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (vaultDeployment) {
         console.log(`  📄 VAULT ROLES: ${vaultId}`);
-        const vaultContract = await ethers.getContractAt("DStakeCollateralVault", vaultDeployment.address, deployerSigner);
+        const vaultContract = await ethers.getContractAt("DStakeCollateralVaultV2", vaultDeployment.address, deployerSigner);
 
         const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
 
@@ -110,7 +112,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (routerDeployment) {
         console.log(`  📄 ROUTER ROLES: ${routerId}`);
-        const routerContract = await ethers.getContractAt("DStakeRouterDLend", routerDeployment.address, deployerSigner);
+        const routerContract = await ethers.getContractAt("DStakeRouterV2", routerDeployment.address, deployerSigner);
         const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
 
         if (!(await routerContract.hasRole(DEFAULT_ADMIN_ROLE, instanceConfig.initialAdmin))) {

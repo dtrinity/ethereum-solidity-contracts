@@ -2,12 +2,12 @@
 pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IDStableConversionAdapter } from "../vaults/dstake/interfaces/IDStableConversionAdapter.sol";
+import { IDStableConversionAdapterV2 } from "../vaults/dstake/interfaces/IDStableConversionAdapterV2.sol";
 import { MockERC4626Simple } from "./MockERC4626Simple.sol";
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract MockAdapterPositiveSlippage is IDStableConversionAdapter {
+contract MockAdapterPositiveSlippage is IDStableConversionAdapterV2 {
     using SafeERC20 for IERC20;
 
     address public immutable dStable;
@@ -20,40 +20,44 @@ contract MockAdapterPositiveSlippage is IDStableConversionAdapter {
         vaultToken = new MockERC4626Simple(IERC20(_dStable));
     }
 
-    function convertToVaultAsset(
-        uint256 dStableAmount
-    ) external override returns (address _vaultAsset, uint256 vaultAssetAmount) {
-        IERC20(dStable).transferFrom(msg.sender, address(this), dStableAmount);
-        IERC20(dStable).forceApprove(address(vaultToken), dStableAmount);
-        vaultAssetAmount = vaultToken.deposit(dStableAmount, collateralVault);
-        return (address(vaultToken), vaultAssetAmount);
+    function depositIntoStrategy(
+        uint256 stableAmount
+    ) external override returns (address strategyShareAddr, uint256 strategyShareAmount) {
+        IERC20(dStable).transferFrom(msg.sender, address(this), stableAmount);
+        IERC20(dStable).forceApprove(address(vaultToken), stableAmount);
+        strategyShareAmount = vaultToken.deposit(stableAmount, collateralVault);
+        return (address(vaultToken), strategyShareAmount);
     }
 
-    function convertFromVaultAsset(uint256 vaultAssetAmount) external override returns (uint256 dStableAmount) {
-        // pull vault tokens
-        IERC20(address(vaultToken)).transferFrom(msg.sender, address(this), vaultAssetAmount);
-        IERC20(address(vaultToken)).forceApprove(address(vaultToken), vaultAssetAmount);
-        dStableAmount = vaultToken.redeem(vaultAssetAmount, msg.sender, address(this));
+    function withdrawFromStrategy(uint256 strategyShareAmount) external override returns (uint256 stableAmount) {
+        // pull strategy shares
+        IERC20(address(vaultToken)).transferFrom(msg.sender, address(this), strategyShareAmount);
+        IERC20(address(vaultToken)).forceApprove(address(vaultToken), strategyShareAmount);
+        stableAmount = vaultToken.redeem(strategyShareAmount, msg.sender, address(this));
     }
 
-    function previewConvertToVaultAsset(
-        uint256 dStableAmount
-    ) external view override returns (address _vaultAsset, uint256 vaultAssetAmount) {
-        return (address(vaultToken), dStableAmount);
+    function previewDepositIntoStrategy(
+        uint256 stableAmount
+    ) external view override returns (address strategyShareAddr, uint256 strategyShareAmount) {
+        return (address(vaultToken), stableAmount);
     }
 
-    function previewConvertFromVaultAsset(
-        uint256 vaultAssetAmount
-    ) external view override returns (uint256 dStableAmount) {
-        return vaultToken.previewRedeem(vaultAssetAmount);
+    function previewWithdrawFromStrategy(
+        uint256 strategyShareAmount
+    ) external view override returns (uint256 stableAmount) {
+        return vaultToken.previewRedeem(strategyShareAmount);
     }
 
-    function assetValueInDStable(
-        address _vaultAsset,
-        uint256 vaultAssetAmount
-    ) external view override returns (uint256 dStableValue) {
-        require(_vaultAsset == address(vaultToken), "Wrong asset");
-        return vaultToken.previewRedeem(vaultAssetAmount);
+    function strategyShareValueInDStable(
+        address strategyShareAddr,
+        uint256 strategyShareAmount
+    ) external view override returns (uint256 stableValue) {
+        require(strategyShareAddr == address(vaultToken), "Wrong asset");
+        return vaultToken.previewRedeem(strategyShareAmount);
+    }
+
+    function strategyShare() external view override returns (address) {
+        return address(vaultToken);
     }
 
     function vaultAsset() external view override returns (address) {

@@ -11,21 +11,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
 
   const oracleConfig = config.oracleAggregators.USD;
-  const admins = includeDeployer(oracleConfig.roles.admins, deployer);
-  const oracleManagers = includeDeployer(oracleConfig.roles.oracleManagers, deployer);
-  const guardians = includeDeployer(oracleConfig.roles.guardians, deployer);
+  const roles = oracleConfig.roles ?? {
+    admins: [],
+    oracleManagers: [],
+    guardians: [],
+    globalMaxStaleTime: 0,
+  };
+  const admins = includeDeployer(roles.admins, deployer);
+  const oracleManagers = includeDeployer(roles.oracleManagers, deployer);
+  const guardians = includeDeployer(roles.guardians, deployer);
 
   // Deploy the USD-specific OracleAggregatorV1_1
   await hre.deployments.deploy(USD_ORACLE_AGGREGATOR_ID, {
     from: deployer,
-    args: [
-      oracleConfig.baseCurrency,
-      ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-      admins,
-      oracleManagers,
-      guardians,
-      oracleConfig.roles.globalMaxStaleTime,
-    ],
+    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, admins, oracleManagers, guardians, roles.globalMaxStaleTime],
     contract: "OracleAggregatorV1_1",
     autoMine: true,
     log: false,
@@ -36,7 +35,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   return true;
 };
 
-func.tags = ["usd-oracle", "oracle-aggregator", "usd-oracle-aggregator"];
+func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-aggregator", "usd-oracle-aggregator"];
 func.dependencies = [];
 func.id = "deploy-usd-oracle-aggregator";
 

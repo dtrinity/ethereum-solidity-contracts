@@ -4,6 +4,10 @@
   "author": "dTRINITY",
   "license": "MIT",
   "packageManager": "yarn@4.5.0",
+  "scripts": {
+    "gas-estimate": "npx tsx scripts/mainnet-gas-estimation.ts",
+    "gas-estimate:help": "npx tsx scripts/mainnet-gas-estimation.ts --help"
+  },
   "dependencies": {
     "@dtrinity/shared-hardhat-tools": "portal:.shared"
   },
@@ -45,6 +49,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.1.4",
     "ethers": "^6.13.5",
+    "glob": "^10.3.0",
     "globals": "^15.14.0",
     "hardhat": "^2.22.17",
     "hardhat-deploy": "^1.0.2",

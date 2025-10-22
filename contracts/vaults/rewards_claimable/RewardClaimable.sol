@@ -159,12 +159,13 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
      * @param amount The amount to compound
      * @param rewardTokens The reward tokens to claim
      * @param receiver The address to receive the compounded rewards
+     * @dev Temporarily restricted to REWARDS_MANAGER_ROLE while permissionless settlement is redesigned
      */
     function compoundRewards(
         uint256 amount,
         address[] calldata rewardTokens,
         address receiver
-    ) public virtual nonReentrant {
+    ) public virtual nonReentrant onlyRole(REWARDS_MANAGER_ROLE) {
         if (amount < exchangeThreshold) {
             revert ExchangeAmountTooLow(amount, exchangeThreshold);
         }
@@ -175,6 +176,7 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
             revert ZeroRewardTokens();
         }
 
+        // Snapshot exchange asset balance to isolate freshly claimed rewards from the caller's contribution.
         // Transfer the exchange asset from the caller to the vault
         IERC20(exchangeAsset).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -188,8 +190,19 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
             revert RewardAmountsLengthMismatch(rewardAmounts.length, rewardTokens.length);
         }
 
+        // Compute the portion of exchange asset that corresponds to rewards (a URD entry may alias the deposit asset).
+        uint256 exchangeRewards = 0;
+        uint256 exchangeBalanceAfterClaims = IERC20(exchangeAsset).balanceOf(address(this));
+        if (exchangeBalanceAfterClaims > amount) {
+            exchangeRewards = exchangeBalanceAfterClaims - amount;
+        }
+
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             uint256 rewardAmount = rewardAmounts[i];
+            if (rewardTokens[i] == exchangeAsset) {
+                rewardAmount = exchangeRewards;
+                exchangeRewards = 0;
+            }
             uint256 treasuryFee = getTreasuryFee(rewardAmount);
 
             // Overflow protection

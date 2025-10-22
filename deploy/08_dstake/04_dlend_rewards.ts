@@ -5,11 +5,19 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import { DLendRewardManagerConfig, DStakeInstanceConfig } from "../../config/types";
 import { DStakeRewardManagerDLend } from "../../typechain-types";
-import { EMISSION_MANAGER_ID, INCENTIVES_PROXY_ID, POOL_DATA_PROVIDER_ID } from "../../typescript/deploy-ids";
+import {
+  DETH_A_TOKEN_WRAPPER_ID,
+  DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
+  DSTAKE_ROUTER_ID_PREFIX,
+  DUSD_A_TOKEN_WRAPPER_ID,
+  EMISSION_MANAGER_ID,
+  INCENTIVES_PROXY_ID,
+  POOL_DATA_PROVIDER_ID,
+} from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy, get } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
   // Collect instructions for any manual actions required when the deployer lacks permissions.
@@ -31,6 +39,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       throw new Error(`dLendRewardManager not configured for dSTAKE instance ${instanceKey}.`);
     }
 
+    if (!instanceConfig.dStable || instanceConfig.dStable === "" || instanceConfig.dStable === ethers.ZeroAddress) {
+      console.warn(`Skipping dLendRewardManager deployment for ${instanceKey}: dStable address not configured.`);
+      continue;
+    }
+
     // Fetch required addresses *within* the deploy script execution flow,
     // ensuring dependencies have been run.
     const incentivesProxyDeployment = await deployments.get(INCENTIVES_PROXY_ID);
@@ -42,34 +55,55 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const reserveTokens = await poolDataProviderContract.getReserveTokensAddresses(underlyingStablecoinAddress);
     const aTokenAddress = reserveTokens.aTokenAddress;
 
-    const {
-      // Destructure from config AFTER potentially fetching addresses
-      managedVaultAsset,
-      // dLendAssetToClaimFor, // Removed from destructuring, fetched above
-      // dLendRewardsController, // Removed from destructuring, fetched above
-      treasury,
-      maxTreasuryFeeBps,
-      initialTreasuryFeeBps,
-      initialExchangeThreshold,
-    } = rewardManagerConfig;
+    let { managedStrategyShare, treasury, maxTreasuryFeeBps, initialTreasuryFeeBps, initialExchangeThreshold } = rewardManagerConfig;
 
-    // Use fetched addresses and original config values for validation
+    if (!managedStrategyShare || managedStrategyShare === ethers.ZeroAddress || managedStrategyShare === "") {
+      const inferredWrapperId =
+        instanceConfig.symbol === "sdUSD"
+          ? DUSD_A_TOKEN_WRAPPER_ID
+          : instanceConfig.symbol === "sdETH"
+            ? DETH_A_TOKEN_WRAPPER_ID
+            : undefined;
+
+      if (inferredWrapperId) {
+        const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
+
+        if (wrapperDeployment) {
+          managedStrategyShare = wrapperDeployment.address;
+        }
+      }
+    }
+
+    let dLendAssetToClaimFor = rewardManagerConfig.dLendAssetToClaimFor;
+
+    if (!dLendAssetToClaimFor || dLendAssetToClaimFor === ethers.ZeroAddress) {
+      dLendAssetToClaimFor = aTokenAddress;
+    }
+
+    let dLendRewardsController = rewardManagerConfig.dLendRewardsController;
+
+    if (!dLendRewardsController || dLendRewardsController === ethers.ZeroAddress) {
+      dLendRewardsController = incentivesProxyDeployment.address;
+    }
+
+    if (!treasury || treasury === "" || treasury === ethers.ZeroAddress) {
+      treasury = deployer;
+    }
+
     if (
-      !managedVaultAsset ||
-      managedVaultAsset === ethers.ZeroAddress ||
-      !aTokenAddress ||
-      aTokenAddress === ethers.ZeroAddress ||
-      !incentivesProxyDeployment.address ||
-      incentivesProxyDeployment.address === ethers.ZeroAddress ||
+      !managedStrategyShare ||
+      managedStrategyShare === ethers.ZeroAddress ||
+      !dLendAssetToClaimFor ||
+      dLendAssetToClaimFor === ethers.ZeroAddress ||
+      !dLendRewardsController ||
+      dLendRewardsController === ethers.ZeroAddress ||
       !treasury ||
       treasury === ethers.ZeroAddress
     ) {
-      // Log specific missing address for better debugging
-      let missing = [];
-      if (!managedVaultAsset || managedVaultAsset === ethers.ZeroAddress) missing.push("managedVaultAsset");
-      if (!aTokenAddress || aTokenAddress === ethers.ZeroAddress) missing.push("dLendAssetToClaimFor (aToken)");
-      if (!incentivesProxyDeployment.address || incentivesProxyDeployment.address === ethers.ZeroAddress)
-        missing.push("dLendRewardsController (IncentivesProxy)");
+      const missing: string[] = [];
+      if (!managedStrategyShare || managedStrategyShare === ethers.ZeroAddress) missing.push("managedStrategyShare");
+      if (!dLendAssetToClaimFor || dLendAssetToClaimFor === ethers.ZeroAddress) missing.push("dLendAssetToClaimFor (aToken)");
+      if (!dLendRewardsController || dLendRewardsController === ethers.ZeroAddress) missing.push("dLendRewardsController");
       if (!treasury || treasury === ethers.ZeroAddress) missing.push("treasury");
 
       throw new Error(`Missing critical addresses in dLendRewardManager config for ${instanceKey}: ${missing.join(", ")}`);
@@ -100,44 +134,92 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       continue;
     }
 
-    if (!rewardManagerConfig.managedVaultAsset || rewardManagerConfig.managedVaultAsset === ethers.ZeroAddress) {
-      console.warn(`Skipping dLend rewards for ${instanceKey}: missing managedVaultAsset in rewardManagerConfig.`);
+    let managedStrategyShare = rewardManagerConfig.managedStrategyShare;
+
+    if (!managedStrategyShare || managedStrategyShare === ethers.ZeroAddress || managedStrategyShare === "") {
+      const inferredWrapperId =
+        instanceConfig.symbol === "sdUSD"
+          ? DUSD_A_TOKEN_WRAPPER_ID
+          : instanceConfig.symbol === "sdETH"
+            ? DETH_A_TOKEN_WRAPPER_ID
+            : undefined;
+
+      if (inferredWrapperId) {
+        const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
+
+        if (wrapperDeployment) {
+          managedStrategyShare = wrapperDeployment.address;
+        }
+      }
+    }
+
+    if (!managedStrategyShare || managedStrategyShare === ethers.ZeroAddress || managedStrategyShare === "") {
+      console.warn(`Skipping dLend rewards for ${instanceKey}: managedStrategyShare could not be resolved.`);
       continue;
     }
 
-    const collateralVaultDeployment = await get(`DStakeCollateralVault_${instanceKey}`);
-    const dStakeCollateralVaultAddress = collateralVaultDeployment.address;
-    const routerDeployment = await get(`DStakeRouter_${instanceKey}`);
-    const dStakeRouterAddress = routerDeployment.address;
+    let treasury = rewardManagerConfig.treasury;
 
-    const targetStaticATokenWrapperAddress = rewardManagerConfig.managedVaultAsset;
-    const underlyingStablecoinAddress = instanceConfig.dStable; // from parent DStakeInstanceConfig
+    if (!treasury || treasury === "" || treasury === ethers.ZeroAddress) {
+      treasury = deployer;
+    }
 
-    const incentivesProxyDeployment = await deployments.get(INCENTIVES_PROXY_ID);
+    const symbol = instanceConfig.symbol;
+    const collateralVaultDeployment = await deployments.getOrNull(`${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${symbol}`);
+    const routerDeployment = await deployments.getOrNull(`${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`);
 
-    const poolDataProviderDeployment = await deployments.get(POOL_DATA_PROVIDER_ID);
-    const poolDataProviderContract = await ethers.getContractAt("AaveProtocolDataProvider", poolDataProviderDeployment.address);
-    const reserveTokens = await poolDataProviderContract.getReserveTokensAddresses(underlyingStablecoinAddress);
-    const dLendAssetToClaimForAddress = reserveTokens.aTokenAddress;
-
-    if (dLendAssetToClaimForAddress === ethers.ZeroAddress) {
+    if (!collateralVaultDeployment || !routerDeployment) {
       console.warn(
-        `Skipping dLend rewards for ${instanceKey}: could not find aToken for underlying stable ${underlyingStablecoinAddress}.`,
+        `Skipping dLend rewards manager deployment for ${instanceKey}: dSTAKE core components not found (vault: ${!!collateralVaultDeployment}, router: ${!!routerDeployment}).`,
       );
       continue;
+    }
+
+    const dStakeCollateralVaultAddress = collateralVaultDeployment.address;
+    const dStakeRouterAddress = routerDeployment.address;
+
+    const targetStaticATokenWrapperAddress = managedStrategyShare;
+    const underlyingStablecoinAddress = instanceConfig.dStable; // from parent DStakeInstanceConfig
+
+    let dLendAssetToClaimForAddress = rewardManagerConfig.dLendAssetToClaimFor;
+
+    if (!dLendAssetToClaimForAddress || dLendAssetToClaimForAddress === ethers.ZeroAddress) {
+      const poolDataProviderDeployment = await deployments.get(POOL_DATA_PROVIDER_ID);
+      const poolDataProviderContract = await ethers.getContractAt("AaveProtocolDataProvider", poolDataProviderDeployment.address);
+      const reserveTokens = await poolDataProviderContract.getReserveTokensAddresses(underlyingStablecoinAddress);
+      dLendAssetToClaimForAddress = reserveTokens.aTokenAddress;
+    }
+
+    if (!dLendAssetToClaimForAddress || dLendAssetToClaimForAddress === ethers.ZeroAddress) {
+      console.warn(
+        `Skipping dLend rewards for ${instanceKey}: could not determine aToken for underlying stable ${underlyingStablecoinAddress}.`,
+      );
+      continue;
+    }
+
+    let rewardsControllerAddress = rewardManagerConfig.dLendRewardsController;
+
+    if (!rewardsControllerAddress || rewardsControllerAddress === ethers.ZeroAddress) {
+      const incentivesProxyDeployment = await deployments.get(INCENTIVES_PROXY_ID);
+      rewardsControllerAddress = incentivesProxyDeployment.address;
     }
 
     const deployArgs = [
       dStakeCollateralVaultAddress,
       dStakeRouterAddress,
-      incentivesProxyDeployment.address, // dLendRewardsController
+      rewardsControllerAddress, // dLendRewardsController
       targetStaticATokenWrapperAddress, // targetStaticATokenWrapper
       dLendAssetToClaimForAddress, // dLendAssetToClaimFor (the actual aToken)
-      rewardManagerConfig.treasury,
+      treasury,
       rewardManagerConfig.maxTreasuryFeeBps,
       rewardManagerConfig.initialTreasuryFeeBps,
       rewardManagerConfig.initialExchangeThreshold,
     ];
+
+    console.log(
+      `⛏️ Preparing DStakeRewardManagerDLend_${instanceKey} with args:`,
+      deployArgs.map((arg) => (typeof arg === "bigint" ? arg.toString() : arg)),
+    );
 
     const rewardManagerDeploymentName = `DStakeRewardManagerDLend_${instanceKey}`;
     const deployment = await deploy(rewardManagerDeploymentName, {

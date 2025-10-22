@@ -9,13 +9,13 @@ export function isLocalNetwork(network: string): boolean {
 }
 
 /**
- * Check if the network is ethereum_testnet (Sepolia)
+ * Check if the network is katana_testnet
  *
  * @param network - The network name
- * @returns True if the network is ethereum_testnet, false otherwise
+ * @returns True if the network is katana_testnet, false otherwise
  */
-export function isEthereumTestnet(network: string): boolean {
-  return network === "ethereum_testnet";
+export function isKatanaTestnet(network: string): boolean {
+  return network === "katana_testnet";
 }
 
 /**
@@ -25,5 +25,5 @@ export function isEthereumTestnet(network: string): boolean {
  * @returns True if the network is mainnet, false otherwise
  */
 export function isMainnet(network: string): boolean {
-  return network === "ethereum_mainnet";
+  return network === "katana_mainnet";
 }

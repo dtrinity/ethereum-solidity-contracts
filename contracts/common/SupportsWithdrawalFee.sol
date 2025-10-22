@@ -76,17 +76,27 @@ abstract contract SupportsWithdrawalFee {
      * @return The gross amount required before fees.
      */
     function _getGrossAmountRequiredForNet(uint256 netAmount) internal view returns (uint256) {
-        if (withdrawalFeeBps_ == 0) {
+        if (withdrawalFeeBps_ == 0 || netAmount == 0) {
             return netAmount;
         }
-        // grossAmount = netAmount / (1 - feeBps/ONE_HUNDRED_PERCENT_BPS)
-        // grossAmount = netAmount * ONE_HUNDRED_PERCENT_BPS / (ONE_HUNDRED_PERCENT_BPS - feeBps)
-        return
-            Math.mulDiv(
-                netAmount,
-                BasisPointConstants.ONE_HUNDRED_PERCENT_BPS,
-                BasisPointConstants.ONE_HUNDRED_PERCENT_BPS - withdrawalFeeBps_
-            );
+
+        uint256 grossAmount = Math.mulDiv(
+            netAmount,
+            BasisPointConstants.ONE_HUNDRED_PERCENT_BPS,
+            BasisPointConstants.ONE_HUNDRED_PERCENT_BPS - withdrawalFeeBps_,
+            Math.Rounding.Ceil
+        );
+
+        // A one-wei decrease in `grossAmount` changes the truncated fee by at most one wei,
+        // so the overshoot above `netAmount` is either 0 or 1. Adjust once accordingly.
+        if (grossAmount > 0) {
+            uint256 netFromSmallerGross = _getNetAmountAfterFee(grossAmount - 1);
+            if (netFromSmallerGross >= netAmount) {
+                grossAmount -= 1;
+            }
+        }
+
+        return grossAmount;
     }
 
     /**

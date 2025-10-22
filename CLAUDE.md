@@ -125,14 +125,6 @@ ERC4626-based staking vaults with:
 - `DStakeRouterDLend.sol` - dLend integration
 - `DStakeRewardManagerDLend.sol` - Reward distribution
 
-### 4. dLoop (`contracts/vaults/dloop/`)
-
-Leveraged yield farming with modular venue system:
-
-- Core contracts for base functionality
-- Periphery contracts for user interactions
-- Venue-specific implementations (dlend, mock, odos)
-
 ## Development Environment
 
 ### Build System

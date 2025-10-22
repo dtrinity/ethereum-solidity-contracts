@@ -42,7 +42,7 @@ describe("DStakeRouterDLend – surplus < 1 share withdraw DoS", function () {
     // 2. Register adapter with router and set as default deposit asset
     vaultAssetAddress = await (adapter as any).vaultAsset();
     await router.connect(user1).addAdapter(vaultAssetAddress, adapterAddress);
-    await router.connect(user1).setDefaultDepositVaultAsset(vaultAssetAddress);
+    await router.connect(user1).setDefaultDepositStrategyShare(vaultAssetAddress);
 
     // Arrange: mint & deposit dSTABLE
     const depositAmount = parseUnits("1000", dStableDecimals);

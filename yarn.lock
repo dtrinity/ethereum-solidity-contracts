@@ -5406,6 +5406,7 @@ __metadata:
     eslint-plugin-simple-import-sort: "npm:^12.1.1"
     eslint-plugin-unused-imports: "npm:^4.1.4"
     ethers: "npm:^6.13.5"
+    glob: "npm:^10.3.0"
     globals: "npm:^15.14.0"
     hardhat: "npm:^2.22.17"
     hardhat-deploy: "npm:^1.0.2"

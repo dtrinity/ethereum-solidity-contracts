@@ -24,6 +24,7 @@ describe("RewardClaimable", function () {
   let admin: SignerWithAddress;
   let targetPool: SignerWithAddress;
   let fakeRewardPool: SignerWithAddress;
+  let rewardsManagerRole: string;
   let exchangeAsset: RewardClaimableMockERC20;
   let rewardToken1: RewardClaimableMockERC20;
   let rewardToken2: RewardClaimableMockERC20;
@@ -91,6 +92,8 @@ describe("RewardClaimable", function () {
     // Set max allowance to allow the mock vault to drain from the fake reward pool
     await rewardToken1.connect(fakeRewardPool).approve(await mockVault.getAddress(), MAX_MINT_AMOUNT);
     await rewardToken2.connect(fakeRewardPool).approve(await mockVault.getAddress(), MAX_MINT_AMOUNT);
+
+    rewardsManagerRole = await mockVault.REWARDS_MANAGER_ROLE();
   });
 
   describe("getTreasuryFee", function () {
@@ -179,7 +182,7 @@ describe("RewardClaimable", function () {
     });
 
     it("Should only allow REWARDS_MANAGER_ROLE to set treasury", async function () {
-      await expect(mockVault.connect(user).setTreasury(user.address)).to.be.revertedWithCustomError(
+      await expect(mockVault.connect(targetPool).setTreasury(targetPool.address)).to.be.revertedWithCustomError(
         mockVault,
         "AccessControlUnauthorizedAccount",
       );
@@ -319,6 +322,7 @@ describe("RewardClaimable", function () {
     describe("Should only allow to compound when reaching the exchange threshold", async function () {
       it("Should revert if below threshold", async function () {
         await mockVault.connect(admin).setExchangeThreshold(ethers.parseEther("2"));
+        await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
         await expect(mockVault.connect(user).compoundRewards(ethers.parseEther("1"), rewardTokens, await user.getAddress()))
           .to.be.revertedWithCustomError(mockVault, "ExchangeAmountTooLow")
           .withArgs(ethers.parseEther("1"), ethers.parseEther("2"));
@@ -326,6 +330,7 @@ describe("RewardClaimable", function () {
 
       it("Should not revert if above threshold", async function () {
         await mockVault.connect(admin).setExchangeThreshold(ethers.parseEther("2"));
+        await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
 
         const amountToCompound = ethers.parseEther("2");
 
@@ -349,6 +354,7 @@ describe("RewardClaimable", function () {
       // Setup treasury fee
       const treasuryFeeBps = 10 * ONE_PERCENT_BPS; // 10%
       await mockVault.setTreasuryFeeBps(treasuryFeeBps);
+      await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
 
       // Setup emission rates and initial balances
       const rewardTokenAddresses = [await rewardToken1.getAddress(), await rewardToken2.getAddress()];
@@ -421,6 +427,7 @@ describe("RewardClaimable", function () {
       // Setup treasury fee
       const treasuryFeeBps = 0n; // 0%
       await mockVault.setTreasuryFeeBps(treasuryFeeBps);
+      await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
 
       // Setup emission rates and initial balances
       const rewardTokenAddresses = [await rewardToken1.getAddress(), await rewardToken2.getAddress()];
@@ -489,6 +496,7 @@ describe("RewardClaimable", function () {
       const threshold = ethers.parseEther("5");
       await mockVault.setExchangeThreshold(threshold);
       const belowThreshold = threshold - 1n;
+      await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
 
       await expect(mockVault.connect(user).compoundRewards(belowThreshold, [await rewardToken1.getAddress()], await user.getAddress()))
         .to.be.revertedWithCustomError(mockVault, "ExchangeAmountTooLow")

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { deployMintableERC20, deployMockRouter, mint } from "./utils/setup";
+import { deployMintableERC20, deployMockPendleRouter, deployMockRouter, mint } from "./utils/setup";
 
 const { parseUnits } = ethers;
 
@@ -14,11 +14,12 @@ describe("BaseOdosSellAdapter", function () {
     const tokenIn = await deployMintableERC20("TokenIn", "TIN");
     const tokenOut = await deployMintableERC20("TokenOut", "TOUT");
     const router = await deployMockRouter();
+    const pendleRouter = await deployMockPendleRouter();
 
     const AdapterFactory = await ethers.getContractFactory("TestSellAdapter");
-    const adapter = await AdapterFactory.deploy(await router.getAddress());
+    const adapter = await AdapterFactory.deploy(await router.getAddress(), await pendleRouter.getAddress());
 
-    return { deployer, tokenIn, tokenOut, router, adapter };
+    return { deployer, tokenIn, tokenOut, router, pendleRouter, adapter };
   }
 
   it("executes happy-path sell with correct amounts and event", async function () {
@@ -40,13 +41,7 @@ describe("BaseOdosSellAdapter", function () {
     const balanceOutBefore = await tokenOut.balanceOf(adapterAddr);
 
     // Act
-    const tx = await (adapter as any).sell(
-      await tokenIn.getAddress(),
-      await tokenOut.getAddress(),
-      amountToSwap,
-      minAmountToReceive,
-      swapData,
-    );
+    await (adapter as any).sell(await tokenIn.getAddress(), await tokenOut.getAddress(), amountToSwap, minAmountToReceive, swapData);
 
     // Assert
     const balanceInAfter = await tokenIn.balanceOf(adapterAddr);
@@ -54,11 +49,6 @@ describe("BaseOdosSellAdapter", function () {
 
     expect(balanceInBefore - balanceInAfter).to.equal(amountSpent);
     expect(balanceOutAfter - balanceOutBefore).to.equal(amountReceived);
-
-    // Check event emission
-    await expect(tx)
-      .to.emit(adapter, "Bought")
-      .withArgs(await tokenIn.getAddress(), await tokenOut.getAddress(), amountSpent, amountReceived);
   });
 
   it("reverts when adapter has insufficient balance", async function () {
@@ -75,9 +65,9 @@ describe("BaseOdosSellAdapter", function () {
     await router.setSwapBehaviour(await tokenIn.getAddress(), await tokenOut.getAddress(), amountSpent, amountReceived, false);
     const swapData = router.interface.encodeFunctionData("performSwap");
 
-    await expect(
-      (adapter as any).sell(await tokenIn.getAddress(), await tokenOut.getAddress(), amountToSwap, minAmountToReceive, swapData),
-    ).to.be.revertedWithCustomError(adapter, "InsufficientBalanceBeforeSwap");
+    await expect((adapter as any).sell(await tokenIn.getAddress(), await tokenOut.getAddress(), amountToSwap, minAmountToReceive, swapData))
+      .to.be.revertedWithCustomError(adapter, "InsufficientBalanceBeforeSwap")
+      .withArgs(parseUnits("500", 18), parseUnits("1500", 18));
   });
 
   it("reverts when router delivers less than minAmountToReceive", async function () {

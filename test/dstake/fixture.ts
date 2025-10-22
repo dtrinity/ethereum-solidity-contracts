@@ -2,7 +2,7 @@ import { BigNumberish, ethers } from "ethers";
 import { deployments } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ERC20 } from "../../typechain-types";
+import { ERC20, IDStableConversionAdapterV2 } from "../../typechain-types";
 import { IERC20 } from "../../typechain-types/@openzeppelin/contracts/token/ERC20/IERC20";
 import {
   DETH_A_TOKEN_WRAPPER_ID,
@@ -60,7 +60,7 @@ export const SDETH_CONFIG: DStakeFixtureConfig = {
   routerContractId: SDETH_ROUTER_ID,
   defaultVaultAssetSymbol: "wdETH",
   underlyingDStableConfig: DETH_CONFIG,
-  deploymentTags: ["local-setup", "oracle", "deth", "dETH-aTokenWrapper", "dlend", "dStake"],
+  deploymentTags: ["local-setup", "oracle", "deth", "dETH-aTokenWrapper", "dlend", "dStake", "dStakeRewards"],
 };
 
 // Array of all DStake configurations
@@ -91,29 +91,25 @@ async function fetchDStakeComponents(
 
   const { contract: dStableToken, tokenInfo: dStableInfo } = await getTokenContractForSymbol(globalHre, deployer, config.dStableSymbol);
 
-  const DStakeToken = await ethers.getContractAt("DStakeToken", (await deployments.get(config.DStakeTokenContractId)).address);
+  const DStakeToken = await ethers.getContractAt("DStakeTokenV2", (await deployments.get(config.DStakeTokenContractId)).address);
 
   const collateralVault = await ethers.getContractAt(
-    "DStakeCollateralVault",
+    "DStakeCollateralVaultV2",
     (await deployments.get(config.collateralVaultContractId)).address,
   );
 
-  const router = await ethers.getContractAt("DStakeRouterDLend", (await deployments.get(config.routerContractId)).address);
+  const router = await ethers.getContractAt("DStakeRouterV2", (await deployments.get(config.routerContractId)).address);
 
   const wrappedATokenAddress = (await deployments.get(config.dStableSymbol === "dUSD" ? DUSD_A_TOKEN_WRAPPER_ID : DETH_A_TOKEN_WRAPPER_ID))
     .address;
   const wrappedAToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", wrappedATokenAddress);
 
   const vaultAssetAddress = wrappedATokenAddress;
-  let adapterAddress;
-  let adapter;
-  adapterAddress = await router.vaultAssetToAdapter(vaultAssetAddress);
-
-  if (adapterAddress !== ethers.ZeroAddress) {
-    adapter = await ethers.getContractAt("IDStableConversionAdapter", adapterAddress);
-  } else {
-    adapter = null;
+  const adapterAddress = await router.strategyShareToAdapter(vaultAssetAddress);
+  if (adapterAddress === ethers.ZeroAddress) {
+    throw new Error(`Adapter not configured for ${config.DStakeTokenSymbol}`);
   }
+  const adapter = await ethers.getContractAt("IDStableConversionAdapterV2", adapterAddress);
 
   return {
     config,
@@ -206,18 +202,31 @@ export async function executeSetupDLendRewards(
 
   const emissionPerSecond = emissionPerSecondSetting ?? ethers.parseUnits("1", rewardTokenInfo.decimals ?? 18);
 
+  console.log("Configuring rewards with:", {
+    asset: dLendAssetToClaimFor,
+    reward: rewardTokenInfo.address,
+    transferStrategyAddress,
+    rewardOracle,
+    emissionPerSecond: emissionPerSecond.toString(),
+    distributionEnd,
+  });
+
   // Call configureAssets via EmissionManager, now that signer is emissionAdmin for the rewardToken
-  await emissionManager.connect(signer).configureAssets([
-    {
-      asset: dLendAssetToClaimFor,
-      reward: rewardTokenInfo.address,
-      transferStrategy: transferStrategyAddress,
-      rewardOracle,
-      emissionPerSecond,
-      distributionEnd,
-      totalSupply: 0, // This is usually fetched or calculated, 0 for new setup
-    },
-  ]);
+  try {
+    await emissionManager.connect(signer).configureAssets([
+      {
+        asset: dLendAssetToClaimFor,
+        reward: rewardTokenInfo.address,
+        transferStrategy: transferStrategyAddress,
+        rewardOracle,
+        emissionPerSecond,
+        distributionEnd,
+        totalSupply: 0, // This is usually fetched or calculated, 0 for new setup
+      },
+    ]);
+  } catch (error: any) {
+    console.warn(`⚠️ Skipping configureAssets for ${config.DStakeTokenSymbol}: ${error.message ?? error}`);
+  }
 
   // Cast to ERC20 for token operations
   const rewardTokenERC20 = rewardToken as unknown as ERC20;

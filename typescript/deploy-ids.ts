@@ -1,15 +1,27 @@
-// Oracle Aggregator V1.1 Deploy IDs
+// USD Oracles
 export const USD_ORACLE_AGGREGATOR_ID = "USD_OracleAggregator";
-export const USD_CHAINLINK_FEED_WRAPPER_V1_1_ID = "USD_ChainlinkFeedWrapperV1_1";
-export const USD_API3_WRAPPER_V1_1_ID = "USD_API3WrapperV1_1";
-export const USD_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID = "USD_ChainlinkRateCompositeWrapperV1_1";
-export const USD_HARD_PEG_WRAPPER_V1_1_ID = "USD_HardPegOracleWrapperV1_1";
+export const USD_API3_ORACLE_WRAPPER_ID = "USD_API3Wrapper";
+export const USD_API3_WRAPPER_WITH_THRESHOLDING_ID = "USD_API3WrapperWithThresholding";
+export const USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "USD_API3CompositeWrapperWithThresholding";
+export const USD_REDSTONE_ORACLE_WRAPPER_ID = "USD_RedstoneChainlinkWrapper";
+export const USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkWrapperWithThresholding";
+export const USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkCompositeWrapperWithThresholding";
 
+// Pendle PT Oracles
+export const PENDLE_CHAINLINK_ORACLE_FACTORY_ID = "PendleChainlinkOracleFactory";
+export const PENDLE_PT_AUSDC_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_PT_aUSDC_14AUG2025";
+export const PENDLE_PT_WSTKSCUSD_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_PT_wstkscUSD_18DEC2025";
+export const OS_TO_S_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_OS_to_S";
+export const WOS_TO_OS_DECIMAL_CONVERTER_ID = "ChainlinkDecimalConverter_wOS_to_OS";
+
+// ETH Oracles
 export const ETH_ORACLE_AGGREGATOR_ID = "ETH_OracleAggregator";
-export const ETH_CHAINLINK_FEED_WRAPPER_V1_1_ID = "ETH_ChainlinkFeedWrapperV1_1";
-export const ETH_API3_WRAPPER_V1_1_ID = "ETH_API3WrapperV1_1";
-export const ETH_CHAINLINK_RATE_COMPOSITE_WRAPPER_V1_1_ID = "ETH_ChainlinkRateCompositeWrapperV1_1";
-export const ETH_HARD_PEG_WRAPPER_V1_1_ID = "ETH_HardPegOracleWrapperV1_1";
+export const ETH_API3_ORACLE_WRAPPER_ID = "ETH_API3Wrapper";
+export const ETH_API3_WRAPPER_WITH_THRESHOLDING_ID = "ETH_API3WrapperWithThresholding";
+export const ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_API3CompositeWrapperWithThresholding";
+export const ETH_REDSTONE_ORACLE_WRAPPER_ID = "ETH_RedstoneWrapper";
+export const ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneWrapperWithThresholding";
+export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneCompositeWrapperWithThresholding";
 
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";
@@ -18,6 +30,8 @@ export const DUSD_ISSUER_V2_CONTRACT_ID = "dUSD_IssuerV2";
 export const DUSD_REDEEMER_CONTRACT_ID = "dUSD_Redeemer";
 export const DUSD_COLLATERAL_VAULT_CONTRACT_ID = "dUSD_CollateralHolderVault";
 export const DUSD_AMO_MANAGER_ID = "dUSD_AmoManager";
+export const DUSD_AMO_MANAGER_V2_ID = "dUSD_AmoManagerV2";
+export const DUSD_AMO_DEBT_TOKEN_ID = "dUSD_AmoDebtToken";
 export const DUSD_HARD_PEG_ORACLE_WRAPPER_ID = "dUSD_HardPegOracleWrapper";
 
 // dETH
@@ -27,6 +41,8 @@ export const DETH_ISSUER_V2_CONTRACT_ID = "dETH_IssuerV2";
 export const DETH_REDEEMER_CONTRACT_ID = "dETH_Redeemer";
 export const DETH_COLLATERAL_VAULT_CONTRACT_ID = "dETH_CollateralHolderVault";
 export const DETH_AMO_MANAGER_ID = "dETH_AmoManager";
+export const DETH_AMO_MANAGER_V2_ID = "dETH_AmoManagerV2";
+export const DETH_AMO_DEBT_TOKEN_ID = "dETH_AmoDebtToken";
 export const DETH_HARD_PEG_ORACLE_WRAPPER_ID = "dETH_HardPegOracleWrapper";
 export const WETH_HARD_PEG_ORACLE_WRAPPER_LEGACY_ID = "wS_HardPegOracleWrapper"; // Legacy reference
 export const WETH_HARD_PEG_ORACLE_WRAPPER_ID = "WETH_HardPegOracleWrapper";
@@ -68,17 +84,6 @@ export const INCENTIVES_PROXY_ID = "IncentivesProxy";
 export const PULL_REWARDS_TRANSFER_STRATEGY_ID = "PullRewardsTransferStrategy";
 export const ORACLE_AGGREGATOR_WRAPPER_BASE_ID = "oracle-aggregator-wrapper-base";
 
-// dLOOP
-export const DLOOP_CORE_LOGIC_ID = "DLoopCoreLogic";
-export const DLOOP_CORE_DLEND_ID = "DLoopCoreDLend";
-
-/* dLOOP Periphery */
-export const DLOOP_PERIPHERY_ODOS_DEPOSITOR_ID = "DLoopDepositorOdos";
-export const DLOOP_PERIPHERY_ODOS_REDEEMER_ID = "DLoopRedeemerOdos";
-export const DLOOP_PERIPHERY_ODOS_DECREASE_LEVERAGE_ID = "DLoopDecreaseLeverageOdos";
-export const DLOOP_PERIPHERY_ODOS_INCREASE_LEVERAGE_ID = "DLoopIncreaseLeverageOdos";
-export const DLOOP_PERIPHERY_ODOS_SWAP_LOGIC_ID = "OdosSwapLogic";
-
 // Chainlink Oracle Converters
 export const CHAINLINK_DECIMAL_CONVERTER_WSTKSCUSD_ID = "ChainlinkDecimalConverter_wstkscUSD";
 export const CHAINLINK_DECIMAL_CONVERTER_WSTKSCETH_ID = "ChainlinkDecimalConverter_wstkscETH";
@@ -93,9 +98,13 @@ export const DETH_A_TOKEN_WRAPPER_ID = `${DLEND_A_TOKEN_WRAPPER_PREFIX}_dETH`;
 export const DSTAKE_DEPLOYMENT_TAG = "dStake"; // Define the deployment tag
 
 // dSTAKE deploy ID prefixes
-export const DSTAKE_TOKEN_ID_PREFIX = "DStakeToken";
-export const DSTAKE_COLLATERAL_VAULT_ID_PREFIX = "DStakeCollateralVault";
-export const DSTAKE_ROUTER_ID_PREFIX = "DStakeRouter";
+export const DSTAKE_TOKEN_ID_PREFIX = "DStakeTokenV2";
+export const DSTAKE_COLLATERAL_VAULT_ID_PREFIX = "DStakeCollateralVaultV2";
+export const DSTAKE_ROUTER_ID_PREFIX = "DStakeRouterV2";
+
+// dSTAKE Libraries
+export const DETERMINISTIC_VAULT_SELECTOR_LIB_ID = "DeterministicVaultSelector";
+export const ALLOCATION_CALCULATOR_LIB_ID = "AllocationCalculator";
 
 // dSTAKE specific instance IDs
 export const SDUSD_DSTAKE_TOKEN_ID = `${DSTAKE_TOKEN_ID_PREFIX}_sdUSD`;

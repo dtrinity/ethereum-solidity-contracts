@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { deployMintableERC20, deployMockRouter, mint } from "./utils/setup";
+import { deployMintableERC20, deployMockPendleRouter, deployMockRouter, mint } from "./utils/setup";
 
 const { parseUnits } = ethers;
 
@@ -14,12 +14,13 @@ describe("BaseOdosBuyAdapter - Surplus Handling", function () {
     const tokenIn = await deployMintableERC20("TokenIn", "TIN");
     const tokenOut = await deployMintableERC20("TokenOut", "TOUT");
     const router = await deployMockRouter();
+    const pendleRouter = await deployMockPendleRouter();
 
     // Deploy test buy adapter
     const TestBuyAdapterFactory = await ethers.getContractFactory("TestBuyAdapter");
-    const adapter = await TestBuyAdapterFactory.deploy(await router.getAddress());
+    const adapter = await TestBuyAdapterFactory.deploy(await router.getAddress(), await pendleRouter.getAddress());
 
-    return { deployer, tokenIn, tokenOut, router, adapter };
+    return { deployer, tokenIn, tokenOut, router, pendleRouter, adapter };
   }
 
   it("[NEED-TO-FIX-AUDIT-ISSUE] should handle surplus correctly when router delivers more than requested", async function () {

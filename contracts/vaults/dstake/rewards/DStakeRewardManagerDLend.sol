@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import { RewardClaimable } from "../../rewards_claimable/RewardClaimable.sol";
-import { DStakeRouterDLend } from "../DStakeRouterDLend.sol";
-import { IDStakeCollateralVault } from "../interfaces/IDStakeCollateralVault.sol";
-import { IDStableConversionAdapter } from "../interfaces/IDStableConversionAdapter.sol";
+import { IDStakeRouterV2 } from "../interfaces/IDStakeRouterV2.sol";
+import { IDStakeCollateralVaultV2 } from "../interfaces/IDStakeCollateralVaultV2.sol";
+import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -38,7 +38,7 @@ contract DStakeRewardManagerDLend is RewardClaimable {
 
     // --- State ---
     address public immutable dStakeCollateralVault; // The ultimate beneficiary vault
-    DStakeRouterDLend public immutable dStakeRouter;
+    IDStakeRouterV2 public immutable dStakeRouter;
     IDLendRewardsController public dLendRewardsController; // Settable by admin
     address public immutable targetStaticATokenWrapper; // The StaticATokenLM instance earning rewards
     address public immutable dLendAssetToClaimFor; // The actual aToken in dLEND held by the wrapper
@@ -69,7 +69,7 @@ contract DStakeRewardManagerDLend is RewardClaimable {
         uint256 _initialExchangeThreshold
     )
         RewardClaimable(
-            IDStakeCollateralVault(_dStakeCollateralVault).dStable(), // exchangeAsset is dStable
+            IDStakeCollateralVaultV2(_dStakeCollateralVault).dStable(), // exchangeAsset is dStable
             _treasury,
             _maxTreasuryFeeBps,
             _initialTreasuryFeeBps,
@@ -90,7 +90,7 @@ contract DStakeRewardManagerDLend is RewardClaimable {
         }
 
         dStakeCollateralVault = _dStakeCollateralVault;
-        dStakeRouter = DStakeRouterDLend(_dStakeRouter);
+        dStakeRouter = IDStakeRouterV2(_dStakeRouter);
         dLendRewardsController = IDLendRewardsController(_dLendRewardsController);
         targetStaticATokenWrapper = _targetStaticATokenWrapper;
         dLendAssetToClaimFor = _dLendAssetToClaimFor;
@@ -181,34 +181,29 @@ contract DStakeRewardManagerDLend is RewardClaimable {
             return;
         }
 
-        address defaultVaultAsset = dStakeRouter.defaultDepositVaultAsset();
-        if (defaultVaultAsset == address(0)) {
+        address defaultStrategyShare = dStakeRouter.defaultDepositStrategyShare();
+        if (defaultStrategyShare == address(0)) {
             revert DefaultDepositAssetNotSet();
         }
 
-        address adapterAddress = dStakeRouter.vaultAssetToAdapter(defaultVaultAsset);
+        address adapterAddress = dStakeRouter.strategyShareToAdapter(defaultStrategyShare);
         if (adapterAddress == address(0)) {
             revert AdapterNotSetForDefaultAsset();
         }
 
-        IDStableConversionAdapter adapter = IDStableConversionAdapter(adapterAddress);
+        IDStableConversionAdapterV2 adapter = IDStableConversionAdapterV2(adapterAddress);
 
         // Approve the adapter to spend the dStable held by this contract
         IERC20(exchangeAsset).forceApprove(adapterAddress, amountDStableToCompound);
 
-        // The adapter's convertToVaultAsset function is expected to:
-        // 1. Pull `amountDStableToCompound` from this contract (msg.sender).
-        // 2. Convert it to `defaultVaultAsset`.
-        // 3. Deposit/transfer the `defaultVaultAsset` directly to the `dStakeCollateralVault`.
-        (address convertedVaultAsset, uint256 convertedVaultAssetAmount) = adapter.convertToVaultAsset(
-            amountDStableToCompound
-        );
+        // The adapter's depositIntoStrategy is expected to pull dStable and mint strategy shares to the collateral vault
+        (address mintedStrategyShare, uint256 mintedAmount) = adapter.depositIntoStrategy(amountDStableToCompound);
 
-        if (convertedVaultAsset != defaultVaultAsset) {
-            revert AdapterReturnedUnexpectedAsset(defaultVaultAsset, convertedVaultAsset);
+        if (mintedStrategyShare != defaultStrategyShare) {
+            revert AdapterReturnedUnexpectedAsset(defaultStrategyShare, mintedStrategyShare);
         }
 
-        emit ExchangeAssetProcessed(convertedVaultAsset, convertedVaultAssetAmount, amountDStableToCompound);
+        emit ExchangeAssetProcessed(mintedStrategyShare, mintedAmount, amountDStableToCompound);
     }
 
     /**

@@ -4,7 +4,13 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
-import { POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
+import {
+  DETH_A_TOKEN_WRAPPER_ID,
+  DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
+  DSTAKE_ROUTER_ID_PREFIX,
+  DUSD_A_TOKEN_WRAPPER_ID,
+  POOL_ADDRESSES_PROVIDER_ID,
+} from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -26,41 +32,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     dLendAddressesProviderAddress = dLendProvider.address;
   }
 
-  // Validate all configs before deploying anything
-  for (const instanceKey in config.dStake) {
-    const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
-
-    if (!instanceConfig.dStable || instanceConfig.dStable === ethers.ZeroAddress) {
-      throw new Error(`Missing dStable address for dSTAKE instance ${instanceKey}`);
-    }
-
-    if (!instanceConfig.symbol) {
-      throw new Error(`Missing symbol for dSTAKE instance ${instanceKey}`);
-    }
-
-    for (const adapterConfig of instanceConfig.adapters) {
-      if (!adapterConfig.adapterContract) {
-        throw new Error(`Missing adapterContract for adapter in dSTAKE instance ${instanceKey}`);
-      }
-
-      if (!adapterConfig.vaultAsset || adapterConfig.vaultAsset === ethers.ZeroAddress) {
-        throw new Error(`Missing vaultAsset for adapter ${adapterConfig.adapterContract} in dSTAKE instance ${instanceKey}`);
-      }
-
-      // dLendConversionAdapter requires dLendAddressesProvider
-      if (adapterConfig.adapterContract === "dLendConversionAdapter" && !dLendAddressesProviderAddress) {
-        throw new Error(`dLend PoolAddressesProvider not found. Cannot deploy dLendConversionAdapter for dSTAKE instance ${instanceKey}`);
-      }
-    }
-  }
-
   // All configs are valid, proceed with adapter deployment
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const dStableSymbol = instanceConfig.symbol;
 
-    // We need references to the router and collateral vault
-    const collateralVaultDeploymentName = `DStakeCollateralVault_${instanceKey}`;
+    if (!dStableSymbol) {
+      console.warn(`Skipping adapter deployment for ${instanceKey}: missing symbol.`);
+      continue;
+    }
+
+    if (!instanceConfig.dStable || instanceConfig.dStable === ethers.ZeroAddress) {
+      console.warn(`Skipping adapter deployment for ${instanceKey}: dStable address not configured yet.`);
+      continue;
+    }
+    const collateralVaultDeploymentName = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${dStableSymbol}`;
+    const routerDeploymentName = `${DSTAKE_ROUTER_ID_PREFIX}_${dStableSymbol}`;
 
     // Get the collateral vault address from deployment
     const collateralVault = await deployments.getOrNull(collateralVaultDeploymentName);
@@ -71,9 +58,44 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     for (const adapterConfig of instanceConfig.adapters) {
-      const { adapterContract, vaultAsset } = adapterConfig;
+      const { adapterContract } = adapterConfig;
+      let { strategyShare } = adapterConfig;
+      let { vaultAsset } = adapterConfig;
+
+      if (!adapterContract) {
+        console.warn(`    Skipping adapter for ${dStableSymbol}: missing adapterContract field.`);
+        continue;
+      }
 
       if (adapterContract === "WrappedDLendConversionAdapter") {
+        if (!dLendAddressesProviderAddress) {
+          throw new Error(`dLend PoolAddressesProvider not deployed before ${adapterContract}_${dStableSymbol}`);
+        }
+
+        const inferredWrapperId =
+          dStableSymbol === "sdUSD" ? DUSD_A_TOKEN_WRAPPER_ID : dStableSymbol === "sdETH" ? DETH_A_TOKEN_WRAPPER_ID : undefined;
+
+        if ((!strategyShare || strategyShare === "" || strategyShare === ethers.ZeroAddress) && inferredWrapperId) {
+          const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
+
+          if (!wrapperDeployment) {
+            throw new Error(`Wrapper ${inferredWrapperId} not deployed prior to ${adapterContract}_${dStableSymbol}`);
+          }
+          strategyShare = wrapperDeployment.address;
+        }
+
+        if ((!vaultAsset || vaultAsset === "" || vaultAsset === ethers.ZeroAddress) && strategyShare) {
+          vaultAsset = strategyShare;
+        }
+
+        if (!strategyShare || strategyShare === ethers.ZeroAddress) {
+          throw new Error(`strategyShare not configured for ${adapterContract}_${dStableSymbol}`);
+        }
+
+        if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
+          throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
+        }
+
         const deploymentName = `${adapterContract}_${dStableSymbol}`;
         // Avoid accidental redeployments on live networks by skipping if already deployed
         const existingAdapter = await deployments.getOrNull(deploymentName);
@@ -88,6 +110,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
           log: true,
         });
+        // If router already exists, ensure adapter wiring is refreshed later (configure script handles mapping).
+        const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+
+        if (!routerDeployment) {
+          throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
+        }
+      } else {
+        if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
+          throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
+        }
       }
     }
   }
@@ -98,7 +130,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["dStakeAdapters", "dStake"];
-func.dependencies = ["dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dS-aTokenWrapper"];
+func.dependencies = ["dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
 
 // Ensure one-shot execution.
 func.id = "deploy_dstake_adapters";
