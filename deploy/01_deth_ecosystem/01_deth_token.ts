@@ -29,6 +29,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = DETH_TOKEN_ID;
-func.tags = ["deth"];
+func.tags = ["deth", "local-setup", "dlend"];
 
 export default func;

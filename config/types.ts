@@ -19,22 +19,6 @@ export interface Config {
     readonly router: string;
   };
   readonly pendle?: PendleConfig;
-  readonly dLoop?: {
-    readonly dUSDAddress: string;
-    readonly coreVaults: { [vaultName: string]: DLoopCoreConfig };
-    readonly depositors: {
-      odos: DLoopDepositorOdosConfig;
-    };
-    readonly redeemers: {
-      odos: DLoopRedeemerOdosConfig;
-    };
-    readonly decreaseLeverage?: {
-      odos: DLoopDecreaseLeverageOdosConfig;
-    };
-    readonly increaseLeverage?: {
-      odos: DLoopIncreaseLeverageOdosConfig;
-    };
-  };
   readonly dStake?: {
     [key: string]: DStakeInstanceConfig; // e.g., sdUSD, sdETH
   };
@@ -69,37 +53,6 @@ export interface DStableConfig {
   readonly collateralRedemptionFees?: {
     [collateralAddress: string]: number;
   };
-}
-
-export interface DLoopCoreConfig {
-  readonly venue: "dlend";
-  readonly name: string;
-  readonly symbol: string;
-  readonly underlyingAsset: string;
-  readonly dStable: string;
-  readonly targetLeverageBps: number;
-  readonly lowerBoundTargetLeverageBps: number;
-  readonly upperBoundTargetLeverageBps: number;
-  readonly maxSubsidyBps: number;
-  readonly minDeviationBps: number;
-  readonly withdrawalFeeBps: number;
-  readonly extraParams: { [key: string]: any }; // Add more params here
-}
-
-export interface DLoopDepositorOdosConfig {
-  readonly router: string;
-}
-
-export interface DLoopRedeemerOdosConfig {
-  readonly router: string;
-}
-
-export interface DLoopDecreaseLeverageOdosConfig {
-  readonly router: string;
-}
-
-export interface DLoopIncreaseLeverageOdosConfig {
-  readonly router: string;
 }
 
 export interface TokenAddresses {
@@ -297,6 +250,7 @@ export interface DStakeAdapterConfig {
   readonly strategyShare: Address; // Address of the strategy share token (e.g., wddUSD)
   readonly adapterContract: string; // Contract name for deployment (e.g., dLendConversionAdapter)
   readonly vaultAsset?: Address; // Underlying asset handled by the adapter (if applicable)
+  readonly targetBps?: number; // Optional allocation target in basis points (1e6 = 100%)
 }
 
 export interface DStakeIdleVaultConfig {

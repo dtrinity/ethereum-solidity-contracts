@@ -250,7 +250,7 @@ function isUsableAddress(value: string | undefined): value is string {
   return normalized !== ZeroAddress.toLowerCase();
 }
 
-func.tags = ["usd-oracle", "oracle-wrappers"];
+func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-wrappers"];
 func.dependencies = [DUSD_TOKEN_ID, DETH_TOKEN_ID];
 func.id = "setup-usd-oracle-wrappers-v1_1";
 

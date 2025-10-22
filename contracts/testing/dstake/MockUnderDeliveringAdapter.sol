@@ -68,4 +68,8 @@ contract MockUnderDeliveringAdapter is IDStableConversionAdapterV2 {
     function strategyShare() external view override returns (address) {
         return address(strategyShareToken);
     }
+
+    function vaultAsset() external view override returns (address) {
+        return address(strategyShareToken);
+    }
 }

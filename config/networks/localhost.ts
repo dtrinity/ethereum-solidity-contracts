@@ -1,7 +1,7 @@
 import { ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
+import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
   DETH_HARD_PEG_ORACLE_WRAPPER_ID,
   DETH_TOKEN_ID,
@@ -19,6 +19,9 @@ import {
 } from "../dlend/interest-rate-strategies";
 import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
+
+const HARD_PEG_PRICE = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
+const YIELD_BEARING_PRICE = (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 11n) / 10n;
 
 /**
  * Get the configuration for the network
@@ -296,7 +299,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(USDCDeployment?.address
                 ? {
                     [USDCDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -305,7 +308,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(dUSDDeployment?.address
                 ? {
                     [dUSDDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -314,7 +317,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(USDTDeployment?.address
                 ? {
                     [USDTDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -323,7 +326,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(AUSDDeployment?.address
                 ? {
                     [AUSDDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -332,7 +335,16 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(frxUSDDeployment?.address
                 ? {
                     [frxUSDDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
+                      lowerGuard: 0n,
+                      upperGuard: 0n,
+                    },
+                  }
+                : {}),
+              ...(WETHDeployment?.address
+                ? {
+                    [WETHDeployment.address]: {
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -341,7 +353,25 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(sfrxUSDDeployment?.address
                 ? {
                     [sfrxUSDDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: YIELD_BEARING_PRICE,
+                      lowerGuard: 0n,
+                      upperGuard: 0n,
+                    },
+                  }
+                : {}),
+              ...(dETHDeployment?.address
+                ? {
+                    [dETHDeployment.address]: {
+                      pricePeg: HARD_PEG_PRICE,
+                      lowerGuard: 0n,
+                      upperGuard: 0n,
+                    },
+                  }
+                : {}),
+              ...(stETHDeployment?.address
+                ? {
+                    [stETHDeployment.address]: {
+                      pricePeg: YIELD_BEARING_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -350,7 +380,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(yUSDDeployment?.address
                 ? {
                     [yUSDDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: YIELD_BEARING_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -400,9 +430,33 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                 },
               }
             : {}),
+          ...(WETHDeployment?.address
+            ? {
+                [WETHDeployment.address]: {
+                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                  risk: { maxDeviationBps: 0 },
+                },
+              }
+            : {}),
           ...(sfrxUSDDeployment?.address
             ? {
                 [sfrxUSDDeployment.address]: {
+                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                  risk: { maxDeviationBps: 0 },
+                },
+              }
+            : {}),
+          ...(dETHDeployment?.address
+            ? {
+                [dETHDeployment.address]: {
+                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                  risk: { maxDeviationBps: 0 },
+                },
+              }
+            : {}),
+          ...(stETHDeployment?.address
+            ? {
+                [stETHDeployment.address]: {
                   primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
                   risk: { maxDeviationBps: 0 },
                 },
@@ -463,7 +517,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(WETHDeployment?.address
                 ? {
                     [WETHDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -472,7 +526,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(stETHDeployment?.address
                 ? {
                     [stETHDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: YIELD_BEARING_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -481,7 +535,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               ...(dETHDeployment?.address
                 ? {
                     [dETHDeployment.address]: {
-                      pricePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                      pricePeg: HARD_PEG_PRICE,
                       lowerGuard: 0n,
                       upperGuard: 0n,
                     },
@@ -551,6 +605,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
             strategyShare: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
         ],
         defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdUSDDeployment?.address || dLendATokenWrapperDUSDDeployment?.address),
@@ -584,6 +639,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
             strategyShare: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
         ],
         defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdETHDeployment?.address || dLendATokenWrapperDSDeployment?.address),
@@ -600,74 +656,9 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           treasury: user1, // Or a dedicated treasury address
           maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS, // Example: 5%
           initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS, // Example: 1%
-          initialExchangeThreshold: 100n * 10n ** 18n, // 100 dStable (reduced to stay within 500 supply cap)
+          initialExchangeThreshold: 1n * 10n ** 18n, // 1 dStable (scaled down to fit local supply caps)
           initialAdmin: user1, // Optional: specific admin for this reward manager
           initialRewardsManager: user1, // Optional: specific rewards manager role holder
-        },
-      },
-    },
-    dLoop: {
-      dUSDAddress: dUSDDeployment?.address || "",
-      coreVaults: {
-        "3x_sFRAX_dUSD": {
-          venue: "dlend",
-          name: "dLOOP 3X sfrxUSD dLEND",
-          symbol: "3X-sfrxUSD",
-          underlyingAsset: sfrxUSDDeployment?.address || "",
-          dStable: dUSDDeployment?.address || "",
-          targetLeverageBps: 300 * ONE_PERCENT_BPS, // 300% leverage, meaning 3x leverage
-          lowerBoundTargetLeverageBps: 200 * ONE_PERCENT_BPS, // 200% leverage, meaning 2x leverage
-          upperBoundTargetLeverageBps: 400 * ONE_PERCENT_BPS, // 400% leverage, meaning 4x leverage
-          maxSubsidyBps: 2 * ONE_PERCENT_BPS, // 2% subsidy
-          minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
-          withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
-          extraParams: {
-            targetStaticATokenWrapper: dLendATokenWrapperDUSDDeployment?.address,
-            treasury: user1,
-            maxTreasuryFeeBps: 1000,
-            initialTreasuryFeeBps: 500,
-            initialExchangeThreshold: 100n,
-          },
-        },
-        "3x_stETH_dETH": {
-          venue: "dlend",
-          name: "dLOOP 3X stETH dLEND",
-          symbol: "3X-stETH",
-          underlyingAsset: stETHDeployment?.address || "",
-          dStable: dETHDeployment?.address || "",
-          targetLeverageBps: 300 * ONE_PERCENT_BPS, // 300% leverage, meaning 3x leverage
-          lowerBoundTargetLeverageBps: 200 * ONE_PERCENT_BPS, // 200% leverage, meaning 2x leverage
-          upperBoundTargetLeverageBps: 400 * ONE_PERCENT_BPS, // 400% leverage, meaning 4x leverage
-          maxSubsidyBps: 2 * ONE_PERCENT_BPS, // 2% subsidy
-          minDeviationBps: 2 * ONE_PERCENT_BPS, // 2% deviation
-          withdrawalFeeBps: 0.4 * ONE_PERCENT_BPS, // 0.4% withdrawal fee
-          extraParams: {
-            targetStaticATokenWrapper: dLendATokenWrapperDSDeployment?.address,
-            treasury: user1,
-            maxTreasuryFeeBps: 1000,
-            initialTreasuryFeeBps: 500,
-            initialExchangeThreshold: 100n,
-          },
-        },
-      },
-      depositors: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      redeemers: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      decreaseLeverage: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
-        },
-      },
-      increaseLeverage: {
-        odos: {
-          router: "", // Odos doesn't work on localhost
         },
       },
     },

@@ -68,4 +68,9 @@ interface IDStableConversionAdapterV2 {
      * @return The address of the `strategy share`.
      */
     function strategyShare() external view returns (address);
+
+    /**
+     * @notice Returns the underlying vault asset associated with this adapter (legacy compatibility helper).
+     */
+    function vaultAsset() external view returns (address);
 }

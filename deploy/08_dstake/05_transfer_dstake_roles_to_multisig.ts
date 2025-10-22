@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
+import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKEN_ID_PREFIX } from "../../typescript/deploy-ids";
 import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
 
 /**
@@ -33,9 +34,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const instanceConfig = config.dStake[instanceKey];
     console.log(`\n🔄 Migrating roles for dSTAKE instance ${instanceKey}…`);
 
-    const tokenId = `DStakeToken_${instanceKey}`;
-    const vaultId = `DStakeCollateralVault_${instanceKey}`;
-    const routerId = `DStakeRouter_${instanceKey}`;
+    const symbol = instanceConfig.symbol;
+    const tokenId = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
+    const vaultId = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${symbol}`;
+    const routerId = `${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`;
 
     // --- DStakeToken roles ---
     try {

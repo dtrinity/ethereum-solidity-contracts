@@ -59,4 +59,8 @@ contract MockAdapterPositiveSlippage is IDStableConversionAdapterV2 {
     function strategyShare() external view override returns (address) {
         return address(vaultToken);
     }
+
+    function vaultAsset() external view override returns (address) {
+        return address(vaultToken);
+    }
 }

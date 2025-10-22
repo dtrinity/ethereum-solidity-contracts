@@ -49,7 +49,6 @@ export default [
       "*.json",
       "typescript/**/*.ts",
       "typescript/**/*.js",
-      "test/dloop/**/*.ts",
       "test/mock/*.ts",
       "deploy/**/*.ts",
       "deploy/**/*.js",

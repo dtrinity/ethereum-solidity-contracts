@@ -92,22 +92,22 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       });
     });
 
-    describe("convertToVaultAsset", function () {
+    describe("depositIntoStrategy", function () {
       it("should revert if dStableAmount is 0", async function () {
-        await expect(adapter.connect(user1).convertToVaultAsset(0)).to.be.revertedWithCustomError(adapter, "InvalidAmount");
+        await expect(adapter.connect(user1).depositIntoStrategy(0)).to.be.revertedWithCustomError(adapter, "InvalidAmount");
       });
 
       it("should revert if user has insufficient dStable balance", async function () {
         const amt = parseUnits(1, dStableDecimals);
         // Approve adapter so transferFrom checks balance not allowance
         await dStableToken.connect(user1).approve(adapterAddress, amt);
-        await expect(adapter.connect(user1).convertToVaultAsset(amt)).to.be.reverted;
+        await expect(adapter.connect(user1).depositIntoStrategy(amt)).to.be.reverted;
       });
 
       it("should revert if adapter is not approved to spend dStable", async function () {
         const amt = parseUnits(100, dStableDecimals);
         await stable.mint(user1.address, amt);
-        await expect(adapter.connect(user1).convertToVaultAsset(amt)).to.be.reverted;
+        await expect(adapter.connect(user1).depositIntoStrategy(amt)).to.be.reverted;
       });
 
       it("should successfully convert dStable to wrappedDLendToken", async function () {
@@ -117,7 +117,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         await dStableToken.connect(user1).approve(adapterAddress, amt);
 
         // Preview expected vault amount
-        const [previewAsset, expectedVaultAmt] = await adapter.previewConvertToVaultAsset(amt);
+        const [previewAsset, expectedVaultAmt] = await adapter.previewDepositIntoStrategy(amt);
         expect(previewAsset).to.equal(vaultAssetAddress);
 
         // Balances before
@@ -126,7 +126,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         const initialVaultWrapped = await wrapperToken.balanceOf(collateralVaultAddress);
 
         // Execute conversion
-        await adapter.connect(user1).convertToVaultAsset(amt);
+        await adapter.connect(user1).depositIntoStrategy(amt);
 
         // Balances after
         const finalUserDStable = await dStableToken.balanceOf(user1.address);
@@ -139,16 +139,16 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       });
     });
 
-    describe("convertFromVaultAsset", function () {
+    describe("withdrawFromStrategy", function () {
       it("should revert if vaultAssetAmount is 0", async function () {
-        await expect(adapter.connect(user1).convertFromVaultAsset(0)).to.be.revertedWithCustomError(adapter, "InvalidAmount");
+        await expect(adapter.connect(user1).withdrawFromStrategy(0)).to.be.revertedWithCustomError(adapter, "InvalidAmount");
       });
 
       it("should revert if user has insufficient wrappedDLendToken balance", async function () {
         const amt = parseUnits(1, vaultAssetDecimals);
         // Approve adapter so safeTransferFrom checks balance
         await wrapperToken.connect(user1).approve(adapterAddress, amt);
-        await expect(adapter.connect(user1).convertFromVaultAsset(amt)).to.be.reverted;
+        await expect(adapter.connect(user1).withdrawFromStrategy(amt)).to.be.reverted;
       });
 
       it("should revert if adapter is not approved to spend wrappedDLendToken", async function () {
@@ -157,12 +157,12 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         await stable.mint(user1.address, depositAmt);
         await dStableToken.connect(user1).approve(adapterAddress, depositAmt);
         // Get expected vault amount and convert
-        const [, vaultAmt] = await adapter.previewConvertToVaultAsset(depositAmt);
-        await adapter.connect(user1).convertToVaultAsset(depositAmt);
+        const [, vaultAmt] = await adapter.previewDepositIntoStrategy(depositAmt);
+        await adapter.connect(user1).depositIntoStrategy(depositAmt);
         // Send vault tokens to user1 via collateralVault
         await collateralVault.connect(deployer).sendAsset(vaultAssetAddress, vaultAmt, user1.address);
         // Do not approve adapter for wrapped tokens
-        await expect(adapter.connect(user1).convertFromVaultAsset(vaultAmt)).to.be.reverted;
+        await expect(adapter.connect(user1).withdrawFromStrategy(vaultAmt)).to.be.reverted;
       });
 
       it("should successfully convert wrappedDLendToken to dStable", async function () {
@@ -171,8 +171,8 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         await stable.mint(user1.address, depositAmt);
         await dStableToken.connect(user1).approve(adapterAddress, depositAmt);
         // use preview to get expected vault amount
-        const [, vaultAmt] = await adapter.previewConvertToVaultAsset(depositAmt);
-        await adapter.connect(user1).convertToVaultAsset(depositAmt);
+        const [, vaultAmt] = await adapter.previewDepositIntoStrategy(depositAmt);
+        await adapter.connect(user1).depositIntoStrategy(depositAmt);
         await collateralVault.connect(deployer).sendAsset(vaultAssetAddress, vaultAmt, user1.address);
 
         // Balances before
@@ -181,10 +181,10 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
 
         // Approve and preview
         await wrapperToken.connect(user1).approve(adapterAddress, vaultAmt);
-        const expectedDStableAmt = await adapter.previewConvertFromVaultAsset(vaultAmt);
+        const expectedDStableAmt = await adapter.previewWithdrawFromStrategy(vaultAmt);
 
         // Execute conversion
-        await adapter.connect(user1).convertFromVaultAsset(vaultAmt);
+        await adapter.connect(user1).withdrawFromStrategy(vaultAmt);
 
         // Balances after
         const finalUserWrapped = await wrapperToken.balanceOf(user1.address);
@@ -196,31 +196,31 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
     });
 
     describe("View Functions", function () {
-      it("assetValueInDStable returns correct values", async function () {
+      it("strategyShareValueInDStable returns correct values", async function () {
         const depositAmt = parseUnits(10, dStableDecimals);
-        const [_, vaultAmt] = await adapter.previewConvertToVaultAsset(depositAmt);
+        const [_, vaultAmt] = await adapter.previewDepositIntoStrategy(depositAmt);
         // preview assetValue
-        const value = await adapter.assetValueInDStable(vaultAssetAddress, vaultAmt);
+        const value = await adapter.strategyShareValueInDStable(vaultAssetAddress, vaultAmt);
         const expected = await wrapper.previewRedeem(vaultAmt);
         expect(value).to.equal(expected);
       });
 
-      it("vaultAsset returns correct asset address", async function () {
-        expect(await adapter.vaultAsset()).to.equal(vaultAssetAddress);
+      it("strategyShare returns correct asset address", async function () {
+        expect(await adapter.strategyShare()).to.equal(vaultAssetAddress);
       });
 
-      it("previewConvertToVaultAsset behaves correctly", async function () {
+      it("previewDepositIntoStrategy behaves correctly", async function () {
         const depositAmt = parseUnits(50, dStableDecimals);
-        const [asset, amt] = await adapter.previewConvertToVaultAsset(depositAmt);
+        const [asset, amt] = await adapter.previewDepositIntoStrategy(depositAmt);
         expect(asset).to.equal(vaultAssetAddress);
         const expected = await wrapper.previewDeposit(depositAmt);
         expect(amt).to.equal(expected);
       });
 
-      it("previewConvertFromVaultAsset behaves correctly", async function () {
+      it("previewWithdrawFromStrategy behaves correctly", async function () {
         const previewAmt = parseUnits(20, vaultAssetDecimals);
         const expected = await wrapper.previewRedeem(previewAmt);
-        expect(await adapter.previewConvertFromVaultAsset(previewAmt)).to.equal(expected);
+        expect(await adapter.previewWithdrawFromStrategy(previewAmt)).to.equal(expected);
       });
     });
   });

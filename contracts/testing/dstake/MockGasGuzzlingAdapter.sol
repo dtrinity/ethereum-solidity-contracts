@@ -71,6 +71,10 @@ contract MockGasGuzzlingAdapter is IDStableConversionAdapterV2 {
         return strategyShareToken;
     }
 
+    function vaultAsset() external view override returns (address) {
+        return strategyShareToken;
+    }
+
     // Internal -------------------------------------------------------------------
 
     function _burnGas() private {

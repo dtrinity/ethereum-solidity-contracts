@@ -143,7 +143,11 @@ contract MockDStakeRouterV2 is IDStakeRouterV2, SupportsWithdrawalFee {
             revert MockRouterNetMismatch(expectedNetAssets, netAssets);
         }
 
-        managedAssets -= grossAssets;
+        if (netAssets > managedAssets) {
+            revert MockRouterInsufficientAssets();
+        }
+
+        managedAssets -= netAssets;
 
         if (netAssets > 0) {
             asset.safeTransfer(receiver, netAssets);

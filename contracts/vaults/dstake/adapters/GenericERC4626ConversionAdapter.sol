@@ -95,4 +95,8 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
     function strategyShare() external view override returns (address) {
         return address(vault);
     }
+
+    function vaultAsset() external view override returns (address) {
+        return address(vault);
+    }
 }

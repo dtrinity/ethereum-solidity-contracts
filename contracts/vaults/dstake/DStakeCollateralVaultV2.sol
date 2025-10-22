@@ -113,6 +113,14 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
     }
 
     /**
+     * @notice Legacy alias maintained for backwards compatibility with existing integration tests.
+     */
+    function sendAsset(address strategyShare, uint256 amount, address recipient) external onlyRole(ROUTER_ROLE) {
+        if (!_isSupported(strategyShare)) revert StrategyShareNotSupported(strategyShare);
+        IERC20(strategyShare).safeTransfer(recipient, amount);
+    }
+
+    /**
      * @notice Adds a new supported strategy share. Can only be invoked by the router.
      * @dev Only callable by the registered router (ROUTER_ROLE).
      * @param strategyShare Address of the strategy share to add

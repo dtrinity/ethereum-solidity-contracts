@@ -18,9 +18,9 @@ export const strategyDUSD: IReserveParams = {
   debtCeiling: "0", // No isolation mode
   borrowableIsolation: false,
   flashLoanEnabled: true,
-  baseLTVAsCollateral: "8000", // 80%
-  liquidationThreshold: "8500", // 85%
-  liquidationBonus: "10500", // 5%
+  baseLTVAsCollateral: "0", // dSTABLEs are not accepted as collateral
+  liquidationThreshold: "0",
+  liquidationBonus: "0",
   liquidationProtocolFee: "1000", // 10%
   strategy: rateStrategyHighLiquidityStable,
 };
@@ -37,9 +37,9 @@ export const strategyDETH: IReserveParams = {
   debtCeiling: "0",
   borrowableIsolation: false,
   flashLoanEnabled: true,
-  baseLTVAsCollateral: "7500", // 75%
-  liquidationThreshold: "8000", // 80%
-  liquidationBonus: "10600", // 6%
+  baseLTVAsCollateral: "0",
+  liquidationThreshold: "0",
+  liquidationBonus: "0",
   liquidationProtocolFee: "1000",
   strategy: rateStrategyMediumLiquidityVolatile,
 };

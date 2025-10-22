@@ -85,7 +85,7 @@ function isUsableAddress(value: string | undefined): value is string {
   return normalized !== ZeroAddress.toLowerCase();
 }
 
-func.tags = ["eth-oracle", "oracle-routing"];
+func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-routing"];
 func.dependencies = [ETH_ORACLE_AGGREGATOR_ID, "setup-eth-oracle-wrappers-v1_1", DETH_TOKEN_ID];
 func.id = "point-eth-aggregator-to-wrappers-v1_1";
 

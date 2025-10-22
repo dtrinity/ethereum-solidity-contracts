@@ -22,6 +22,7 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
     error InvalidAmount();
     error StaticATokenUnderlyingMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
+    error WrappedDepositFailed(bytes reason);
 
     // --- State ---
     address public immutable dStable; // The underlying dSTABLE asset (e.g., dUSD)
@@ -70,7 +71,13 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
         IERC20(dStable).forceApprove(address(wrappedDLendToken), dStableAmount);
 
         // 3. Deposit dStable into the StaticATokenLM wrapper, minting wrappedDLendToken to collateralVault
-        strategyShareAmount = IERC4626(address(wrappedDLendToken)).deposit(dStableAmount, collateralVault);
+        try IERC4626(address(wrappedDLendToken)).deposit(dStableAmount, collateralVault) returns (
+            uint256 mintedShares
+        ) {
+            strategyShareAmount = mintedShares;
+        } catch (bytes memory reason) {
+            revert WrappedDepositFailed(reason);
+        }
 
         // 4. Reset approval to adhere to allowance hygiene expectations
         IERC20(dStable).forceApprove(address(wrappedDLendToken), 0);
@@ -120,6 +127,13 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
      * @inheritdoc IDStableConversionAdapterV2
      */
     function strategyShare() external view override returns (address) {
+        return address(wrappedDLendToken);
+    }
+
+    /**
+     * @notice Backwards-compatible alias retained for existing tests expecting the legacy adapter API.
+     */
+    function vaultAsset() external view returns (address) {
         return address(wrappedDLendToken);
     }
 

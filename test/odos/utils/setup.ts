@@ -22,6 +22,14 @@ export async function deployMockRouter(): Promise<any> {
 
 /**
  *
+ */
+export async function deployMockPendleRouter(): Promise<any> {
+  const Router = await ethers.getContractFactory("MockPendleRouter");
+  return Router.deploy();
+}
+
+/**
+ *
  * @param token
  * @param to
  * @param amount

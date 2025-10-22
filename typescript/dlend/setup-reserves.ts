@@ -69,7 +69,16 @@ export async function setupNewReserves(hre: HardhatRuntimeEnvironment, reserveSy
       console.warn(`- Skipping ${symbol}: No configuration found.`);
       continue;
     }
-    const tokenAddress = config.tokenAddresses[symbol as keyof typeof config.tokenAddresses];
+
+    let tokenAddress = config.tokenAddresses[symbol as keyof typeof config.tokenAddresses];
+
+    if (!tokenAddress) {
+      const fallbackDeployment = await hre.deployments.getOrNull(symbol);
+
+      if (fallbackDeployment?.address) {
+        tokenAddress = fallbackDeployment.address;
+      }
+    }
 
     if (!tokenAddress) {
       console.warn(`- Skipping ${symbol}: Token address not found in config.`);
@@ -147,7 +156,16 @@ export async function setupNewReserves(hre: HardhatRuntimeEnvironment, reserveSy
       console.warn(`- Skipping configuration for ${symbol}: No configuration found.`);
       continue;
     }
-    const tokenAddress = config.tokenAddresses[symbol as keyof typeof config.tokenAddresses];
+
+    let tokenAddress = config.tokenAddresses[symbol as keyof typeof config.tokenAddresses];
+
+    if (!tokenAddress) {
+      const fallbackDeployment = await hre.deployments.getOrNull(symbol);
+
+      if (fallbackDeployment?.address) {
+        tokenAddress = fallbackDeployment.address;
+      }
+    }
 
     if (!tokenAddress) {
       console.warn(`- Skipping configuration for ${symbol}: Token address not found in config.`);

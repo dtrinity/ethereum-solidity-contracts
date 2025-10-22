@@ -251,6 +251,10 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
         return address(metaMorphoVault);
     }
 
+    function vaultAsset() external view override returns (address) {
+        return address(metaMorphoVault);
+    }
+
     // --- Admin Functions ---
 
     /**

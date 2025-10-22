@@ -84,4 +84,8 @@ contract MockAdapterSmallDepositRevert is IDStableConversionAdapterV2 {
     function strategyShare() external view override returns (address) {
         return address(vaultAssetToken);
     }
+
+    function vaultAsset() external view override returns (address) {
+        return address(vaultAssetToken);
+    }
 }
