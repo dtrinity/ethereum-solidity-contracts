@@ -37,18 +37,18 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
   - [x] Import Sonic’s Odos adapter v2 stack and associated helpers for dStake flows; drop dLoop contracts from scope pending future launch.
   - [x] Update rewards contracts to include Katana’s MetaMorpho manager and Sonic’s shared `RewardClaimable`.
   - [x] Port Sonic’s debt AMO suite (contracts, interfaces, supporting libraries) and prune deprecated Ethereum-only AMO logic.
-- [ ] **Deploy & tooling**
-  - [ ] Mirror Katana/Sonic deployment scripts while keeping Ethereum’s v1.1 oracle flows intact; ensure network/task names remain accurate for Ethereum.
-  - [ ] Refresh TypeScript support files (`typescript/**`, `config/**`) to match upstream expectations.
-- [ ] **Tests**
-  - [ ] Replace dSTAKE tests with Katana’s v2 suite; integrate new adapter, oracle, and reward tests from Sonic (dLoop suites removed).
-  - [ ] Verify Hardhat compilation and run the full test suite locally.
-- [ ] **Documentation**
-  - [ ] Overwrite design docs with the latest versions (dSTAKE, rewards, rewards_claimable, vesting); note dLoop removal in roadmap docs.
-  - [ ] Update repository-level docs (`docs/manual-explorer-verification.md`, any deployment guides) for new scripts/contracts.
-- [ ] **Validation**
-  - [ ] Run `yarn lint`, `yarn build`, and all relevant Hardhat tests.
-  - [ ] Document any Ethereum-specific follow-up work after the refresh (e.g., deployment configuration tasks, audit diffs).
+- [x] **Deploy & tooling**
+  - [x] Mirror Katana/Sonic deployment scripts while keeping Ethereum’s v1.1 oracle flows intact; ensure network/task names remain accurate for Ethereum.
+  - [x] Refresh TypeScript support files (`typescript/**`, `config/**`) to match upstream expectations.
+- [x] **Tests**
+  - [x] Replace dSTAKE tests with Katana’s v2 suite; integrate new adapter, oracle, and reward tests from Sonic (dLoop suites removed).
+  - [x] Verify Hardhat compilation and run the full test suite locally.
+- [x] **Documentation**
+  - [x] Overwrite design docs with the latest versions (dSTAKE, rewards, rewards_claimable, vesting); note dLoop removal in roadmap docs. _(Katana originals copied for dSTAKE/rewards/vesting; rewards_claimable sourced from Sonic; no Ethereum-specific deltas required.)_
+  - [x] Update repository-level docs (`docs/manual-explorer-verification.md`, any deployment guides) for new scripts/contracts. _(No changes needed beyond existing Katana copies; Ethereum instructions already accurate.)_
+- [x] **Validation**
+  - [x] Run `make lint` (shared lint suite) and `make test` (full Hardhat battery); repo lacks dedicated `yarn lint`/`yarn build` scripts.
+  - [x] Document any Ethereum-specific follow-up work after the refresh (e.g., deployment configuration tasks, audit diffs).
 
 # Lessons Learned (Environment Prep)
 - Copy upstream assets verbatim when possible; manual retyping of long scripts introduced avoidable typos and wasted cycles.
@@ -62,6 +62,20 @@ Full Refresh Of `ethereum-solidity-contracts` From Katana & Sonic Repos
 # Progress Notes (dLoop Deferral)
 - Removed all dLoop Solidity sources, tests, deployments, and CLI scripts to keep the Ethereum refresh focused on dSTAKE, dLEND, and debt AMO workstreams; future reintroduction can lift directly from Katana/Sonic when launch-ready.
 - Pruned related Hardhat overrides, deploy IDs, ESLint globs, TypeChain/artifact outputs, and ticket references so tooling no longer assumes dLoop assets exist.
+
+# Progress Notes (Deploy & Tooling)
+- `make lint`, `make test`, and `make deploy` succeed against the refreshed scripts/configs; deployment tags provision sdUSD/sdETH stacks end-to-end while preserving the oracle v1.1 wiring.
+- TypeScript helpers and network configs match Katana/Sonic baselines (with Ethereum-specific addresses), and no additional `.shared/` sync is required.
+
+# Progress Notes (Tests)
+- dSTAKE suites now iterate over sdUSD and sdETH using shared fixtures, exercising router/token/reward paths alongside Sonic’s adapter wiring; no further porting needed.
+- Latest `make test` (646 passing / 12 pending) and `yarn hardhat compile` confirm the migrated stack compiles and runs cleanly with oracle v1.1 preserved.
+
+# Progress Notes (Documentation)
+- Copied dSTAKE, rewards, and vesting design docs wholesale from Katana and pulled rewards_claimable notes from Sonic; no Ethereum-only edits required after validation.
+
+# Progress Notes (Validation)
+- Ran `make lint` (shared Prettier/ESLint/Solhint suite) and `make test` (Hardhat + deployment fixture battery); both pass with oracle v1.1 stack intact.
 
 # Lessons Learned (Rewards Stack)
 - MetaMorpho flows rely on URD-driven balances—tests must stage claims against the manager contract directly to avoid regressions like the collateral vault merkle bypass.
