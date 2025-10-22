@@ -20,12 +20,7 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
     struct FeedConfig {
         AggregatorV3Interface feed;
         uint256 decimalsFactor;
-        uint64 heartbeat;
-        uint64 maxStaleTime;
-        uint16 maxDeviationBps;
-        uint192 minAnswer;
-        uint192 maxAnswer;
-        bool exists;
+        AssetConfig risk;
         PriceData lastGoodPrice;
     }
 
@@ -71,7 +66,7 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
 
     function getPriceInfo(address asset) public view virtual override returns (PriceData memory) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
 
@@ -103,26 +98,26 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         uint256 normalizedPrice = 0;
         if (alive) {
             normalizedPrice = _normalisePrice(asset, uint256(answer), config.decimalsFactor);
-            if (config.minAnswer != 0 && normalizedPrice < config.minAnswer) {
+            if (config.risk.minAnswer != 0 && normalizedPrice < config.risk.minAnswer) {
                 alive = false;
             }
-            if (config.maxAnswer != 0 && normalizedPrice > config.maxAnswer) {
+            if (config.risk.maxAnswer != 0 && normalizedPrice > config.risk.maxAnswer) {
                 alive = false;
             }
 
-            uint64 heartbeat = config.heartbeat == 0 ? DEFAULT_HEARTBEAT : config.heartbeat;
-            uint64 staleLimit = config.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.maxStaleTime;
+            uint64 heartbeat = _requireConfiguredHeartbeat(config.risk.heartbeat);
+            uint64 staleLimit = config.risk.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.risk.maxStaleTime;
             if (block.timestamp - updatedAt64 > heartbeat + staleLimit) {
                 alive = false;
             }
 
-            if (alive && config.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
+            if (alive && config.risk.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
                 uint192 referencePrice = config.lastGoodPrice.price;
                 uint256 difference = normalizedPrice > referencePrice
                     ? normalizedPrice - referencePrice
                     : referencePrice - normalizedPrice;
                 uint256 deviationBps = Math.mulDiv(difference, MAX_BPS, referencePrice);
-                if (deviationBps > config.maxDeviationBps) {
+                if (deviationBps > config.risk.maxDeviationBps) {
                     alive = false;
                 }
             }
@@ -158,13 +153,14 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         if (maxDeviationBps > MAX_BPS) {
             revert InvalidDeviationSetting();
         }
+        heartbeat = _requireConfiguredHeartbeat(heartbeat);
 
         AggregatorV3Interface aggregator = AggregatorV3Interface(feed);
         uint8 feedDecimals = aggregator.decimals();
         uint256 decimalsFactor = 10 ** uint256(feedDecimals);
 
         FeedConfig storage config = _feedConfigs[asset];
-        if (config.exists && config.decimalsFactor != 0 && config.decimalsFactor != decimalsFactor) {
+        if (config.risk.exists && config.decimalsFactor != 0 && config.decimalsFactor != decimalsFactor) {
             revert FeedDecimalsChanged(asset, _factorToDecimals(config.decimalsFactor), feedDecimals);
         }
 
@@ -172,12 +168,12 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         bool feedChanged = previousFeed != feed;
         config.feed = aggregator;
         config.decimalsFactor = decimalsFactor;
-        config.heartbeat = heartbeat;
-        config.maxStaleTime = maxStaleTime;
-        config.maxDeviationBps = maxDeviationBps;
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
-        config.exists = true;
+        config.risk.heartbeat = heartbeat;
+        config.risk.maxStaleTime = maxStaleTime;
+        config.risk.maxDeviationBps = maxDeviationBps;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
+        config.risk.exists = true;
         if (feedChanged) {
             config.lastGoodPrice = PriceData({ price: 0, updatedAt: 0, isAlive: false });
         }
@@ -187,7 +183,7 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
 
     function removeFeed(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
         address previousFeed = address(config.feed);
@@ -197,21 +193,22 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
 
     function updateHeartbeat(address asset, uint64 newHeartbeat) external onlyRole(ORACLE_MANAGER_ROLE) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
-        uint64 previous = config.heartbeat;
-        config.heartbeat = newHeartbeat;
+        uint64 previous = config.risk.heartbeat;
+        newHeartbeat = _requireConfiguredHeartbeat(newHeartbeat);
+        config.risk.heartbeat = newHeartbeat;
         emit FeedHeartbeatUpdated(asset, previous, newHeartbeat);
     }
 
     function updateMaxStaleTime(address asset, uint64 newMaxStaleTime) external onlyRole(ORACLE_MANAGER_ROLE) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
-        uint64 previous = config.maxStaleTime;
-        config.maxStaleTime = newMaxStaleTime;
+        uint64 previous = config.risk.maxStaleTime;
+        config.risk.maxStaleTime = newMaxStaleTime;
         emit FeedMaxStaleTimeUpdated(asset, previous, newMaxStaleTime);
     }
 
@@ -221,11 +218,11 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         uint192 maxAnswer
     ) external onlyRole(ORACLE_MANAGER_ROLE) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
         emit FeedBoundsUpdated(asset, minAnswer, maxAnswer);
     }
 
@@ -234,17 +231,17 @@ abstract contract BaseChainlinkWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
             revert InvalidDeviationSetting();
         }
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
-        uint16 previous = config.maxDeviationBps;
-        config.maxDeviationBps = newDeviationBps;
+        uint16 previous = config.risk.maxDeviationBps;
+        config.risk.maxDeviationBps = newDeviationBps;
         emit FeedDeviationUpdated(asset, previous, newDeviationBps);
     }
 
     function recordLastGoodPrice(address asset) external onlyRole(ORACLE_MANAGER_ROLE) returns (PriceData memory) {
         FeedConfig storage config = _feedConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert FeedNotConfigured(asset);
         }
 

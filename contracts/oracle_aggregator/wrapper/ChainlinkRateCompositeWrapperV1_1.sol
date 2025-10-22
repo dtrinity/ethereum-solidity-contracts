@@ -21,11 +21,7 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         uint256 rateDecimalsFactor;
         uint64 priceHeartbeat;
         uint64 rateHeartbeat;
-        uint64 maxStaleTime;
-        uint16 maxDeviationBps;
-        uint192 minAnswer;
-        uint192 maxAnswer;
-        bool exists;
+        AssetConfig risk;
         PriceData lastGoodPrice;
     }
 
@@ -84,6 +80,8 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         if (maxAnswer != 0 && minAnswer > maxAnswer) {
             revert InvalidAnswerBounds(minAnswer, maxAnswer);
         }
+        priceHeartbeat = _requireConfiguredHeartbeat(priceHeartbeat);
+        rateHeartbeat = _requireConfiguredHeartbeat(rateHeartbeat);
 
         CompositeConfig storage config = _compositeConfigs[asset];
         config.priceFeed = AggregatorV3Interface(priceFeed);
@@ -92,11 +90,12 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         config.rateDecimalsFactor = 10 ** uint256(rateDecimals);
         config.priceHeartbeat = priceHeartbeat;
         config.rateHeartbeat = rateHeartbeat;
-        config.maxStaleTime = maxStaleTime;
-        config.maxDeviationBps = maxDeviationBps;
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
-        config.exists = true;
+        config.risk.heartbeat = priceHeartbeat;
+        config.risk.maxStaleTime = maxStaleTime;
+        config.risk.maxDeviationBps = maxDeviationBps;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
+        config.risk.exists = true;
         config.lastGoodPrice = PriceData({ price: 0, updatedAt: 0, isAlive: false });
 
         emit CompositeConfigured(
@@ -116,7 +115,7 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
 
     function removeComposite(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
         CompositeConfig storage config = _compositeConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert CompositeNotConfigured(asset);
         }
         emit CompositeRemoved(asset, address(config.priceFeed), address(config.rateProvider));
@@ -144,7 +143,7 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
 
     function getPriceInfo(address asset) public view override returns (PriceData memory data) {
         CompositeConfig storage config = _compositeConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert CompositeNotConfigured(asset);
         }
 
@@ -190,25 +189,19 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
         }
 
         bool alive = true;
-        uint64 maxStale = config.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.maxStaleTime;
+        uint64 maxStale = config.risk.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.risk.maxStaleTime;
 
-        if (
-            block.timestamp - priceUpdatedAt >
-            (config.priceHeartbeat == 0 ? DEFAULT_HEARTBEAT : config.priceHeartbeat) + maxStale
-        ) {
+        if (block.timestamp - priceUpdatedAt > config.priceHeartbeat + maxStale) {
             alive = false;
         }
-        if (
-            block.timestamp - rateUpdatedAt >
-            (config.rateHeartbeat == 0 ? DEFAULT_HEARTBEAT : config.rateHeartbeat) + maxStale
-        ) {
+        if (block.timestamp - rateUpdatedAt > config.rateHeartbeat + maxStale) {
             alive = false;
         }
 
-        if (alive && config.minAnswer != 0 && compositePrice < config.minAnswer) {
+        if (alive && config.risk.minAnswer != 0 && compositePrice < config.risk.minAnswer) {
             alive = false;
         }
-        if (alive && config.maxAnswer != 0 && compositePrice > config.maxAnswer) {
+        if (alive && config.risk.maxAnswer != 0 && compositePrice > config.risk.maxAnswer) {
             alive = false;
         }
 
@@ -216,10 +209,10 @@ contract ChainlinkRateCompositeWrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1
             alive = false;
         }
 
-        if (alive && config.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
+        if (alive && config.risk.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
             uint192 lastPrice = config.lastGoodPrice.price;
             uint256 diff = compositePrice > lastPrice ? compositePrice - lastPrice : lastPrice - compositePrice;
-            if (Math.mulDiv(diff, MAX_BPS, lastPrice) > config.maxDeviationBps) {
+            if (Math.mulDiv(diff, MAX_BPS, lastPrice) > config.risk.maxDeviationBps) {
                 alive = false;
             }
         }

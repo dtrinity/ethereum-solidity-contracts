@@ -54,6 +54,7 @@ describe("OracleAggregatorV1_1", () => {
     await wrapper.connect(manager).configureFeed(asset, mockFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
 
     await aggregator.connect(manager).setOracle(asset, wrapper.target);
+    await aggregator.connect(manager).updateAssetRiskConfig(asset, 0, Number(HEARTBEAT), 0, 0, 0);
   });
 
   async function storeLastGoodPrice() {
@@ -65,6 +66,13 @@ describe("OracleAggregatorV1_1", () => {
     const info = await aggregator.getPriceInfo(asset);
     expect(info.price).to.equal(100n * BASE_UNIT);
     expect(info.isAlive).to.equal(true);
+  });
+
+  it("requires explicit heartbeat when tuning risk controls", async () => {
+    await expect(aggregator.connect(manager).updateAssetRiskConfig(asset, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
+      aggregator,
+      "InvalidHeartbeat",
+    );
   });
 
   it("falls back to last good price when feed becomes stale", async () => {
@@ -80,7 +88,7 @@ describe("OracleAggregatorV1_1", () => {
 
   it("applies deviation gating", async () => {
     await storeLastGoodPrice();
-    await aggregator.connect(manager).updateAssetRiskConfig(asset, 0, 0, 500, 0, 0);
+    await aggregator.connect(manager).updateAssetRiskConfig(asset, 0, Number(HEARTBEAT), 500, 0, 0);
     await mockFeed.setMock(130n * BASE_UNIT);
 
     const info = await aggregator.getPriceInfo(asset);
@@ -132,7 +140,7 @@ describe("OracleAggregatorV1_1", () => {
       .withArgs(asset, wrapper.target);
 
     const otherAsset = ethers.Wallet.createRandom().address;
-    await expect(aggregator.connect(manager).configureAsset(otherAsset, wrapper.target, wrapper.target, 0, 0, 0, 0, 0))
+    await expect(aggregator.connect(manager).configureAsset(otherAsset, wrapper.target, wrapper.target, 0, Number(HEARTBEAT), 0, 0, 0))
       .to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary")
       .withArgs(otherAsset, wrapper.target);
   });
@@ -165,6 +173,7 @@ describe("OracleAggregatorV1_1", () => {
 
 describe("Oracle wrappers", () => {
   const BASE_UNIT = 10n ** 8n;
+  const HEARTBEAT = 60n;
 
   it("Chainlink wrapper detects invalid price", async () => {
     const [owner] = await ethers.getSigners();
@@ -181,6 +190,21 @@ describe("Oracle wrappers", () => {
     expect(priceInfo.isAlive).to.equal(false);
   });
 
+  it("requires explicit heartbeat when wiring chainlink feeds", async () => {
+    const [owner] = await ethers.getSigners();
+    const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
+    const feed = await feedFactory.deploy(8, "CHAINLINK");
+
+    const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address);
+    const asset = ethers.Wallet.createRandom().address;
+
+    await expect(wrapper.connect(owner).configureFeed(asset, feed.target, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
+      wrapper,
+      "InvalidHeartbeat",
+    );
+  });
+
   it("API3 wrapper normalises values", async () => {
     const [owner] = await ethers.getSigners();
     const proxyFactory = await ethers.getContractFactory("MockApi3Proxy");
@@ -191,11 +215,26 @@ describe("Oracle wrappers", () => {
     const wrapperFactory = await ethers.getContractFactory("API3WrapperV1_1");
     const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as API3WrapperV1_1;
     const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configureProxy(asset, proxy.target, 18, 0, 0, 0, 0, 0);
+    await wrapper.connect(owner).configureProxy(asset, proxy.target, 18, Number(HEARTBEAT), 0, 0, 0, 0);
 
     const info = await wrapper.getPriceInfo(asset);
     expect(info.isAlive).to.equal(true);
     expect(info.price).to.equal(150n * BASE_UNIT);
+  });
+
+  it("requires explicit heartbeat when wiring API3 proxies", async () => {
+    const [owner] = await ethers.getSigners();
+    const proxyFactory = await ethers.getContractFactory("MockApi3Proxy");
+    const proxy = (await proxyFactory.deploy()) as MockApi3Proxy;
+
+    const wrapperFactory = await ethers.getContractFactory("API3WrapperV1_1");
+    const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as API3WrapperV1_1;
+    const asset = ethers.Wallet.createRandom().address;
+
+    await expect(wrapper.connect(owner).configureProxy(asset, proxy.target, 18, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
+      wrapper,
+      "InvalidHeartbeat",
+    );
   });
 
   it("Hard peg wrapper enforces guard rails", async () => {

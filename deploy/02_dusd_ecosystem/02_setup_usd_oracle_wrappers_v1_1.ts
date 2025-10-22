@@ -5,7 +5,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import { ChainlinkFeedAssetConfig, HardPegAssetConfig, OracleAggregatorConfig, OracleWrapperDeploymentConfig } from "../../config/types";
 import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
-import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
+import { DEFAULT_ORACLE_HEARTBEAT_SECONDS, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
 
 type ChainlinkAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>["assets"]>;
 type HardPegAssetMap = NonNullable<OracleWrapperDeploymentConfig<HardPegAssetConfig>["assets"]>;
@@ -67,11 +67,14 @@ async function deployChainlinkWrapper(
 
     const feedAddress = await ensureChainlinkFeed(hre, deployer, assetAddress, assetConfig, feedCache);
 
+    const heartbeatSeconds =
+      typeof assetConfig.heartbeat === "number" && assetConfig.heartbeat > 0 ? assetConfig.heartbeat : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
+
     await (
       await wrapper.configureFeed(
         assetAddress,
         feedAddress,
-        assetConfig.heartbeat ?? 0,
+        heartbeatSeconds,
         assetConfig.maxStaleTime ?? 0,
         assetConfig.maxDeviationBps ?? 0,
         assetConfig.minAnswer ?? 0n,

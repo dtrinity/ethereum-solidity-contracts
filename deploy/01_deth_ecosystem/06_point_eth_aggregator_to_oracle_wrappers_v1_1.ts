@@ -4,6 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DETH_TOKEN_ID, ETH_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
+import { DEFAULT_ORACLE_HEARTBEAT_SECONDS } from "../../typescript/oracle_aggregator/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const { deployer } = await hre.getNamedAccounts();
@@ -29,13 +30,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const primaryWrapperAddress = await resolveWrapperAddress(hre, routing.primaryWrapperId);
     const fallbackWrapperAddress = routing.fallbackWrapperId ? await resolveWrapperAddress(hre, routing.fallbackWrapperId) : ZeroAddress;
 
+    const heartbeatOverrideSeconds =
+      typeof routing.risk?.heartbeatOverride === "number" && routing.risk.heartbeatOverride > 0
+        ? routing.risk.heartbeatOverride
+        : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
+
     await (
       await aggregator.configureAsset(
         assetAddress,
         primaryWrapperAddress,
         fallbackWrapperAddress,
         routing.risk?.maxStaleTime ?? 0,
-        routing.risk?.heartbeatOverride ?? 0,
+        heartbeatOverrideSeconds,
         routing.risk?.maxDeviationBps ?? 0,
         routing.risk?.minAnswer ?? 0n,
         routing.risk?.maxAnswer ?? 0n,

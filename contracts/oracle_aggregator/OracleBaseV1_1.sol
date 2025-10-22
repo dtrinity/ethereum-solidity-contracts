@@ -67,6 +67,9 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
     /// @notice Error thrown when a timestamp is in the future relative to the current block.
     error TimestampInFuture(address asset, uint64 updatedAt, uint64 currentTimestamp);
 
+    /// @notice Error thrown when a heartbeat value has not been explicitly configured.
+    error InvalidHeartbeat();
+
     /// @notice Error emitted when deviation exceeds configured bounds.
     error DeviationExceeded(address asset, uint192 price, uint192 referencePrice, uint16 maxDeviationBps);
 
@@ -134,7 +137,7 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
         }
 
         uint64 threshold = maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : maxStaleTime;
-        uint64 heartbeat = heartbeatBuffer == 0 ? DEFAULT_HEARTBEAT : heartbeatBuffer;
+        uint64 heartbeat = _requireConfiguredHeartbeat(heartbeatBuffer);
         if (currentTimestamp - updatedAt > threshold + heartbeat) {
             revert StalePrice(asset, updatedAt, heartbeat, threshold, currentTimestamp);
         }
@@ -171,5 +174,15 @@ abstract contract OracleBaseV1_1 is AccessControlEnumerable {
         if (deviationBps > maxDeviationBps) {
             revert DeviationExceeded(asset, price, referencePrice, maxDeviationBps);
         }
+    }
+
+    /**
+     * @dev Ensures a heartbeat value has been explicitly configured.
+     */
+    function _requireConfiguredHeartbeat(uint64 heartbeat) internal pure returns (uint64) {
+        if (heartbeat == 0) {
+            revert InvalidHeartbeat();
+        }
+        return heartbeat;
     }
 }

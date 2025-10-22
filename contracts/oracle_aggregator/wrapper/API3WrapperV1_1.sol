@@ -17,12 +17,7 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         address proxy;
         uint8 decimals;
         uint256 decimalsFactor;
-        uint64 heartbeat;
-        uint64 maxStaleTime;
-        uint16 maxDeviationBps;
-        uint192 minAnswer;
-        uint192 maxAnswer;
-        bool exists;
+        AssetConfig risk;
         PriceData lastGoodPrice;
     }
 
@@ -79,17 +74,18 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         if (maxAnswer != 0 && minAnswer > maxAnswer) {
             revert InvalidAnswerBounds(minAnswer, maxAnswer);
         }
+        heartbeat = _requireConfiguredHeartbeat(heartbeat);
 
         ProxyConfig storage config = _proxyConfigs[asset];
         config.proxy = proxy;
         config.decimals = decimals;
         config.decimalsFactor = 10 ** uint256(decimals);
-        config.heartbeat = heartbeat;
-        config.maxStaleTime = maxStaleTime;
-        config.maxDeviationBps = maxDeviationBps;
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
-        config.exists = true;
+        config.risk.heartbeat = heartbeat;
+        config.risk.maxStaleTime = maxStaleTime;
+        config.risk.maxDeviationBps = maxDeviationBps;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
+        config.risk.exists = true;
         config.lastGoodPrice = PriceData({ price: 0, updatedAt: 0, isAlive: false });
 
         emit ProxyConfigured(asset, proxy, decimals, heartbeat, maxStaleTime, maxDeviationBps, minAnswer, maxAnswer);
@@ -97,7 +93,7 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function removeProxy(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
         ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert ProxyNotConfigured(asset);
         }
         address previousProxy = config.proxy;
@@ -107,11 +103,12 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function updateProxyHeartbeat(address asset, uint64 newHeartbeat) external onlyRole(ORACLE_MANAGER_ROLE) {
         ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert ProxyNotConfigured(asset);
         }
-        uint64 previous = config.heartbeat;
-        config.heartbeat = newHeartbeat;
+        uint64 previous = config.risk.heartbeat;
+        newHeartbeat = _requireConfiguredHeartbeat(newHeartbeat);
+        config.risk.heartbeat = newHeartbeat;
         emit ProxyHeartbeatUpdated(asset, previous, newHeartbeat);
     }
 
@@ -121,11 +118,11 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         uint192 maxAnswer
     ) external onlyRole(ORACLE_MANAGER_ROLE) {
         ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert ProxyNotConfigured(asset);
         }
-        config.minAnswer = minAnswer;
-        config.maxAnswer = maxAnswer;
+        config.risk.minAnswer = minAnswer;
+        config.risk.maxAnswer = maxAnswer;
         emit ProxyBoundsUpdated(asset, minAnswer, maxAnswer);
     }
 
@@ -134,11 +131,11 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
             revert InvalidDeviationSetting();
         }
         ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert ProxyNotConfigured(asset);
         }
-        uint16 previous = config.maxDeviationBps;
-        config.maxDeviationBps = newDeviationBps;
+        uint16 previous = config.risk.maxDeviationBps;
+        config.risk.maxDeviationBps = newDeviationBps;
         emit ProxyDeviationUpdated(asset, previous, newDeviationBps);
     }
 
@@ -163,7 +160,7 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
 
     function getPriceInfo(address asset) public view override returns (PriceData memory) {
         ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.exists) {
+        if (!config.risk.exists) {
             revert ProxyNotConfigured(asset);
         }
 
@@ -186,26 +183,26 @@ contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
             uint256 decimalsFactor = config.decimalsFactor;
             normalizedPrice = Math.mulDiv(magnitude, BASE_CURRENCY_UNIT(), decimalsFactor);
 
-            if (config.minAnswer != 0 && normalizedPrice < config.minAnswer) {
+            if (config.risk.minAnswer != 0 && normalizedPrice < config.risk.minAnswer) {
                 alive = false;
             }
-            if (config.maxAnswer != 0 && normalizedPrice > config.maxAnswer) {
+            if (config.risk.maxAnswer != 0 && normalizedPrice > config.risk.maxAnswer) {
                 alive = false;
             }
 
-            uint64 heartbeat = config.heartbeat == 0 ? DEFAULT_HEARTBEAT : config.heartbeat;
-            uint64 staleLimit = config.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.maxStaleTime;
+            uint64 heartbeat = _requireConfiguredHeartbeat(config.risk.heartbeat);
+            uint64 staleLimit = config.risk.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.risk.maxStaleTime;
             if (block.timestamp - updatedAt > heartbeat + staleLimit) {
                 alive = false;
             }
 
-            if (alive && config.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
+            if (alive && config.risk.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
                 uint192 referencePrice = config.lastGoodPrice.price;
                 uint256 difference = normalizedPrice > referencePrice
                     ? normalizedPrice - referencePrice
                     : referencePrice - normalizedPrice;
                 uint256 deviationBps = Math.mulDiv(difference, MAX_BPS, referencePrice);
-                if (deviationBps > config.maxDeviationBps) {
+                if (deviationBps > config.risk.maxDeviationBps) {
                     alive = false;
                 }
             }
