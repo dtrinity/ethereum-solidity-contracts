@@ -29,6 +29,33 @@
 - Reward managers pipe fees and incentives back into the dSTAKE collateral vault through adapters (contracts/vaults/rewards_claimable/Design.md:61, contracts/vaults/dstake/rewards/Design.md:1). Review allowance handling, adapter trust assumptions, and fee pathways alongside router dust-tolerance rules (contracts/vaults/dstake/Design.md:41, contracts/vaults/dstake/Design.md:112).
 - Aggregator and wrappers always share one base currency/unit; decimals are enforced at the wrapper boundary. Oracle providers such as API3 proxies and custom rate adapters do **not** expose on-chain decimals, so we rely on governance-supplied configuration and cannot auto-discover scaling changes. Future work should codify one-time resolution and immutable scaling checks during onboarding.
 
+## Red-Team Attack Angles
+
+### Oracle Manipulation (Agent OA-RT)
+- **Fallback deviation trap** – If a primary feed swings beyond `maxDeviationBps` while a HardPeg fallback stays within stale bounds, the aggregator at `contracts/oracle_aggregator/OracleAggregatorV1_1.sol:470` can accept the old peg; exploit by minting through `contracts/dstable/IssuerV2.sol:112` before guardians react. Probe with chaos tests that spike primary prices and assert mint/redeem halts when `usedFallback` flips.
+- **Guardian LGP reseed** – A compromised guardian can `pauseAsset` and `pushFrozenPrice` at `contracts/oracle_aggregator/OracleAggregatorV1_1.sol:189` / :220, then unpause to lock in a forged last-good price that forces fallbacks to honour inflated values. Require multi-sig sequencing for freeze/unfreeze and monitor tight pause→unpause windows.
+- **Malicious fallback wrapper onboarding** – Temporary oracle-manager control can register a hostile wrapper via `setFallbackOracle` (`contracts/oracle_aggregator/OracleAggregatorV1_1.sol:333`); once the primary reverts, inflated fallback quotes flow to downstream issuers. Enforce allowlists for wrapper bytecode and add alerts when fallback addresses change.
+- **Heartbeat drag** – Loose `maxStaleTime` lets stale fallbacks with `isAlive=true` mask outages; attackers mint against old prices until monitoring catches the gap. Instrument alerts on `block.timestamp - updatedAt` and add regression tests covering stale heartbeat acceptance.
+
+### Governance & Upgrade Takeover (Agent GOV-RT)
+- **Proxy admin drift** – Misconfigured upgrade scripts that skip setting the proxy admin leave `DEFAULT_ADMIN_ROLE` on the implementation (`contracts/dstable/IssuerV2.sol:78`) vulnerable. Validate migration calldata in preflight tests and assert post-upgrade admin members match the intended multisig.
+- **Residual deployer roles** – Constructors grant deployers privileged roles across modules (`contracts/vaults/dstake/DStakeRouterV2.sol:214`, `contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:52`); failure to revoke lets compromised EOAs pause routers or sweep rewards. Maintain automated role inventories and require renounce confirmations after deployment.
+- **Interrupted admin handover** – Oracle aggregator’s two-step rotation (`contracts/oracle_aggregator/OracleAggregatorV1_1.sol:97`) can strand the contract without an active admin if accept never executes. Monitor `_pendingAdmin` and block renounce actions until acceptance is confirmed.
+- **Storage layout drift** – Missing storage gaps risk AccessControl mappings during upgrades (e.g., `contracts/vaults/dstake/DStakeTokenV2.sol:40`). Run `hardhat storage:verify` diffs before deployments and include tests asserting role membership survives upgrades.
+
+### AMO & Strategy Exploits (Agent AMO-RT)
+- **Shortfall spoofing** – Holders of `CONFIG_MANAGER_ROLE` on the router (`contracts/vaults/dstake/DStakeRouterV2.sol:775`) can inflate `settlementShortfall`, deposit for cheap shares, then clear the shortfall and exit with excess collateral. Lock shortfall setters behind timelocks and simulate “spike→deposit→clear” flows in tests to ensure they revert.
+- **Adapter NAV spoof** – A malicious adapter understating `strategyShareValueInDStable` (`contracts/vaults/dstake/DStakeCollateralVaultV2.sol:73`) lets attackers mint outsized shares before restoring truthful pricing. Require adapter audits, compare reported NAV to direct share previews, and alert on sudden valuation swings.
+- **Idle vault reward sweep** – Letting `DStakeIdleVault` hit zero supply (`contracts/vaults/dstake/vaults/DStakeIdleVault.sol:157`) allows the next depositor to capture the entire accrued reserve. Keep sentinel shares alive and halt `fundRewards` when `totalSupply()==0`.
+- **Dust tolerance DoS** – Raising `dustTolerance` via `contracts/vaults/dstake/DStakeRouterV2.sol:1073` can block exits and strand collateral. Monitor tolerance changes, cap the parameter, and include fuzz tests where liquidity falls below new thresholds.
+- **AMO debt rounding leak** – Repeated `increaseAmoSupply` calls below rounding thresholds (`contracts/dstable/AmoManagerV2.sol:136`) mint dStable without debt tokens. Enforce minimum lot sizes and add invariants equating cumulative mint to debt supply.
+
+### Reward Pipeline Abuse (Agent REWARD-RT)
+- **Reward sniping** – Permissionless callers meeting `exchangeThreshold` can call `compoundRewards` (`contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:213`) with `receiver` set to themselves, capturing all accrued incentives. Rehearse keeper-call simulations and restrict receivers or route rewards directly to the collateral vault.
+- **Receiver griefing** – The same entry point allows directing rewards to burn addresses via transfers at `contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:252`, destroying yield. Add receiver allowlists or enforce vault-only destinations.
+- **Adapter float theft** – DLend manager approves adapters at `contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:197` without verifying share balances, so a malicious adapter can drain the allowance. Mirror the MetaMorpho balance check (`contracts/vaults/dstake/rewards/DStakeRewardManagerMetaMorpho.sol:268`) and assert allowance resets to zero.
+- **Exchange asset dust sweep** – Including peg collateral in the reward list in `contracts/vaults/rewards_claimable/RewardClaimable.sol:200` forwards any dust to arbitrary receivers. Separate dust sweep tooling from reward distribution and test that `compoundRewards` leaves no residual base assets.
+
 ## Oracle Aggregator V1.1 (`contracts/oracle_aggregator/Design.md`)
 
 ### Scope Snapshot
