@@ -23,3 +23,8 @@ Validate that dust threshold adjustments cannot freeze withdrawals or strand col
 ## Deliverables
 - Passing regression + fuzz tests.
 - Report summarizing tolerated ranges and monitoring guidelines.
+
+## Progress 2025-10-23
+- Added `test/amo/DustToleranceDos.test.ts` covering minimal-value rebalances and high dust tolerance governance scenarios with dual positive-slippage adapters.
+- Verified routing emits `StrategiesRebalanced`/`StrategySharesExchanged` and preserves total managed assets after threshold bump + withdraw.
+- TODO: extend with fuzz harness exploring randomized tolerance adjustments and adapter ordering per outline step 5.
