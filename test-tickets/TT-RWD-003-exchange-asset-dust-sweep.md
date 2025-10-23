@@ -25,3 +25,9 @@ Prove that exchange-asset dust cannot be siphoned through reward token configura
 ## Deliverables
 - Regression test verifying dust round-trip.
 - Optional fuzz harness covering random reward sets.
+
+## Progress 2025-10-23
+- Scaffolded placeholder tests covering dust elimination and ordering invariance in `test/dstake/RewardExchangeDust.test.ts`.
+- Remaining: dust seeding fixtures to reproduce rounding residue.
+- Remaining: multi-iteration compounding loop to prove convergence.
+- Remaining: reward ordering fuzzing harness to confirm invariance.
