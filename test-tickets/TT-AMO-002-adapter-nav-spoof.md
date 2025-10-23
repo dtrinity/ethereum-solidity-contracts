@@ -24,3 +24,8 @@ Detect and block adapters that over- or under-report strategy NAV, preventing mi
 - Spec demonstrating mitigation behaviour.
 - Fuzz harness verifying tolerance enforcement.
 - Ops note describing monitoring of `nav_mismatch_count`.
+
+## Progress 2025-10-23
+- Added `MockAdapterNavSpoofer` helper exposing configurable mint/value factors and wired it through the router harness.
+- Implemented `AdapterNavSpoof.test.ts` covering honest routing, mint under-delivery slippage, and inflated NAV reporting.
+- TODO: extend with fuzz harness for adapter reporting drift and surface telemetry counter for nav mismatch tracking.
