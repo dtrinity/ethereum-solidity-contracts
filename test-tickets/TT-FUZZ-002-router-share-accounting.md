@@ -9,6 +9,11 @@ Stress the dSTAKE router through random deposits, withdrawals, rebalances, short
 - `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`
 - Invariant test `test/fuzz/dstake/RouterShareAccountingInvariant.t.sol`
 
+## Progress 2025-10-23
+- Scaffolded `test/fuzz/dstake/RouterShareAccountingInvariant.t.sol` with placeholder setup, action generators, and invariant checks mirroring TT-FUZZ-001 structure.
+- Remaining work: connect real strategy adapters, swap placeholder accounting helper for live NAV tracking, and register the harness with the fuzz runner.
+- Planned command once wiring lands: `forge test --match-path test/fuzz/dstake/RouterShareAccountingInvariant.t.sol`
+
 ## Fuzz Plan
 1. Deploy router + collateral vault with multiple strategy adapters (honest mock) and reward manager hooks.
 2. Randomly select actions per iteration:
