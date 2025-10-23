@@ -23,3 +23,8 @@ Guarantee that accrued rewards remain with treasury even when idle vault supply 
 ## Deliverables
 - Deterministic regression test covering zero-supply edge.
 - Invariant helper verifying long-run treasury balance.
+
+## Progress 2025-10-23
+- Authored `test/amo/IdleVaultRewardSweep.test.ts` exercising sentinel-withdraw sweeps and multi-interval keeper cadence checks against `DStakeIdleVault`.
+- Built in emission-rate tolerances so depositor balances stay flat despite block-timestamp rounding while asserting treasury captures every accrued wei.
+- Ran `yarn hardhat test test/amo/IdleVaultRewardSweep.test.ts`.
