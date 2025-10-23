@@ -23,3 +23,7 @@ Ensure adversarial receivers (burn address, reverting contracts, ERC777 hooks) c
 ## Deliverables
 - Regression spec validating each receiver type.
 - Optional invariant verifying reward manager balance returns to zero post-compound.
+
+## Progress 2025-10-23
+- Scaffolded `test/dstake/RewardReceiverGriefing.test.ts` with failing placeholders for burn, revert, and ERC777 reentry griefing cases.
+- Pending: wire up mock receivers, integrate fixture deployments, and assert state/event outcomes plus fuzz coverage.
