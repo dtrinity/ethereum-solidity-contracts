@@ -27,3 +27,8 @@ Cover the scenario where the primary oracle feed exceeds `maxDeviationBps`, forc
 - Passing spec under `test/oracles/FallbackDeviationTrap.test.ts`.
 - Script or assertion ensuring `usedFallback` state is observable for monitoring.
 - Summary notes in PR linking to this ticket.
+
+## Progress 2025-10-23
+- Added `test/oracles/FallbackDeviationTrap.test.ts` covering primary deviation into the HardPeg fallback path and recovery back to the Chainlink feed.
+- Pending IssuerV2/RedeemerV2 revert assertions until fallback gating is enforced in those flows.
+- Environment reminder: `MNEMONIC_TESTNET_DEPLOYER is not set in the .env file`, `No private keys found for ethereum_testnet in the .env file`, `MNEMONIC_MAINNET_DEPLOYER is not set in the .env file`, `No private keys found for ethereum_mainnet in the .env file`.
