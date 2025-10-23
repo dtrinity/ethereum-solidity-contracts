@@ -9,6 +9,11 @@ Randomised sequences of mint, redeem, and AMO supply adjustments must preserve t
 - `contracts/dstable/AmoManagerV2.sol`
 - Foundry/Hardhat invariant suite `test/fuzz/dstable/IssuerRedeemerInvariant.t.sol`
 
+## Progress 2025-10-23
+- Scaffolded `test/fuzz/dstable/IssuerRedeemerInvariant.t.sol` with placeholder setup, action generators, and invariant assertions awaiting real contract wiring.
+- Remaining work: hook in system fixtures, replace stubs with live calls, and register the harness with the fuzz runner.
+- Planned command once fixtures are connected: `forge test --match-path test/fuzz/dstable/IssuerRedeemerInvariant.t.sol`
+
 ## Fuzz Plan
 1. Initialise system with multiple collateral assets and oracle feeds (mocked with configurable price/heartbeat).
 2. Generate random operations:
