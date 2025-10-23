@@ -23,3 +23,7 @@ Verify reward managers zero allowances and observe vault balance changes so mali
 ## Deliverables
 - Regression spec covering malicious + honest adapters.
 - Written guidance for monitoring share deltas post-compound.
+
+## Progress 2025-10-23
+- Scaffolded `test/dstake/RewardAdapterFloatTheft.test.ts` with failing placeholders for malicious theft and honest regression cases.
+- Pending: implement malicious adapter mock, add explicit allowance reset assertions, and verify vault balance deltas.
