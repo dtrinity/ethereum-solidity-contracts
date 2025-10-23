@@ -25,3 +25,8 @@ Validate that stale oracle data beyond the configured heartbeat forces consumer 
 ## Deliverables
 - Deterministic test covering stale window breach and recovery.
 - Documentation of emitted events/metrics needed for ops dashboards.
+
+## Progress 2025-10-23
+- Added `test/oracles/HeartbeatDrag.test.ts` to exercise stale primary-feed flows on `OracleAggregatorV1_1`, covering heartbeat drag detection and recovery on fresh updates.
+- Confirmed `getPriceInfo` flips `isAlive` to `false` once `heartbeat + maxStaleTime` elapses and that `getAssetPrice` reverts with `PriceNotAlive`; TODO coverage for Issuer/Redeemer remains.
+- Environment blockers: `.env` currently reports `MNEMONIC_TESTNET_DEPLOYER is not set`, `No private keys found for ethereum_testnet`, `MNEMONIC_MAINNET_DEPLOYER is not set`, and `No private keys found for ethereum_mainnet`.
