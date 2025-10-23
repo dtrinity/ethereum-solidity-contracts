@@ -1,124 +1,74 @@
-# ERC20VestingNFT Design Documentation
+# ERC20VestingNFT — Design Notes
 
 ## Overview
 
-The `ERC20VestingNFT` contract implements a "soft locker" system for dSTAKE tokens with a 6-month vesting period. Users deposit dSTAKE tokens and receive NFTs that represent their locked positions. The contract supports two exit mechanisms: early redemption (burns NFT) and matured withdrawal (makes NFT soul-bound).
+`ERC20VestingNFT` provides a “soft lock” for dSTAKE: users deposit the ERC20
+underlying, receive an ERC721 representing the position, and later exit either
+by burning the NFT early or by withdrawing after the vesting period has elapsed.
+Once funds are withdrawn at maturity the NFT becomes soul-bound so the program
+can track long-term participation.
 
-## Key Design Decisions
+## Key Mechanics
 
-### 1. NFT State Management
+### Position lifecycle
+- **Deposit** – `deposit(amount)` pulls dSTAKE, mints a new NFT (IDs start at 1),
+  and stores `VestingPosition { amount, depositTime, matured }`.
+- **Pre-vest** – NFTs remain freely transferable and may be redeemed early.
+- **Post-vest withdraw** – `withdrawMatured` returns the locked tokens, marks the
+  position as `matured = true`, and the NFT becomes non-transferable.
+- **Early redemption** – `redeemEarly` burns the NFT, returns funds, and reduces
+  `totalDeposited`.
 
-- **Pre-vest**: NFT is transferable and can be burned for early exit
-- **Post-vest**: NFT becomes soul-bound (non-transferable) after matured withdrawal
-- **Burned**: NFT is destroyed when user exits before vesting period
+### Exit controls
+- `redeemEarly` reverts once the cliff has passed (`VestingAlreadyComplete`),
+  while `withdrawMatured` enforces the vesting timestamp (`VestingNotComplete`).
+- Matured NFTs persist with metadata for historical programmes; they cannot be
+  transferred because the `_update` override reverts `TransferOfMaturedToken`
+  whenever both sender and receiver are non-zero.
 
-### 2. Dual Exit Mechanisms
+### Supply management
+- `maxTotalSupply` caps cumulative deposits and can be adjusted by the owner.
+- `minDepositAmount` prevents dust deposits; `DepositBelowMinimum` guards the
+  entry point.
+- `depositsEnabled` toggles new deposits without impacting existing positions.
 
-- **Early Redemption (`redeemEarly`)**: Available before vesting period ends, burns the NFT
-- **Matured Withdrawal (`withdrawMatured`)**: Available after vesting period, makes NFT soul-bound
+## Implementation Notes
 
-### 3. Maximum Supply Control
+- Inherits OZ `ERC721`, `ERC721Enumerable`, and `ReentrancyGuard`; all external
+  flows that move tokens are marked `nonReentrant`.
+- Vesting duration and referenced ERC20 are immutable constructor parameters;
+  governance cannot shorten the vesting schedule after deployment.
+- `_tokenIdCounter` starts at 1 for a cleaner UX and sequential mint order.
+- `tokenURI` renders a Base64 SVG showing vesting progress, querying token
+  metadata such as amount, symbol, and remaining time.
+- `_tokenExists` checks rely on stored position amount rather than `_exists`
+  because positions are deleted on early redemption.
 
-- Owner can set/update maximum total dSTAKE supply that can be deposited
-- Prevents unlimited deposits while allowing program scaling
-- Separate from individual deposit limits
+## Security & Risk Controls
 
-### 4. Deposit Control
+- Owner powers are limited to toggling deposits and adjusting program-wide
+  thresholds (`maxTotalSupply`, `minDepositAmount`); funds always flow back to
+  users, never the owner.
+- Deposits revert on zero amounts, disabled flag, exceeding the cap, or if the
+  contract would overflow `totalDeposited`.
+- `safeTransfer` calls ensure ERC20 transfers propagate reverts from non-standard
+  tokens.
+- Immovable vesting window prevents governance from rug-pulling participants.
+- `withdrawMatured` deregisters stake from `totalDeposited` before transferring
+  tokens, keeping supply accounting accurate even if ERC20 transfers fail.
 
-- Owner can disable new deposits without affecting existing positions
-- Allows graceful program wind-down while preserving user rights
+## Extension Ideas
 
-### 5. Minimum Deposit Threshold
-
-- Owner can set a minimum amount for deposits to prevent micropayments and gas waste
-- Threshold is specified in the constructor and stored in `minDepositAmount`
-- Owner can update the threshold via `setMinDepositAmount`
-- The `deposit` function reverts with `DepositBelowMinimum` if `amount < minDepositAmount`
-
-### 6. NFT Metadata Strategy
-
-- Each NFT stores: deposit amount, deposit timestamp, and matured status
-- Token URI generation can be implemented to show vesting progress
-- Matured status prevents transfers after withdrawal
-
-## Non-Obvious Implementation Details
-
-### 1. Reentrancy Protection
-
-- All external functions that transfer tokens use `nonReentrant` modifier
-- Critical for preventing reentrancy attacks during deposit/withdrawal flows
-
-### 2. Soul-bound Implementation
-
-- Uses `matured` mapping instead of burning to preserve NFT history
-- Allows tracking of completed vesting positions
-- `_beforeTokenTransfer` hook prevents transfers of matured NFTs
-
-### 3. Vesting Period Immutability
-
-- Set at deployment time for predictability and trust
-- Cannot be changed by owner to prevent rug-pull scenarios
-- Users can rely on fixed 6-month timeline
-
-### 4. Token ID Management
-
-- Uses OpenZeppelin's `_tokenIdCounter` for sequential, unique IDs
-- Starts from 1 (not 0) for better UX and gas optimization
-
-### 5. Emergency Considerations
-
-- No emergency withdrawal function by design
-- Owner cannot access user funds or force early exits
-- Only controls: deposit enabling/disabling and max supply
-
-### 6. Gas Optimization
-
-- Struct packing in `VestingPosition` for efficient storage
-- Early returns in view functions to save gas
-- Minimal state changes in critical paths
-
-## Security Considerations
-
-### 1. Access Control
-
-- Only owner can disable deposits and set max supply
-- No admin functions that affect existing user positions
-- Users maintain full control over their vesting positions
-
-### 2. Integer Overflow Protection
-
-- Solidity 0.8.20+ has built-in overflow protection
-- Additional checks for max supply validation
-
-### 3. Input Validation
-
-- Zero amount deposits rejected
-- Zero address checks for token transfers
-- Proper NFT existence validation
-
-## Future Extension Points
-
-### 1. Metadata Enhancement
-
-- `tokenURI` can be implemented to show vesting progress
-- Could include visual indicators of time remaining
-
-### 2. Batch Operations
-
-- Multiple deposits/withdrawals in single transaction
-- Gas optimization for power users
-
-### 3. Delegation Features
-
-- Could add voting delegation while tokens are locked
-- Maintains governance participation during vesting
+- Implement batched deposit or withdrawal helpers to reduce gas for power users.
+- Add governance delegation hooks so locked positions retain voting power.
+- Expand the on-chain metadata renderer to showcase vesting schedules or
+  integrate with external dashboards.
 
 ## Program Lifecycle
 
-1. **Deployment**: Set vesting period (6 months), max supply
-2. **Active Phase**: Users deposit dSTAKE, receive NFTs
-3. **Wind-down**: Owner disables deposits (optional)
-4. **Vesting**: Users wait for 6-month period
-5. **Maturation**: Users can withdraw with soul-bound NFTs or redeem early
-
-This design balances user flexibility with program integrity, ensuring a fair and predictable vesting experience.
+1. **Deployment** – Configure vesting period, cap, and minimum deposit threshold.
+2. **Active phase** – Users deposit dSTAKE and receive transferable NFTs.
+3. **Wind-down** – Owner may disable deposits while allowing existing positions
+   to complete vesting.
+4. **Maturity** – Participants withdraw via `withdrawMatured` or exit early by
+   burning their NFT through `redeemEarly`.
