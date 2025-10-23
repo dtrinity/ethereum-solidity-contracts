@@ -23,3 +23,8 @@ Ensure malicious vault/adapters cannot fabricate settlement shortfalls to dilute
 ## Deliverables
 - Passing spec and invariant.
 - Stored reproduction script for ops dry-runs.
+
+## Progress (2025-10-23)
+- Added `test/amo/RouterShortfallSpoof.test.ts` to exercise DStakeRouterV2 with TestMintableERC20, DStakeTokenV2, DStakeCollateralVaultV2, and MockAdapterPositiveSlippage.
+- Baseline deposit, governance-recorded shortfall impacting previewDeposit, and clearing shortfall checks keep RouterDepositRouted emissions, share balances, and collateral value vs router totals aligned.
+- TODO: build invariant fuzz suite to cover alternating shortfall adjustments across multi-vault allocations.
