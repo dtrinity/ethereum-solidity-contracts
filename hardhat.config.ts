@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
           viaIR: true,
         },
       },
-      "contracts/amo/debt/AmoManagerV2.sol": {
+      "contracts/dstable/AmoManagerV2.sol": {
         version: "0.8.20",
         settings: {
           optimizer: {

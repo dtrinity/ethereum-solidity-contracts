@@ -70,11 +70,11 @@ slither: ## Run Slither static analysis on all contracts with summaries and loc
 	@mkdir -p reports
 	@echo "Generating JSON report..."
 	@slither . --config-file slither.config.json \
-		--filter-paths "contracts/dlend,contracts/mocks,contracts/testing" \
+		--filter-paths "contracts/dlend,contracts/testing" \
 		--json reports/slither/slither-report.json || true
 	@echo "Generating human-readable summary..."
 	@slither . --config-file slither.config.json \
-		--filter-paths "contracts/dlend,contracts/mocks,contracts/testing" \
+		--filter-paths "contracts/dlend,contracts/testing" \
 		--print human-summary \
 		--disable-color > reports/slither-summary.md 2>&1 || true
 	@echo "Results saved to reports/slither/slither-report.json and reports/slither-summary.md"
@@ -84,7 +84,7 @@ slither.check: ## Run Slither with fail-on-high severity with summaries and loc
 	@mkdir -p reports/slither
 	@mkdir -p reports
 	@slither . --config-file slither.config.json --fail-high \
-		--filter-paths "contracts/dlend,contracts/mocks,contracts/testing" \
+		--filter-paths "contracts/dlend,contracts/testing" \
 		--print human-summary \
 		--print contract-summary \
 		--print loc \
@@ -99,7 +99,7 @@ slither.focused: ## Run Slither on specific contract with summaries and loc (usa
 	@mkdir -p reports/slither
 	@mkdir -p reports
 	@slither $(contract) --config-file slither.config.json \
-		--filter-paths "contracts/dlend,contracts/mocks,contracts/testing" \
+		--filter-paths "contracts/dlend,contracts/testing" \
 		--print human-summary \
 		--print contract-summary \
 		--print loc \
