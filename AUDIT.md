@@ -27,6 +27,7 @@
 - Oracle surfaces power both minting and redemption logic for dStable and allocation logic for dSTAKE (contracts/oracle_aggregator/Design.md:93, contracts/dstable/Design.md:95, contracts/vaults/dstake/Design.md:37). Double-check price liveness propagation, failure handling, and `isAlive` semantics across these call sites.
 - dStable supply invariants hinge on accurate AMO accounting and collateral valuation (contracts/dstable/Design.md:49, contracts/dstable/Design.md:72). Any shortfall in dSTAKE routing must reconcile with issuer assumptions about circulating supply (contracts/vaults/dstake/Design.md:37, contracts/vaults/dstake/Design.md:160).
 - Reward managers pipe fees and incentives back into the dSTAKE collateral vault through adapters (contracts/vaults/rewards_claimable/Design.md:61, contracts/vaults/dstake/rewards/Design.md:1). Review allowance handling, adapter trust assumptions, and fee pathways alongside router dust-tolerance rules (contracts/vaults/dstake/Design.md:41, contracts/vaults/dstake/Design.md:112).
+- Aggregator and wrappers always share one base currency/unit; decimals are enforced at the wrapper boundary. Oracle providers such as API3 proxies and custom rate adapters do **not** expose on-chain decimals, so we rely on governance-supplied configuration and cannot auto-discover scaling changes. Future work should codify one-time resolution and immutable scaling checks during onboarding.
 
 ## Oracle Aggregator V1.1 (`contracts/oracle_aggregator/Design.md`)
 
@@ -54,6 +55,7 @@
 
 ### Module Findings
 - [open] ID:OA-101 Severity:medium Module:Oracle Aggregator V1.1 Owner:subagent-oa Summary:Manual decimals inputs in API3/composite wrappers can silently mis-scale prices Notes:`configureProxy` trusts caller-supplied `decimals` to build the scaling factor without validating it against the proxy output (contracts/oracle_aggregator/wrapper/API3WrapperV1_1.sol:55), and `configureComposite` does the same for both legs of the composite feed (contracts/oracle_aggregator/wrapper/ChainlinkRateCompositeWrapperV1_1.sol:58). A fat-fingered or malicious override shifts prices by orders of magnitude, bypassing the configured bounds/deviation checks that assume correct scaling and can leak inflated collateral values downstream. Recommend pulling decimals from the feed where available (e.g., `AggregatorV3Interface.decimals()`), or at minimum asserting the operator-provided factor matches an expected constant per asset.
+    - Limitation: API3 proxies and custom rate providers do not surface decimals on-chain; until wrappers enforce immutability during initial configuration, governance must ensure scale matches the source documentation when wiring assets.
 
 ## dStable Core System (`contracts/dstable/Design.md`)
 
