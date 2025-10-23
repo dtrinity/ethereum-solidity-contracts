@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { IDStakeCollateralVaultV2 } from "../vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol";
+import { IDStakeCollateralVaultV2 } from "contracts/vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol";
 
 error MockNotImplemented();
 

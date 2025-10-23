@@ -24,9 +24,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "contracts/deth/OracleAware.sol";
-import "contracts/deth/CollateralVault.sol";
-import "contracts/amo/debt/AmoDebtToken.sol";
+import "contracts/dstable/OracleAware.sol";
+import "contracts/dstable/CollateralVault.sol";
+import "contracts/dstable/AmoDebtToken.sol";
 import "contracts/common/IMintableERC20.sol";
 import "contracts/common/BasisPointConstants.sol";
 

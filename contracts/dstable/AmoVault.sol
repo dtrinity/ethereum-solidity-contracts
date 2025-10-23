@@ -23,7 +23,7 @@ import "contracts/common/IMintableERC20.sol";
 import "./AmoManager.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "contracts/deth/CollateralVault.sol";
+import "contracts/dstable/CollateralVault.sol";
 
 interface IRecoverable {
     function recoverERC20(address token, address to, uint256 amount) external;

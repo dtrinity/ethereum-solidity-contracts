@@ -4,10 +4,10 @@ pragma solidity ^0.8.20;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { BasisPointConstants } from "../common/BasisPointConstants.sol";
-import { SupportsWithdrawalFee } from "../common/SupportsWithdrawalFee.sol";
-import { IDStakeRouterV2 } from "../vaults/dstake/interfaces/IDStakeRouterV2.sol";
-import { IDStakeCollateralVaultV2 } from "../vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol";
+import { BasisPointConstants } from "contracts/common/BasisPointConstants.sol";
+import { SupportsWithdrawalFee } from "contracts/common/SupportsWithdrawalFee.sol";
+import { IDStakeRouterV2 } from "contracts/vaults/dstake/interfaces/IDStakeRouterV2.sol";
+import { IDStakeCollateralVaultV2 } from "contracts/vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol";
 
 error MockRouterNotImplemented();
 error MockRouterUnauthorized();
