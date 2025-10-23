@@ -8,6 +8,12 @@
 ## Shared Findings Log
 - Keep one bullet per finding. Template: `- [status] ID:<id> Severity:<level> Module:<module> Owner:<handle> Summary:<one-liner> Notes:<optional extra context>`
 - Example: `- [open] ID:OA-001 Severity:high Module:Oracle Aggregator Owner:alice Summary:Fallback wrapper can loop Notes:seeking reproduction`
+- [open] ID:OA-101 Severity:medium Module:Oracle Aggregator V1.1 Owner:subagent-oa Summary:Manual decimals inputs in API3/composite wrappers can silently mis-scale prices Notes:`configureProxy` trusts caller-supplied `decimals` to build the scaling factor without validating it against the proxy output (contracts/oracle_aggregator/wrapper/API3WrapperV1_1.sol:55), and `configureComposite` does the same for both legs of the composite feed (contracts/oracle_aggregator/wrapper/ChainlinkRateCompositeWrapperV1_1.sol:58). A fat-fingered or malicious override shifts prices by orders of magnitude, bypassing the configured bounds/deviation checks that assume correct scaling and can leak inflated collateral values downstream. Recommend pulling decimals from the feed where available (e.g., `AggregatorV3Interface.decimals()`), or at minimum asserting the operator-provided factor matches an expected constant per asset.
+- [none] ID:DS-000 Severity:info Module:dStable Core System Owner:subagent-ds Summary:No material findings Notes:n/a
+- [none] ID:DV-000 Severity:info Module:dSTAKE V2 Vault Suite Owner:subagent-dv Summary:No material findings Notes:n/a
+- [open] ID:DR-001 Severity:low Module:RewardClaimable & dSTAKE Rewards Owner:subagent-dr Summary:DLend reward manager leaves adapter allowance uncleared after compounding Notes:contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:197 approves the adapter with `forceApprove` but never zeroes it, leaving residual allowance contrary to the documented hygiene pattern and giving a compromised/misconfigured adapter a standing right to sweep any dStable that later lands on the manager.
+- [open] ID:DR-002 Severity:info Module:RewardClaimable & dSTAKE Rewards Owner:subagent-dr Summary:DLend compounding path fully trusts the registered adapter to mint strategy shares to the collateral vault Notes:contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:200-212 only checks the adapter-reported share address and does not verify the vault’s balance delta (unlike the MetaMorpho manager), so loss of trust in the router/adapter registry directly exposes user deposits.
+- [none] ID:VN-000 Severity:info Module:ERC20VestingNFT Program Owner:subagent-vn Summary:No material findings Notes:n/a
 
 ## Module Index
 - [Oracle Aggregator V1.1](#oracle-aggregator-v11-contracts_oracle_aggregatordesignmd)
@@ -47,7 +53,7 @@
 - [ ] Evaluate aggregator storage layout for upgradability hazards and collision risks.
 
 ### Module Findings
-- Log entries using the shared finding template scoped to this module.
+- [open] ID:OA-101 Severity:medium Module:Oracle Aggregator V1.1 Owner:subagent-oa Summary:Manual decimals inputs in API3/composite wrappers can silently mis-scale prices Notes:`configureProxy` trusts caller-supplied `decimals` to build the scaling factor without validating it against the proxy output (contracts/oracle_aggregator/wrapper/API3WrapperV1_1.sol:55), and `configureComposite` does the same for both legs of the composite feed (contracts/oracle_aggregator/wrapper/ChainlinkRateCompositeWrapperV1_1.sol:58). A fat-fingered or malicious override shifts prices by orders of magnitude, bypassing the configured bounds/deviation checks that assume correct scaling and can leak inflated collateral values downstream. Recommend pulling decimals from the feed where available (e.g., `AggregatorV3Interface.decimals()`), or at minimum asserting the operator-provided factor matches an expected constant per asset.
 
 ## dStable Core System (`contracts/dstable/Design.md`)
 
@@ -75,7 +81,7 @@
 - [ ] Confirm pauser roles cannot permanently lock balances or bypass governance expectations.
 
 ### Module Findings
-- Log entries using the shared finding template scoped to this module.
+- [none] ID:DS-000 Severity:info Module:dStable Core System Owner:subagent-ds Summary:No material findings Notes:n/a
 
 ## dSTAKE V2 Vault Suite (`contracts/vaults/dstake/Design.md`)
 
@@ -104,7 +110,7 @@
 - [ ] Confirm collateral vault rescue paths cannot drain supported strategy shares.
 
 ### Module Findings
-- Log entries using the shared finding template scoped to this module.
+- [none] ID:DV-000 Severity:info Module:dSTAKE V2 Vault Suite Owner:subagent-dv Summary:No material findings Notes:n/a
 
 ## RewardClaimable & dSTAKE Rewards (`contracts/vaults/rewards_claimable/Design.md` & `contracts/vaults/dstake/rewards/Design.md`)
 
@@ -131,7 +137,8 @@
 - [ ] Confirm claimer approvals on external controllers are revocable and monitored.
 
 ### Module Findings
-- Log entries using the shared finding template scoped to this module.
+- [open] ID:DR-001 Severity:low Module:RewardClaimable & dSTAKE Rewards Owner:subagent-dr Summary:DLend reward manager leaves adapter allowance uncleared after compounding Notes:contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:197 approves the adapter with `forceApprove` but never zeroes it, leaving residual allowance contrary to the documented hygiene pattern and giving a compromised/misconfigured adapter a standing right to sweep any dStable that later lands on the manager.
+- [open] ID:DR-002 Severity:info Module:RewardClaimable & dSTAKE Rewards Owner:subagent-dr Summary:DLend compounding path fully trusts the registered adapter to mint strategy shares to the collateral vault Notes:contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:200-212 only checks the adapter-reported share address and does not verify the vault’s balance delta (unlike the MetaMorpho manager), so loss of trust in the router/adapter registry directly exposes user deposits.
 
 ## ERC20VestingNFT Program (`contracts/vaults/vesting/Design.md`)
 
@@ -158,4 +165,4 @@
 - [ ] Assess impact of disabling deposits on pending maturations and event logs.
 
 ### Module Findings
-- Log entries using the shared finding template scoped to this module.
+- [none] ID:VN-000 Severity:info Module:ERC20VestingNFT Program Owner:subagent-vn Summary:No material findings Notes:n/a

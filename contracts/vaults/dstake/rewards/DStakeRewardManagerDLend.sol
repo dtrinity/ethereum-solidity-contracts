@@ -198,6 +198,7 @@ contract DStakeRewardManagerDLend is RewardClaimable {
 
         // The adapter's depositIntoStrategy is expected to pull dStable and mint strategy shares to the collateral vault
         (address mintedStrategyShare, uint256 mintedAmount) = adapter.depositIntoStrategy(amountDStableToCompound);
+        IERC20(exchangeAsset).forceApprove(adapterAddress, 0);
 
         if (mintedStrategyShare != defaultStrategyShare) {
             revert AdapterReturnedUnexpectedAsset(defaultStrategyShare, mintedStrategyShare);
