@@ -1,0 +1,27 @@
+# Test Ticket: Oracle Heartbeat Drag
+
+## Objective
+Validate that stale oracle data beyond the configured heartbeat forces consumer contracts to halt price-dependent flows and emits observability signals.
+
+## Scope
+- `contracts/oracle_aggregator/OracleAggregatorV1_1.sol`
+- `contracts/dstable/IssuerV2.sol` and `RedeemerV2.sol`
+- Spec file `test/oracles/HeartbeatDrag.test.ts`
+
+## Test Outline
+1. Deploy aggregator, issuer, redeemer with mock feeds returning fixed price.
+2. Advance block timestamp beyond `maxStaleTime` while leaving price unchanged.
+3. Assert:
+   - `getAssetPrice` returns `isAlive = false`.
+   - Issuer/redeemer calls revert with expected stale-price error.
+   - Heartbeat breach event emitted for monitoring.
+4. Guardian refreshes price (mock wrapper update) inside heartbeat; verify normal operation resumes.
+
+## Fixtures & Tooling
+- Time manipulation helper (Hardhat `helpers.time.increase`).
+- Mock wrapper exposing manual `pushPrice` with timestamps.
+- Optional cron-emulation script checking `block.timestamp - updatedAt`.
+
+## Deliverables
+- Deterministic test covering stale window breach and recovery.
+- Documentation of emitted events/metrics needed for ops dashboards.

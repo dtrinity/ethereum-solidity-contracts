@@ -56,6 +56,23 @@
 - **Adapter float theft** – DLend manager approves adapters at `contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol:197` without verifying share balances, so a malicious adapter can drain the allowance. Mirror the MetaMorpho balance check (`contracts/vaults/dstake/rewards/DStakeRewardManagerMetaMorpho.sol:268`) and assert allowance resets to zero.
 - **Exchange asset dust sweep** – Including peg collateral in the reward list in `contracts/vaults/rewards_claimable/RewardClaimable.sol:200` forwards any dust to arbitrary receivers. Separate dust sweep tooling from reward distribution and test that `compoundRewards` leaves no residual base assets.
 
+## Validation Backlog
+
+### Oracle Manipulation (Planner OA-VAL)
+- **Fallback deviation trap** – Build `test/oracles/FallbackDeviationTrap.test.ts` using `MockAggregatorV3` feeds and Hardhat time controls; assert `usedFallback` flips and downstream mint/redeem revert once deviation triggered. Add watch script for `FallbackTriggered`/`BatchRefresh` logs and simulate guardian multisig `setDeviationThreshold` via impersonation.
+- **Heartbeat drag** – Author `test/oracles/HeartbeatDrag.test.ts` advancing time beyond policy; expect consumer calls (issuer/redeemer) to revert with `StalePrice`. Deploy cron job comparing `block.timestamp - updatedAt` against heartbeat and alert when ratio exceeds thresholds.
+
+### AMO & Router Integrity (Planner AMO-VAL)
+- **Shortfall spoofing** – Add Hardhat suite `test/amo/RouterShortfallSpoof.test.ts` with malicious vault stub and Foundry invariant ensuring `router.totalDebt` matches vault sum. Emit diagnostic events and monitor repeated shortfall reports without NAV drops.
+- **Adapter NAV spoof** – Test via `AdapterNavSpoof.test.ts` using overeporting adapter; enforce invariant `abs(reported-nav - trusted) <= tolerance`. Track `nav_mismatch_count` metrics and require governance runbook for mitigation.
+- **Idle vault reward sweep** – Implement `IdleVaultRewardSweep.test.ts` verifying accrued rewards remain with treasury when supply is zero; add invariant checking expected vs actual treasury take and monitor `RewardSweepExecuted` recipients.
+- **Dust tolerance DoS** – Create stress test around `dustTolerance` adjustments to ensure withdrawals proceed; fuzz ±1 wei around threshold and log residual balances. Monitor tolerance changes on-chain and document reproduction script.
+
+### Reward Pipeline Hardening (Planner REWARD-VAL)
+- **Receiver griefing** – Add harness receivers (reverting/burn) to tests confirming atomic revert with no state drift; fuzz receiver behaviors with invariant `ReceiverBehaviorInvariant.t.sol`. Monitor repeated `compoundRewards` reverts tied to specific receivers.
+- **Adapter float theft** – Introduce malicious adapter tests verifying allowance resets and vault balance checks; create script `checkAdapterFloat.ts` comparing on-chain nav vs adapter previews and monitor discrepancies.
+- **Exchange asset dust sweep** – Test rounding-dust accumulation paths ensuring balances cleared; add long-sequence fuzz on token orderings
+
 ## Oracle Aggregator V1.1 (`contracts/oracle_aggregator/Design.md`)
 
 ### Scope Snapshot
