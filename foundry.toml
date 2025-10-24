@@ -1,0 +1,29 @@
+[profile.default]
+src = "foundry/src"
+test = "foundry/test"
+script = "foundry/script"
+out = "foundry/out"
+cache_path = "foundry/cache"
+libs = ["foundry/lib", "node_modules"]
+solc = "0.8.30"
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+remappings = [
+  "@openzeppelin/=node_modules/@openzeppelin/",
+  "@chainlink/=node_modules/@chainlink/",
+  "@api3/=node_modules/@api3/",
+  "dstable/=foundry/src/dstable/",
+  "common/=foundry/src/common/",
+  "testing/=foundry/src/testing/",
+  "vaults/=foundry/src/vaults/",
+  "forge-std/=foundry/lib/forge-std/src/",
+  "ds-test/=foundry/lib/forge-std/lib/ds-test/src/"
+]
+
+[profile.default.fuzz]
+runs = 256
+
+[fmt]
+line_length = 120

@@ -1,5 +1,8 @@
 # Test Ticket: Reward Receiver Griefing
 
+## Status
+Completed — regression suite landed in `test/dstake/RewardReceiverGriefing.test.ts`.
+
 ## Objective
 Ensure adversarial receivers (burn address, reverting contracts, ERC777 hooks) cannot destroy rewards or corrupt state when `compoundRewards` executes.
 
@@ -24,6 +27,7 @@ Ensure adversarial receivers (burn address, reverting contracts, ERC777 hooks) c
 - Regression spec validating each receiver type.
 - Optional invariant verifying reward manager balance returns to zero post-compound.
 
-## Progress 2025-10-23
-- Scaffolded `test/dstake/RewardReceiverGriefing.test.ts` with failing placeholders for burn, revert, and ERC777 reentry griefing cases.
-- Pending: wire up mock receivers, integrate fixture deployments, and assert state/event outcomes plus fuzz coverage.
+## Progress 2025-10-24
+- Added token and receiver harnesses to simulate burn, revert, and hook-driven griefing.
+- Implemented Hardhat spec covering zero-address guard, blocklisted recipient rollbacks, and hook-based reentrancy protection.
+- Verified eslint formatting and targeted Hardhat test run (`yarn hardhat test test/dstake/RewardReceiverGriefing.test.ts`).

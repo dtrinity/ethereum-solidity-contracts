@@ -7,12 +7,16 @@ Randomised sequences of mint, redeem, and AMO supply adjustments must preserve t
 - `contracts/dstable/IssuerV2.sol`
 - `contracts/dstable/RedeemerV2.sol`
 - `contracts/dstable/AmoManagerV2.sol`
-- Foundry/Hardhat invariant suite `test/fuzz/dstable/IssuerRedeemerInvariant.t.sol`
+- Foundry invariant suite `foundry/test/dstable/IssuerRedeemerInvariant.t.sol`
 
-## Progress 2025-10-23
-- Scaffolded `test/fuzz/dstable/IssuerRedeemerInvariant.t.sol` with placeholder setup, action generators, and invariant assertions awaiting real contract wiring.
-- Remaining work: hook in system fixtures, replace stubs with live calls, and register the harness with the fuzz runner.
-- Planned command once fixtures are connected: `forge test --match-path test/fuzz/dstable/IssuerRedeemerInvariant.t.sol`
+## Progress 2025-10-24
+- Replaced the scaffold with a live Foundry harness at `foundry/test/dstable/IssuerRedeemerInvariant.t.sol`. The suite now deploys a mintable dStable, `CollateralHolderVault`, `IssuerV2`, `RedeemerV2`, `AmoManager`, and `MockAmoVault`, then fuzzes real issue/redeem/AMO flows.
+- Added utilities for mintable ERC20, mock oracle, and invariant fixtures under `foundry/test/utils/`.
+- Command: `forge test --match-path foundry/test/dstable/IssuerRedeemerInvariant.t.sol`
+
+## Status
+- ✅ Deliverables complete – invariant passes and logs counterexample seeds on failure.
+- 🔜 Optional enhancements: expand to multi-asset collateral coverage and integrate pause/fee toggles if we want broader permutations.
 
 ## Fuzz Plan
 1. Initialise system with multiple collateral assets and oracle feeds (mocked with configurable price/heartbeat).
