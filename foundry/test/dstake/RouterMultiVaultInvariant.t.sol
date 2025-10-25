@@ -476,6 +476,31 @@ contract RouterMultiVaultInvariant is Test {
         }
         collateralVault.setTotalValue(total);
         stdstore.target(address(dStakeToken)).sig("backingAssets()").checked_write(total);
+
+        uint256 managedAssets = total + dstable.balanceOf(address(router));
+        _reconcileShortfall(managedAssets);
+    }
+
+    function _reconcileShortfall(uint256 managedAssets) internal {
+        uint256 supply = dStakeToken.totalSupply();
+        uint256 targetShortfall = supply > managedAssets ? supply - managedAssets : 0;
+        uint256 currentShortfall = router.currentShortfall();
+
+        if (targetShortfall > currentShortfall) {
+            uint256 headroom = managedAssets > currentShortfall ? managedAssets - currentShortfall : 0;
+            uint256 delta = targetShortfall - currentShortfall;
+            if (delta > headroom) {
+                delta = headroom;
+            }
+            if (delta > 0) {
+                router.recordShortfall(delta);
+            }
+        } else if (currentShortfall > targetShortfall) {
+            uint256 delta = currentShortfall - targetShortfall;
+            if (delta > 0) {
+                router.clearShortfall(delta);
+            }
+        }
     }
 
     function _aggregateVaultValue() internal view returns (uint256 total) {
