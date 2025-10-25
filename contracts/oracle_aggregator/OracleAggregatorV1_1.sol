@@ -501,11 +501,8 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     }
 
     function _baseCurrencyPriceData() private view returns (PriceData memory) {
-        return PriceData({
-            price: BASE_CURRENCY_UNIT().toUint192(),
-            updatedAt: uint64(block.timestamp),
-            isAlive: true
-        });
+        return
+            PriceData({ price: BASE_CURRENCY_UNIT().toUint192(), updatedAt: uint64(block.timestamp), isAlive: true });
     }
 
     function _validateOracleCompatibility(address oracle) private view {

@@ -18,13 +18,7 @@ async function deployIdleVaultFixture(): Promise<{
   const asset = (await tokenFactory.deploy("Mock dStable", "dSTBL", 18)) as TestMintableERC20;
 
   const vaultFactory = await ethers.getContractFactory("DStakeIdleVault");
-  const vault = (await vaultFactory.deploy(
-    asset.target,
-    "dStake Idle Vault",
-    "dIDLE",
-    admin.address,
-    treasury.address,
-  )) as DStakeIdleVault;
+  const vault = (await vaultFactory.deploy(asset.target, "dStake Idle Vault", "dIDLE", admin.address, treasury.address)) as DStakeIdleVault;
 
   return { admin, treasury, alice, keeper, asset, vault };
 }

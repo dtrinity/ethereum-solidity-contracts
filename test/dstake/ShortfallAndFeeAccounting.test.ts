@@ -142,9 +142,10 @@ describe("dSTAKE shortfall & fee accounting", function () {
         const roundingTolerance = shortfall / 100_000n + 10n;
         expect(deltaDifference).to.be.lte(roundingTolerance);
 
-        await expect(
-          dStakeToken.connect(user).withdraw(maxWithdrawBefore, user.address, user.address),
-        ).to.be.revertedWithCustomError(dStakeToken, "ERC4626ExceedsMaxWithdraw");
+        await expect(dStakeToken.connect(user).withdraw(maxWithdrawBefore, user.address, user.address)).to.be.revertedWithCustomError(
+          dStakeToken,
+          "ERC4626ExceedsMaxWithdraw",
+        );
 
         await router.connect(admin).clearShortfall(shortfall);
         expect(await router.currentShortfall()).to.equal(0);

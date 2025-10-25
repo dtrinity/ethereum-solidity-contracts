@@ -47,9 +47,7 @@ describe("Heartbeat drag", () => {
     const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
     wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
 
-    await wrapper
-      .connect(manager)
-      .configureFeed(asset, feed.target, Number(HEARTBEAT), Number(MAX_STALE_TIME), 0, 0, 0);
+    await wrapper.connect(manager).configureFeed(asset, feed.target, Number(HEARTBEAT), Number(MAX_STALE_TIME), 0, 0, 0);
 
     await aggregator.connect(manager).setOracle(asset, wrapper.target);
     await aggregator.connect(manager).updateAssetRiskConfig(asset, Number(MAX_STALE_TIME), Number(HEARTBEAT), 0, 0, 0);
@@ -69,9 +67,7 @@ describe("Heartbeat drag", () => {
     expect(staleInfo.isAlive).to.equal(false);
     expect(staleInfo.price).to.equal(INITIAL_PRICE);
 
-    await expect(aggregator.getAssetPrice(asset))
-      .to.be.revertedWithCustomError(aggregator, "PriceNotAlive")
-      .withArgs(asset);
+    await expect(aggregator.getAssetPrice(asset)).to.be.revertedWithCustomError(aggregator, "PriceNotAlive").withArgs(asset);
 
     await feed.setMock(INITIAL_PRICE);
 

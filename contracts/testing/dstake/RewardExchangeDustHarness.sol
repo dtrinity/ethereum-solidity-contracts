@@ -22,9 +22,11 @@ contract RewardExchangeDustHarness is RewardClaimable {
     uint256 public dustDivisor;
     address public depositSink;
 
-    constructor(address exchangeAsset_, address treasury_, address depositSink_)
-        RewardClaimable(exchangeAsset_, treasury_, 10_000, 0, 1)
-    {
+    constructor(
+        address exchangeAsset_,
+        address treasury_,
+        address depositSink_
+    ) RewardClaimable(exchangeAsset_, treasury_, 10_000, 0, 1) {
         if (depositSink_ == address(0)) {
             revert ZeroDepositSink();
         }
@@ -55,11 +57,10 @@ contract RewardExchangeDustHarness is RewardClaimable {
         depositSink = newSink;
     }
 
-    function _claimRewards(address[] calldata rewardTokens, address receiver)
-        internal
-        override
-        returns (uint256[] memory rewardAmounts)
-    {
+    function _claimRewards(
+        address[] calldata rewardTokens,
+        address receiver
+    ) internal override returns (uint256[] memory rewardAmounts) {
         rewardAmounts = new uint256[](rewardTokens.length);
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             address token = rewardTokens[i];

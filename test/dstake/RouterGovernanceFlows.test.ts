@@ -52,10 +52,7 @@ describe("DStakeRouterV2 governance flows", function () {
 
       const getShareToken = async (address: string): Promise<IERC20> => {
         if (!erc20Cache.has(address)) {
-          const token = (await ethers.getContractAt(
-            "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20",
-            address,
-          )) as IERC20;
+          const token = (await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", address)) as IERC20;
           erc20Cache.set(address, token);
         }
         return erc20Cache.get(address)!;
@@ -63,10 +60,7 @@ describe("DStakeRouterV2 governance flows", function () {
 
       const getVaultInterface = async (address: string): Promise<IERC4626> => {
         if (!erc4626Cache.has(address)) {
-          const vault = (await ethers.getContractAt(
-            "@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626",
-            address,
-          )) as IERC4626;
+          const vault = (await ethers.getContractAt("@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626", address)) as IERC4626;
           erc4626Cache.set(address, vault);
         }
         return erc4626Cache.get(address)!;
@@ -79,10 +73,7 @@ describe("DStakeRouterV2 governance flows", function () {
 
       const toUnits = (value: string) => ethers.parseUnits(value, decimals);
 
-      const depositThroughRouter = async (
-        amount: bigint,
-        receiver: HardhatEthersSigner = user,
-      ): Promise<ContractTransactionReceipt> => {
+      const depositThroughRouter = async (amount: bigint, receiver: HardhatEthersSigner = user): Promise<ContractTransactionReceipt> => {
         await dStableToken.connect(deployer).mint(receiver.address, amount);
         await dStableToken.connect(receiver).approve(dStakeTokenAddress, amount);
         const tx = await dStakeToken.connect(receiver).deposit(amount, receiver.address);
@@ -91,10 +82,7 @@ describe("DStakeRouterV2 governance flows", function () {
 
       const absBigInt = (value: bigint) => (value >= 0n ? value : -value);
 
-      const parseRouterEvent = (
-        receipt: ContractTransactionReceipt,
-        eventName: string,
-      ): ParsedRouterEvent => {
+      const parseRouterEvent = (receipt: ContractTransactionReceipt, eventName: string): ParsedRouterEvent => {
         for (const log of receipt.logs) {
           try {
             const parsed = router.interface.parseLog(log);
@@ -183,9 +171,7 @@ describe("DStakeRouterV2 governance flows", function () {
         expect(moveAmount).to.be.gt(0n);
 
         const navBefore = await dStakeToken.totalAssets();
-        const receipt = await (
-          await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, moveAmount, 1n)
-        ).wait();
+        const receipt = await (await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, moveAmount, 1n)).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
         expect(event?.args?.fromStrategyShare).to.equal(fromVault);
         expect(event?.args?.toStrategyShare).to.equal(toVault);
@@ -209,17 +195,12 @@ describe("DStakeRouterV2 governance flows", function () {
         const tertiary = candidateVaults[1];
 
         const initialPrimaryBalance = await shareBalance(primaryVault);
-        await router
-          .connect(governance)
-          .rebalanceStrategiesByShares(primaryVault, secondary.strategyVault, initialPrimaryBalance / 2n, 1n);
+        await router.connect(governance).rebalanceStrategiesByShares(primaryVault, secondary.strategyVault, initialPrimaryBalance / 2n, 1n);
 
         const fromShares = (await shareBalance(secondary.strategyVault)) / 2n;
         expect(fromShares).to.be.gt(0n);
 
-        const fromAdapter = (await ethers.getContractAt(
-          "IDStableConversionAdapterV2",
-          secondary.adapter,
-        )) as IDStableConversionAdapterV2;
+        const fromAdapter = (await ethers.getContractAt("IDStableConversionAdapterV2", secondary.adapter)) as IDStableConversionAdapterV2;
         const dStableEquivalent = await fromAdapter.previewWithdrawFromStrategy(fromShares);
         const toVaultInterface = await getVaultInterface(tertiary.strategyVault);
         const expectedToShares = await toVaultInterface.previewDeposit(dStableEquivalent);
@@ -229,12 +210,7 @@ describe("DStakeRouterV2 governance flows", function () {
         const receipt = await (
           await router
             .connect(governance)
-            .rebalanceStrategiesBySharesViaExternalLiquidity(
-              secondary.strategyVault,
-              tertiary.strategyVault,
-              fromShares,
-              minToShares,
-            )
+            .rebalanceStrategiesBySharesViaExternalLiquidity(secondary.strategyVault, tertiary.strategyVault, fromShares, minToShares)
         ).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
         expect(event?.args?.fromStrategyShare).to.equal(secondary.strategyVault);
@@ -258,9 +234,7 @@ describe("DStakeRouterV2 governance flows", function () {
         const tertiary = otherVaults[1];
 
         const initialBalance = await shareBalance(sourceVault);
-        await router
-          .connect(governance)
-          .rebalanceStrategiesByShares(sourceVault, tertiary.strategyVault, initialBalance / 2n, 1n);
+        await router.connect(governance).rebalanceStrategiesByShares(sourceVault, tertiary.strategyVault, initialBalance / 2n, 1n);
 
         const tertiaryAdapter = (await ethers.getContractAt(
           "IDStableConversionAdapterV2",
@@ -296,9 +270,7 @@ describe("DStakeRouterV2 governance flows", function () {
         const alternateVault = multiVault.vaults.find((vault) => vault.strategyVault !== targetVault)!;
 
         const primaryBalance = await shareBalance(targetVault);
-        await router
-          .connect(governance)
-          .rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, primaryBalance / 3n, 1n);
+        await router.connect(governance).rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, primaryBalance / 3n, 1n);
 
         const navBeforeRemoval = await dStakeToken.totalAssets();
         const adapterAddress = await router.strategyShareToAdapter(targetVault);
@@ -310,9 +282,7 @@ describe("DStakeRouterV2 governance flows", function () {
 
         await router.connect(governance).setVaultStatus(targetVault, VAULT_STATUS.Active);
         await expect(
-          router
-            .connect(governance)
-            .rebalanceStrategiesByShares(alternateVault.strategyVault, targetVault, 1n, 1n),
+          router.connect(governance).rebalanceStrategiesByShares(alternateVault.strategyVault, targetVault, 1n, 1n),
         ).to.be.revertedWithCustomError(router, "AdapterNotFound");
 
         await router.connect(governance).addAdapter(targetVault, adapterAddress);
@@ -353,9 +323,7 @@ describe("DStakeRouterV2 governance flows", function () {
         const fromBalance = await shareBalance(activeVault);
         const moveAmount = fromBalance / 4n;
         const receipt = await (
-          await router
-            .connect(governance)
-            .rebalanceStrategiesByShares(activeVault, toggledVault, moveAmount, 1n)
+          await router.connect(governance).rebalanceStrategiesByShares(activeVault, toggledVault, moveAmount, 1n)
         ).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
         expect(event?.args?.toStrategyShare).to.equal(toggledVault);

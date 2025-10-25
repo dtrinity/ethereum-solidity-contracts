@@ -70,10 +70,7 @@ describe("DStakeRouterV2 solver routes", function () {
 
       const getShareToken = async (address: string): Promise<IERC20> => {
         if (!erc20Cache.has(address)) {
-          const token = (await ethers.getContractAt(
-            "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20",
-            address,
-          )) as IERC20;
+          const token = (await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", address)) as IERC20;
           erc20Cache.set(address, token);
         }
         return erc20Cache.get(address)!;
@@ -81,10 +78,7 @@ describe("DStakeRouterV2 solver routes", function () {
 
       const getVaultInterface = async (address: string): Promise<IERC4626> => {
         if (!erc4626Cache.has(address)) {
-          const vault = (await ethers.getContractAt(
-            "@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626",
-            address,
-          )) as IERC4626;
+          const vault = (await ethers.getContractAt("@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626", address)) as IERC4626;
           erc4626Cache.set(address, vault);
         }
         return erc4626Cache.get(address)!;
@@ -136,9 +130,7 @@ describe("DStakeRouterV2 solver routes", function () {
 
         await mintAndApproveSolver(totalAssets);
         const minShares = await dStakeToken.previewDeposit(totalAssets);
-        await (
-          await router.connect(solver).solverDepositShares(candidateVaults, shareTargets, minShares, solver.address)
-        ).wait();
+        await (await router.connect(solver).solverDepositShares(candidateVaults, shareTargets, minShares, solver.address)).wait();
 
         return {
           vaults: candidateVaults,
@@ -153,10 +145,7 @@ describe("DStakeRouterV2 solver routes", function () {
         if (!adapterAddress) {
           throw new Error(`no controllable adapter registered for ${vault}`);
         }
-        return (await ethers.getContractAt(
-          "MockControlledERC4626Adapter",
-          adapterAddress,
-        )) as MockControlledERC4626Adapter;
+        return (await ethers.getContractAt("MockControlledERC4626Adapter", adapterAddress)) as MockControlledERC4626Adapter;
       };
 
       beforeEach(async function () {
@@ -171,10 +160,7 @@ describe("DStakeRouterV2 solver routes", function () {
         collateralVault = env.collateralVault as DStakeCollateralVaultV2;
 
         const dStableAddress = await env.dStableToken.getAddress();
-        dStableToken = (await ethers.getContractAt(
-          "ERC20StablecoinUpgradeable",
-          dStableAddress,
-        )) as ERC20StablecoinUpgradeable;
+        dStableToken = (await ethers.getContractAt("ERC20StablecoinUpgradeable", dStableAddress)) as ERC20StablecoinUpgradeable;
         decimals = env.dStableInfo.decimals;
 
         if (!env.multiVault) {
@@ -245,9 +231,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const previewShares = await dStakeToken.previewDeposit(totalAssets);
 
         await mintAndApproveSolver(totalAssets);
-        await expect(
-          router.connect(solver).solverDepositShares(targetVaults, shareTargets, previewShares + 1n, solver.address),
-        )
+        await expect(router.connect(solver).solverDepositShares(targetVaults, shareTargets, previewShares + 1n, solver.address))
           .to.be.revertedWithCustomError(router, "SharesBelowMinimum")
           .withArgs(previewShares, previewShares + 1n);
       });
@@ -264,9 +248,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const assetsNeeded = await (await getVaultInterface(targetVault)).previewMint(shareAmount);
 
         await mintAndApproveSolver(assetsNeeded);
-        await expect(
-          router.connect(solver).solverDepositShares([targetVault], [shareAmount], 0n, solver.address),
-        )
+        await expect(router.connect(solver).solverDepositShares([targetVault], [shareAmount], 0n, solver.address))
           .to.be.revertedWithCustomError(router, "VaultNotActive")
           .withArgs(targetVault);
       });
@@ -284,9 +266,7 @@ describe("DStakeRouterV2 solver routes", function () {
         await mintAndApproveSolver(assetAmount);
 
         const balanceBefore = await shareBalance(controlledVault.strategyVault);
-        await expect(
-          router.connect(solver).solverDepositShares([controlledVault.strategyVault], [shareAmount], 0n, solver.address),
-        )
+        await expect(router.connect(solver).solverDepositShares([controlledVault.strategyVault], [shareAmount], 0n, solver.address))
           .to.be.revertedWithCustomError(adapter, "AdapterForcedFailure")
           .withArgs("deposit");
 
@@ -311,9 +291,7 @@ describe("DStakeRouterV2 solver routes", function () {
 
         const solverDStableBefore = await dStableToken.balanceOf(solver.address);
         const receipt = await (
-          await router
-            .connect(solver)
-            .solverWithdrawShares(plan.vaults, withdrawShares, maxShares, solver.address, solver.address)
+          await router.connect(solver).solverWithdrawShares(plan.vaults, withdrawShares, maxShares, solver.address, solver.address)
         ).wait();
 
         const withdrawEvent = parseRouterEvent(receipt, "RouterSolverWithdraw");
@@ -344,9 +322,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const previewShares = await dStakeToken.previewWithdraw(netAssets);
 
         await expect(
-          router
-            .connect(solver)
-            .solverWithdrawShares(plan.vaults, withdrawShares, previewShares - 1n, solver.address, solver.address),
+          router.connect(solver).solverWithdrawShares(plan.vaults, withdrawShares, previewShares - 1n, solver.address, solver.address),
         )
           .to.be.revertedWithCustomError(router, "SharesExceedMaxRedeem")
           .withArgs(previewShares, previewShares - 1n);
@@ -365,9 +341,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const withdrawalShares = plan.vaults.map((vault) => (vault === targetVault ? shareAmount : 0n));
 
         await expect(
-          router
-            .connect(solver)
-            .solverWithdrawShares(plan.vaults, withdrawalShares, ethers.MaxUint256, solver.address, solver.address),
+          router.connect(solver).solverWithdrawShares(plan.vaults, withdrawalShares, ethers.MaxUint256, solver.address, solver.address),
         ).to.be.revertedWithCustomError(router, "ShareWithdrawalConversionFailed");
       });
 
@@ -379,9 +353,7 @@ describe("DStakeRouterV2 solver routes", function () {
 
         const solverDStableBefore = await dStableToken.balanceOf(solver.address);
         const receipt = await (
-          await router
-            .connect(solver)
-            .solverWithdrawAssets(plan.vaults, assetRequests, previewShares, solver.address, solver.address)
+          await router.connect(solver).solverWithdrawAssets(plan.vaults, assetRequests, previewShares, solver.address, solver.address)
         ).wait();
 
         const withdrawEvent = parseRouterEvent(receipt, "RouterSolverWithdraw");
@@ -398,9 +370,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const previewShares = await dStakeToken.previewWithdraw(totalNetAssets);
 
         await expect(
-          router
-            .connect(solver)
-            .solverWithdrawAssets(plan.vaults, assetRequests, previewShares - 1n, solver.address, solver.address),
+          router.connect(solver).solverWithdrawAssets(plan.vaults, assetRequests, previewShares - 1n, solver.address, solver.address),
         )
           .to.be.revertedWithCustomError(router, "SharesExceedMaxRedeem")
           .withArgs(previewShares, previewShares - 1n);
@@ -413,9 +383,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const transferAmount = plan.shareTargets[0] / 4n;
 
         const navBefore = await dStakeToken.totalAssets();
-        const receipt = await (
-          await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, transferAmount, 1n)
-        ).wait();
+        const receipt = await (await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, transferAmount, 1n)).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
 
         expect(event?.args?.fromStrategyShare).to.equal(fromVault);
@@ -431,9 +399,7 @@ describe("DStakeRouterV2 solver routes", function () {
         const fromVault = plan.vaults[0];
         const toVault = plan.vaults[1];
 
-        await expect(
-          router.connect(solver).rebalanceStrategiesByShares(fromVault, toVault, plan.shareTargets[0] / 5n, 1n),
-        )
+        await expect(router.connect(solver).rebalanceStrategiesByShares(fromVault, toVault, plan.shareTargets[0] / 5n, 1n))
           .to.be.revertedWithCustomError(router, "AccessControlUnauthorizedAccount")
           .withArgs(solver.address, rebalancerRole);
       });

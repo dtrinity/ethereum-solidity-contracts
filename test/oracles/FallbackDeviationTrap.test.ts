@@ -33,9 +33,7 @@ describe("FallbackDeviationTrap", () => {
     guardian = guardianSigner;
     asset = ethers.Wallet.createRandom().address;
 
-    const aggregatorFactory = (await ethers.getContractFactory(
-      "OracleAggregatorV1_1",
-    )) as OracleAggregatorV1_1__factory;
+    const aggregatorFactory = (await ethers.getContractFactory("OracleAggregatorV1_1")) as OracleAggregatorV1_1__factory;
     aggregator = await aggregatorFactory.deploy(
       ethers.ZeroAddress,
       BASE_UNIT,
@@ -45,21 +43,15 @@ describe("FallbackDeviationTrap", () => {
       3600,
     );
 
-    const feedFactory = (await ethers.getContractFactory(
-      "MockChainlinkAggregatorV3",
-    )) as MockChainlinkAggregatorV3__factory;
+    const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
     mockFeed = await feedFactory.deploy(8, "PRIMARY");
     await mockFeed.setMock(PEG_PRICE);
 
-    const chainlinkWrapperFactory = (await ethers.getContractFactory(
-      "ChainlinkFeedWrapperV1_1",
-    )) as ChainlinkFeedWrapperV1_1__factory;
+    const chainlinkWrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
     primaryWrapper = await chainlinkWrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
     await primaryWrapper.connect(manager).configureFeed(asset, mockFeed.target, HEARTBEAT, 0, 0, 0, 0);
 
-    const hardPegFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-    )) as HardPegOracleWrapperV1_1__factory;
+    const hardPegFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1")) as HardPegOracleWrapperV1_1__factory;
     fallbackWrapper = (await hardPegFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address)) as HardPegOracleWrapperV1_1;
     await fallbackWrapper.connect(manager).configurePeg(asset, PEG_PRICE, 99_000000n, 101_000000n);
 

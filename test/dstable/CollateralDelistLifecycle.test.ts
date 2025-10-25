@@ -2,14 +2,7 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import hre, { getNamedAccounts } from "hardhat";
 
-import {
-  CollateralHolderVault,
-  IssuerV2,
-  OracleAggregatorV1_1,
-  RedeemerV2,
-  TestERC20,
-  TestMintableERC20,
-} from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { getConfig } from "../../config/config";
 import { TokenInfo, getTokenContractForSymbol } from "../../typescript/token/utils";
 import { createDStableFixture, DUSD_CONFIG } from "./fixtures";
@@ -78,14 +71,10 @@ describe("dUSD Collateral delist lifecycle", function () {
     redeemerPauserSigner = (await redeemer.hasRole(redeemerPauserRole, governanceAddress)) ? governanceSigner : deployerSigner;
 
     const collateralManagerRole = await collateralVault.COLLATERAL_MANAGER_ROLE();
-    collateralManagerSigner = (await collateralVault.hasRole(collateralManagerRole, governanceAddress))
-      ? governanceSigner
-      : deployerSigner;
+    collateralManagerSigner = (await collateralVault.hasRole(collateralManagerRole, governanceAddress)) ? governanceSigner : deployerSigner;
 
     const oracleManagerRole = await oracleAggregator.ORACLE_MANAGER_ROLE();
-    oracleManagerSigner = (await oracleAggregator.hasRole(oracleManagerRole, governanceAddress))
-      ? governanceSigner
-      : deployerSigner;
+    oracleManagerSigner = (await oracleAggregator.hasRole(oracleManagerRole, governanceAddress)) ? governanceSigner : deployerSigner;
   });
 
   it("handles oracle loss, governance delisting, and re-onboarding", async function () {
@@ -151,16 +140,18 @@ describe("dUSD Collateral delist lifecycle", function () {
     const navAfterDustIsolation = await collateralVault.totalValue();
     expect(navAfterDustIsolation).to.equal(navBeforeIssuance);
 
-    await oracleAggregator.connect(oracleManagerSigner).configureAsset(
-      collateralInfo.address,
-      preservedOracleConfig.oracle,
-      preservedOracleConfig.fallbackOracle,
-      preservedOracleConfig.risk.maxStaleTime,
-      preservedOracleConfig.risk.heartbeat,
-      preservedOracleConfig.risk.maxDeviationBps,
-      preservedOracleConfig.risk.minAnswer,
-      preservedOracleConfig.risk.maxAnswer,
-    );
+    await oracleAggregator
+      .connect(oracleManagerSigner)
+      .configureAsset(
+        collateralInfo.address,
+        preservedOracleConfig.oracle,
+        preservedOracleConfig.fallbackOracle,
+        preservedOracleConfig.risk.maxStaleTime,
+        preservedOracleConfig.risk.heartbeat,
+        preservedOracleConfig.risk.maxDeviationBps,
+        preservedOracleConfig.risk.minAnswer,
+        preservedOracleConfig.risk.maxAnswer,
+      );
 
     await expect(collateralVault.connect(collateralManagerSigner).allowCollateral(collateralInfo.address))
       .to.emit(collateralVault, "CollateralAllowed")

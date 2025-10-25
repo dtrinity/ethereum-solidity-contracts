@@ -26,21 +26,9 @@ interface DustHarnessContext {
 async function deployDustHarnessFixture(): Promise<DustHarnessContext> {
   const [deployer, treasury, keeper, vault, receiver] = (await ethers.getSigners()) as HardhatEthersSigner[];
 
-  const exchangeToken = (await ethers.deployContract("TestMintableERC20", [
-    "dStable",
-    "dSTB",
-    18,
-  ])) as TestMintableERC20;
-  const alphaToken = (await ethers.deployContract("TestMintableERC20", [
-    "AlphaReward",
-    "ALPHA",
-    18,
-  ])) as TestMintableERC20;
-  const betaToken = (await ethers.deployContract("TestMintableERC20", [
-    "BetaReward",
-    "BETA",
-    18,
-  ])) as TestMintableERC20;
+  const exchangeToken = (await ethers.deployContract("TestMintableERC20", ["dStable", "dSTB", 18])) as TestMintableERC20;
+  const alphaToken = (await ethers.deployContract("TestMintableERC20", ["AlphaReward", "ALPHA", 18])) as TestMintableERC20;
+  const betaToken = (await ethers.deployContract("TestMintableERC20", ["BetaReward", "BETA", 18])) as TestMintableERC20;
 
   const rewardManager = (await ethers.deployContract("RewardExchangeDustHarness", [
     exchangeToken.target,
@@ -141,16 +129,10 @@ describe("RewardExchangeDust", function () {
         await rewardManager.connect(keeper).compoundRewards(depositAmount, rewardTokens, receiver.address);
 
         const contractBalance = await exchangeToken.balanceOf(rewardManager.target);
-        expect(contractBalance).to.equal(
-          deterministicRemainder,
-          `unexpected dust after iteration ${i + 1}`,
-        );
+        expect(contractBalance).to.equal(deterministicRemainder, `unexpected dust after iteration ${i + 1}`);
 
         const sinkBalance = await exchangeToken.balanceOf(vault.address);
-        expect(sinkBalance).to.equal(
-          forwarded * BigInt(i + 1),
-          `vault should receive each forwarded deposit portion (iteration ${i + 1})`,
-        );
+        expect(sinkBalance).to.equal(forwarded * BigInt(i + 1), `vault should receive each forwarded deposit portion (iteration ${i + 1})`);
       }
 
       const receiverExchangeBalance = await exchangeToken.balanceOf(receiver.address);
@@ -193,9 +175,7 @@ describe("RewardExchangeDust", function () {
 
       const compounds = BigInt(orders.length);
       const orderingRemainderBonus = orders.length > 0 ? deterministicRemainder * BigInt(orders.length - 1) : 0n;
-      expect(await exchangeToken.balanceOf(receiver.address)).to.equal(
-        exchangeRewardAmount * compounds + orderingRemainderBonus,
-      );
+      expect(await exchangeToken.balanceOf(receiver.address)).to.equal(exchangeRewardAmount * compounds + orderingRemainderBonus);
       expect(await alphaToken.balanceOf(receiver.address)).to.equal(alphaRewardAmount * compounds);
       expect(await betaToken.balanceOf(receiver.address)).to.equal(betaRewardAmount * compounds);
       expect(await exchangeToken.balanceOf(keeper.address)).to.equal(0n);

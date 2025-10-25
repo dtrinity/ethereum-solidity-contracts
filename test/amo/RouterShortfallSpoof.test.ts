@@ -45,10 +45,7 @@ describe("RouterShortfallSpoof", function () {
     dStakeToken = (await ethers.getContractAt("DStakeTokenV2", proxy.target)) as DStakeTokenV2;
 
     const CollateralVaultFactory = await ethers.getContractFactory("DStakeCollateralVaultV2");
-    collateralVault = (await CollateralVaultFactory.deploy(
-      dStakeToken.target,
-      dStable.target,
-    )) as DStakeCollateralVaultV2;
+    collateralVault = (await CollateralVaultFactory.deploy(dStakeToken.target, dStable.target)) as DStakeCollateralVaultV2;
 
     const RouterFactory = await ethers.getContractFactory("DStakeRouterV2");
     router = (await RouterFactory.deploy(dStakeToken.target, collateralVault.target)) as DStakeRouterV2;
@@ -59,18 +56,10 @@ describe("RouterShortfallSpoof", function () {
     const AdapterFactory = await ethers.getContractFactory("MockAdapterPositiveSlippage");
     adapter = (await AdapterFactory.deploy(dStable.target, collateralVault.target)) as MockAdapterPositiveSlippage;
     const strategyShareAddress = await adapter.strategyShare();
-    strategyShare = (await ethers.getContractAt(
-      "MockERC4626Simple",
-      strategyShareAddress,
-    )) as unknown as MockERC4626Simple;
+    strategyShare = (await ethers.getContractAt("MockERC4626Simple", strategyShareAddress)) as unknown as MockERC4626Simple;
 
     await router.addAdapter(strategyShareAddress, adapter.target);
-    await router["addVaultConfig(address,address,uint256,uint8)"](
-      strategyShareAddress,
-      adapter.target,
-      ONE_HUNDRED_PERCENT_BPS,
-      0,
-    );
+    await router["addVaultConfig(address,address,uint256,uint8)"](strategyShareAddress, adapter.target, ONE_HUNDRED_PERCENT_BPS, 0);
     await router.setDefaultDepositStrategyShare(strategyShareAddress);
   });
 

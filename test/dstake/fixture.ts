@@ -33,7 +33,6 @@ const VAULT_STATUS = {
 const MULTI_VAULT_TARGETS = [500_000n, 300_000n, 200_000n] as const;
 const MULTI_VAULT_DEFAULT_INDEX = 1;
 
-
 export interface DStakeFixtureConfig {
   dStableSymbol: "dUSD" | "dETH";
   DStakeTokenSymbol: string;
@@ -128,10 +127,7 @@ async function fetchDStakeComponents(
     (await deployments.get(config.collateralVaultContractId)).address,
   );
 
-  const router = (await ethers.getContractAt(
-    "DStakeRouterV2",
-    (await deployments.get(config.routerContractId)).address,
-  )) as DStakeRouterV2;
+  const router = (await ethers.getContractAt("DStakeRouterV2", (await deployments.get(config.routerContractId)).address)) as DStakeRouterV2;
 
   const wrappedATokenAddress = (await deployments.get(config.dStableSymbol === "dUSD" ? DUSD_A_TOKEN_WRAPPER_ID : DETH_A_TOKEN_WRAPPER_ID))
     .address;

@@ -49,10 +49,7 @@ describe("DustToleranceDos", function () {
     dStakeToken = (await ethers.getContractAt("DStakeTokenV2", proxy.target)) as DStakeTokenV2;
 
     const CollateralVaultFactory = await ethers.getContractFactory("DStakeCollateralVaultV2");
-    collateralVault = (await CollateralVaultFactory.deploy(
-      dStakeToken.target,
-      dStable.target,
-    )) as DStakeCollateralVaultV2;
+    collateralVault = (await CollateralVaultFactory.deploy(dStakeToken.target, dStable.target)) as DStakeCollateralVaultV2;
 
     const RouterFactory = await ethers.getContractFactory("DStakeRouterV2");
     router = (await RouterFactory.deploy(dStakeToken.target, collateralVault.target)) as DStakeRouterV2;
@@ -76,18 +73,8 @@ describe("DustToleranceDos", function () {
     const sixtyPercentTarget = 600_000;
     const fortyPercentTarget = ONE_HUNDRED_PERCENT_BPS - sixtyPercentTarget;
 
-    await router["addVaultConfig(address,address,uint256,uint8)"](
-      strategyShareA,
-      adapterA.target,
-      sixtyPercentTarget,
-      0,
-    );
-    await router["addVaultConfig(address,address,uint256,uint8)"](
-      strategyShareB,
-      adapterB.target,
-      fortyPercentTarget,
-      0,
-    );
+    await router["addVaultConfig(address,address,uint256,uint8)"](strategyShareA, adapterA.target, sixtyPercentTarget, 0);
+    await router["addVaultConfig(address,address,uint256,uint8)"](strategyShareB, adapterB.target, fortyPercentTarget, 0);
 
     await router.setDefaultDepositStrategyShare(strategyShareA);
 
@@ -112,24 +99,13 @@ describe("DustToleranceDos", function () {
     const expectedDStable = await adapterA.previewWithdrawFromStrategy(requiredShareAmount);
     const expectedToShares = await vaultTokenB.previewDeposit(expectedDStable);
 
-    const tx = await router
-      .connect(rebalancer)
-      .rebalanceStrategiesByValue(strategyShareA, strategyShareB, tranche, 0);
+    const tx = await router.connect(rebalancer).rebalanceStrategiesByValue(strategyShareA, strategyShareB, tranche, 0);
 
     await expect(tx)
       .to.emit(router, "StrategySharesExchanged")
-      .withArgs(
-        strategyShareA,
-        strategyShareB,
-        requiredShareAmount,
-        expectedToShares,
-        expectedDStable,
-        rebalancer.address,
-      );
+      .withArgs(strategyShareA, strategyShareB, requiredShareAmount, expectedToShares, expectedDStable, rebalancer.address);
 
-    await expect(tx)
-      .to.emit(router, "StrategiesRebalanced")
-      .withArgs(strategyShareA, strategyShareB, tranche, rebalancer.address);
+    await expect(tx).to.emit(router, "StrategiesRebalanced").withArgs(strategyShareA, strategyShareB, tranche, rebalancer.address);
 
     const fromBalanceAfter = await vaultTokenA.balanceOf(collateralVault.target);
     const toBalanceAfter = await vaultTokenB.balanceOf(collateralVault.target);
@@ -163,24 +139,13 @@ describe("DustToleranceDos", function () {
     const expectedDStable = await adapterA.previewWithdrawFromStrategy(requiredShareAmount);
     const expectedToShares = await vaultTokenB.previewDeposit(expectedDStable);
 
-    const tx = await router
-      .connect(rebalancer)
-      .rebalanceStrategiesByValue(strategyShareA, strategyShareB, rebalanceAmount, 0);
+    const tx = await router.connect(rebalancer).rebalanceStrategiesByValue(strategyShareA, strategyShareB, rebalanceAmount, 0);
 
     await expect(tx)
       .to.emit(router, "StrategySharesExchanged")
-      .withArgs(
-        strategyShareA,
-        strategyShareB,
-        requiredShareAmount,
-        expectedToShares,
-        expectedDStable,
-        rebalancer.address,
-      );
+      .withArgs(strategyShareA, strategyShareB, requiredShareAmount, expectedToShares, expectedDStable, rebalancer.address);
 
-    await expect(tx)
-      .to.emit(router, "StrategiesRebalanced")
-      .withArgs(strategyShareA, strategyShareB, rebalanceAmount, rebalancer.address);
+    await expect(tx).to.emit(router, "StrategiesRebalanced").withArgs(strategyShareA, strategyShareB, rebalanceAmount, rebalancer.address);
 
     const fromBalanceAfter = await vaultTokenA.balanceOf(collateralVault.target);
     const toBalanceAfter = await vaultTokenB.balanceOf(collateralVault.target);
@@ -193,4 +158,3 @@ describe("DustToleranceDos", function () {
     expect(managedAssets).to.equal(totalAssets);
   });
 });
-

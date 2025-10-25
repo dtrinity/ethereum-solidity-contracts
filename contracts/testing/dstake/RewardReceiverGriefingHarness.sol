@@ -16,9 +16,12 @@ contract RewardReceiverGriefingHarness is RewardClaimable {
     address public immutable vault;
     uint256 public claimAmount;
 
-    constructor(address exchangeAsset_, address rewardToken_, address treasury_, address vault_)
-        RewardClaimable(exchangeAsset_, treasury_, 10_000, 0, 1)
-    {
+    constructor(
+        address exchangeAsset_,
+        address rewardToken_,
+        address treasury_,
+        address vault_
+    ) RewardClaimable(exchangeAsset_, treasury_, 10_000, 0, 1) {
         rewardToken = IERC20(rewardToken_);
         vault = vault_;
     }
@@ -31,11 +34,10 @@ contract RewardReceiverGriefingHarness is RewardClaimable {
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function _claimRewards(address[] calldata rewardTokens, address receiver)
-        internal
-        override
-        returns (uint256[] memory amounts)
-    {
+    function _claimRewards(
+        address[] calldata rewardTokens,
+        address receiver
+    ) internal override returns (uint256[] memory amounts) {
         if (rewardTokens.length != 1 || rewardTokens[0] != address(rewardToken)) {
             revert UnsupportedRewardToken(rewardTokens.length == 0 ? address(0) : rewardTokens[0]);
         }
