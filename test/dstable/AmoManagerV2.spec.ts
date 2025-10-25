@@ -718,7 +718,7 @@ function runTestsForDStable(
               try {
                 await collateralToken.nonces(amoWallet);
               } catch {
-                console.log(`Skipping permit test for ${symbol} - no permit support`);
+                this.skip();
                 return;
               }
 

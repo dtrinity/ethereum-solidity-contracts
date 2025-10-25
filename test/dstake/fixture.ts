@@ -235,15 +235,6 @@ export async function executeSetupDLendRewards(
 
   const emissionPerSecond = emissionPerSecondSetting ?? ethers.parseUnits("1", rewardTokenInfo.decimals ?? 18);
 
-  console.log("Configuring rewards with:", {
-    asset: dLendAssetToClaimFor,
-    reward: rewardTokenInfo.address,
-    transferStrategyAddress,
-    rewardOracle,
-    emissionPerSecond: emissionPerSecond.toString(),
-    distributionEnd,
-  });
-
   // Call configureAssets via EmissionManager, now that signer is emissionAdmin for the rewardToken
   try {
     await emissionManager.connect(signer).configureAssets([

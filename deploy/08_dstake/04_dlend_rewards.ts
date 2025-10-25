@@ -216,11 +216,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       rewardManagerConfig.initialExchangeThreshold,
     ];
 
-    console.log(
-      `⛏️ Preparing DStakeRewardManagerDLend_${instanceKey} with args:`,
-      deployArgs.map((arg) => (typeof arg === "bigint" ? arg.toString() : arg)),
-    );
-
     const rewardManagerDeploymentName = `DStakeRewardManagerDLend_${instanceKey}`;
     const deployment = await deploy(rewardManagerDeploymentName, {
       from: deployer,

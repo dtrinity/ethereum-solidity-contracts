@@ -173,14 +173,13 @@ dstableConfigs.forEach((config) => {
     }
 
     /**
-     * Verifies oracle setup for all tokens and logs their prices
-     * This is useful for debugging and understanding the test environment
+     * Verifies oracle setup for all tokens by fetching their prices
      */
     async function verifyOracleSetup() {
       // Check dStable token
       try {
         const dsPrice = await oracleAggregatorContract.getAssetPrice(dstableInfo.address);
-        console.log(`  ✓ Successfully read price for ${dstableInfo.symbol}: ${dsPrice}`);
+        assert.isTrue(dsPrice > 0, `dStable oracle price for ${dstableInfo.symbol} should be positive`);
       } catch (error: any) {
         throw new Error(`✗ Failed to verify oracle for ${dstableInfo.symbol}: ${error.message}`);
       }
@@ -189,7 +188,7 @@ dstableConfigs.forEach((config) => {
       for (const [symbol, info] of collateralInfos.entries()) {
         try {
           const price = await oracleAggregatorContract.getAssetPrice(info.address);
-          console.log(`  ✓ Successfully read price for ${symbol}: ${price}`);
+          assert.isTrue(price > 0, `Oracle price for ${symbol} should be positive`);
         } catch (error: any) {
           throw new Error(`✗ Failed to verify oracle for ${symbol}: ${error.message}`);
         }
