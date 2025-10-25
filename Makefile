@@ -63,7 +63,7 @@ test.hardhat: ## Run the hardhat tests
 	@yarn hardhat test
 
 test.foundry: ## Run the Foundry (forge) test suite
-	@$(FORGE) test --root foundry
+	@$(FORGE) test
 
 ######################
 ## Static Analysis ##

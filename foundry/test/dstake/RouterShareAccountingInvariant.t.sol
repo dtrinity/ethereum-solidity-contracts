@@ -136,14 +136,16 @@ contract RouterShareAccountingInvariant is Test {
 
     function invariantRouterSupplyTracksNav() public view {
         uint256 nav = router.totalManagedAssets();
+        uint256 shortfall = router.currentShortfall();
         uint256 backing = dStakeToken.totalAssets();
-        assertEq(backing, nav, "Router backing must match reported managed assets");
+        uint256 expectedBacking = nav > shortfall ? nav - shortfall : 0;
+        assertEq(backing, expectedBacking, "Router backing must equal managed assets net of shortfall");
     }
 
     function invariantTokenSupplyMatchesRouter() public view {
         uint256 supply = dStakeToken.totalSupply();
-        uint256 backing = dStakeToken.totalAssets();
-        assertEq(supply, backing, "Share supply must equal backing assets");
+        uint256 nav = router.totalManagedAssets();
+        assertEq(supply, nav, "Share supply must equal gross managed assets");
     }
 
     // -------------------------------------------------------------------------
