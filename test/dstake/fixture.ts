@@ -6,7 +6,7 @@ import { ERC20, IDStableConversionAdapterV2 } from "../../typechain-types";
 import { IERC20 } from "../../typechain-types/@openzeppelin/contracts/token/ERC20/IERC20";
 import { DStakeRouterV2 } from "../../typechain-types/contracts/vaults/dstake/DStakeRouterV2.sol";
 import { DStakeIdleVault } from "../../typechain-types/contracts/vaults/dstake/vaults/DStakeIdleVault";
-import { GenericERC4626ConversionAdapter } from "../../typechain-types/contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter";
+import { MockControlledERC4626Adapter } from "../../typechain-types/contracts/testing/dstake/MockControlledERC4626Adapter";
 import {
   DETH_A_TOKEN_WRAPPER_ID,
   DUSD_A_TOKEN_WRAPPER_ID,
@@ -89,6 +89,7 @@ export interface RouterVaultState {
 export interface MultiVaultFixtureState {
   defaultDepositVault: string;
   vaults: RouterVaultState[];
+  controllableAdapters?: Record<string, string>;
 }
 
 export interface DStakeFixtureOptions {
@@ -286,7 +287,10 @@ export type DStakeFixtureResult = Awaited<ReturnType<typeof fetchDStakeComponent
   multiVault?: MultiVaultFixtureState;
 };
 
-async function collectMultiVaultState(router: DStakeRouterV2): Promise<MultiVaultFixtureState> {
+async function collectMultiVaultState(
+  router: DStakeRouterV2,
+  controllableAdapters?: Record<string, string>,
+): Promise<MultiVaultFixtureState> {
   const vaultCount = Number(await router.getVaultCount());
   const vaults: RouterVaultState[] = [];
   for (let i = 0; i < vaultCount; i++) {
@@ -299,10 +303,16 @@ async function collectMultiVaultState(router: DStakeRouterV2): Promise<MultiVaul
     });
   }
 
-  return {
+  const state: MultiVaultFixtureState = {
     defaultDepositVault: await router.defaultDepositStrategyShare(),
     vaults,
   };
+
+  if (controllableAdapters) {
+    state.controllableAdapters = controllableAdapters;
+  }
+
+  return state;
 }
 
 async function ensureMultiVaultRouterState(
@@ -310,10 +320,6 @@ async function ensureMultiVaultRouterState(
   hre: HardhatRuntimeEnvironment,
 ): Promise<MultiVaultFixtureState> {
   const router = base.router as DStakeRouterV2;
-  const existingCount = Number(await router.getVaultCount());
-  if (existingCount >= MULTI_VAULT_TARGETS.length) {
-    return collectMultiVaultState(router);
-  }
 
   const deployer = base.deployer;
   const deployerAddress = await deployer.getAddress();
@@ -321,7 +327,7 @@ async function ensureMultiVaultRouterState(
   const collateralVaultAddress = await base.collateralVault.getAddress();
 
   const idleVaultFactory = await hre.ethers.getContractFactory("DStakeIdleVault", deployer);
-  const adapterFactory = await hre.ethers.getContractFactory("GenericERC4626ConversionAdapter", deployer);
+  const adapterFactory = await hre.ethers.getContractFactory("MockControlledERC4626Adapter", deployer);
 
   const idleLabels = ["Alpha", "Beta"];
   const idleVaults: DStakeIdleVault[] = [];
@@ -337,19 +343,24 @@ async function ensureMultiVaultRouterState(
     idleVaults.push(vault);
   }
 
-  const adapters: GenericERC4626ConversionAdapter[] = [];
+  const adapters: MockControlledERC4626Adapter[] = [];
   for (const vault of idleVaults) {
     const adapter = (await adapterFactory.deploy(
       dStableAddress,
       await vault.getAddress(),
       collateralVaultAddress,
-    )) as GenericERC4626ConversionAdapter;
+    )) as MockControlledERC4626Adapter;
     await adapter.waitForDeployment();
     adapters.push(adapter);
   }
 
   const idleVaultAddresses = await Promise.all(idleVaults.map((vault) => vault.getAddress()));
   const adapterAddresses = await Promise.all(adapters.map((adapter) => adapter.getAddress()));
+
+  const controllableAdapters: Record<string, string> = {};
+  idleVaultAddresses.forEach((vaultAddr, idx) => {
+    controllableAdapters[vaultAddr] = adapterAddresses[idx];
+  });
 
   const vaultConfigs = [
     {
@@ -377,7 +388,7 @@ async function ensureMultiVaultRouterState(
   const defaultDepositVault = vaultConfigs[MULTI_VAULT_DEFAULT_INDEX].strategyVault;
   await routerWithDeployer.setDefaultDepositStrategyShare(defaultDepositVault);
 
-  return collectMultiVaultState(router);
+  return collectMultiVaultState(router, controllableAdapters);
 }
 
 export const createDStakeFixture = (config: DStakeFixtureConfig, options?: DStakeFixtureOptions) => {
