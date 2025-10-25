@@ -265,6 +265,9 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
     function getPriceInfo(address asset) public view override returns (PriceData memory) {
         AggregatorAssetConfig storage config = _assetConfigs[asset];
         if (!config.risk.exists) {
+            if (_isBaseAsset(asset)) {
+                return _baseCurrencyPriceData();
+            }
             revert AssetNotConfigured(asset);
         }
 
@@ -300,6 +303,9 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
             address asset = assets[i];
             AggregatorAssetConfig storage config = _assetConfigs[asset];
             if (!config.risk.exists) {
+                if (_isBaseAsset(asset)) {
+                    prices[i] = _baseCurrencyPriceData();
+                }
                 continue;
             }
 
@@ -488,6 +494,18 @@ contract OracleAggregatorV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
         }
 
         return true;
+    }
+
+    function _isBaseAsset(address asset) private view returns (bool) {
+        return asset == BASE_CURRENCY();
+    }
+
+    function _baseCurrencyPriceData() private view returns (PriceData memory) {
+        return PriceData({
+            price: BASE_CURRENCY_UNIT().toUint192(),
+            updatedAt: uint64(block.timestamp),
+            isAlive: true
+        });
     }
 
     function _validateOracleCompatibility(address oracle) private view {

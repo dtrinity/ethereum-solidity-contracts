@@ -169,6 +169,30 @@ describe("OracleAggregatorV1_1", () => {
     expect(isFrozen[0]).to.equal(false);
     expect(usedFallback[0]).to.equal(false);
   });
+
+  it("returns implicit base currency price without configuration", async () => {
+    const baseAsset = await aggregator.BASE_CURRENCY();
+    const info = await aggregator.getPriceInfo(baseAsset);
+    expect(info.price).to.equal(BASE_UNIT);
+    expect(info.isAlive).to.equal(true);
+    expect(info.updatedAt).to.be.gt(0n);
+
+    const price = await aggregator.getAssetPrice(baseAsset);
+    expect(price).to.equal(BASE_UNIT);
+  });
+
+  it("includes base currency entry in batchRefresh", async () => {
+    const baseAsset = await aggregator.BASE_CURRENCY();
+    const [prices, isFrozen, usedFallback] = await aggregator.batchRefresh([baseAsset, asset]);
+    expect(prices[0].price).to.equal(BASE_UNIT);
+    expect(prices[0].isAlive).to.equal(true);
+    expect(isFrozen[0]).to.equal(false);
+    expect(usedFallback[0]).to.equal(false);
+
+    expect(prices[1].price).to.equal(100n * BASE_UNIT);
+    expect(isFrozen[1]).to.equal(false);
+    expect(usedFallback[1]).to.equal(false);
+  });
 });
 
 describe("Oracle wrappers", () => {
