@@ -3,6 +3,11 @@ pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+interface IDStakeRouterView {
+    function totalManagedAssets() external view returns (uint256);
+    function currentShortfall() external view returns (uint256);
+}
+
 /// @notice Minimal dStake token used to exercise router accounting in invariants.
 contract MockDStakeToken is ERC20 {
     address public immutable underlyingAsset;
@@ -38,6 +43,15 @@ contract MockDStakeToken is ERC20 {
     }
 
     function totalAssets() public view returns (uint256) {
+        if (router != address(0)) {
+            IDStakeRouterView routerView = IDStakeRouterView(router);
+            uint256 grossAssets = routerView.totalManagedAssets();
+            uint256 shortfall = routerView.currentShortfall();
+            if (shortfall >= grossAssets) {
+                return 0;
+            }
+            return grossAssets - shortfall;
+        }
         return backingAssets;
     }
 

@@ -43,3 +43,13 @@ Real deployments juggle USDC (6 decimals), USDT (6), DAI (18), and potentially l
 - Passing Forge invariant with seed logging on failure.
 - Utilities for multi-decimal collateral minted under `foundry/test/utils/`.
 - Documentation snippet describing how to toggle collateral sets/prices when replaying counterexamples.
+
+## Progress 2025-10-24
+- Implemented `foundry/test/dstable/MultiCollateralRedemptionInvariant.t.sol` orchestrating issuer, redeemer, collateral vault, and AMO flows across USDC/USDT/DAI/WBTC style assets with heterogeneous decimals.
+- Added `foundry/test/utils/MultiCollateralSupport.sol` for consistent oracle/base conversions in multi-asset harnesses and wired seeded collateral inventories for deterministic vault liquidity.
+- Exercised issuance/redeem, fee override/clearing, per-asset pause flips, AMO allocations, fee receiver rotations, and bounded oracle shocks (±20%) while asserting NAV tolerance, treasury fee aggregation, and vault valuation parity.
+- Command: `forge test --match-path foundry/test/dstable/MultiCollateralRedemptionInvariant.t.sol`
+
+## Status
+- ✅ Deliverables complete – invariant passes 256-run suite (~84s wall clock on local M3 MBP with Forge 1.4.3).
+- 🔜 Potential follow-ups: extend action set with protocol-only `redeemAsProtocol`, incorporate collateral withdrawal caps once exposed on-chain, and stream invariants into CI nightly tier (current runtime may be heavy for quick PR gating).

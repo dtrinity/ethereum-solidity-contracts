@@ -45,3 +45,13 @@ Our current invariant only wires one strategy share; most production flows invol
 - Passing Forge invariant with mocked multi-vault adapters.
 - Utility adapters + fixtures committed under `foundry/test/utils/`.
 - Ticket comment summarising gas/runtime characteristics (so we can gate in CI vs nightly).
+
+## Progress 2025-10-24
+- Added dynamic multi-vault invariant harness at `foundry/test/dstake/RouterMultiVaultInvariant.t.sol` wiring three strategy shares, adaptive adapters, and full router configuration fuzzing.
+- Introduced `InvariantDynamicStrategyAdapter` plus collateral helpers to emulate NAV drift, target/fee updates, and shortfall churn while clamping share prices.
+- Captured router accounting/dust/shortfall invariants with tolerance for rounding, including config role actions (deposit caps, reinvest sweeps, status flips).
+- Command: `forge test --match-path foundry/test/dstake/RouterMultiVaultInvariant.t.sol`
+
+## Status
+- ✅ Deliverables complete – invariant passes 256-run suite (~17s wall clock on M3 MBP).
+- 🔜 Potential follow-ups: blend in solver share deposits, multiple solver addresses, and fork-aware oracle adapters once production feeds expose on-chain metadata.
