@@ -4,6 +4,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ERC20, IDStableConversionAdapterV2 } from "../../typechain-types";
 import { IERC20 } from "../../typechain-types/@openzeppelin/contracts/token/ERC20/IERC20";
+import { DStakeRouterV2 } from "../../typechain-types/contracts/vaults/dstake/DStakeRouterV2.sol";
+import { DStakeIdleVault } from "../../typechain-types/contracts/vaults/dstake/vaults/DStakeIdleVault";
+import { GenericERC4626ConversionAdapter } from "../../typechain-types/contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter";
 import {
   DETH_A_TOKEN_WRAPPER_ID,
   DUSD_A_TOKEN_WRAPPER_ID,
@@ -20,6 +23,16 @@ import {
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
 import { DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "../dstable/fixtures";
+
+const VAULT_STATUS = {
+  Active: 0,
+  Suspended: 1,
+  Impaired: 2,
+} as const;
+
+const MULTI_VAULT_TARGETS = [500_000n, 300_000n, 200_000n] as const;
+const MULTI_VAULT_DEFAULT_INDEX = 1;
+
 
 export interface DStakeFixtureConfig {
   dStableSymbol: "dUSD" | "dETH";
@@ -66,6 +79,22 @@ export const SDETH_CONFIG: DStakeFixtureConfig = {
 // Array of all DStake configurations
 export const DSTAKE_CONFIGS: DStakeFixtureConfig[] = [SDUSD_CONFIG, SDETH_CONFIG];
 
+export interface RouterVaultState {
+  strategyVault: string;
+  adapter: string;
+  targetBps: bigint;
+  status: number;
+}
+
+export interface MultiVaultFixtureState {
+  defaultDepositVault: string;
+  vaults: RouterVaultState[];
+}
+
+export interface DStakeFixtureOptions {
+  multiVault?: boolean;
+}
+
 // Core logic for fetching dStake components *after* deployments are done
 /**
  *
@@ -98,7 +127,10 @@ async function fetchDStakeComponents(
     (await deployments.get(config.collateralVaultContractId)).address,
   );
 
-  const router = await ethers.getContractAt("DStakeRouterV2", (await deployments.get(config.routerContractId)).address);
+  const router = (await ethers.getContractAt(
+    "DStakeRouterV2",
+    (await deployments.get(config.routerContractId)).address,
+  )) as DStakeRouterV2;
 
   const wrappedATokenAddress = (await deployments.get(config.dStableSymbol === "dUSD" ? DUSD_A_TOKEN_WRAPPER_ID : DETH_A_TOKEN_WRAPPER_ID))
     .address;
@@ -250,14 +282,110 @@ export async function executeSetupDLendRewards(
   };
 }
 
-export const createDStakeFixture = (config: DStakeFixtureConfig) => {
+export type DStakeFixtureResult = Awaited<ReturnType<typeof fetchDStakeComponents>> & {
+  multiVault?: MultiVaultFixtureState;
+};
+
+async function collectMultiVaultState(router: DStakeRouterV2): Promise<MultiVaultFixtureState> {
+  const vaultCount = Number(await router.getVaultCount());
+  const vaults: RouterVaultState[] = [];
+  for (let i = 0; i < vaultCount; i++) {
+    const cfg = await router.getVaultConfigByIndex(i);
+    vaults.push({
+      strategyVault: cfg.strategyVault,
+      adapter: cfg.adapter,
+      targetBps: cfg.targetBps,
+      status: cfg.status,
+    });
+  }
+
+  return {
+    defaultDepositVault: await router.defaultDepositStrategyShare(),
+    vaults,
+  };
+}
+
+async function ensureMultiVaultRouterState(
+  base: Awaited<ReturnType<typeof fetchDStakeComponents>>,
+  hre: HardhatRuntimeEnvironment,
+): Promise<MultiVaultFixtureState> {
+  const router = base.router as DStakeRouterV2;
+  const existingCount = Number(await router.getVaultCount());
+  if (existingCount >= MULTI_VAULT_TARGETS.length) {
+    return collectMultiVaultState(router);
+  }
+
+  const deployer = base.deployer;
+  const deployerAddress = await deployer.getAddress();
+  const dStableAddress = await base.dStableToken.getAddress();
+  const collateralVaultAddress = await base.collateralVault.getAddress();
+
+  const idleVaultFactory = await hre.ethers.getContractFactory("DStakeIdleVault", deployer);
+  const adapterFactory = await hre.ethers.getContractFactory("GenericERC4626ConversionAdapter", deployer);
+
+  const idleLabels = ["Alpha", "Beta"];
+  const idleVaults: DStakeIdleVault[] = [];
+  for (const label of idleLabels) {
+    const vault = (await idleVaultFactory.deploy(
+      dStableAddress,
+      `${base.config.DStakeTokenSymbol} Idle Vault ${label}`,
+      `${base.config.DStakeTokenSymbol}-IDLE-${label[0]}`,
+      deployerAddress,
+      deployerAddress,
+    )) as DStakeIdleVault;
+    await vault.waitForDeployment();
+    idleVaults.push(vault);
+  }
+
+  const adapters: GenericERC4626ConversionAdapter[] = [];
+  for (const vault of idleVaults) {
+    const adapter = (await adapterFactory.deploy(
+      dStableAddress,
+      await vault.getAddress(),
+      collateralVaultAddress,
+    )) as GenericERC4626ConversionAdapter;
+    await adapter.waitForDeployment();
+    adapters.push(adapter);
+  }
+
+  const idleVaultAddresses = await Promise.all(idleVaults.map((vault) => vault.getAddress()));
+  const adapterAddresses = await Promise.all(adapters.map((adapter) => adapter.getAddress()));
+
+  const vaultConfigs = [
+    {
+      strategyVault: base.vaultAssetAddress,
+      adapter: base.adapterAddress,
+      targetBps: MULTI_VAULT_TARGETS[0],
+      status: VAULT_STATUS.Active,
+    },
+    {
+      strategyVault: idleVaultAddresses[0],
+      adapter: adapterAddresses[0],
+      targetBps: MULTI_VAULT_TARGETS[1],
+      status: VAULT_STATUS.Active,
+    },
+    {
+      strategyVault: idleVaultAddresses[1],
+      adapter: adapterAddresses[1],
+      targetBps: MULTI_VAULT_TARGETS[2],
+      status: VAULT_STATUS.Active,
+    },
+  ];
+
+  const routerWithDeployer = router.connect(deployer);
+  await routerWithDeployer.setVaultConfigs(vaultConfigs);
+  const defaultDepositVault = vaultConfigs[MULTI_VAULT_DEFAULT_INDEX].strategyVault;
+  await routerWithDeployer.setDefaultDepositStrategyShare(defaultDepositVault);
+
+  return collectMultiVaultState(router);
+}
+
+export const createDStakeFixture = (config: DStakeFixtureConfig, options?: DStakeFixtureOptions) => {
   return deployments.createFixture(async (hreFixtureEnv: HardhatRuntimeEnvironment) => {
-    // Clean slate: run all default deployment scripts
     await hreFixtureEnv.deployments.fixture();
-    // Run DStake-specific deployment tags
     await hreFixtureEnv.deployments.fixture(config.deploymentTags);
-    // Fetch DStake components using fixture environment
-    return fetchDStakeComponents(
+
+    const base = (await fetchDStakeComponents(
       {
         deployments: hreFixtureEnv.deployments,
         getNamedAccounts: hreFixtureEnv.getNamedAccounts,
@@ -265,7 +393,13 @@ export const createDStakeFixture = (config: DStakeFixtureConfig) => {
         globalHre: hreFixtureEnv,
       },
       config,
-    );
+    )) as DStakeFixtureResult;
+
+    if (options?.multiVault) {
+      base.multiVault = await ensureMultiVaultRouterState(base, hreFixtureEnv);
+    }
+
+    return base;
   });
 };
 
