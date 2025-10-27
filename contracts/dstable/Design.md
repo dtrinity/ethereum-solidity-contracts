@@ -127,6 +127,10 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
   (`contracts/dstable/IssuerV2.sol:221`, `contracts/dstable/RedeemerV2.sol:210`).
 - AMO mint/burn operations enforce symmetric debt adjustments bounded by a
   tolerance to absorb rounding (`contracts/dstable/AmoManagerV2.sol:84`).
+- Foundry invariant coverage (`foundry/test/dstable/AmoManagerV2Invariant.t.sol`)
+  simulates oracle shocks, guardian pauses, and AMO allocation churn to confirm
+  `AmoManagerV2` debt supply mirrors wallet allocations and peg guards halt
+  inflationary increases.
 - Oracle heartbeat, min/max answers, and deviation checks propagate through
   every value conversion by relying on the shared oracle contract.
 
