@@ -48,10 +48,13 @@ describe("StaticATokenLM – Signature malleability guard", () => {
     const dec = await underlyingToken.decimals();
     depositAmount = ethers.parseUnits("100", dec);
     await underlyingToken.connect(deployer).transfer(depositor.address, depositAmount);
-    await underlyingToken.connect(depositor).approve(staticAddress, depositAmount);
 
-    // deadline 1 hour from now
-    deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    // Align deadline relative to current chain time to avoid drifting when other tests warp timestamps
+    const latestBlock = await ethers.provider.getBlock("latest");
+    if (!latestBlock) {
+      throw new Error("unable to fetch latest block");
+    }
+    deadline = BigInt(latestBlock.timestamp + 3600);
 
     // Create fresh wallet with private key and fund it
     depositorWallet = Wallet.createRandom().connect(ethers.provider) as HDNodeWallet;
@@ -62,8 +65,16 @@ describe("StaticATokenLM – Signature malleability guard", () => {
     });
     // Transfer underlying tokens to wallet
     await underlyingToken.connect(deployer).transfer(await depositorWallet.getAddress(), depositAmount);
-    // Approve StaticToken contract as spender
-    await underlyingToken.connect(depositorWallet).approve(staticAddress, depositAmount);
+
+    // Approve Pool to pull underlying and convert to aTokens up-front
+    const poolAddress = await pool.getAddress();
+    await underlyingToken.connect(depositorWallet).approve(poolAddress, depositAmount);
+    await pool.connect(depositorWallet).deposit(underlying, depositAmount, await depositorWallet.getAddress(), 0);
+
+    // Approve StaticAToken to pull pre-minted aTokens during metaDeposit
+    const aTokenAddress = await staticToken.aToken();
+    const aToken = await ethers.getContractAt("ERC20StablecoinUpgradeable", aTokenAddress);
+    await aToken.connect(depositorWallet).approve(staticAddress, depositAmount);
 
     // Override depositor signer reference to wallet
     depositor = depositorWallet as unknown as SignerWithAddress;
@@ -86,6 +97,7 @@ describe("StaticATokenLM – Signature malleability guard", () => {
 
   it("rejects malleated metaDeposit & accepts canonical one", async () => {
     const nonce = await staticToken.nonces(await depositorWallet.getAddress());
+    const depositToAave = false;
 
     const permitPlaceholder = {
       owner: ethers.ZeroAddress,
@@ -126,7 +138,7 @@ describe("StaticATokenLM – Signature malleability guard", () => {
         await depositorWallet.getAddress(),
         depositAmount,
         0,
-        true,
+        depositToAave,
         nonce,
         deadline,
         permitPlaceholder.owner,
@@ -164,14 +176,14 @@ describe("StaticATokenLM – Signature malleability guard", () => {
     await expect(
       (staticToken as any)
         .connect(relayer)
-        .metaDeposit(depositor.address, depositor.address, depositAmount, 0, true, deadline, permitPlaceholder, sigParamsMal),
+        .metaDeposit(depositor.address, depositor.address, depositAmount, 0, depositToAave, deadline, permitPlaceholder, sigParamsMal),
     ).to.be.reverted;
 
     // Canonical tx should succeed
     await expect(
       (staticToken as any)
         .connect(relayer)
-        .metaDeposit(depositor.address, depositor.address, depositAmount, 0, true, deadline, permitPlaceholder, sigParamsGood),
+        .metaDeposit(depositor.address, depositor.address, depositAmount, 0, depositToAave, deadline, permitPlaceholder, sigParamsGood),
     ).to.emit(staticToken, "Deposit");
   });
 });

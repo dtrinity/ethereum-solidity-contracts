@@ -1083,14 +1083,9 @@ describe("SimpleDEXMock Tests", function () {
       // Execute swap with smaller amount
       const amountIn = ethers.parseUnits("1", 2); // Much smaller amount
 
-      try {
-        await dexMock.connect(user1).executeSwapExactInput(tokenLowDecimals, tokenHighDecimals, amountIn, 0, user1.address);
-        // eslint-disable-next-line unused-imports/no-unused-vars -- error is not used
-      } catch (error) {
-        // If the extreme decimal difference causes arithmetic issues,
-        // that's acceptable for this edge case test
-        console.log("Extreme decimal difference caused expected arithmetic issues");
-      }
+      const lowToHighSwap = dexMock.connect(user1).executeSwapExactInput(tokenLowDecimals, tokenHighDecimals, amountIn, 0, user1.address);
+
+      await expect(lowToHighSwap).to.be.reverted;
 
       // Test in the other direction with a more manageable rate
       await dexMock.setExchangeRate(
@@ -1102,9 +1097,11 @@ describe("SimpleDEXMock Tests", function () {
       const smallHighDecimalAmount = ethers.parseUnits("1", 24);
 
       // This should work in the reverse direction
-      await expect(
-        dexMock.connect(user1).executeSwapExactInput(tokenHighDecimals, tokenLowDecimals, smallHighDecimalAmount, 0, user1.address),
-      ).to.not.be.reverted;
+      const highToLowSwap = dexMock
+        .connect(user1)
+        .executeSwapExactInput(tokenHighDecimals, tokenLowDecimals, smallHighDecimalAmount, 0, user1.address);
+
+      await expect(highToLowSwap).to.not.be.reverted;
     });
 
     it("Should handle very large amounts", async function () {

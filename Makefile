@@ -9,6 +9,8 @@ ROLES_REVOKE_ARGS ?=
 
 SHARED_ENABLE_SLITHER_TARGETS := 0
 
+FORGE ?= forge
+
 include .shared/Makefile
 
 override TS_NODE := TS_NODE_TRANSPILE_ONLY=1 TS_NODE_PROJECT=$(PROJECT_ROOT)/tsconfig.shared.json $(YARN) ts-node --project $(PROJECT_ROOT)/tsconfig.shared.json
@@ -59,6 +61,9 @@ test.typescript.integ: ## Run the typescript integration tests
 
 test.hardhat: ## Run the hardhat tests
 	@yarn hardhat test
+
+test.foundry: ## Run the Foundry (forge) test suite
+	@$(FORGE) test
 
 ######################
 ## Static Analysis ##
@@ -171,4 +176,4 @@ clean: ## When renaming directories or files, run this to clean up
 	@rm -rf cache
 	@echo "Cleaned solidity cache and artifacts. Remember to recompile."
 
-.PHONY: help compile test deploy clean slither slither.check slither.focused mythril mythril.focused mythril.deep mythril.fast mythril.force mythril.summary audit
+.PHONY: help compile test deploy clean slither slither.check slither.focused mythril mythril.focused mythril.deep mythril.fast mythril.force mythril.summary audit test.foundry

@@ -64,6 +64,13 @@ can track long-term participation.
 - Expand the on-chain metadata renderer to showcase vesting schedules or
   integrate with external dashboards.
 
+## Testing
+
+- Foundry invariant `foundry/test/vesting/ERC20VestingNFTInvariant.t.sol` fuzzes
+  deposits, early exits, matured withdrawals, owner controls, and transfer
+  attempts across time warps to ensure accounting and soul-bound guarantees stay
+  intact.
+
 ## Program Lifecycle
 
 1. **Deployment** – Configure vesting period, cap, and minimum deposit threshold.

@@ -143,7 +143,7 @@ dstableConfigs.forEach((config) => {
 
       it("calculates profit correctly with yield-bearing collateral", async function () {
         if (config.yieldBearingCollaterals.length === 0) {
-          console.log("Skipping yield-bearing test as no yield-bearing collateral configured");
+          this.skip();
           return;
         }
 

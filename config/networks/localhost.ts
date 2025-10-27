@@ -53,7 +53,8 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   const rewardsControllerDeployment = await _hre.deployments.getOrNull(INCENTIVES_PROXY_ID);
 
   // Fetch deployed dLend aTokens
-  const aTokenDUSDDeployment = await _hre.deployments.getOrNull("dLEND-dUSD");
+  const aTokenDUSDDeployment = await _hre.deployments.getOrNull("dUSDAToken");
+  const aTokenDETHDeployment = await _hre.deployments.getOrNull("dETHAToken");
 
   // Fetch deployed dSTAKE tokens for vesting
   const sdUSDDeployment = await _hre.deployments.getOrNull(SDUSD_DSTAKE_TOKEN_ID);
@@ -651,7 +652,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         },
         dLendRewardManager: {
           managedStrategyShare: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address), // This should be the deployed StaticATokenLM address for dETH
-          dLendAssetToClaimFor: emptyStringIfUndefined(dETHDeployment?.address), // Use the dETH underlying asset address as a placeholder
+          dLendAssetToClaimFor: emptyStringIfUndefined(aTokenDETHDeployment?.address), // Use the deployed dLEND-dETH aToken address
           dLendRewardsController: emptyStringIfUndefined(rewardsControllerDeployment?.address), // This will be fetched after dLend incentives deployment
           treasury: user1, // Or a dedicated treasury address
           maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS, // Example: 5%

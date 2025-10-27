@@ -22,7 +22,10 @@ managers only implement protocol-specific integrations.
 - Access surface:
   - `DEFAULT_ADMIN_ROLE` manages role assignment.
   - `REWARDS_MANAGER_ROLE` updates treasury details, thresholds, and is required
-    to call the base `compoundRewards`.
+    to call the base `compoundRewards`. A previously attempted permissionless
+    settlement flow allowed reward siphoning when downstream integrations could
+    re-enter mid-claim, so compounding remains gated until a hardened variant is
+    designed.
 - `compoundRewards` (manager-gated by default) performs:
   1. Parameter validation (amount ≥ threshold, non-empty token list, receiver
      not zero).
@@ -105,3 +108,12 @@ managers only implement protocol-specific integrations.
   from the base class to maintain consistent monitoring semantics.
 - Derived contracts should document any additional roles or assumptions (e.g.,
   required adapter registry configuration) alongside this base design note.
+
+## Invariant Coverage
+
+- `contracts/testing/RewardClaimableTester.sol` extends `RewardClaimable` with harness hooks that mint arbitrary reward emissions, forwards the exchange asset to a sink, and can attempt re-entrant settlement via `_processExchangeAssetDeposit`.
+- `foundry/test/rewards/RewardClaimableInvariant.t.sol` fuzzes `compoundRewards`, role-managed setters, treasury fee updates, and malicious reward tokens. Invariants assert:
+  - treasury payouts per token never exceed the claimed amount the hook reported;
+  - cumulative receiver rewards plus treasury fees equal the total rewards claimed;
+  - the exchange asset is never stranded on the harness and forwarded amount matches the sink balance;
+  - `treasuryFeeBps` stays within `maxTreasuryFeeBps`, role gates enforce setters, and reentrancy attempts fail the guard.

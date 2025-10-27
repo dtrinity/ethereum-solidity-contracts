@@ -37,3 +37,8 @@ reports/mythril/
 
 # Role automation reports
 reports/roles/
+
+# Foundry artifacts
+foundry/out
+foundry/cache
+foundry/lib
