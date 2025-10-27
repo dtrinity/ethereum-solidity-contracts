@@ -143,9 +143,11 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
    - For structural changes, update vault configs or run `rebalanceStrategiesByShares`, `rebalanceStrategiesBySharesViaExternalLiquidity`, or `rebalanceStrategiesByValue` with conservative `min` values.
 
 5. **Offboard a strategy**
-   - Mark the vault impaired or suspended so auto-routing stops using it, then migrate positions via solver withdrawals or operator swaps.
-   - Call `router.suspendVaultForRemoval(vault)` to zero the target weight, clear default-deposit pointers, and freeze routing before tearing anything down.
-   - Once suspended, `removeAdapter` unregisters the strategy share even if balances remain, quarantining dust from NAV. Recover stranded tokens (or reinstall an adapter) before reactivating or onboarding a replacement strategy.
+- Mark the vault impaired or suspended so auto-routing stops using it, then migrate positions via solver withdrawals or operator swaps.
+- Call `router.suspendVaultForRemoval(vault)` to zero the target weight, clear default-deposit pointers, and freeze routing before tearing anything down.
+- Once suspended, `removeAdapter` unregisters the strategy share even if balances remain, quarantining dust from NAV. Recover stranded tokens (or reinstall an adapter) before reactivating or onboarding a replacement strategy.
+
+> **Invariant coverage:** `foundry/test/dstake/RouterGovernanceInvariant.t.sol` fuzzes the full governance toolchain (`suspendVaultForRemoval`, adapter removal/reinstalls, `setVaultConfigs`, default-share updates) while solver deposit/withdraw routes continue to run. The harness enforces that default vaults stay active, target weights never exceed 100%, withdrawal fee previews match solver share exits, and router NAV/shortfall bookkeeping remain synced with the collateral vault even as adapters churn.
 
 ## Developer Map
 

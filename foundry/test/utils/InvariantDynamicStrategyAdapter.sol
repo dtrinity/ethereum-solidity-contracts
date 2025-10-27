@@ -35,7 +35,7 @@ contract InvariantDynamicStrategyAdapter is IDStableConversionAdapterV2 {
         dStable = IERC20(stable);
         _mintableStable = IMintableERC20(stable);
         collateralVault = vault;
-        strategyShareToken = new StrategyShare();
+        strategyShareToken = new StrategyShare(stable);
         owner = msg.sender;
     }
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IDStableConversionAdapterV2 } from "vaults/dstake/interfaces/IDStableConversionAdapterV2.sol";
 
 /// @notice Vanilla adapter that exchanges dStable <> strategy share at a fixed 1:1 rate.
@@ -13,11 +14,12 @@ contract InvariantStableAdapter is IDStableConversionAdapterV2 {
     IERC20 public immutable dStable;
     address public immutable collateralVault;
     StrategyShare public immutable strategyShareToken;
+    uint256 private constant PRICE_SCALE = 1e18;
 
     constructor(address stable, address vault) {
         dStable = IERC20(stable);
         collateralVault = vault;
-        strategyShareToken = new StrategyShare();
+        strategyShareToken = new StrategyShare(stable);
     }
 
     function depositIntoStrategy(
@@ -62,11 +64,23 @@ contract InvariantStableAdapter is IDStableConversionAdapterV2 {
     function vaultAsset() external view override returns (address) {
         return address(strategyShareToken);
     }
+
+    function sharePriceRay() external pure returns (uint256) {
+        return PRICE_SCALE;
+    }
 }
 
 /// @notice Simple ERC20 share token with mint/burn restricted to its owner (the adapter).
+interface ISharePriceSource {
+    function sharePriceRay() external view returns (uint256);
+}
+
 contract StrategyShare is ERC20 {
-    address public owner;
+    using Math for uint256;
+
+    address public immutable owner;
+    address public immutable underlyingAsset;
+    uint256 private constant PRICE_SCALE = 1e18;
 
     error NotOwner();
 
@@ -75,8 +89,9 @@ contract StrategyShare is ERC20 {
         _;
     }
 
-    constructor() ERC20("Invariant Strategy Share", "iSS") {
+    constructor(address asset_) ERC20("Invariant Strategy Share", "iSS") {
         owner = msg.sender;
+        underlyingAsset = asset_;
     }
 
     function mint(address to, uint256 amount) external onlyOwner {
@@ -85,5 +100,42 @@ contract StrategyShare is ERC20 {
 
     function burn(uint256 amount) external onlyOwner {
         _burn(address(this), amount);
+    }
+
+    function asset() external view returns (address) {
+        return underlyingAsset;
+    }
+
+    function convertToShares(uint256 assets) public view returns (uint256) {
+        uint256 price = _sharePriceRay();
+        if (price == 0) {
+            return 0;
+        }
+        return Math.mulDiv(assets, PRICE_SCALE, price);
+    }
+
+    function convertToAssets(uint256 shares) public view returns (uint256) {
+        uint256 price = _sharePriceRay();
+        return Math.mulDiv(shares, price, PRICE_SCALE);
+    }
+
+    function previewDeposit(uint256 assets) external view returns (uint256) {
+        return convertToShares(assets);
+    }
+
+    function previewMint(uint256 shares) external view returns (uint256) {
+        return convertToAssets(shares);
+    }
+
+    function previewWithdraw(uint256 assets) external view returns (uint256) {
+        return convertToShares(assets);
+    }
+
+    function previewRedeem(uint256 shares) external view returns (uint256) {
+        return convertToAssets(shares);
+    }
+
+    function _sharePriceRay() internal view returns (uint256) {
+        return ISharePriceSource(owner).sharePriceRay();
     }
 }
