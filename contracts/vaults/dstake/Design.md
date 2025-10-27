@@ -149,6 +149,8 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 
 > **Invariant coverage:** `foundry/test/dstake/RouterGovernanceInvariant.t.sol` fuzzes the full governance toolchain (`suspendVaultForRemoval`, adapter removal/reinstalls, `setVaultConfigs`, default-share updates) while solver deposit/withdraw routes continue to run. The harness enforces that default vaults stay active, target weights never exceed 100%, withdrawal fee previews match solver share exits, and router NAV/shortfall bookkeeping remain synced with the collateral vault even as adapters churn.
 
+> **Invariant coverage (fees):** `foundry/test/dstake/RouterFeeInvariant.t.sol` sweeps solver asset/share routes, withdrawal-fee updates, incentive tuning, shortfall spikes, `reinvestFees`, and `sweepSurplus` calls. It asserts that ERC4626 previews stay aligned with the configured fee BPS inside dust tolerance, reinvest incentives never exceed their BPS cap, idle balances are bounded by tracked fees plus dust, and surplus sweeps can only drain router-held idle while growing vault NAV.
+
 ## Developer Map
 
 - Token: `contracts/vaults/dstake/DStakeTokenV2.sol`
