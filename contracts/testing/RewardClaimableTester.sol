@@ -75,7 +75,11 @@ contract RewardClaimableTester is RewardClaimable {
     // Harness configuration
     // -------------------------------------------------------------------------
 
-    function configureRewardToken(address token, uint256 emission, bool revertOnClaim) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function configureRewardToken(
+        address token,
+        uint256 emission,
+        bool revertOnClaim
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         RewardConfig storage config = rewardConfigs[token];
         if (config.configured) {
             revert RewardAlreadyConfigured(token);
