@@ -1,11 +1,12 @@
-import "@typechain/hardhat";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
 import "dotenv/config";
+import "@typechain/hardhat";
 
+import type { Signer, TransactionRequest, TransactionResponse } from "ethers";
 import { extendEnvironment, HardhatUserConfig } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -14,12 +15,11 @@ import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Wrapper function to add a delay to transactions
+const wrapSigner = <TSigner extends Signer>(signer: TSigner, hre: HardhatRuntimeEnvironment): TSigner => {
+  const originalSendTransaction = signer.sendTransaction.bind(signer);
 
-const wrapSigner = (signer: any, hre: HardhatRuntimeEnvironment): any => {
-  const originalSendTransaction = signer.sendTransaction;
-
-  signer.sendTransaction = async (tx: any): Promise<any> => {
-    const result = await originalSendTransaction.apply(signer, [tx]);
+  const wrappedSendTransaction: (tx: TransactionRequest) => Promise<TransactionResponse> = async (tx) => {
+    const result = await originalSendTransaction(tx);
 
     if (hre.network.live) {
       const sleepTime = 30000; // 30 seconds to reduce flakiness from eventual consistency
@@ -28,6 +28,9 @@ const wrapSigner = (signer: any, hre: HardhatRuntimeEnvironment): any => {
     }
     return result;
   };
+
+  (signer as TSigner & { sendTransaction: typeof wrappedSendTransaction }).sendTransaction = wrappedSendTransaction;
+
   return signer;
 };
 
@@ -35,18 +38,18 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   // Wrap hre.ethers.getSigner
   const originalGetSigner = hre.ethers.getSigner;
 
-  hre.ethers.getSigner = async (address): Promise<any> => {
+  hre.ethers.getSigner = (async (address) => {
     const signer = await originalGetSigner(address);
     return wrapSigner(signer, hre);
-  };
+  }) as typeof hre.ethers.getSigner;
 
   // Wrap hre.ethers.getSigners
   const originalGetSigners = hre.ethers.getSigners;
 
-  hre.ethers.getSigners = async (): Promise<any[]> => {
+  hre.ethers.getSigners = (async () => {
     const signers = await originalGetSigners();
     return signers.map((signer) => wrapSigner(signer, hre));
-  };
+  }) as typeof hre.ethers.getSigners;
 });
 
 /* eslint-disable camelcase -- Network names follow specific naming conventions that require snake_case */

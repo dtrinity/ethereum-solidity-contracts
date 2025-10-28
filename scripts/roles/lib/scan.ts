@@ -95,12 +95,7 @@ export async function scanRolesAndOwnership(
 
         const outputs = item.outputs ?? [];
 
-        return (
-          item.name === "owner" &&
-          (item.inputs?.length ?? 0) === 0 &&
-          outputs.length === 1 &&
-          outputs[0]?.type === "address"
-        );
+        return item.name === "owner" && (item.inputs?.length ?? 0) === 0 && outputs.length === 1 && outputs[0]?.type === "address";
       });
 
       const contractInstance = hasRoleFn || ownerFn ? await ethers.getContractAt(abi as any, contractAddress) : null;

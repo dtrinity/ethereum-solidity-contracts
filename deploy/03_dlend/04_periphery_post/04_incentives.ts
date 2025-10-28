@@ -79,7 +79,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (isRewardsProxyPending) {
     const proxyArtifact = await getExtendedArtifact("InitializableImmutableAdminUpgradeabilityProxy");
 
-    const _setRewardsAsProxyTx = await addressesProviderInstance.setAddressAsProxy(incentivesControllerId, incentivesImpl.address);
+    await addressesProviderInstance.setAddressAsProxy(incentivesControllerId, incentivesImpl.address);
 
     const proxyAddress = await addressesProviderInstance.getAddressFromID(incentivesControllerId);
 

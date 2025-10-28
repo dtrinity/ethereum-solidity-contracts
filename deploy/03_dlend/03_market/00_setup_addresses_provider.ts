@@ -8,6 +8,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const marketID = `${hre.network.name}_dtrinity_market`;
   const config = await getConfig(hre);
+  const dLendConfig = config.dLend;
+
+  if (!dLendConfig) {
+    throw new Error(`dLend configuration is required for network ${hre.network.name}`);
+  }
 
   // 1. Deploy PoolAddressesProvider
   // NOTE: We pass 0 as market id to create the same address of PoolAddressesProvider
@@ -37,7 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await hre.ethers.getSigner(deployer),
   );
 
-  await registryContract.registerAddressesProvider(addressesProviderDeployment.address, config.dLend.providerID);
+  await registryContract.registerAddressesProvider(addressesProviderDeployment.address, dLendConfig.providerID);
 
   // 4. Deploy AaveProtocolDataProvider getters contract
   const protocolDataProviderDeployment = await hre.deployments.deploy(POOL_DATA_PROVIDER_ID, {

@@ -16,6 +16,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const signer = await hre.ethers.getSigner(deployer);
 
   const config = await getConfig(hre);
+  const dLendConfig = config.dLend;
+
+  if (!dLendConfig) {
+    throw new Error(`dLend configuration is required for network ${hre.network.name}`);
+  }
 
   const proxyArtifact = await hre.deployments.getExtendedArtifact("InitializableImmutableAdminUpgradeabilityProxy");
 
@@ -66,7 +71,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const aclManager = await hre.ethers.getContractAt("ACLManager", aclManagerAddress, signer);
   await aclManager.isPoolAdmin(await signer.getAddress());
 
-  const flashLoanPremium = config.dLend.flashLoanPremium;
+  const flashLoanPremium = dLendConfig.flashLoanPremium;
 
   // Set total Flash Loan Premium
   const updateFlashloanPremiumTotalResponse = await poolConfiguratorContract.updateFlashloanPremiumTotal(flashLoanPremium.total);

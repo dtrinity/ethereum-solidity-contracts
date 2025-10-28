@@ -1,7 +1,12 @@
 import { deployments, ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { TestERC20, TestMintableERC20 } from "../../typechain-types";
+import {
+  TestERC20,
+  TestERC20__factory as TestERC20Factory,
+  TestMintableERC20,
+  TestMintableERC20__factory as TestMintableERC20Factory,
+} from "../../typechain-types";
 
 /**
  * List of dStable symbols that use TestMintableERC20
@@ -71,13 +76,13 @@ export async function getTokenContractForSymbol(
   const inputTokenInfo = await fetchTokenInfo(hre, tokenaddress);
 
   if (isDStableSymbol(inputTokenInfo.symbol)) {
-    const contract = await ethers.getContractAt("TestMintableERC20", tokenaddress, signer);
+    const contract = TestMintableERC20Factory.connect(tokenaddress, signer);
     return {
       contract,
       tokenInfo: inputTokenInfo,
     };
   } else {
-    const contract = await ethers.getContractAt("TestERC20", tokenaddress, signer);
+    const contract = TestERC20Factory.connect(tokenaddress, signer);
     return {
       contract,
       tokenInfo: inputTokenInfo,
@@ -149,13 +154,13 @@ export async function getTokenContractForAddress(
   const tokenInfo = await fetchTokenInfo(hre, tokenAddress);
 
   if (isDStableSymbol(tokenInfo.symbol)) {
-    const contract = await ethers.getContractAt("TestMintableERC20", tokenAddress, signer);
+    const contract = TestMintableERC20Factory.connect(tokenAddress, signer);
     return {
       contract,
       tokenInfo,
     };
   } else {
-    const contract = await ethers.getContractAt("TestERC20", tokenAddress, signer);
+    const contract = TestERC20Factory.connect(tokenAddress, signer);
     return {
       contract,
       tokenInfo,

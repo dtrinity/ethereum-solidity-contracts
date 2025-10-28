@@ -41,7 +41,7 @@ async function deployChainlinkWrapper(
   deployer: string,
   signer: any,
 ): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers.chainlink;
+  const wrapperConfig = oracleConfig.wrappers?.chainlink;
   const assets = (wrapperConfig?.assets as ChainlinkAssetMap | undefined) || {};
 
   if (!wrapperConfig || Object.keys(assets).length === 0) {
@@ -94,7 +94,7 @@ async function deployChainlinkWrapper(
  * @param deployer Deployer address responsible for managing the wrapper
  */
 async function deployApi3Wrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers.api3;
+  const wrapperConfig = oracleConfig.wrappers?.api3;
   const assets = wrapperConfig?.assets || {};
 
   if (!wrapperConfig || Object.keys(assets).length === 0) {
@@ -126,7 +126,7 @@ async function deployCompositeWrapper(
   oracleConfig: OracleAggregatorConfig,
   deployer: string,
 ): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers.rateComposite;
+  const wrapperConfig = oracleConfig.wrappers?.rateComposite;
   const assets = wrapperConfig?.assets || {};
 
   if (!wrapperConfig || Object.keys(assets).length === 0) {
@@ -154,7 +154,7 @@ async function deployCompositeWrapper(
  * @param deployer Deployer address responsible for managing the wrapper
  */
 async function deployHardPegWrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers.hardPeg;
+  const wrapperConfig = oracleConfig.wrappers?.hardPeg;
   const assets = (wrapperConfig?.assets as HardPegAssetMap | undefined) || {};
 
   if (!wrapperConfig || Object.keys(assets).length === 0) {

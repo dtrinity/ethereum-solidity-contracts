@@ -1,6 +1,6 @@
 import "hardhat-deploy/dist/src/type-extensions";
 
-import { ZeroAddress, parseUnits } from "ethers";
+import { parseUnits, ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
