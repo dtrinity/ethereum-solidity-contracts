@@ -1,5 +1,9 @@
+import "hardhat-deploy/dist/src/type-extensions";
+
+import "hardhat-deploy/dist/src/type-extensions";
+
 import { ZeroAddress } from "ethers";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
@@ -194,27 +198,27 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           api3OracleWrappersWithThresholding: {
             ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
               ? {
-                  [frxUSDDeployment.address]: {
-                    proxy: mockOracleNameToAddress["frxUSD_USD"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
+                [frxUSDDeployment.address]: {
+                  proxy: mockOracleNameToAddress["frxUSD_USD"],
+                  lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                },
+              }
               : {}),
           },
           compositeApi3OracleWrappersWithThresholding: {
             ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
               ? {
-                  [sfrxUSDDeployment.address]: {
-                    feedAsset: sfrxUSDDeployment.address,
-                    proxy1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
-                    proxy2: mockOracleNameToAddress["frxUSD_USD"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
+                [sfrxUSDDeployment.address]: {
+                  feedAsset: sfrxUSDDeployment.address,
+                  proxy1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
+                  proxy2: mockOracleNameToAddress["frxUSD_USD"],
+                  lowerThresholdInBase1: 0n,
+                  fixedPriceInBase1: 0n,
+                  lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                },
+              }
               : {}),
           },
         },
@@ -222,62 +226,62 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           plainRedstoneOracleWrappers: {
             ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
               ? {
-                  [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"],
-                }
+                [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"],
+              }
               : {}),
             ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
               ? {
-                  [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
-                }
+                [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
+              }
               : {}),
             ...(yUSDDeployment?.address && mockOracleNameToAddress["yUSD_USD"]
               ? {
-                  [yUSDDeployment.address]: mockOracleNameToAddress["yUSD_USD"],
-                }
+                [yUSDDeployment.address]: mockOracleNameToAddress["yUSD_USD"],
+              }
               : {}),
           },
           redstoneOracleWrappersWithThresholding: {
             ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
               ? {
-                  [USDCDeployment.address]: {
-                    feed: mockOracleNameToAddress["USDC_USD"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
+                [USDCDeployment.address]: {
+                  feed: mockOracleNameToAddress["USDC_USD"],
+                  lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                },
+              }
               : {}),
             ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
               ? {
-                  [USDTDeployment.address]: {
-                    feed: mockOracleNameToAddress["USDT_USD"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
+                [USDTDeployment.address]: {
+                  feed: mockOracleNameToAddress["USDT_USD"],
+                  lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                },
+              }
               : {}),
             ...(AUSDDeployment?.address && mockOracleNameToAddress["AUSD_USD"]
               ? {
-                  [AUSDDeployment.address]: {
-                    feed: mockOracleNameToAddress["AUSD_USD"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
+                [AUSDDeployment.address]: {
+                  feed: mockOracleNameToAddress["AUSD_USD"],
+                  lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                  fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+                },
+              }
               : {}),
           },
           compositeRedstoneOracleWrappersWithThresholding: {
             ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
               ? {
-                  [stETHDeployment.address]: {
-                    feedAsset: stETHDeployment.address,
-                    feed1: mockOracleNameToAddress["stETH_WETH"],
-                    feed2: mockOracleNameToAddress["WETH_USD"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: 0n,
-                    fixedPriceInBase2: 0n,
-                  },
-                }
+                [stETHDeployment.address]: {
+                  feedAsset: stETHDeployment.address,
+                  feed1: mockOracleNameToAddress["stETH_WETH"],
+                  feed2: mockOracleNameToAddress["WETH_USD"],
+                  lowerThresholdInBase1: 0n,
+                  fixedPriceInBase1: 0n,
+                  lowerThresholdInBase2: 0n,
+                  fixedPriceInBase2: 0n,
+                },
+              }
               : {}),
           },
         },
@@ -299,93 +303,93 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
             assets: {
               ...(USDCDeployment?.address
                 ? {
-                    [USDCDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [USDCDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(dUSDDeployment?.address
                 ? {
-                    [dUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [dUSDDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(USDTDeployment?.address
                 ? {
-                    [USDTDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [USDTDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(AUSDDeployment?.address
                 ? {
-                    [AUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [AUSDDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(frxUSDDeployment?.address
                 ? {
-                    [frxUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [frxUSDDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(WETHDeployment?.address
                 ? {
-                    [WETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [WETHDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(sfrxUSDDeployment?.address
                 ? {
-                    [sfrxUSDDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [sfrxUSDDeployment.address]: {
+                    pricePeg: YIELD_BEARING_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(dETHDeployment?.address
                 ? {
-                    [dETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [dETHDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(stETHDeployment?.address
                 ? {
-                    [stETHDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [stETHDeployment.address]: {
+                    pricePeg: YIELD_BEARING_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(yUSDDeployment?.address
                 ? {
-                    [yUSDDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [yUSDDeployment.address]: {
+                    pricePeg: YIELD_BEARING_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
             },
           },
@@ -393,83 +397,83 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         assets: {
           ...(USDCDeployment?.address
             ? {
-                [USDCDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [USDCDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(dUSDDeployment?.address
             ? {
-                [dUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [dUSDDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(USDTDeployment?.address
             ? {
-                [USDTDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [USDTDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(AUSDDeployment?.address
             ? {
-                [AUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [AUSDDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(frxUSDDeployment?.address
             ? {
-                [frxUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [frxUSDDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(WETHDeployment?.address
             ? {
-                [WETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [WETHDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(sfrxUSDDeployment?.address
             ? {
-                [sfrxUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [sfrxUSDDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(dETHDeployment?.address
             ? {
-                [dETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [dETHDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(stETHDeployment?.address
             ? {
-                [stETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [stETHDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(yUSDDeployment?.address
             ? {
-                [yUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [yUSDDeployment.address]: {
+                primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
         },
       },
@@ -492,8 +496,8 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           plainRedstoneOracleWrappers: {
             ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
               ? {
-                  [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"],
-                }
+                [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"],
+              }
               : {}),
           },
           redstoneOracleWrappersWithThresholding: {},
@@ -517,30 +521,30 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
             assets: {
               ...(WETHDeployment?.address
                 ? {
-                    [WETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [WETHDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(stETHDeployment?.address
                 ? {
-                    [stETHDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [stETHDeployment.address]: {
+                    pricePeg: YIELD_BEARING_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
               ...(dETHDeployment?.address
                 ? {
-                    [dETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
+                  [dETHDeployment.address]: {
+                    pricePeg: HARD_PEG_PRICE,
+                    lowerGuard: 0n,
+                    upperGuard: 0n,
+                  },
+                }
                 : {}),
             },
           },
@@ -548,27 +552,27 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         assets: {
           ...(WETHDeployment?.address
             ? {
-                [WETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [WETHDeployment.address]: {
+                primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(stETHDeployment?.address
             ? {
-                [stETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [stETHDeployment.address]: {
+                primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
           ...(dETHDeployment?.address
             ? {
-                [dETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
+              [dETHDeployment.address]: {
+                primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
+                risk: { maxDeviationBps: 0 },
+              },
+            }
             : {}),
         },
       },
