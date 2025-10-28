@@ -297,7 +297,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       USD: {
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         hardDStablePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-        baseCurrency: "USD",
+        baseCurrency: ZeroAddress,
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
