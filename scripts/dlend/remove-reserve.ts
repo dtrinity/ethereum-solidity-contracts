@@ -1,6 +1,6 @@
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 
-import { IERC20Detailed, IPool, IPoolConfigurator, IPoolDataProvider } from "../../typechain-types";
+import { IERC20Detailed__factory, IPool__factory, IPoolConfigurator__factory, IPoolDataProvider__factory } from "../../typechain-types";
 import { POOL_CONFIGURATOR_ID, POOL_DATA_PROVIDER_ID } from "../../typescript/deploy-ids";
 
 // ------------------------------------------------------------------------------------------------
@@ -59,16 +59,14 @@ async function main() {
   }
 
   // Get contract instances
-  const poolDataProvider = (await ethers.getContractAt("IPoolDataProvider", poolDataProviderAddress)) as IPoolDataProvider;
-
-  const poolConfigurator = (await ethers.getContractAt("IPoolConfigurator", poolConfiguratorAddress, deployerSigner)) as IPoolConfigurator;
-
+  const poolDataProvider = IPoolDataProvider__factory.connect(poolDataProviderAddress, deployerSigner);
+  const poolConfigurator = IPoolConfigurator__factory.connect(poolConfiguratorAddress, deployerSigner);
   const aclManager = await ethers.getContractAt("IACLManager", aclManagerAddress);
 
   // Get pool contract from the addresses provider to access getReservesList
   const poolAddressesProvider = await ethers.getContractAt("IPoolAddressesProvider", allDeployments["PoolAddressesProvider"]?.address);
   const poolAddress = await poolAddressesProvider.getPool();
-  const pool = (await ethers.getContractAt("IPool", poolAddress)) as IPool;
+  const pool = IPool__factory.connect(poolAddress, deployerSigner);
 
   // Determine reserve address
   let assetAddress = "";
@@ -102,7 +100,7 @@ async function main() {
       for (const reserve of reservesList) {
         // For each reserve, get the underlying token and check its symbol
         try {
-          const token = (await ethers.getContractAt("IERC20Detailed", reserve)) as IERC20Detailed;
+          const token = IERC20Detailed__factory.connect(reserve, deployerSigner);
           const symbol = await token.symbol();
 
           if (symbol === RESERVE_SYMBOL) {
@@ -248,7 +246,7 @@ async function main() {
  */
 async function getTokenDecimals(tokenAddress: string): Promise<number> {
   try {
-    const token = (await ethers.getContractAt("IERC20Detailed", tokenAddress)) as IERC20Detailed;
+    const token = IERC20Detailed__factory.connect(tokenAddress, ethers.provider);
     const decimals = await token.decimals();
     return Number(decimals);
   } catch (e) {

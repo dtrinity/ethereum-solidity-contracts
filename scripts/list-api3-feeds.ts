@@ -1,7 +1,6 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getConfig } from "../config/networks/katana_mainnet";
-
-const hre = require("hardhat") as HardhatRuntimeEnvironment;
+import hre from "hardhat";
+import type { Config, OracleAggregatorConfig } from "../config/types";
+import { getConfig } from "../config/config";
 
 interface FeedSummary {
   asset: string;
@@ -15,7 +14,7 @@ interface FeedSummary {
 /**
  * Get human-readable symbol from asset address
  */
-function getAssetSymbol(address: string, config: any): string {
+function getAssetSymbol(address: string, config: Config): string {
   const tokenMap: Record<string, string> = {
     [config.tokenAddresses.frxUSD]: "frxUSD",
     [config.tokenAddresses.sfrxUSD]: "sfrxUSD",
@@ -37,7 +36,9 @@ async function extractAPI3FeedsSummary(): Promise<FeedSummary[]> {
   const config = await getConfig(hre);
   const feeds: FeedSummary[] = [];
 
-  for (const [baseCurrency, aggregatorConfig] of Object.entries(config.oracleAggregators)) {
+  const aggregatorEntries = Object.entries(config.oracleAggregators) as Array<[string, OracleAggregatorConfig]>;
+
+  for (const [baseCurrency, aggregatorConfig] of aggregatorEntries) {
     const { api3OracleAssets } = aggregatorConfig;
 
     // Plain API3 Oracle Wrappers

@@ -1,5 +1,4 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { AbiItem } from "web3-utils";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -11,7 +10,7 @@ export interface RoleInfo {
 export interface RolesContractInfo {
   name: string;
   address: string;
-  abi: AbiItem[];
+  abi: unknown[];
   roles: RoleInfo[];
   rolesHeldByDeployer: RoleInfo[];
   rolesHeldByGovernance: RoleInfo[];
@@ -22,7 +21,7 @@ export interface RolesContractInfo {
 export interface OwnableContractInfo {
   name: string;
   address: string;
-  abi: AbiItem[];
+  abi: unknown[];
   owner: string;
   deployerIsOwner: boolean;
 }
@@ -62,39 +61,72 @@ export async function scanRolesAndOwnership(
     try {
       const artifactPath = path.join(deploymentsPath, filename);
       const deployment = JSON.parse(fs.readFileSync(artifactPath, "utf-8"));
-      const abi: AbiItem[] = deployment.abi;
+      const abi = deployment.abi as unknown[];
       const contractAddress: string = deployment.address;
       const contractName: string = deployment.contractName || filename.replace(".json", "");
 
       // Detect AccessControl (hasRole(bytes32,address) view returns bool)
-      const hasRoleFn = abi.find(
-        (item) =>
-          item.type === "function" &&
-          item.name === "hasRole" &&
-          item.inputs?.length === 2 &&
-          item.inputs[0].type === "bytes32" &&
-          item.inputs[1].type === "address" &&
-          item.outputs?.length === 1 &&
-          item.outputs[0].type === "bool",
-      );
+      const hasRoleFn = abi.some((rawItem) => {
+        const item = rawItem as any;
 
-      if (hasRoleFn) {
+        if (item?.type !== "function" || typeof item.name !== "string") {
+          return false;
+        }
+
+        const inputs = item.inputs ?? [];
+        const outputs = item.outputs ?? [];
+
+        return (
+          item.name === "hasRole" &&
+          inputs.length === 2 &&
+          inputs[0]?.type === "bytes32" &&
+          inputs[1]?.type === "address" &&
+          outputs.length === 1 &&
+          outputs[0]?.type === "bool"
+        );
+      });
+
+      const ownerFn = abi.some((rawItem) => {
+        const item = rawItem as any;
+
+        if (item?.type !== "function" || typeof item.name !== "string") {
+          return false;
+        }
+
+        const outputs = item.outputs ?? [];
+
+        return (
+          item.name === "owner" &&
+          (item.inputs?.length ?? 0) === 0 &&
+          outputs.length === 1 &&
+          outputs[0]?.type === "address"
+        );
+      });
+
+      const contractInstance = hasRoleFn || ownerFn ? await ethers.getContractAt(abi as any, contractAddress) : null;
+
+      if (hasRoleFn && contractInstance) {
+        const contract = contractInstance as any;
         log(`  Contract ${contractName} has a hasRole function.`);
         log(`\nChecking roles for contract: ${contractName} at ${contractAddress}`);
         const roles: RoleInfo[] = [];
 
         // Collect role constants as view functions returning bytes32
-        for (const item of abi) {
+        for (const rawItem of abi) {
+          const item = rawItem as any;
+
+          if (item?.type !== "function" || typeof item.name !== "string") {
+            continue;
+          }
+
           if (
-            item.type === "function" &&
             item.stateMutability === "view" &&
             (item.name?.endsWith("_ROLE") || item.name === "DEFAULT_ADMIN_ROLE") &&
             (item.inputs?.length ?? 0) === 0 &&
             item.outputs?.length === 1 &&
-            item.outputs[0].type === "bytes32"
+            item.outputs[0]?.type === "bytes32"
           ) {
             try {
-              const contract = await ethers.getContractAt(abi, contractAddress);
               const roleHash: string = await contract[item.name]();
               roles.push({ name: item.name, hash: roleHash });
               log(`  - Found role: ${item.name} with hash ${roleHash}`);
@@ -105,7 +137,6 @@ export async function scanRolesAndOwnership(
         }
 
         // Build role ownership information
-        const contract = await ethers.getContractAt(abi, contractAddress);
         const rolesHeldByDeployer: RoleInfo[] = [];
         const rolesHeldByGovernance: RoleInfo[] = [];
 
@@ -146,19 +177,9 @@ export async function scanRolesAndOwnership(
         });
       }
 
-      // Detect Ownable (owner() view returns address)
-      const ownerFn = abi.find(
-        (item) =>
-          item.type === "function" &&
-          item.name === "owner" &&
-          (item.inputs?.length ?? 0) === 0 &&
-          item.outputs?.length === 1 &&
-          item.outputs[0].type === "address",
-      );
-
-      if (ownerFn) {
+      if (ownerFn && contractInstance) {
         try {
-          const contract = await ethers.getContractAt(abi, contractAddress);
+          const contract = contractInstance as any;
           const owner: string = await contract.owner();
           log(`  Contract ${contractName} appears to be Ownable. owner=${owner}`);
           ownableContracts.push({
