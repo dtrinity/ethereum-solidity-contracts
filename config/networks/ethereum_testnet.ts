@@ -3,8 +3,8 @@ import "hardhat-deploy/dist/src/type-extensions";
 import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
+import { DETH_A_TOKEN_WRAPPER_ID, DETH_TOKEN_ID, DUSD_A_TOKEN_WRAPPER_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID } from "../../typescript/deploy-ids";
 import {
   DEFAULT_ORACLE_HEARTBEAT_SECONDS,
   ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
@@ -42,6 +42,13 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     fxSAVEDeployment,
     aUSDCDeployment,
     aUSDTDeployment,
+    dLendATokenWrapperDUSDDeployment,
+    dLendATokenWrapperDETHDeployment,
+    idleVaultSdUSDDeployment,
+    idleVaultSdETHDeployment,
+    incentivesProxyDeployment,
+    aTokenDUSDDeployment,
+    aTokenDETHDeployment,
   ] = await Promise.all([
     hre.deployments.getOrNull(DUSD_TOKEN_ID),
     hre.deployments.getOrNull(DETH_TOKEN_ID),
@@ -59,6 +66,13 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     hre.deployments.getOrNull("fxSAVE"),
     hre.deployments.getOrNull("aUSDC"),
     hre.deployments.getOrNull("aUSDT"),
+    hre.deployments.getOrNull(DUSD_A_TOKEN_WRAPPER_ID),
+    hre.deployments.getOrNull(DETH_A_TOKEN_WRAPPER_ID),
+    hre.deployments.getOrNull("DStakeIdleVault_sdUSD"),
+    hre.deployments.getOrNull("DStakeIdleVault_sdETH"),
+    hre.deployments.getOrNull(INCENTIVES_PROXY_ID),
+    hre.deployments.getOrNull("dUSDAToken"),
+    hre.deployments.getOrNull("dETHAToken"),
   ]);
 
   const mockOracleNameToAddress: Record<string, string> = {};
@@ -477,6 +491,10 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   };
 
   const governanceAddress = deployer ?? ZeroAddress;
+  const sdUSDDefaultStrategyShare = idleVaultSdUSDDeployment?.address ?? dLendATokenWrapperDUSDDeployment?.address ?? "";
+  const sdETHDefaultStrategyShare = idleVaultSdETHDeployment?.address ?? dLendATokenWrapperDETHDeployment?.address ?? "";
+  const dstakeAdmin = deployer ?? "";
+  const dstakeCollateralExchangers = dstakeAdmin ? [dstakeAdmin] : [];
 
   const dUSDCollateralFees: Record<string, number> = {};
   const dETHCollateralFees: Record<string, number> = {};
@@ -711,6 +729,76 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         initialFeeReceiver: governanceAddress,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS,
         collateralRedemptionFees: dETHCollateralFees,
+      },
+    },
+    dStake: {
+      sdUSD: {
+        dStable: stringOrEmpty(dUSDDeployment?.address),
+        name: "Staked dUSD",
+        symbol: "sdUSD",
+        initialAdmin: dstakeAdmin || governanceAddress,
+        initialFeeManager: dstakeAdmin || governanceAddress,
+        initialWithdrawalFeeBps: 10,
+        adapters: [
+          {
+            strategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+            adapterContract: "WrappedDLendConversionAdapter",
+            vaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
+          },
+        ],
+        defaultDepositStrategyShare: stringOrEmpty(sdUSDDefaultStrategyShare),
+        defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+        collateralVault: "DStakeCollateralVaultV2_sdUSD",
+        collateralExchangers: dstakeCollateralExchangers,
+        idleVault: {
+          rewardManager: dstakeAdmin || governanceAddress,
+        },
+        dLendRewardManager: {
+          managedStrategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+          dLendAssetToClaimFor: stringOrEmpty(aTokenDUSDDeployment?.address),
+          dLendRewardsController: stringOrEmpty(incentivesProxyDeployment?.address),
+          treasury: dstakeAdmin || governanceAddress,
+          maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS,
+          initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS,
+          initialExchangeThreshold: 1_000_000n,
+          initialAdmin: dstakeAdmin || governanceAddress,
+          initialRewardsManager: dstakeAdmin || governanceAddress,
+        },
+      },
+      sdETH: {
+        dStable: stringOrEmpty(dETHDeployment?.address),
+        name: "Staked dETH",
+        symbol: "sdETH",
+        initialAdmin: dstakeAdmin || governanceAddress,
+        initialFeeManager: dstakeAdmin || governanceAddress,
+        initialWithdrawalFeeBps: 10,
+        adapters: [
+          {
+            strategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+            adapterContract: "WrappedDLendConversionAdapter",
+            vaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
+          },
+        ],
+        defaultDepositStrategyShare: stringOrEmpty(sdETHDefaultStrategyShare),
+        defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+        collateralVault: "DStakeCollateralVaultV2_sdETH",
+        collateralExchangers: dstakeCollateralExchangers,
+        idleVault: {
+          rewardManager: dstakeAdmin || governanceAddress,
+        },
+        dLendRewardManager: {
+          managedStrategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+          dLendAssetToClaimFor: stringOrEmpty(aTokenDETHDeployment?.address),
+          dLendRewardsController: stringOrEmpty(incentivesProxyDeployment?.address),
+          treasury: dstakeAdmin || governanceAddress,
+          maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS,
+          initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS,
+          initialExchangeThreshold: 1n * 10n ** 18n,
+          initialAdmin: dstakeAdmin || governanceAddress,
+          initialRewardsManager: dstakeAdmin || governanceAddress,
+        },
       },
     },
     dLend: {
