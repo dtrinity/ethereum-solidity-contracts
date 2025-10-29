@@ -4,13 +4,15 @@ import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import { DETH_HARD_PEG_ORACLE_WRAPPER_ID, DETH_TOKEN_ID, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
 import { strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
+import type { HardPegAssetConfig, OracleAssetRouting } from "../types";
 import { Config } from "../types";
 
-const STABLE_THRESHOLD = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
+const HARD_PEG_PRICE = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
+const YIELD_BEARING_PRICE = (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 105n) / 100n;
 
 /**
  * Ethereum testnet configuration built around mock collateral assets and oracle feeds.
@@ -57,108 +59,33 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     hre.deployments.getOrNull("aUSDT"),
   ]);
 
-  const mockOracleNameToAddress: Record<string, string> = {};
-  const mockOracleAddressesDeployment = await hre.deployments.getOrNull("MockOracleNameToAddress");
+  const usdHardPegAssets: HardPegAssetMap = {};
+  const usdAssetRouting: AssetRoutingMap = {};
+  const ethHardPegAssets: HardPegAssetMap = {};
+  const ethAssetRouting: AssetRoutingMap = {};
 
-  if (mockOracleAddressesDeployment?.linkedData) {
-    Object.assign(mockOracleNameToAddress, mockOracleAddressesDeployment.linkedData as Record<string, string>);
-  }
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, dUSDDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, USDCDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, USDTDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, USDSDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, frxUSDDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, fxUSDDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, fxSAVEDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, aUSDCDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, aUSDTDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, sUSDSDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, sfrxUSDDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, WETHDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, dETHDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, stETHDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, sfrxETHDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(usdHardPegAssets, usdAssetRouting, DUSD_HARD_PEG_ORACLE_WRAPPER_ID, rETHDeployment?.address, YIELD_BEARING_PRICE);
 
-  const usdStableFeeds = {
-    ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
-      ? {
-          [USDCDeployment.address]: {
-            feed: mockOracleNameToAddress["USDC_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
-      ? {
-          [USDTDeployment.address]: {
-            feed: mockOracleNameToAddress["USDT_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(USDSDeployment?.address && mockOracleNameToAddress["USDS_USD"]
-      ? {
-          [USDSDeployment.address]: {
-            feed: mockOracleNameToAddress["USDS_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
-      ? {
-          [frxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["frxUSD_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(fxUSDDeployment?.address && mockOracleNameToAddress["fxUSD_USD"]
-      ? {
-          [fxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["fxUSD_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(aUSDCDeployment?.address && mockOracleNameToAddress["aUSDC_USD"]
-      ? {
-          [aUSDCDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDC_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-    ...(aUSDTDeployment?.address && mockOracleNameToAddress["aUSDT_USD"]
-      ? {
-          [aUSDTDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDT_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
-      : {}),
-  };
-
-  const usdPlainFeeds = {
-    ...(sUSDSDeployment?.address && mockOracleNameToAddress["sUSDS_USD"]
-      ? { [sUSDSDeployment.address]: mockOracleNameToAddress["sUSDS_USD"] }
-      : {}),
-    ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_USD"]
-      ? { [sfrxUSDDeployment.address]: mockOracleNameToAddress["sfrxUSD_USD"] }
-      : {}),
-    ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxSAVE_USD"]
-      ? { [fxSAVEDeployment.address]: mockOracleNameToAddress["fxSAVE_USD"] }
-      : {}),
-    ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? { [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
-      : {}),
-    ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? { [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
-      : {}),
-  };
-
-  const ethPlainFeeds = {
-    ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
-      ? { [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"] }
-      : {}),
-    ...(sfrxETHDeployment?.address && mockOracleNameToAddress["sfrxETH_WETH"]
-      ? { [sfrxETHDeployment.address]: mockOracleNameToAddress["sfrxETH_WETH"] }
-      : {}),
-    ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"]
-      ? { [rETHDeployment.address]: mockOracleNameToAddress["rETH_WETH"] }
-      : {}),
-  };
+  addHardPegAsset(ethHardPegAssets, ethAssetRouting, DETH_HARD_PEG_ORACLE_WRAPPER_ID, WETHDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(ethHardPegAssets, ethAssetRouting, DETH_HARD_PEG_ORACLE_WRAPPER_ID, dETHDeployment?.address, HARD_PEG_PRICE);
+  addHardPegAsset(ethHardPegAssets, ethAssetRouting, DETH_HARD_PEG_ORACLE_WRAPPER_ID, stETHDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(ethHardPegAssets, ethAssetRouting, DETH_HARD_PEG_ORACLE_WRAPPER_ID, sfrxETHDeployment?.address, YIELD_BEARING_PRICE);
+  addHardPegAsset(ethHardPegAssets, ethAssetRouting, DETH_HARD_PEG_ORACLE_WRAPPER_ID, rETHDeployment?.address, YIELD_BEARING_PRICE);
 
   const governanceAddress = deployer ?? ZeroAddress;
 
@@ -304,10 +231,17 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           compositeApi3OracleWrappersWithThresholding: {},
         },
         redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: usdPlainFeeds,
-          redstoneOracleWrappersWithThresholding: usdStableFeeds,
+          plainRedstoneOracleWrappers: {},
+          redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        wrappers: {
+          hardPeg: {
+            deploymentId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+            assets: usdHardPegAssets,
+          },
+        },
+        assets: usdAssetRouting,
       },
       ETH: {
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
@@ -319,10 +253,17 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           compositeApi3OracleWrappersWithThresholding: {},
         },
         redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: ethPlainFeeds,
+          plainRedstoneOracleWrappers: {},
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        wrappers: {
+          hardPeg: {
+            deploymentId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
+            assets: ethHardPegAssets,
+          },
+        },
+        assets: ethAssetRouting,
       },
     },
     dStables: {
@@ -399,4 +340,58 @@ function addCollateralFee(fees: Record<string, number>, address: string | undefi
   if (address) {
     fees[address] = feeBps;
   }
+}
+
+type HardPegAssetMap = Record<string, HardPegAssetConfig>;
+type AssetRoutingMap = Record<string, OracleAssetRouting>;
+
+/**
+ * Adds a hard peg oracle configuration for the provided asset when the address is defined.
+ *
+ * @param assets - Mutable map of hard peg asset settings.
+ * @param routing - Mutable map of oracle aggregator routing configuration.
+ * @param wrapperId - Deployment id for the target hard peg wrapper.
+ * @param address - Asset address to register.
+ * @param pricePeg - Target price peg for the asset.
+ * @param lowerGuard - Optional deviation lower guard.
+ * @param upperGuard - Optional deviation upper guard.
+ */
+function addHardPegAsset(
+  assets: HardPegAssetMap,
+  routing: AssetRoutingMap,
+  wrapperId: string,
+  address: string | undefined,
+  pricePeg: bigint,
+  lowerGuard: bigint = 0n,
+  upperGuard: bigint = 0n,
+): void {
+  if (!isNonZeroAddress(address)) {
+    return;
+  }
+
+  assets[address] = {
+    pricePeg,
+    lowerGuard,
+    upperGuard,
+  };
+
+  routing[address] = {
+    primaryWrapperId: wrapperId,
+    risk: {
+      maxDeviationBps: 0,
+    },
+  };
+}
+
+/**
+ * Returns true when the provided value is a non-zero address.
+ *
+ * @param value - Address candidate.
+ */
+function isNonZeroAddress(value: string | undefined): value is string {
+  if (!value) {
+    return false;
+  }
+
+  return value.toLowerCase() !== ZeroAddress.toLowerCase();
 }
