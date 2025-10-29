@@ -133,7 +133,8 @@ function runDeploymentTestsForDStable(
 
         const networkConfig2 = await getConfig(hre);
         const governance = networkConfig2.walletAddresses.governanceMultisig;
-        expect(await amoDebtToken.hasRole(DEFAULT_ADMIN_ROLE, governance)).to.be.true;
+        expect(await amoDebtToken.hasRole(DEFAULT_ADMIN_ROLE, deployer)).to.be.true;
+        expect(await amoDebtToken.hasRole(DEFAULT_ADMIN_ROLE, governance)).to.be.false;
       });
 
       it("should have correct roles on AmoManagerV2", async function () {
@@ -142,12 +143,12 @@ function runDeploymentTestsForDStable(
         const AMO_DECREASE_ROLE = await amoManagerV2.AMO_DECREASE_ROLE();
 
         const networkConfig3 = await getConfig(hre);
-        const expectedWallet = networkConfig3.walletAddresses.governanceMultisig;
+        const governanceWallet = networkConfig3.walletAddresses.governanceMultisig;
 
-        expect(await amoManagerV2.hasRole(AMO_INCREASE_ROLE, expectedWallet)).to.be.true;
-        expect(await amoManagerV2.hasRole(AMO_DECREASE_ROLE, expectedWallet)).to.be.true;
-
-        expect(await amoManagerV2.hasRole(DEFAULT_ADMIN_ROLE, expectedWallet)).to.be.true;
+        expect(await amoManagerV2.hasRole(AMO_INCREASE_ROLE, deployer)).to.be.false;
+        expect(await amoManagerV2.hasRole(AMO_DECREASE_ROLE, deployer)).to.be.false;
+        expect(await amoManagerV2.hasRole(DEFAULT_ADMIN_ROLE, deployer)).to.be.true;
+        expect(await amoManagerV2.hasRole(DEFAULT_ADMIN_ROLE, governanceWallet)).to.be.false;
       });
 
       it("should have correct roles on dStable token", async function () {

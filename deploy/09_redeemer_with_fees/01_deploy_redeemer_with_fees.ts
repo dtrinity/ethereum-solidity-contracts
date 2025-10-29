@@ -13,8 +13,6 @@ import {
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
-import { ZERO_BYTES_32 } from "../../typescript/dlend/constants";
-import { isMainnet } from "../../typescript/hardhat/deploy";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -127,61 +125,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         `CollateralVault (${dETHCollateralVaultDeployment.address}).grantRole(COLLATERAL_WITHDRAWER_ROLE, ${dETHRedeemerWithFeesDeployment.address})`,
       );
     }
-  }
-
-  // Transfer admin roles to governance multisig (mainnet only)
-  if (isMainnet(hre.network.name)) {
-    const governanceAddress = config.walletAddresses.governanceMultisig;
-    const DEFAULT_ADMIN_ROLE = ZERO_BYTES_32;
-    const deployerSigner = await hre.ethers.getSigner(deployer);
-
-    console.log(`\n🔄 Transferring RedeemerWithFees admin roles to ${governanceAddress}...`);
-
-    // Transfer dUSD RedeemerWithFees admin role
-    try {
-      const dUSDRedeemerContract = await hre.ethers.getContractAt("RedeemerV2", dUSDRedeemerWithFeesDeployment.address, deployerSigner);
-
-      if (!(await dUSDRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, governanceAddress))) {
-        await dUSDRedeemerContract.grantRole(DEFAULT_ADMIN_ROLE, governanceAddress);
-        console.log(`  ➕ Granted DEFAULT_ADMIN_ROLE to ${governanceAddress} for dUSD RedeemerWithFees`);
-      }
-
-      if (await dUSDRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-        await dUSDRedeemerContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer);
-        console.log(`  ➖ Revoked DEFAULT_ADMIN_ROLE from deployer for dUSD RedeemerWithFees`);
-      }
-    } catch (error) {
-      console.error(`  ❌ Failed to transfer dUSD RedeemerWithFees admin role: ${error}`);
-      manualActions.push(
-        `dUSD_RedeemerWithFees (${dUSDRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
-      );
-      manualActions.push(`dUSD_RedeemerWithFees (${dUSDRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`);
-    }
-
-    // Transfer dS RedeemerWithFees admin role
-    try {
-      const dETHRedeemerContract = await hre.ethers.getContractAt("RedeemerV2", dETHRedeemerWithFeesDeployment.address, deployerSigner);
-
-      if (!(await dETHRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, governanceAddress))) {
-        await dETHRedeemerContract.grantRole(DEFAULT_ADMIN_ROLE, governanceAddress);
-        console.log(`  ➕ Granted DEFAULT_ADMIN_ROLE to ${governanceAddress} for dS RedeemerWithFees`);
-      }
-
-      if (await dETHRedeemerContract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-        await dETHRedeemerContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer);
-        console.log(`  ➖ Revoked DEFAULT_ADMIN_ROLE from deployer for dS RedeemerWithFees`);
-      }
-    } catch (error) {
-      console.error(`  ❌ Failed to transfer dS RedeemerWithFees admin role: ${error}`);
-      manualActions.push(
-        `dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).grantRole(DEFAULT_ADMIN_ROLE, ${governanceAddress})`,
-      );
-      manualActions.push(`dS_RedeemerWithFees (${dETHRedeemerWithFeesDeployment.address}).revokeRole(DEFAULT_ADMIN_ROLE, ${deployer})`);
-    }
-
-    console.log("  ✅ Completed RedeemerWithFees admin role transfers");
-  } else {
-    console.log("\n📝 Note: Admin role transfer skipped for non-mainnet network");
   }
 
   // After processing, print any manual steps that are required.

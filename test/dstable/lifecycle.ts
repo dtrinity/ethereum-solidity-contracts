@@ -270,9 +270,8 @@ dstableConfigs.forEach((config) => {
 
         // Allocate some dStable to AMO vault
         const dstableToAllocate = hre.ethers.parseUnits("100", dstableInfo.decimals);
-        const appConfig = await getConfig(hre);
-        const governanceSigner = await hre.ethers.getSigner(appConfig.walletAddresses.governanceMultisig);
-        await issuerContract.connect(governanceSigner).increaseAmoSupply(dstableToAllocate);
+        const deployerSigner = await hre.ethers.getSigner(deployer);
+        await issuerContract.connect(deployerSigner).increaseAmoSupply(dstableToAllocate);
         await amoManagerContract.allocateAmo(await mockAmoVaultContract.getAddress(), dstableToAllocate);
 
         await checkInvariants();
@@ -359,9 +358,8 @@ dstableConfigs.forEach((config) => {
 
         // 4. Allocate dStable to the AMO vault
         const dstableToAllocate = hre.ethers.parseUnits("200", dstableInfo.decimals);
-        const appConfig = await getConfig(hre);
-        const governanceSigner = await hre.ethers.getSigner(appConfig.walletAddresses.governanceMultisig);
-        await issuerContract.connect(governanceSigner).increaseAmoSupply(dstableToAllocate);
+        const deployerSigner = await hre.ethers.getSigner(deployer);
+        await issuerContract.connect(deployerSigner).increaseAmoSupply(dstableToAllocate);
         await amoManagerContract.allocateAmo(await mockAmoVaultContract.getAddress(), dstableToAllocate);
 
         await checkInvariants();

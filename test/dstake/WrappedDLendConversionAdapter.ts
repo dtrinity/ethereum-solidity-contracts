@@ -75,7 +75,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       // Sanity checks
       expect(adapterAddress).to.not.equal(ZeroAddress);
       // Ensure deployer is registered as router on collateralVault
-      await collateralVault.connect(user1).setRouter(deployer.address);
+      await collateralVault.setRouter(deployer.address);
     });
 
     describe("Initialization & Deployment State", function () {

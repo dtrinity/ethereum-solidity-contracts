@@ -38,17 +38,6 @@ export const createDStableFixture = (config: DStableFixtureConfig) => {
     await deployments.fixture(); // Start from a fresh deployment
     await deployments.fixture(["local-setup", config.symbol.toLowerCase()]); // Include local-setup to use the mock Oracle
     // IssuerV2 and RedeemerV2 are now deployed as part of the standard ecosystem tags
-
-    const { deployer } = await hre.getNamedAccounts();
-    const { walletAddresses } = await getConfig(hre);
-
-    const { address: issuerAddress } = await deployments.get(config.issuerContractId);
-    const issuer = await hre.ethers.getContractAt("IssuerV2", issuerAddress, await hre.ethers.getSigner(deployer));
-
-    const amoManagerRole = await issuer.AMO_MANAGER_ROLE();
-    if (!(await issuer.hasRole(amoManagerRole, walletAddresses.governanceMultisig))) {
-      await (await issuer.grantRole(amoManagerRole, walletAddresses.governanceMultisig)).wait();
-    }
   });
 };
 

@@ -104,9 +104,8 @@ dstableConfigs.forEach((config) => {
 
       // Mint some dStable to the AmoManager for testing
       const initialAmoSupply = hre.ethers.parseUnits("10000", dstableInfo.decimals);
-      const appConfig = await getConfig(hre);
-      const governanceSigner = await hre.ethers.getSigner(appConfig.walletAddresses.governanceMultisig);
-      await issuerContract.connect(governanceSigner).increaseAmoSupply(initialAmoSupply);
+      const deployerSigner = await hre.ethers.getSigner(deployer);
+      await issuerContract.connect(deployerSigner).increaseAmoSupply(initialAmoSupply);
     });
 
     /**
