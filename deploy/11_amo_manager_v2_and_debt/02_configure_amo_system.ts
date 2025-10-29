@@ -110,6 +110,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`  📝 Setting up allowlists...`);
 
+    if (!(await collateralVault.isCollateralSupported(debtTokenDeployment.address))) {
+      await collateralVault.allowCollateral(debtTokenDeployment.address);
+      console.log(`    ✅ Added AMO debt token as supported collateral in vault`);
+    } else {
+      console.log(`    ✅ AMO debt token already supported in collateral vault`);
+    }
+
     if (!(await debtToken.isAllowlisted(collateralVaultDeployment.address))) {
       await debtToken.setAllowlisted(collateralVaultDeployment.address, true);
       console.log(`    ✅ Added collateral vault to debt token allowlist`);
