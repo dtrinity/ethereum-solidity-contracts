@@ -25,9 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check all required configuration values at the top
   const dUSDConfig = config.dStables.dUSD;
-  const dSConfig = config.dStables.dS;
-  const dETHConfig = dSConfig ?? config.dStables.dETH;
-  const dETHConfigLabel = dSConfig ? "dStables.dS" : "dStables.dETH";
+  const dETHConfig = config.dStables.dS;
 
   const missingConfigs: string[] = [];
 
@@ -42,11 +40,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Check dS configuration
   if (!dETHConfig?.initialFeeReceiver || !isAddress(dETHConfig.initialFeeReceiver)) {
-    missingConfigs.push(`${dETHConfigLabel}.initialFeeReceiver`);
+    missingConfigs.push("dStables.dS.initialFeeReceiver");
   }
 
   if (dETHConfig?.initialRedemptionFeeBps === undefined) {
-    missingConfigs.push(`${dETHConfigLabel}.initialRedemptionFeeBps`);
+    missingConfigs.push("dStables.dS.initialRedemptionFeeBps");
   }
 
   // If any required config values are missing, skip deployment
@@ -54,10 +52,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`⚠️  Skipping RedeemerWithFees deployment - missing configuration values: ${missingConfigs.join(", ")}`);
     console.log(`☯️  ${__filename.split("/").slice(-2).join("/")}: ⏭️  (skipped)`);
     return true;
-  }
-
-  if (!dUSDConfig || !dETHConfig) {
-    throw new Error("RedeemerWithFees configuration missing after validation");
   }
 
   // Deploy RedeemerWithFees for dUSD
