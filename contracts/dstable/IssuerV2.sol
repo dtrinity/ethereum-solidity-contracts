@@ -27,7 +27,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/common/IAaveOracle.sol";
 import "contracts/common/IMintableERC20.sol";
 import "./CollateralVault.sol";
-import "./AmoManager.sol";
+import "./AmoDebtToken.sol";
 import "./OracleAware.sol";
 
 /**
@@ -42,17 +42,16 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     IMintableERC20 public dstable;
     uint8 public immutable dstableDecimals;
     CollateralVault public collateralVault;
-    AmoManager public amoManager;
+    AmoDebtToken public amoDebtToken;
 
     /* Events */
 
     event CollateralVaultSet(address indexed collateralVault);
-    event AmoManagerSet(address indexed amoManager);
+    event AmoDebtTokenSet(address indexed amoDebtToken);
     event AssetMintingPauseUpdated(address indexed asset, bool paused);
 
     /* Roles */
 
-    bytes32 public constant AMO_MANAGER_ROLE = keccak256("AMO_MANAGER_ROLE");
     bytes32 public constant INCENTIVES_MANAGER_ROLE = keccak256("INCENTIVES_MANAGER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
@@ -60,7 +59,6 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
 
     error SlippageTooHigh(uint256 minDStable, uint256 dstableAmount);
     error IssuanceSurpassesExcessCollateral(uint256 collateralInDstable, uint256 circulatingDstable);
-    error MintingToAmoShouldNotIncreaseSupply(uint256 circulatingDstableBefore, uint256 circulatingDstableAfter);
     error AssetMintingPaused(address asset);
 
     /* Overrides */
@@ -73,21 +71,20 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param _collateralVault The address of the collateral vault
      * @param _dstable The address of the dStable stablecoin
      * @param oracle The address of the price oracle
-     * @param _amoManager The address of the AMO Manager
+     * @param _amoDebtToken The address of the AMO debt accounting token
      */
     constructor(
         address _collateralVault,
         address _dstable,
         IPriceOracleGetter oracle,
-        address _amoManager
+        address _amoDebtToken
     ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
         collateralVault = CollateralVault(_collateralVault);
         dstable = IMintableERC20(_dstable);
         dstableDecimals = dstable.decimals();
-        amoManager = AmoManager(_amoManager);
+        amoDebtToken = AmoDebtToken(_amoDebtToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        grantRole(AMO_MANAGER_ROLE, msg.sender);
         grantRole(INCENTIVES_MANAGER_ROLE, msg.sender);
         grantRole(PAUSER_ROLE, msg.sender);
     }
@@ -152,30 +149,22 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Increases the AMO supply by minting new dStable tokens
-     * @param dstableAmount The amount of dStable to mint and send to the AMO Manager
-     */
-    function increaseAmoSupply(uint256 dstableAmount) external onlyRole(AMO_MANAGER_ROLE) whenNotPaused {
-        uint256 _circulatingDstableBefore = circulatingDstable();
-
-        dstable.mint(address(amoManager), dstableAmount);
-
-        uint256 _circulatingDstableAfter = circulatingDstable();
-
-        // Sanity check that we are sending to the active AMO Manager
-        if (_circulatingDstableAfter != _circulatingDstableBefore) {
-            revert MintingToAmoShouldNotIncreaseSupply(_circulatingDstableBefore, _circulatingDstableAfter);
-        }
-    }
-
-    /**
      * @notice Calculates the circulating supply of dStable tokens
-     * @return The amount of dStable tokens that are not held by the AMO Manager
+     * @return The amount of dStable tokens that are not backing AMO debt
      */
     function circulatingDstable() public view returns (uint256) {
         uint256 totalDstable = dstable.totalSupply();
-        uint256 amoDstable = amoManager.totalAmoSupply();
-        return totalDstable - amoDstable;
+        uint256 amoDebtSupply = address(amoDebtToken) != address(0) ? amoDebtToken.totalSupply() : 0;
+
+        if (amoDebtSupply == 0) {
+            return totalDstable;
+        }
+
+        uint8 debtDecimals = amoDebtToken.decimals();
+        uint256 amoDebtBaseValue = Math.mulDiv(amoDebtSupply, baseCurrencyUnit, 10 ** debtDecimals);
+        uint256 amoBackedDstable = baseValueToDstableAmount(amoDebtBaseValue);
+
+        return totalDstable - amoBackedDstable;
     }
 
     /**
@@ -208,17 +197,12 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     /* Admin */
 
     /**
-     * @notice Sets the AMO Manager address
-     * @param _amoManager The address of the AMO Manager
+     * @notice Sets the AMO debt token used for circulation accounting
+     * @param _amoDebtToken The address of the AMO debt token
      */
-    function setAmoManager(address _amoManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        address old = address(amoManager);
-        amoManager = AmoManager(_amoManager);
-        grantRole(AMO_MANAGER_ROLE, _amoManager);
-        if (old != address(0) && old != _amoManager) {
-            revokeRole(AMO_MANAGER_ROLE, old);
-        }
-        emit AmoManagerSet(_amoManager);
+    function setAmoDebtToken(address _amoDebtToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        amoDebtToken = AmoDebtToken(_amoDebtToken);
+        emit AmoDebtTokenSet(_amoDebtToken);
     }
 
     /**

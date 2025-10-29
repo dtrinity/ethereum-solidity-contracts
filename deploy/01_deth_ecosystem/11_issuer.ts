@@ -1,10 +1,10 @@
-import { Signer } from "ethers";
+import { Signer, ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  DETH_AMO_MANAGER_ID,
+  DETH_AMO_DEBT_TOKEN_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_ISSUER_V2_CONTRACT_ID,
   DETH_TOKEN_ID,
@@ -41,12 +41,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { tokenAddresses } = await getConfig(hre);
   const { address: oracleAggregatorAddress } = await deployments.get(ETH_ORACLE_AGGREGATOR_ID);
   const { address: collateralVaultAddress } = await deployments.get(DETH_COLLATERAL_VAULT_CONTRACT_ID);
-  const { address: amoManagerAddress } = await deployments.get(DETH_AMO_MANAGER_ID);
+  const amoDebtTokenDeployment = await deployments.getOrNull(DETH_AMO_DEBT_TOKEN_ID);
+  const amoDebtTokenAddress = amoDebtTokenDeployment?.address ?? ZeroAddress;
 
   const deployResult = await deployments.deploy(DETH_ISSUER_V2_CONTRACT_ID, {
     from: deployer,
     contract: "IssuerV2",
-    args: [collateralVaultAddress, tokenAddresses.dETH, oracleAggregatorAddress, amoManagerAddress],
+    args: [collateralVaultAddress, tokenAddresses.dETH, oracleAggregatorAddress, amoDebtTokenAddress],
     log: true,
     autoMine: true,
   });
@@ -60,6 +61,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.id = DETH_ISSUER_V2_CONTRACT_ID;
 func.tags = ["deth"];
-func.dependencies = [DETH_COLLATERAL_VAULT_CONTRACT_ID, DETH_TOKEN_ID, "dETH_setup", DETH_AMO_MANAGER_ID];
+func.dependencies = [DETH_COLLATERAL_VAULT_CONTRACT_ID, DETH_TOKEN_ID, "dETH_setup"];
 
 export default func;

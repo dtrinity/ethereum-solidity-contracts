@@ -30,12 +30,12 @@ and mint/redemption quotes are computed in a common base currency.
   from the vault and applies configurable default/per-asset fees
   (`contracts/dstable/RedeemerV2.sol:31`). It shares the same oracle and pause
   controls as the issuer.
-- **AMO management** – `AmoManager` co-ordinates individual AMO vaults, tracks
-  their allocated supply, and lets operators shuttle collateral back to the main
-  vault when strategies unwind (`contracts/dstable/AmoManager.sol:34`).
-  `AmoManagerV2` adds a unified accounting model with the transfer-restricted
-  `AmoDebtToken` (`contracts/dstable/AmoDebtToken.sol:19`), allowing atomic
-  mint/burn flows and peg deviation safeguards (`contracts/dstable/AmoManagerV2.sol:24`).
+- **AMO management** – `AmoManagerV2` co-ordinates individual AMO vaults, tracks
+  their allocated supply via the transfer-restricted `AmoDebtToken`
+  (`contracts/dstable/AmoDebtToken.sol:19`), and lets operators shuttle
+  collateral back to the main vault when strategies unwind. Unified accounting
+  enables atomic mint/burn flows and peg deviation safeguards
+  (`contracts/dstable/AmoManagerV2.sol:24`).
 
 ## Minting Workflow
 
@@ -69,11 +69,6 @@ and mint/redemption quotes are computed in a common base currency.
 
 ## AMO Operations
 
-- `AmoManager` keeps per-vault allocation bookkeeping and enforces that AMO
-  supply adjustments do not change total dStable supply
-  (`contracts/dstable/AmoManager.sol:96`). When collateral is harvested from an
-  AMO vault, allocations are decremented to reflect the now fully backed supply
-  (`contracts/dstable/AmoManager.sol:171`).
 - `AmoVault` instances custody both collateral and minted dStable on behalf of
   the AMO manager, with recovery tooling that forbids sweeping protocol tokens
  (`contracts/dstable/AmoVault.sol:87`).
@@ -105,18 +100,17 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
 
 - **Token** – `DEFAULT_ADMIN_ROLE`, `PAUSER_ROLE`, `MINTER_ROLE`
   (`contracts/dstable/ERC20StablecoinUpgradeable.sol:20`).
-- **Issuer** – `DEFAULT_ADMIN_ROLE`, `AMO_MANAGER_ROLE`, `INCENTIVES_MANAGER_ROLE`,
-  `PAUSER_ROLE` (`contracts/dstable/IssuerV2.sol:56`).
+- **Issuer** – `DEFAULT_ADMIN_ROLE`, `INCENTIVES_MANAGER_ROLE`,
+  `PAUSER_ROLE` (`contracts/dstable/IssuerV2.sol:53`).
 - **Redeemer** – `DEFAULT_ADMIN_ROLE`, `REDEMPTION_MANAGER_ROLE`, `PAUSER_ROLE`
   (`contracts/dstable/RedeemerV2.sol:57`).
 - **Vaults** – `COLLATERAL_MANAGER_ROLE`, `COLLATERAL_WITHDRAWER_ROLE`,
   `COLLATERAL_STRATEGY_ROLE` across `CollateralVault`
   (`contracts/dstable/CollateralVault.sol:48`), with `RECOVERER_ROLE` on AMO
   vaults (`contracts/dstable/AmoVault.sol:46`).
-- **AMO managers** – `DEFAULT_ADMIN_ROLE`, `AMO_ALLOCATOR_ROLE`,
-  `FEE_COLLECTOR_ROLE` (`contracts/dstable/AmoManager.sol:56`), plus dedicated
-  `AMO_INCREASE_ROLE` / `AMO_DECREASE_ROLE` for V2
-  (`contracts/dstable/AmoManagerV2.sol:37`).
+- **AMO managers** – `DEFAULT_ADMIN_ROLE`, `AMO_INCREASE_ROLE`,
+  `AMO_DECREASE_ROLE` with allowlisted wallet/ vault controls
+  (`contracts/dstable/AmoManagerV2.sol:60`).
 
 ## Invariants & Risk Controls
 
@@ -140,6 +134,6 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
   enable minting/redemption as needed (`contracts/dstable/CollateralVault.sol:167`).
 - Incentive programs mint dStable using `issueUsingExcessCollateral`, which caps
   issuance by current excess collateral (`contracts/dstable/IssuerV2.sol:173`).
-- AMO vault rotations: use `transferFromHoldingVaultToAmoVault` /
-  `transferFromAmoVaultToHoldingVault` to move collateral while keeping
-  allocation accounting accurate (`contracts/dstable/AmoManager.sol:200`).
+- AMO vault rotations: managed directly via `AmoManagerV2.borrowTo` and
+  `AmoManagerV2.repayFrom` with invariant checks to preserve vault value
+  (`contracts/dstable/AmoManagerV2.sol`).

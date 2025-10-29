@@ -29,7 +29,6 @@ export const DUSD_ISSUER_CONTRACT_ID = "dUSD_Issuer";
 export const DUSD_ISSUER_V2_CONTRACT_ID = "dUSD_IssuerV2";
 export const DUSD_REDEEMER_CONTRACT_ID = "dUSD_Redeemer";
 export const DUSD_COLLATERAL_VAULT_CONTRACT_ID = "dUSD_CollateralHolderVault";
-export const DUSD_AMO_MANAGER_ID = "dUSD_AmoManager";
 export const DUSD_AMO_MANAGER_V2_ID = "dUSD_AmoManagerV2";
 export const DUSD_AMO_DEBT_TOKEN_ID = "dUSD_AmoDebtToken";
 export const DUSD_HARD_PEG_ORACLE_WRAPPER_ID = "dUSD_HardPegOracleWrapper";
@@ -40,7 +39,6 @@ export const DETH_ISSUER_CONTRACT_ID = "dETH_Issuer";
 export const DETH_ISSUER_V2_CONTRACT_ID = "dETH_IssuerV2";
 export const DETH_REDEEMER_CONTRACT_ID = "dETH_Redeemer";
 export const DETH_COLLATERAL_VAULT_CONTRACT_ID = "dETH_CollateralHolderVault";
-export const DETH_AMO_MANAGER_ID = "dETH_AmoManager";
 export const DETH_AMO_MANAGER_V2_ID = "dETH_AmoManagerV2";
 export const DETH_AMO_DEBT_TOKEN_ID = "dETH_AmoDebtToken";
 export const DETH_HARD_PEG_ORACLE_WRAPPER_ID = "dETH_HardPegOracleWrapper";
@@ -115,9 +113,9 @@ export const SDETH_DSTAKE_TOKEN_ID = `${DSTAKE_TOKEN_ID_PREFIX}_sdETH`;
 export const SDETH_COLLATERAL_VAULT_ID = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_sdETH`;
 export const SDETH_ROUTER_ID = `${DSTAKE_ROUTER_ID_PREFIX}_sdETH`;
 
-// RedeemerWithFees
-export const DUSD_REDEEMER_WITH_FEES_CONTRACT_ID = "dUSD_RedeemerWithFees";
-export const DETH_REDEEMER_WITH_FEES_CONTRACT_ID = "dETH_RedeemerWithFees";
+// RedeemerV2
+export const DUSD_REDEEMER_V2_CONTRACT_ID = "dUSD_RedeemerV2";
+export const DETH_REDEEMER_V2_CONTRACT_ID = "dETH_RedeemerV2";
 
 // Vesting NFT
 export const ERC20_VESTING_NFT_ID = "ERC20VestingNFT";

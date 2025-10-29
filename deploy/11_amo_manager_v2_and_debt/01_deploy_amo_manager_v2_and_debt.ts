@@ -68,71 +68,65 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       autoMine: true,
     });
 
-    try {
-      console.log(`  🔧 Ensuring oracle entry for ${amoConfig.name} debt token...`);
-      const hardPegDeployment = await deployments.get(amoConfig.hardPegOracleId);
-      const deployerSigner = await ethers.getSigner(deployer);
-      console.log(`    ℹ️ Loading OracleAggregatorV1_1 at ${oracleDeployment.address}`);
-      const oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", oracleDeployment.address, deployerSigner);
-      const oracleManagerRole = await oracleAggregator.ORACLE_MANAGER_ROLE();
-      const hasRole = await oracleAggregator.hasRole(oracleManagerRole, deployer);
+    console.log(`  🔧 Ensuring oracle entry for ${amoConfig.name} debt token...`);
+    const hardPegDeployment = await deployments.get(amoConfig.hardPegOracleId);
+    const deployerSigner = await ethers.getSigner(deployer);
+    console.log(`    ℹ️ Loading OracleAggregatorV1_1 at ${oracleDeployment.address}`);
+    const oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", oracleDeployment.address, deployerSigner);
+    const oracleManagerRole = await oracleAggregator.ORACLE_MANAGER_ROLE();
+    const hasRole = await oracleAggregator.hasRole(oracleManagerRole, deployer);
 
-      if (!hasRole) {
-        console.log(
-          `  ⚠️  Deployer lacks ORACLE_MANAGER_ROLE on ${amoConfig.name} oracle aggregator. ` +
-            `Grant role before rerunning or configure oracle manually.`,
-        );
-      } else {
-        const hardPegWrapper = await ethers.getContractAt("HardPegOracleWrapperV1_1", hardPegDeployment.address, deployerSigner);
+    if (!hasRole) {
+      throw new Error(
+        `Deployer lacks ORACLE_MANAGER_ROLE on ${amoConfig.name} oracle aggregator (${oracleDeployment.address}). Grant the role and rerun.`,
+      );
+    }
 
-        const baseCurrencyUnit = await oracleAggregator.BASE_CURRENCY_UNIT();
-        const lowerGuard = 0n;
-        const upperGuard = 0n;
+    const hardPegWrapper = await ethers.getContractAt("HardPegOracleWrapperV1_1", hardPegDeployment.address, deployerSigner);
 
-        let assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
-        const assetConfigured = assetConfig.risk.exists;
-        const currentOracle = assetConfigured ? assetConfig.oracle : ethers.ZeroAddress;
+    const baseCurrencyUnit = await oracleAggregator.BASE_CURRENCY_UNIT();
+    const lowerGuard = 0n;
+    const upperGuard = 0n;
 
-        if (currentOracle !== hardPegDeployment.address) {
-          const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, hardPegDeployment.address);
-          await tx.wait();
-          console.log(`  ✅ Set hard peg oracle for ${amoConfig.name} debt token`);
-        } else {
-          console.log(`  ✅ Hard peg oracle already configured for ${amoConfig.name} debt token`);
-        }
+    let assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
+    const assetConfigured = assetConfig.risk.exists;
+    const currentOracle = assetConfigured ? assetConfig.oracle : ethers.ZeroAddress;
 
-        assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
+    if (currentOracle !== hardPegDeployment.address) {
+      const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, hardPegDeployment.address);
+      await tx.wait();
+      console.log(`  ✅ Set hard peg oracle for ${amoConfig.name} debt token`);
+    } else {
+      console.log(`  ✅ Hard peg oracle already configured for ${amoConfig.name} debt token`);
+    }
 
-        const configuredHeartbeat = assetConfig.risk.exists ? Number(assetConfig.risk.heartbeat) : 0;
+    assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
 
-        if (configuredHeartbeat === 0) {
-          const tx = await oracleAggregator.updateAssetRiskConfig(
-            debtTokenDeployment.address,
-            Number(assetConfig.risk.maxStaleTime ?? 0),
-            DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            Number(assetConfig.risk.maxDeviationBps ?? 0),
-            assetConfig.risk.minAnswer ?? 0n,
-            assetConfig.risk.maxAnswer ?? 0n,
-          );
-          await tx.wait();
-          console.log(`  ✅ Applied default heartbeat for ${amoConfig.name} debt token`);
-        } else {
-          console.log(`  ✅ Heartbeat already configured for ${amoConfig.name} debt token`);
-        }
+    const configuredHeartbeat = assetConfig.risk.exists ? Number(assetConfig.risk.heartbeat) : 0;
 
-        const pegInfo = await hardPegWrapper.pegConfig(debtTokenDeployment.address);
+    if (configuredHeartbeat === 0) {
+      const tx = await oracleAggregator.updateAssetRiskConfig(
+        debtTokenDeployment.address,
+        Number(assetConfig.risk.maxStaleTime ?? 0),
+        DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+        Number(assetConfig.risk.maxDeviationBps ?? 0),
+        assetConfig.risk.minAnswer ?? 0n,
+        assetConfig.risk.maxAnswer ?? 0n,
+      );
+      await tx.wait();
+      console.log(`  ✅ Applied default heartbeat for ${amoConfig.name} debt token`);
+    } else {
+      console.log(`  ✅ Heartbeat already configured for ${amoConfig.name} debt token`);
+    }
 
-        if (pegInfo.pricePeg === 0n) {
-          const tx = await hardPegWrapper.configurePeg(debtTokenDeployment.address, baseCurrencyUnit, lowerGuard, upperGuard);
-          await tx.wait();
-          console.log(`  ✅ Configured hard peg price for ${amoConfig.name} debt token`);
-        } else {
-          console.log(`  ✅ Hard peg price already configured for ${amoConfig.name} debt token`);
-        }
-      }
-    } catch (error) {
-      console.log(`  ⚠️  Unable to configure hard peg oracle before manager deployment: ${(error as Error).message}`);
-      console.log(`     Manager deployment may revert if oracle remains unset.`);
+    const pegInfo = await hardPegWrapper.pegConfig(debtTokenDeployment.address);
+
+    if (pegInfo.pricePeg === 0n) {
+      const tx = await hardPegWrapper.configurePeg(debtTokenDeployment.address, baseCurrencyUnit, lowerGuard, upperGuard);
+      await tx.wait();
+      console.log(`  ✅ Configured hard peg price for ${amoConfig.name} debt token`);
+    } else {
+      console.log(`  ✅ Hard peg price already configured for ${amoConfig.name} debt token`);
     }
 
     console.log(`  🏛️ Deploying ${amoConfig.name} AMO Manager V2...`);

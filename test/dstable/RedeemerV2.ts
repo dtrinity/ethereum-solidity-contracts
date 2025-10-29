@@ -6,9 +6,9 @@ import { CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, RedeemerV2, Test
 import { ONE_HUNDRED_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
   DETH_REDEEMER_CONTRACT_ID,
-  DETH_REDEEMER_WITH_FEES_CONTRACT_ID,
+  DETH_REDEEMER_V2_CONTRACT_ID,
   DUSD_REDEEMER_CONTRACT_ID,
-  DUSD_REDEEMER_WITH_FEES_CONTRACT_ID,
+  DUSD_REDEEMER_V2_CONTRACT_ID,
 } from "../../typescript/deploy-ids";
 import { getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";

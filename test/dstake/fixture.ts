@@ -410,7 +410,7 @@ export const setupDLendRewardsFixture = (
 ) =>
   deployments.createFixture(async (hreFixtureEnv: HardhatRuntimeEnvironment) => {
     // Execute DStake rewards setup, which includes its own deployments.fixture(allDeploymentTags)
-    // Don't run all deployments to avoid interference from RedeemerWithFees
+    // Don't run all deployments to avoid interference from RedeemerV2
     return executeSetupDLendRewards(
       {
         deployments: hreFixtureEnv.deployments,
