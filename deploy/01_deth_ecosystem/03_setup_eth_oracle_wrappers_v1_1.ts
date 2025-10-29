@@ -17,6 +17,8 @@ type ChainlinkAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkFeed
 type ChainlinkCompositeAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkRateCompositeAssetConfig>["assets"]>;
 type HardPegAssetMap = NonNullable<OracleWrapperDeploymentConfig<HardPegAssetConfig>["assets"]>;
 
+const CHAINLINK_AGGREGATOR_INTERFACE = "contracts/oracle_aggregator/interface/chainlink/IAggregatorV3Interface.sol:AggregatorV3Interface";
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const { deployer } = await hre.getNamedAccounts();
   const signer = await hre.ethers.getSigner(deployer);
@@ -311,7 +313,7 @@ async function resolveRateProvider(
  * @param feedAddress Address of the feed
  */
 async function getAggregatorDecimals(hre: HardhatRuntimeEnvironment, feedAddress: string): Promise<number> {
-  const feed = await hre.ethers.getContractAt("AggregatorV3Interface", feedAddress);
+  const feed = await hre.ethers.getContractAt(CHAINLINK_AGGREGATOR_INTERFACE, feedAddress);
   return Number(await feed.decimals());
 }
 
@@ -325,7 +327,7 @@ async function getLatestAnswer(
   hre: HardhatRuntimeEnvironment,
   feedAddress: string,
 ): Promise<{ answer: bigint; updatedAt: bigint; decimals: number }> {
-  const feed = await hre.ethers.getContractAt("AggregatorV3Interface", feedAddress);
+  const feed = await hre.ethers.getContractAt(CHAINLINK_AGGREGATOR_INTERFACE, feedAddress);
   const decimals = Number(await feed.decimals());
   const latest = await feed.latestRoundData();
   return {
