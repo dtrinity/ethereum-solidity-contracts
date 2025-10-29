@@ -5,7 +5,11 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
-import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
+import {
+  DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+  ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
+  ORACLE_AGGREGATOR_PRICE_DECIMALS,
+} from "../../typescript/oracle_aggregator/constants";
 import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
 import { strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
@@ -64,7 +68,16 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     Object.assign(mockOracleNameToAddress, mockOracleAddressesDeployment.linkedData as Record<string, string>);
   }
 
-  const usdStableFeeds = {
+  const usdPlainRedstoneFeeds = {
+    ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+      ? { [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
+      : {}),
+    ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+      ? { [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
+      : {}),
+  };
+
+  const usdThresholdRedstoneFeeds = {
     ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
       ? {
           [USDCDeployment.address]: {
@@ -130,25 +143,271 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       : {}),
   };
 
-  const usdPlainFeeds = {
-    ...(sUSDSDeployment?.address && mockOracleNameToAddress["sUSDS_USD"]
-      ? { [sUSDSDeployment.address]: mockOracleNameToAddress["sUSDS_USD"] }
+  const usdCompositeRedstoneFeeds = {
+    ...(sUSDSDeployment?.address && mockOracleNameToAddress["sUSDS_USDS"] && mockOracleNameToAddress["USDS_USD"]
+      ? {
+          [sUSDSDeployment.address]: {
+            feedAsset: sUSDSDeployment.address,
+            feed1: mockOracleNameToAddress["sUSDS_USDS"],
+            feed2: mockOracleNameToAddress["USDS_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: STABLE_THRESHOLD,
+            fixedPriceInBase2: STABLE_THRESHOLD,
+          },
+        }
       : {}),
-    ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_USD"]
-      ? { [sfrxUSDDeployment.address]: mockOracleNameToAddress["sfrxUSD_USD"] }
+    ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
+      ? {
+          [sfrxUSDDeployment.address]: {
+            feedAsset: sfrxUSDDeployment.address,
+            feed1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
+            feed2: mockOracleNameToAddress["frxUSD_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: STABLE_THRESHOLD,
+            fixedPriceInBase2: STABLE_THRESHOLD,
+          },
+        }
       : {}),
-    ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxSAVE_USD"]
-      ? { [fxSAVEDeployment.address]: mockOracleNameToAddress["fxSAVE_USD"] }
-      : {}),
-    ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? { [WETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
-      : {}),
-    ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? { [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"] }
+    ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxSAVE_fxUSD"] && mockOracleNameToAddress["fxUSD_USD"]
+      ? {
+          [fxSAVEDeployment.address]: {
+            feedAsset: fxSAVEDeployment.address,
+            feed1: mockOracleNameToAddress["fxSAVE_fxUSD"],
+            feed2: mockOracleNameToAddress["fxUSD_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: STABLE_THRESHOLD,
+            fixedPriceInBase2: STABLE_THRESHOLD,
+          },
+        }
       : {}),
   };
 
-  const ethPlainFeeds = {
+  const usdChainlinkWrapperAssets = {
+    ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
+      ? {
+          [USDCDeployment.address]: {
+            feed: mockOracleNameToAddress["USDC_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 200,
+          },
+        }
+      : {}),
+    ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
+      ? {
+          [USDTDeployment.address]: {
+            feed: mockOracleNameToAddress["USDT_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 200,
+          },
+        }
+      : {}),
+    ...(USDSDeployment?.address && mockOracleNameToAddress["USDS_USD"]
+      ? {
+          [USDSDeployment.address]: {
+            feed: mockOracleNameToAddress["USDS_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 200,
+          },
+        }
+      : {}),
+    ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
+      ? {
+          [frxUSDDeployment.address]: {
+            feed: mockOracleNameToAddress["frxUSD_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 200,
+          },
+        }
+      : {}),
+    ...(fxUSDDeployment?.address && mockOracleNameToAddress["fxUSD_USD"]
+      ? {
+          [fxUSDDeployment.address]: {
+            feed: mockOracleNameToAddress["fxUSD_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 250,
+          },
+        }
+      : {}),
+    ...(aUSDCDeployment?.address && mockOracleNameToAddress["aUSDC_USD"]
+      ? {
+          [aUSDCDeployment.address]: {
+            feed: mockOracleNameToAddress["aUSDC_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 250,
+          },
+        }
+      : {}),
+    ...(aUSDTDeployment?.address && mockOracleNameToAddress["aUSDT_USD"]
+      ? {
+          [aUSDTDeployment.address]: {
+            feed: mockOracleNameToAddress["aUSDT_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 250,
+          },
+        }
+      : {}),
+    ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [WETHDeployment.address]: {
+            feed: mockOracleNameToAddress["WETH_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 1000,
+          },
+        }
+      : {}),
+    ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [dETHDeployment.address]: {
+            feed: mockOracleNameToAddress["WETH_USD"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 1000,
+          },
+        }
+      : {}),
+  };
+
+  const usdCompositeWrapperAssets = {
+    ...(sUSDSDeployment?.address && mockOracleNameToAddress["USDS_USD"] && mockOracleNameToAddress["sUSDS_USDS"]
+      ? {
+          [sUSDSDeployment.address]: {
+            priceFeed: mockOracleNameToAddress["USDS_USD"],
+            rateFeed: mockOracleNameToAddress["sUSDS_USDS"],
+            rateDecimals: 18,
+            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 300,
+          },
+        }
+      : {}),
+    ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"] && mockOracleNameToAddress["sfrxUSD_frxUSD"]
+      ? {
+          [sfrxUSDDeployment.address]: {
+            priceFeed: mockOracleNameToAddress["frxUSD_USD"],
+            rateFeed: mockOracleNameToAddress["sfrxUSD_frxUSD"],
+            rateDecimals: 18,
+            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 300,
+          },
+        }
+      : {}),
+    ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxUSD_USD"] && mockOracleNameToAddress["fxSAVE_fxUSD"]
+      ? {
+          [fxSAVEDeployment.address]: {
+            priceFeed: mockOracleNameToAddress["fxUSD_USD"],
+            rateFeed: mockOracleNameToAddress["fxSAVE_fxUSD"],
+            rateDecimals: 18,
+            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 350,
+          },
+        }
+      : {}),
+  };
+
+  const usdOracleRouting = {
+    ...(USDCDeployment?.address
+      ? {
+          [USDCDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 200 },
+          },
+        }
+      : {}),
+    ...(USDTDeployment?.address
+      ? {
+          [USDTDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 200 },
+          },
+        }
+      : {}),
+    ...(USDSDeployment?.address
+      ? {
+          [USDSDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 200 },
+          },
+        }
+      : {}),
+    ...(frxUSDDeployment?.address
+      ? {
+          [frxUSDDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 200 },
+          },
+        }
+      : {}),
+    ...(fxUSDDeployment?.address
+      ? {
+          [fxUSDDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 250 },
+          },
+        }
+      : {}),
+    ...(aUSDCDeployment?.address
+      ? {
+          [aUSDCDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 250 },
+          },
+        }
+      : {}),
+    ...(aUSDTDeployment?.address
+      ? {
+          [aUSDTDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 250 },
+          },
+        }
+      : {}),
+    ...(WETHDeployment?.address
+      ? {
+          [WETHDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 1000 },
+          },
+        }
+      : {}),
+    ...(dETHDeployment?.address
+      ? {
+          [dETHDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 1000 },
+          },
+        }
+      : {}),
+    ...(sUSDSDeployment?.address
+      ? {
+          [sUSDSDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
+            risk: { maxDeviationBps: 300 },
+          },
+        }
+      : {}),
+    ...(sfrxUSDDeployment?.address
+      ? {
+          [sfrxUSDDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
+            risk: { maxDeviationBps: 300 },
+          },
+        }
+      : {}),
+    ...(fxSAVEDeployment?.address
+      ? {
+          [fxSAVEDeployment.address]: {
+            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
+            risk: { maxDeviationBps: 350 },
+          },
+        }
+      : {}),
+  };
+
+  const ethPlainRedstoneFeeds = {
     ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
       ? { [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"] }
       : {}),
@@ -157,6 +416,63 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       : {}),
     ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"]
       ? { [rETHDeployment.address]: mockOracleNameToAddress["rETH_WETH"] }
+      : {}),
+  };
+
+  const ethChainlinkWrapperAssets = {
+    ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
+      ? {
+          [stETHDeployment.address]: {
+            feed: mockOracleNameToAddress["stETH_WETH"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 500,
+          },
+        }
+      : {}),
+    ...(sfrxETHDeployment?.address && mockOracleNameToAddress["sfrxETH_WETH"]
+      ? {
+          [sfrxETHDeployment.address]: {
+            feed: mockOracleNameToAddress["sfrxETH_WETH"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 500,
+          },
+        }
+      : {}),
+    ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"]
+      ? {
+          [rETHDeployment.address]: {
+            feed: mockOracleNameToAddress["rETH_WETH"],
+            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
+            maxDeviationBps: 500,
+          },
+        }
+      : {}),
+  };
+
+  const ethOracleRouting = {
+    ...(stETHDeployment?.address
+      ? {
+          [stETHDeployment.address]: {
+            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 500 },
+          },
+        }
+      : {}),
+    ...(sfrxETHDeployment?.address
+      ? {
+          [sfrxETHDeployment.address]: {
+            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 500 },
+          },
+        }
+      : {}),
+    ...(rETHDeployment?.address
+      ? {
+          [rETHDeployment.address]: {
+            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
+            risk: { maxDeviationBps: 500 },
+          },
+        }
       : {}),
   };
 
@@ -275,6 +591,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       WETH: stringOrEmpty(WETHDeployment?.address),
       dUSD: stringOrEmpty(dUSDDeployment?.address),
       dETH: stringOrEmpty(dETHDeployment?.address),
+      dS: stringOrEmpty(dETHDeployment?.address),
       USDC: stringOrEmpty(USDCDeployment?.address),
       USDT: stringOrEmpty(USDTDeployment?.address),
       USDS: stringOrEmpty(USDSDeployment?.address),
@@ -304,10 +621,29 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           compositeApi3OracleWrappersWithThresholding: {},
         },
         redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: usdPlainFeeds,
-          redstoneOracleWrappersWithThresholding: usdStableFeeds,
-          compositeRedstoneOracleWrappersWithThresholding: {},
+          plainRedstoneOracleWrappers: usdPlainRedstoneFeeds,
+          redstoneOracleWrappersWithThresholding: usdThresholdRedstoneFeeds,
+          compositeRedstoneOracleWrappersWithThresholding: usdCompositeRedstoneFeeds,
         },
+        wrappers: {
+          ...(Object.keys(usdChainlinkWrapperAssets).length > 0
+            ? {
+                chainlink: {
+                  deploymentId: "USD_ChainlinkWrapperV1_1",
+                  assets: usdChainlinkWrapperAssets,
+                },
+              }
+            : {}),
+          ...(Object.keys(usdCompositeWrapperAssets).length > 0
+            ? {
+                rateComposite: {
+                  deploymentId: "USD_ChainlinkRateCompositeWrapperV1_1",
+                  assets: usdCompositeWrapperAssets,
+                },
+              }
+            : {}),
+        },
+        assets: usdOracleRouting,
       },
       ETH: {
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
@@ -319,10 +655,21 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           compositeApi3OracleWrappersWithThresholding: {},
         },
         redstoneOracleAssets: {
-          plainRedstoneOracleWrappers: ethPlainFeeds,
+          plainRedstoneOracleWrappers: ethPlainRedstoneFeeds,
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        wrappers: {
+          ...(Object.keys(ethChainlinkWrapperAssets).length > 0
+            ? {
+                chainlink: {
+                  deploymentId: "ETH_ChainlinkWrapperV1_1",
+                  assets: ethChainlinkWrapperAssets,
+                },
+              }
+            : {}),
+        },
+        assets: ethOracleRouting,
       },
     },
     dStables: {
@@ -344,6 +691,17 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         collateralRedemptionFees: dUSDCollateralFees,
       },
       dETH: {
+        collaterals: [
+          addressOrZero(WETHDeployment?.address),
+          addressOrZero(stETHDeployment?.address),
+          addressOrZero(sfrxETHDeployment?.address),
+          addressOrZero(rETHDeployment?.address),
+        ],
+        initialFeeReceiver: governanceAddress,
+        initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS,
+        collateralRedemptionFees: dETHCollateralFees,
+      },
+      dS: {
         collaterals: [
           addressOrZero(WETHDeployment?.address),
           addressOrZero(stETHDeployment?.address),

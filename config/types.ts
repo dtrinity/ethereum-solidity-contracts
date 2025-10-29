@@ -95,13 +95,24 @@ export interface ChainlinkFeedAssetConfig {
 }
 
 export interface ChainlinkRateCompositeAssetConfig {
-  readonly feedAsset?: string;
-  readonly sourceFeed1?: string;
-  readonly sourceFeed2?: string;
-  readonly lowerThresholdInBase1?: bigint;
-  readonly fixedPriceInBase1?: bigint;
-  readonly lowerThresholdInBase2?: bigint;
-  readonly fixedPriceInBase2?: bigint;
+  readonly priceFeed: string; // Spot feed priced in the aggregator base currency (e.g. USDS/USD)
+  readonly rateProvider?: string; // Optional on-chain rate provider; overrides rateFeed/mockRate if provided
+  readonly rateProviderDeploymentId?: string; // Optional deployment id when auto-deploying mock rate providers
+  readonly rateFeed?: string; // Optional feed used to derive the rate when no rateProvider is supplied (e.g. sUSDS/USDS)
+  readonly priceFeedDecimals?: number; // Optional override for price feed decimals; defaults to on-chain value
+  readonly rateFeedDecimals?: number; // Optional override for rate feed decimals; defaults to on-chain value
+  readonly rateDecimals?: number; // Target decimals for the rate provider value (defaults to 18)
+  readonly priceHeartbeat?: number; // Optional heartbeat override for the price feed
+  readonly rateHeartbeat?: number; // Optional heartbeat override for the rate provider
+  readonly maxStaleTime?: number;
+  readonly maxDeviationBps?: number;
+  readonly minAnswer?: bigint;
+  readonly maxAnswer?: bigint;
+  readonly mockRate?: {
+    readonly value: string; // Fallback rate when neither rateProvider nor rateFeed set
+    readonly decimals: number;
+    readonly updatedAtOffsetSeconds?: number;
+  };
 }
 
 export interface Api3FeedAssetConfig {

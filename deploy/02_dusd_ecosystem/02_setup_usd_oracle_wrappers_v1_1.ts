@@ -3,11 +3,18 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { ChainlinkFeedAssetConfig, HardPegAssetConfig, OracleAggregatorConfig, OracleWrapperDeploymentConfig } from "../../config/types";
+import {
+  ChainlinkFeedAssetConfig,
+  ChainlinkRateCompositeAssetConfig,
+  HardPegAssetConfig,
+  OracleAggregatorConfig,
+  OracleWrapperDeploymentConfig,
+} from "../../config/types";
 import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import { DEFAULT_ORACLE_HEARTBEAT_SECONDS, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
 
 type ChainlinkAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>["assets"]>;
+type ChainlinkCompositeAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkRateCompositeAssetConfig>["assets"]>;
 type HardPegAssetMap = NonNullable<OracleWrapperDeploymentConfig<HardPegAssetConfig>["assets"]>;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
@@ -123,13 +130,13 @@ async function deployCompositeWrapper(
   deployer: string,
 ): Promise<void> {
   const wrapperConfig = oracleConfig.wrappers?.rateComposite;
-  const assets = wrapperConfig?.assets || {};
+  const assets = (wrapperConfig?.assets as ChainlinkCompositeAssetMap | undefined) || {};
 
   if (!wrapperConfig || Object.keys(assets).length === 0) {
     return;
   }
 
-  await hre.deployments.deploy(wrapperConfig.deploymentId, {
+  const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
     from: deployer,
     contract: "ChainlinkRateCompositeWrapperV1_1",
     args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
@@ -137,7 +144,50 @@ async function deployCompositeWrapper(
     autoMine: true,
   });
 
-  // TODO: wire composite feeds once config is populated.
+  const wrapper = await hre.ethers.getContractAt(
+    "ChainlinkRateCompositeWrapperV1_1",
+    deployment.address,
+    await hre.ethers.getSigner(deployer),
+  );
+
+  for (const [assetAddress, assetConfig] of Object.entries(assets)) {
+    if (!isUsableAddress(assetAddress)) {
+      continue;
+    }
+
+    if (!assetConfig.priceFeed || !isUsableAddress(assetConfig.priceFeed)) {
+      throw new Error(`Composite asset ${assetAddress} missing priceFeed configuration`);
+    }
+
+    const priceFeedDecimals = assetConfig.priceFeedDecimals ?? (await getAggregatorDecimals(hre, assetConfig.priceFeed));
+    const priceHeartbeat =
+      typeof assetConfig.priceHeartbeat === "number" && assetConfig.priceHeartbeat > 0
+        ? assetConfig.priceHeartbeat
+        : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
+
+    const { rateProviderAddress, rateDecimals } = await resolveRateProvider(hre, deployer, assetAddress, assetConfig);
+
+    const rateHeartbeat =
+      typeof assetConfig.rateHeartbeat === "number" && assetConfig.rateHeartbeat > 0
+        ? assetConfig.rateHeartbeat
+        : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
+
+    await (
+      await wrapper.configureComposite(
+        assetAddress,
+        assetConfig.priceFeed,
+        priceFeedDecimals,
+        rateProviderAddress,
+        rateDecimals,
+        priceHeartbeat,
+        rateHeartbeat,
+        assetConfig.maxStaleTime ?? 0,
+        assetConfig.maxDeviationBps ?? 0,
+        assetConfig.minAnswer ?? 0n,
+        assetConfig.maxAnswer ?? 0n,
+      )
+    ).wait();
+  }
 }
 
 /**
@@ -176,6 +226,128 @@ async function deployHardPegWrapper(hre: HardhatRuntimeEnvironment, oracleConfig
       await wrapper.configurePeg(assetAddress, assetConfig.pricePeg, assetConfig.lowerGuard ?? 0n, assetConfig.upperGuard ?? 0n)
     ).wait();
   }
+}
+
+/**
+ * Resolves or deploys the rate provider required for composite feeds.
+ *
+ * @param hre Hardhat runtime environment
+ * @param deployer Deployer address used for mock deployments
+ * @param assetAddress Asset identifier being configured
+ * @param assetConfig Composite configuration for the asset
+ */
+async function resolveRateProvider(
+  hre: HardhatRuntimeEnvironment,
+  deployer: string,
+  assetAddress: string,
+  assetConfig: ChainlinkRateCompositeAssetConfig,
+): Promise<{ rateProviderAddress: string; rateDecimals: number }> {
+  if (assetConfig.rateProvider && isUsableAddress(assetConfig.rateProvider)) {
+    return {
+      rateProviderAddress: assetConfig.rateProvider,
+      rateDecimals: assetConfig.rateDecimals ?? 18,
+    };
+  }
+
+  const deploymentId = assetConfig.rateProviderDeploymentId ?? `MockRateProvider_${assetAddress}`;
+  const deployment = await hre.deployments.deploy(deploymentId, {
+    from: deployer,
+    contract: "MockRateProvider",
+    args: [],
+    log: false,
+    autoMine: true,
+  });
+
+  const rateProviderAddress = deployment.address;
+  const rateDecimals = assetConfig.rateDecimals ?? 18;
+
+  let rateValue: bigint;
+  let updatedAt: bigint;
+
+  if (assetConfig.rateFeed && isUsableAddress(assetConfig.rateFeed)) {
+    const { answer, updatedAt: feedUpdatedAt, decimals } = await getLatestAnswer(hre, assetConfig.rateFeed);
+
+    rateValue = scaleValue(answer, assetConfig.rateFeedDecimals ?? decimals, rateDecimals);
+    updatedAt = feedUpdatedAt;
+  } else if (assetConfig.mockRate) {
+    const raw = hre.ethers.parseUnits(assetConfig.mockRate.value, assetConfig.mockRate.decimals);
+    rateValue = scaleValue(BigInt(raw.toString()), assetConfig.mockRate.decimals, rateDecimals);
+    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    const baseTimestamp = BigInt(latestBlock?.timestamp ?? Math.floor(Date.now() / 1000));
+    const offset = BigInt(assetConfig.mockRate.updatedAtOffsetSeconds ?? 0);
+    updatedAt = baseTimestamp + offset;
+  } else {
+    throw new Error(`Composite asset ${assetAddress} missing rateFeed or mockRate configuration`);
+  }
+
+  if (rateValue <= 0n) {
+    throw new Error(`Composite asset ${assetAddress} produced non-positive rate value`);
+  }
+
+  if (updatedAt === 0n) {
+    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    updatedAt = BigInt(latestBlock?.timestamp ?? Math.floor(Date.now() / 1000));
+  }
+
+  const signer = await hre.ethers.getSigner(deployer);
+  const rateProvider = await hre.ethers.getContractAt("MockRateProvider", rateProviderAddress, signer);
+  await (await rateProvider.setRate(rateValue, updatedAt)).wait();
+
+  return {
+    rateProviderAddress,
+    rateDecimals,
+  };
+}
+
+/**
+ * Fetches the decimals configured for an on-chain Chainlink-style feed.
+ *
+ * @param hre Hardhat runtime environment
+ * @param feedAddress Address of the feed
+ */
+async function getAggregatorDecimals(hre: HardhatRuntimeEnvironment, feedAddress: string): Promise<number> {
+  const feed = await hre.ethers.getContractAt("AggregatorV3Interface", feedAddress);
+  return Number(await feed.decimals());
+}
+
+/**
+ * Retrieves the latest answer and timestamp from a Chainlink-style feed.
+ *
+ * @param hre Hardhat runtime environment
+ * @param feedAddress Address of the feed
+ */
+async function getLatestAnswer(
+  hre: HardhatRuntimeEnvironment,
+  feedAddress: string,
+): Promise<{ answer: bigint; updatedAt: bigint; decimals: number }> {
+  const feed = await hre.ethers.getContractAt("AggregatorV3Interface", feedAddress);
+  const decimals = Number(await feed.decimals());
+  const latest = await feed.latestRoundData();
+  return {
+    answer: BigInt(latest.answer),
+    updatedAt: BigInt(latest.updatedAt),
+    decimals,
+  };
+}
+
+/**
+ * Scales a value from one decimal precision to another.
+ *
+ * @param value Numeric value expressed with `fromDecimals`
+ * @param fromDecimals Current decimal precision
+ * @param toDecimals Target decimal precision
+ */
+function scaleValue(value: bigint, fromDecimals: number, toDecimals: number): bigint {
+  if (fromDecimals === toDecimals) {
+    return value;
+  }
+
+  if (fromDecimals < toDecimals) {
+    const factor = 10n ** BigInt(toDecimals - fromDecimals);
+    return value * factor;
+  }
+  const divisor = 10n ** BigInt(fromDecimals - toDecimals);
+  return value / divisor;
 }
 
 /**
