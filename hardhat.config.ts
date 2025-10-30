@@ -23,7 +23,7 @@ const wrapSigner = <TSigner extends Signer>(signer: TSigner, hre: HardhatRuntime
     const result = await originalSendTransaction(tx);
 
     if (hre.network.live) {
-      const sleepTime = 30000; // 30 seconds to reduce flakiness from eventual consistency
+      const sleepTime = 20000; // 20 seconds to reduce flakiness from eventual consistency
       console.log(`\n>>> Waiting ${sleepTime}ms after transaction to ${result.to || "a new contract"}`);
       await sleep(sleepTime);
     }
@@ -108,8 +108,48 @@ const config: HardhatUserConfig = {
           viaIR: true,
         },
       },
+      "contracts/vaults/dstake/DStakeRouterV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/DStakeTokenV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/DStakeCollateralVaultV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
       // Contracts that import DStakeRouterDLend
       "contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/rewards/DStakeRewardManagerMetaMorpho.sol": {
         version: "0.8.20",
         settings: {
           optimizer: {
