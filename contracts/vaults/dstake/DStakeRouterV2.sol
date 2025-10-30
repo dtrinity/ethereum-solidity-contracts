@@ -431,9 +431,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             activeVaults.length
         );
 
-        for (uint256 i = 0; i < sortedVaults.length; i++) {
-            if (_vaultCanSatisfyWithdrawal(sortedVaults[i], grossAssets)) {
-                return sortedVaults[i];
+        uint256 sortedLength = sortedVaults.length;
+        for (uint256 i; i < sortedLength; ) {
+            address candidate = sortedVaults[i];
+            if (_vaultCanSatisfyWithdrawal(candidate, grossAssets)) {
+                return candidate;
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -509,8 +514,12 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         if (vaults.length != assets.length) revert ArrayLengthMismatch();
 
         uint256 totalAssets = 0;
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetCount = assets.length;
+        for (uint256 i; i < assetCount; ) {
             totalAssets += assets[i];
+            unchecked {
+                ++i;
+            }
         }
 
         if (totalAssets == 0) revert InvalidAmount();
@@ -524,9 +533,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
         IERC20(dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
 
-        for (uint256 i = 0; i < vaults.length; i++) {
-            if (assets[i] > 0) {
-                _depositToVaultAtomically(vaults[i], assets[i]);
+        uint256 vaultCount = vaults.length;
+        for (uint256 i; i < vaultCount; ) {
+            uint256 amount = assets[i];
+            if (amount > 0) {
+                _depositToVaultAtomically(vaults[i], amount);
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -550,14 +564,20 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256[] memory assetAmounts = new uint256[](vaults.length);
         uint256 totalAssets = 0;
 
-        for (uint256 i = 0; i < vaults.length; i++) {
-            if (shares[i] > 0) {
-                VaultConfig memory config = _getVaultConfig(vaults[i]);
-                if (config.status != VaultStatus.Active) revert VaultNotActive(vaults[i]);
+        uint256 vaultCount = vaults.length;
+        for (uint256 i; i < vaultCount; ) {
+            uint256 shareAmount = shares[i];
+            if (shareAmount > 0) {
+                address vault = vaults[i];
+                VaultConfig memory config = _getVaultConfig(vault);
+                if (config.status != VaultStatus.Active) revert VaultNotActive(vault);
 
-                uint256 assetsNeeded = IERC4626(vaults[i]).previewMint(shares[i]);
+                uint256 assetsNeeded = IERC4626(vault).previewMint(shareAmount);
                 assetAmounts[i] = assetsNeeded;
                 totalAssets += assetsNeeded;
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -572,12 +592,17 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
         IERC20(dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
 
-        for (uint256 i = 0; i < vaults.length; i++) {
-            if (shares[i] > 0) {
-                uint256 mintedShares = _depositToVaultAtomically(vaults[i], assetAmounts[i]);
-                if (mintedShares < shares[i]) {
-                    revert SolverShareDepositShortfall(vaults[i], shares[i], mintedShares);
+        for (uint256 i; i < vaultCount; ) {
+            uint256 shareAmount = shares[i];
+            if (shareAmount > 0) {
+                address vault = vaults[i];
+                uint256 mintedShares = _depositToVaultAtomically(vault, assetAmounts[i]);
+                if (mintedShares < shareAmount) {
+                    revert SolverShareDepositShortfall(vault, shareAmount, mintedShares);
                 }
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -603,13 +628,16 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256 totalGrossAssets = 0;
         uint256[] memory grossRequests = new uint256[](assets.length);
 
-        for (uint256 i = 0; i < assets.length; i++) {
+        for (uint256 i; i < assets.length; ) {
             uint256 requestedNet = assets[i];
             totalNetAssets += requestedNet;
             if (requestedNet > 0) {
                 uint256 requestedGross = _getGrossAmountForNet(requestedNet);
                 grossRequests[i] = requestedGross;
                 totalGrossAssets += requestedGross;
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -618,11 +646,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256 aggregatedGross = _getGrossAmountForNet(totalNetAssets);
         if (aggregatedGross > totalGrossAssets) {
             uint256 shortfall = aggregatedGross - totalGrossAssets;
-            for (uint256 i = assets.length; i > 0; i--) {
+            for (uint256 i = assets.length; i > 0; ) {
                 uint256 idx = i - 1;
                 if (grossRequests[idx] > 0) {
                     grossRequests[idx] += shortfall;
                     break;
+                }
+                unchecked {
+                    --i;
                 }
             }
             totalGrossAssets = aggregatedGross;
@@ -670,12 +701,16 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256[] memory grossAssetAmounts = new uint256[](vaults.length);
         uint256 totalGrossAssets = 0;
 
-        for (uint256 i = 0; i < vaults.length; i++) {
+        uint256 vaultCount = vaults.length;
+        for (uint256 i; i < vaultCount; ) {
             uint256 shareAmount = strategyShares[i];
             if (shareAmount > 0) {
                 uint256 assetAmount = IERC4626(vaults[i]).previewRedeem(shareAmount);
                 grossAssetAmounts[i] = assetAmount;
                 totalGrossAssets += assetAmount;
+            }
+            unchecked {
+                ++i;
             }
         }
 
@@ -1112,16 +1147,23 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
      */
     function setVaultConfigs(VaultConfig[] calldata configs) external onlyRole(VAULT_MANAGER_ROLE) {
         uint256 totalTargetBps = 0;
-        for (uint256 i = 0; i < configs.length; i++) {
+        uint256 configCount = configs.length;
+        for (uint256 i; i < configCount; ) {
             totalTargetBps += configs[i].targetBps;
+            unchecked {
+                ++i;
+            }
         }
         if (totalTargetBps != BasisPointConstants.ONE_HUNDRED_PERCENT_BPS) {
             revert TotalAllocationInvalid(totalTargetBps);
         }
 
         _clearVaultConfigs();
-        for (uint256 i = 0; i < configs.length; i++) {
+        for (uint256 i; i < configCount; ) {
             _addVaultConfig(configs[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -1344,10 +1386,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     function _maxSingleVaultWithdraw() internal view returns (uint256 maxAssets) {
         (address[] memory activeVaults, , ) = _getActiveVaultsAndAllocations(OperationType.WITHDRAWAL);
 
-        for (uint256 i = 0; i < activeVaults.length; i++) {
+        uint256 activeLength = activeVaults.length;
+        for (uint256 i; i < activeLength; ) {
             uint256 vaultBalance = _getVaultBalance(activeVaults[i]);
             if (vaultBalance > maxAssets) {
                 maxAssets = vaultBalance;
+            }
+            unchecked {
+                ++i;
             }
         }
     }
@@ -1477,10 +1523,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         address[] calldata vaults,
         uint256[] memory grossRequests
     ) internal returns (uint256 totalWithdrawn) {
-        for (uint256 i = 0; i < vaults.length; i++) {
+        uint256 vaultCount = vaults.length;
+        for (uint256 i; i < vaultCount; ) {
             uint256 grossRequest = grossRequests[i];
             if (grossRequest > 0) {
                 totalWithdrawn += _withdrawFromVaultAtomically(vaults[i], grossRequest);
+            }
+            unchecked {
+                ++i;
             }
         }
     }
@@ -1489,10 +1539,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         address[] calldata vaults,
         uint256[] calldata shareAmounts
     ) internal returns (uint256 totalWithdrawn) {
-        for (uint256 i = 0; i < vaults.length; i++) {
+        uint256 vaultCount = vaults.length;
+        for (uint256 i; i < vaultCount; ) {
             uint256 shareAmount = shareAmounts[i];
             if (shareAmount > 0) {
                 totalWithdrawn += _withdrawSharesFromVaultAtomically(vaults[i], shareAmount);
+            }
+            unchecked {
+                ++i;
             }
         }
     }
@@ -1505,11 +1559,19 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         returns (address[] memory activeVaults, uint256[] memory currentAllocations, uint256[] memory targetAllocations)
     {
         uint256 activeCount = 0;
-        for (uint256 i = 0; i < vaultConfigs.length; i++) {
+        uint256 configCount = vaultConfigs.length;
+        for (uint256 i; i < configCount; ) {
             VaultConfig memory config = vaultConfigs[i];
-            if (!_isVaultEligibleForOperation(config, operationType)) continue;
-            if (!_isVaultHealthyForOperation(config.strategyVault, operationType)) continue;
-            activeCount++;
+            if (_isVaultEligibleForOperation(config, operationType)) {
+                if (_isVaultHealthyForOperation(config.strategyVault, operationType)) {
+                    unchecked {
+                        ++activeCount;
+                    }
+                }
+            }
+            unchecked {
+                ++i;
+            }
         }
 
         if (activeCount == 0) return (new address[](0), new uint256[](0), new uint256[](0));
@@ -1519,15 +1581,21 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         targetAllocations = new uint256[](activeCount);
 
         uint256 activeIndex = 0;
-        for (uint256 i = 0; i < vaultConfigs.length; i++) {
+        for (uint256 i; i < configCount; ) {
             VaultConfig memory config = vaultConfigs[i];
-            if (!_isVaultEligibleForOperation(config, operationType)) continue;
-            if (!_isVaultHealthyForOperation(config.strategyVault, operationType)) continue;
-
-            activeVaults[activeIndex] = config.strategyVault;
-            balances[activeIndex] = _getVaultBalance(config.strategyVault);
-            targetAllocations[activeIndex] = config.targetBps;
-            activeIndex++;
+            if (_isVaultEligibleForOperation(config, operationType)) {
+                if (_isVaultHealthyForOperation(config.strategyVault, operationType)) {
+                    activeVaults[activeIndex] = config.strategyVault;
+                    balances[activeIndex] = _getVaultBalance(config.strategyVault);
+                    targetAllocations[activeIndex] = config.targetBps;
+                    unchecked {
+                        ++activeIndex;
+                    }
+                }
+            }
+            unchecked {
+                ++i;
+            }
         }
 
         (currentAllocations, ) = AllocationCalculator.calculateCurrentAllocations(balances);
@@ -1576,11 +1644,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256[] memory balances = new uint256[](vaultCount);
         targetAllocations = new uint256[](vaultCount);
 
-        for (uint256 i = 0; i < vaultCount; i++) {
+        for (uint256 i; i < vaultCount; ) {
             VaultConfig memory config = vaultConfigs[i];
             vaults[i] = config.strategyVault;
             balances[i] = _getVaultBalance(config.strategyVault);
             targetAllocations[i] = config.targetBps;
+            unchecked {
+                ++i;
+            }
         }
 
         (currentAllocations, totalBalance) = AllocationCalculator.calculateCurrentAllocations(balances);
@@ -1655,12 +1726,18 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     }
 
     function _totalSystemLiquidity(address[] memory activeVaults) internal view returns (uint256 totalLiquidity) {
-        for (uint256 i = 0; i < activeVaults.length; i++) {
-            uint256 vaultShares = IERC20(activeVaults[i]).balanceOf(address(collateralVault));
-            if (vaultShares == 0) continue;
-            try IERC4626(activeVaults[i]).previewRedeem(vaultShares) returns (uint256 assets) {
-                totalLiquidity += assets;
-            } catch {}
+        uint256 vaultCount = activeVaults.length;
+        for (uint256 i; i < vaultCount; ) {
+            address vault = activeVaults[i];
+            uint256 vaultShares = IERC20(vault).balanceOf(address(collateralVault));
+            if (vaultShares != 0) {
+                try IERC4626(vault).previewRedeem(vaultShares) returns (uint256 assets) {
+                    totalLiquidity += assets;
+                } catch {}
+            }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -1714,12 +1791,16 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     }
 
     function _clearVaultConfigs() internal {
-        for (uint256 i = 0; i < vaultConfigs.length; i++) {
+        uint256 configCount = vaultConfigs.length;
+        for (uint256 i; i < configCount; ) {
             address vault = vaultConfigs[i].strategyVault;
             _suspendVaultForRemoval(vault);
             _removeAdapter(vault);
             delete vaultToIndex[vault];
             delete vaultExists[vault];
+            unchecked {
+                ++i;
+            }
         }
         delete vaultConfigs;
     }

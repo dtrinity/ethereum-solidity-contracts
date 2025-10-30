@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
+import "hardhat-contract-sizer";
 import "dotenv/config";
 import "@typechain/hardhat";
 
@@ -206,6 +207,12 @@ const config: HardhatUserConfig = {
   sourcify: {
     // Just here to mute warning
     enabled: false,
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    only: ["DStakeRouterV2"],
   },
 };
 /* eslint-enable camelcase -- Re-enabling camelcase rule after network definitions */
