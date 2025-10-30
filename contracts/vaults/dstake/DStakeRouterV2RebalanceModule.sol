@@ -6,22 +6,20 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
-import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
+import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
 
 /**
  * @title DStakeRouterV2RebalanceModule
  * @notice Handles rebalancing flows for {@link DStakeRouterV2} via delegatecall.
- * @dev Storage layout mirrors the router. All functions assume they are executed
- *      through delegatecall from the router, which enforces access control.
+ * @dev Storage layout mirrors the router, including inherited OpenZeppelin base contracts. All functions assume they
+ *      are executed through delegatecall from the router, which enforces access control.
  */
-contract DStakeRouterV2RebalanceModule {
+contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
     // --- Errors (mirrors router) ---
-    error ZeroAddress();
     error AdapterNotFound(address strategyShare);
     error ZeroPreviewWithdrawAmount(address strategyShare);
     error AdapterAssetMismatch(address adapter, address expectedAsset, address actualAsset);
@@ -50,46 +48,6 @@ contract DStakeRouterV2RebalanceModule {
         address indexed initiator
     );
 
-    // --- Immutable addresses (mirrors router constructor) ---
-    address public immutable dStakeToken;
-    IDStakeCollateralVaultV2 public immutable collateralVault;
-    address public immutable dStable;
-
-    // --- Shared state (must match router layout) ---
-    uint256 public dustTolerance = 1;
-    uint256 public maxVaultCount = 10;
-    uint256 public depositCap;
-    uint256 public settlementShortfall;
-    uint256 public reinvestIncentiveBps;
-    uint256 internal _withdrawalFeeBps;
-    mapping(address => address) internal _strategyShareToAdapter;
-    address public defaultDepositStrategyShare;
-
-    enum OperationType {
-        DEPOSIT,
-        WITHDRAWAL
-    }
-
-    enum VaultStatus {
-        Active,
-        Suspended,
-        Impaired
-    }
-
-    struct VaultConfig {
-        address strategyVault;
-        address adapter;
-        uint256 targetBps;
-        VaultStatus status;
-    }
-
-    VaultConfig[] public vaultConfigs;
-    mapping(address => uint256) public vaultToIndex;
-    mapping(address => bool) public vaultExists;
-
-    address public governanceModule;
-    address public rebalanceModule;
-
     struct ExchangeLocals {
         address fromAdapterAddress;
         address toAdapterAddress;
@@ -99,13 +57,7 @@ contract DStakeRouterV2RebalanceModule {
         uint256 calculatedToStrategyShareAmount;
     }
 
-    constructor(address dStakeToken_, address collateralVault_) {
-        if (dStakeToken_ == address(0) || collateralVault_ == address(0)) revert ZeroAddress();
-        dStakeToken = dStakeToken_;
-        collateralVault = IDStakeCollateralVaultV2(collateralVault_);
-        dStable = collateralVault.dStable();
-        if (dStable == address(0)) revert ZeroAddress();
-    }
+    constructor(address dStakeToken_, address collateralVault_) DStakeRouterV2Storage(dStakeToken_, collateralVault_) {}
 
     // --- Rebalance entry points (delegate-called) ---
 
@@ -161,12 +113,12 @@ contract DStakeRouterV2RebalanceModule {
             revert SlippageCheckFailed(toStrategyShare, locals.calculatedToStrategyShareAmount, minToShareAmount);
         }
 
-        collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
+        _collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
         IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, fromShareAmount);
         uint256 receivedDStable = locals.fromAdapter.withdrawFromStrategy(fromShareAmount);
         IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, 0);
 
-        IERC20(dStable).forceApprove(locals.toAdapterAddress, receivedDStable);
+        IERC20(_dStable).forceApprove(locals.toAdapterAddress, receivedDStable);
         (address actualToStrategyShare, uint256 resultingToShareAmount) = locals.toAdapter.depositIntoStrategy(
             receivedDStable
         );
@@ -177,7 +129,7 @@ contract DStakeRouterV2RebalanceModule {
             uint256 previewValue = locals.toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
             uint256 dustAdjusted = locals.dStableValueIn > dustTolerance ? locals.dStableValueIn - dustTolerance : 0;
             if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(dStable, previewValue, dustAdjusted);
+                revert SlippageCheckFailed(_dStable, previewValue, dustAdjusted);
             }
         }
 
@@ -194,7 +146,7 @@ contract DStakeRouterV2RebalanceModule {
             }
         }
 
-        IERC20(dStable).forceApprove(locals.toAdapterAddress, 0);
+        IERC20(_dStable).forceApprove(locals.toAdapterAddress, 0);
 
         emit StrategySharesExchanged(
             fromStrategyShare,
@@ -261,13 +213,13 @@ contract DStakeRouterV2RebalanceModule {
         if (dStableAmountEquivalent <= dustTolerance) {
             return;
         }
-        collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
+        _collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
 
         IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, fromShareAmount);
         uint256 receivedDStable = fromAdapter.withdrawFromStrategy(fromShareAmount);
         IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, 0);
 
-        IERC20(dStable).forceApprove(toAdapterAddress, receivedDStable);
+        IERC20(_dStable).forceApprove(toAdapterAddress, receivedDStable);
         (address actualToStrategyShare, uint256 resultingToShareAmount) = toAdapter.depositIntoStrategy(
             receivedDStable
         );
@@ -277,7 +229,7 @@ contract DStakeRouterV2RebalanceModule {
         if (resultingToShareAmount < minToShareAmount) {
             revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);
         }
-        IERC20(dStable).forceApprove(toAdapterAddress, 0);
+        IERC20(_dStable).forceApprove(toAdapterAddress, 0);
 
         {
             uint256 previewValue = toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
@@ -285,7 +237,7 @@ contract DStakeRouterV2RebalanceModule {
                 ? dStableAmountEquivalent - dustTolerance
                 : 0;
             if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(dStable, previewValue, dustAdjusted);
+                revert SlippageCheckFailed(_dStable, previewValue, dustAdjusted);
             }
         }
 
@@ -326,7 +278,7 @@ contract DStakeRouterV2RebalanceModule {
 
     function _isVaultHealthyForWithdrawals(address vault) internal view returns (bool healthy) {
         try IERC4626(vault).totalAssets() returns (uint256) {
-            uint256 vaultShares = IERC20(vault).balanceOf(address(collateralVault));
+            uint256 vaultShares = IERC20(vault).balanceOf(address(_collateralVault));
             if (vaultShares == 0) return false;
 
             try IERC4626(vault).previewRedeem(vaultShares) returns (uint256 assets) {

@@ -9,22 +9,21 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
-import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
+import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
 
 /**
  * @title DStakeRouterV2GovernanceModule
  * @notice Contains governance and configuration mutators for {@link DStakeRouterV2} executed via delegatecall.
  * @dev This contract is designed to be delegate-called from the router. Storage layout **must** match the router's
- *      layout for all shared state variables. Access control checks are enforced at the router level before
- *      delegating to this module.
+ *      layout for all shared state variables, including inherited OpenZeppelin base contracts. Access control checks
+ *      are enforced at the router level before delegating to this module.
  */
-contract DStakeRouterV2GovernanceModule {
+contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage {
     using SafeERC20 for IERC20;
     using AllocationCalculator for uint256[];
     using Math for uint256;
 
     // --- Errors ---
-    error ZeroAddress();
     error AdapterNotFound(address strategyShare);
     error ZeroPreviewWithdrawAmount(address strategyShare);
     error VaultAssetManagedByDifferentAdapter(address strategyShare, address existingAdapter);
@@ -72,57 +71,7 @@ contract DStakeRouterV2GovernanceModule {
     event VaultConfigRemoved(address indexed vault);
     event MaxVaultCountUpdated(uint256 oldCount, uint256 newCount);
 
-    // --- Immutable addresses (mirrors router constructor state) ---
-    address public immutable dStakeToken;
-    IDStakeCollateralVaultV2 public immutable collateralVault;
-    address public immutable dStable;
-
-    // --- Shared state (must match router layout) ---
-    uint256 public dustTolerance = 1;
-    uint256 public maxVaultCount = 10;
-    uint256 public depositCap;
-    uint256 public settlementShortfall;
-    uint256 public reinvestIncentiveBps;
-    uint256 internal _withdrawalFeeBps;
-    mapping(address => address) internal _strategyShareToAdapter;
-    address public defaultDepositStrategyShare;
-
-    enum OperationType {
-        DEPOSIT,
-        WITHDRAWAL
-    }
-
-    enum VaultStatus {
-        Active,
-        Suspended,
-        Impaired
-    }
-
-    struct VaultConfig {
-        address strategyVault;
-        address adapter;
-        uint256 targetBps;
-        VaultStatus status;
-    }
-
-    VaultConfig[] public vaultConfigs;
-    mapping(address => uint256) public vaultToIndex;
-    mapping(address => bool) public vaultExists;
-
-    // Reserved slots for router-managed module pointers (must mirror router layout)
-    address public governanceModule;
-    address public rebalanceModule;
-
-    uint256 public constant MAX_REINVEST_INCENTIVE_BPS = BasisPointConstants.ONE_PERCENT_BPS * 20;
-    uint256 public constant MAX_WITHDRAWAL_FEE_BPS = BasisPointConstants.ONE_PERCENT_BPS;
-
-    constructor(address dStakeToken_, address collateralVault_) {
-        if (dStakeToken_ == address(0) || collateralVault_ == address(0)) revert ZeroAddress();
-        dStakeToken = dStakeToken_;
-        collateralVault = IDStakeCollateralVaultV2(collateralVault_);
-        dStable = collateralVault.dStable();
-        if (dStable == address(0)) revert ZeroAddress();
-    }
+    constructor(address dStakeToken_, address collateralVault_) DStakeRouterV2Storage(dStakeToken_, collateralVault_) {}
 
     // --- Governance entry points (delegate-called) ---
 
@@ -199,7 +148,7 @@ contract DStakeRouterV2GovernanceModule {
                 revert VaultNotActive(strategyShare);
             }
         }
-        defaultDepositStrategyShare = strategyShare;
+        _defaultDepositStrategyShare = strategyShare;
         emit DefaultDepositStrategyShareSet(strategyShare);
     }
 
@@ -213,12 +162,12 @@ contract DStakeRouterV2GovernanceModule {
     }
 
     function sweepSurplus(uint256 maxAmount) external {
-        uint256 balance = IERC20(dStable).balanceOf(address(this));
-        if (balance == 0) revert ZeroInputDStableValue(dStable, 0);
+        uint256 balance = IERC20(_dStable).balanceOf(address(this));
+        if (balance == 0) revert ZeroInputDStableValue(_dStable, 0);
 
         uint256 amountToSweep = (maxAmount == 0 || maxAmount > balance) ? balance : maxAmount;
-        address adapterAddress = _strategyShareToAdapter[defaultDepositStrategyShare];
-        if (adapterAddress == address(0)) revert AdapterNotFound(defaultDepositStrategyShare);
+        address adapterAddress = _strategyShareToAdapter[_defaultDepositStrategyShare];
+        if (adapterAddress == address(0)) revert AdapterNotFound(_defaultDepositStrategyShare);
 
         IDStableConversionAdapterV2 adapter = IDStableConversionAdapterV2(adapterAddress);
         address strategyShare = adapter.strategyShare();
@@ -228,10 +177,10 @@ contract DStakeRouterV2GovernanceModule {
             revert VaultNotActive(strategyShare);
         }
 
-        IERC20(dStable).forceApprove(adapterAddress, amountToSweep);
+        IERC20(_dStable).forceApprove(adapterAddress, amountToSweep);
         (address mintedShare, ) = adapter.depositIntoStrategy(amountToSweep);
         if (mintedShare != strategyShare) revert AdapterAssetMismatch(adapterAddress, strategyShare, mintedShare);
-        IERC20(dStable).forceApprove(adapterAddress, 0);
+        IERC20(_dStable).forceApprove(adapterAddress, 0);
 
         emit SurplusSwept(amountToSweep, mintedShare);
     }
@@ -352,7 +301,7 @@ contract DStakeRouterV2GovernanceModule {
             vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
         }
 
-        try collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
+        try _collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
 
         emit AdapterSet(strategyShare, adapterAddress);
     }
@@ -373,9 +322,9 @@ contract DStakeRouterV2GovernanceModule {
             }
         }
 
-        collateralVault.removeSupportedStrategyShare(strategyShare);
+        _collateralVault.removeSupportedStrategyShare(strategyShare);
 
-        if (defaultDepositStrategyShare == strategyShare) {
+        if (_defaultDepositStrategyShare == strategyShare) {
             _clearDefaultDepositStrategyShare();
         }
 
@@ -390,10 +339,10 @@ contract DStakeRouterV2GovernanceModule {
     }
 
     function _clearDefaultDepositStrategyShare() internal {
-        if (defaultDepositStrategyShare == address(0)) {
+        if (_defaultDepositStrategyShare == address(0)) {
             return;
         }
-        defaultDepositStrategyShare = address(0);
+        _defaultDepositStrategyShare = address(0);
         emit DefaultDepositStrategyShareSet(address(0));
     }
 
@@ -413,7 +362,7 @@ contract DStakeRouterV2GovernanceModule {
             mutated = true;
         }
 
-        if (defaultDepositStrategyShare == vault) {
+        if (_defaultDepositStrategyShare == vault) {
             _clearDefaultDepositStrategyShare();
         }
 
@@ -505,7 +454,7 @@ contract DStakeRouterV2GovernanceModule {
             if (vaultExists[strategyShare]) {
                 vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
             }
-            try collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
+            try _collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
             emit AdapterSet(strategyShare, adapterAddress);
             return;
         }
@@ -527,8 +476,8 @@ contract DStakeRouterV2GovernanceModule {
     }
 
     function _totalManagedAssets() internal view returns (uint256) {
-        uint256 vaultValue = collateralVault.totalValueInDStable();
-        uint256 idle = IERC20(dStable).balanceOf(address(this));
+        uint256 vaultValue = _collateralVault.totalValueInDStable();
+        uint256 idle = IERC20(_dStable).balanceOf(address(this));
         return vaultValue + idle;
     }
 }

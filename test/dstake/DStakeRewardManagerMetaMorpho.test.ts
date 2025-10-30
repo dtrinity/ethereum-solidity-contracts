@@ -66,6 +66,14 @@ describe("DStakeRewardManagerMetaMorpho", function () {
     const RouterFactory = await ethers.getContractFactory("DStakeRouterV2");
     router = await RouterFactory.deploy(dStakeToken.target, collateralVault.target);
 
+    const GovernanceModuleFactory = await ethers.getContractFactory("DStakeRouterV2GovernanceModule");
+    const governanceModule = await GovernanceModuleFactory.deploy(dStakeToken.target, collateralVault.target);
+    const RebalanceModuleFactory = await ethers.getContractFactory("DStakeRouterV2RebalanceModule");
+    const rebalanceModule = await RebalanceModuleFactory.deploy(dStakeToken.target, collateralVault.target);
+
+    await router.setGovernanceModule(governanceModule.target);
+    await router.setRebalanceModule(rebalanceModule.target);
+
     // Grant ROUTER_ROLE to the router
     const ROUTER_ROLE = await collateralVault.ROUTER_ROLE();
     await collateralVault.grantRole(ROUTER_ROLE, router.target);

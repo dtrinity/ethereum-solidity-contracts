@@ -54,6 +54,14 @@ describe("DustToleranceDos", function () {
     const RouterFactory = await ethers.getContractFactory("DStakeRouterV2");
     router = (await RouterFactory.deploy(dStakeToken.target, collateralVault.target)) as DStakeRouterV2;
 
+    const GovernanceModuleFactory = await ethers.getContractFactory("DStakeRouterV2GovernanceModule");
+    const governanceModule = await GovernanceModuleFactory.deploy(dStakeToken.target, collateralVault.target);
+    const RebalanceModuleFactory = await ethers.getContractFactory("DStakeRouterV2RebalanceModule");
+    const rebalanceModule = await RebalanceModuleFactory.deploy(dStakeToken.target, collateralVault.target);
+
+    await router.setGovernanceModule(governanceModule.target);
+    await router.setRebalanceModule(rebalanceModule.target);
+
     await collateralVault.setRouter(router.target);
     await dStakeToken.migrateCore(router.target, collateralVault.target);
 

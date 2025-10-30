@@ -3,8 +3,6 @@ pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,6 +14,7 @@ import { DeterministicVaultSelector } from "./libraries/DeterministicVaultSelect
 import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { WithdrawalFeeMath } from "../../common/WithdrawalFeeMath.sol";
+import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
 
 interface IDStakeTokenV2Minimal {
     function asset() external view returns (address);
@@ -48,13 +47,12 @@ interface IDStakeTokenV2Minimal {
  * @notice Provides deterministic routing for dSTAKE, pairing single-vault ERC4626 flows with solver-managed multi-vault operations.
  * @dev Extends the original single-dLEND router with allocation-aware selection and solver support for explicit multi-vault paths.
  */
-contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Pausable {
+contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     using SafeERC20 for IERC20;
     using AllocationCalculator for uint256[];
     using Math for uint256;
 
     // --- Errors ---
-    error ZeroAddress();
     error AdapterNotFound(address strategyShare);
     error ZeroPreviewWithdrawAmount(address strategyShare);
     error VaultAssetManagedByDifferentAdapter(address strategyShare, address existingAdapter);
@@ -99,51 +97,9 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    // --- State ---
-    address public immutable dStakeToken;
-    IDStakeCollateralVaultV2 public immutable collateralVault;
-    address public immutable dStable;
-
-    uint256 public dustTolerance = 1;
-    uint256 public maxVaultCount = 10;
-    uint256 public depositCap; // 0 == unlimited
-    uint256 public settlementShortfall;
-    uint256 public reinvestIncentiveBps;
-    uint256 private _withdrawalFeeBps;
-
-    uint256 public constant MAX_REINVEST_INCENTIVE_BPS = BasisPointConstants.ONE_PERCENT_BPS * 20;
-    uint256 public constant MAX_WITHDRAWAL_FEE_BPS = BasisPointConstants.ONE_PERCENT_BPS;
-
-    mapping(address => address) private _strategyShareToAdapter;
-    address public defaultDepositStrategyShare;
-
     function _token() internal view returns (IDStakeTokenV2Minimal) {
-        return IDStakeTokenV2Minimal(dStakeToken);
+        return IDStakeTokenV2Minimal(_dStakeToken);
     }
-
-    enum OperationType {
-        DEPOSIT,
-        WITHDRAWAL
-    }
-
-    enum VaultStatus {
-        Active,
-        Suspended,
-        Impaired
-    }
-
-    struct VaultConfig {
-        address strategyVault;
-        address adapter;
-        uint256 targetBps;
-        VaultStatus status;
-    }
-
-    VaultConfig[] public vaultConfigs;
-    mapping(address => uint256) public vaultToIndex;
-    mapping(address => bool) public vaultExists;
-    address public governanceModule;
-    address public rebalanceModule;
 
     // --- Events ---
     event RouterDepositRouted(
@@ -208,18 +164,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     event GovernanceModuleSet(address indexed governanceModule);
     event RebalanceModuleSet(address indexed rebalanceModule);
 
-    constructor(address _dStakeToken, address _collateralVault) {
-        if (_dStakeToken == address(0) || _collateralVault == address(0)) {
-            revert ZeroAddress();
-        }
-
-        dStakeToken = _dStakeToken;
-        collateralVault = IDStakeCollateralVaultV2(_collateralVault);
-        dStable = collateralVault.dStable();
-        if (dStable == address(0)) {
-            revert ZeroAddress();
-        }
-
+    constructor(address _dStakeToken, address _collateralVault) DStakeRouterV2Storage(_dStakeToken, _collateralVault) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADAPTER_MANAGER_ROLE, msg.sender);
         _grantRole(CONFIG_MANAGER_ROLE, msg.sender);
@@ -255,6 +200,18 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
     // --- Core Router Functions ---
 
+    function collateralVault() public view override returns (IDStakeCollateralVaultV2) {
+        return _collateralVault;
+    }
+
+    function dStakeToken() public view override returns (address) {
+        return _dStakeToken;
+    }
+
+    function defaultDepositStrategyShare() public view override returns (address) {
+        return _defaultDepositStrategyShare;
+    }
+
     function strategyShareToAdapter(address strategyShare) external view returns (address) {
         return _strategyShareToAdapter[strategyShare];
     }
@@ -264,8 +221,8 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     }
 
     function totalManagedAssets() public view override returns (uint256) {
-        uint256 vaultValue = collateralVault.totalValueInDStable();
-        uint256 idle = IERC20(dStable).balanceOf(address(this));
+        uint256 vaultValue = _collateralVault.totalValueInDStable();
+        uint256 idle = IERC20(_dStable).balanceOf(address(this));
         return vaultValue + idle;
     }
 
@@ -379,7 +336,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     }
 
     function _requireConfigOrToken(address account) internal view {
-        if (account != dStakeToken && !hasRole(CONFIG_MANAGER_ROLE, account)) {
+        if (account != _dStakeToken && !hasRole(CONFIG_MANAGER_ROLE, account)) {
             revert UnauthorizedConfigCaller();
         }
     }
@@ -411,7 +368,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             return 0;
         }
 
-        try IERC4626(vault).maxDeposit(address(collateralVault)) returns (uint256 limit) {
+        try IERC4626(vault).maxDeposit(address(_collateralVault)) returns (uint256 limit) {
             return limit;
         } catch {
             return type(uint256).max;
@@ -470,7 +427,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
         _enforceDepositCap(assets);
 
-        IERC20(dStable).safeTransferFrom(msg.sender, address(this), assets);
+        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), assets);
         address targetVault = _depositToAutoVault(assets);
         emit RouterDepositRouted(initiator, receiver, targetVault, assets, shares);
     }
@@ -503,7 +460,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             revert WithdrawalShortfall(expectedNetAssets, netAssets);
         }
 
-        IERC20(dStable).safeTransfer(receiver, netAssets);
+        IERC20(_dStable).safeTransfer(receiver, netAssets);
 
         address[] memory vaultArray = new address[](1);
         uint256[] memory amountArray = new uint256[](1);
@@ -545,7 +502,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             revert SharesBelowMinimum(sharesMinted, minShares);
         }
 
-        IERC20(dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
+        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
 
         uint256 vaultCount = vaults.length;
         for (uint256 i; i < vaultCount; ) {
@@ -604,7 +561,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             revert SharesBelowMinimum(sharesMinted, minShares);
         }
 
-        IERC20(dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
+        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
 
         for (uint256 i; i < vaultCount; ) {
             uint256 shareAmount = shares[i];
@@ -694,7 +651,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
         _token().burnFromRouter(msg.sender, receiver, owner, netAssets, sharesBurned);
 
-        IERC20(dStable).safeTransfer(receiver, netAssets);
+        IERC20(_dStable).safeTransfer(receiver, netAssets);
 
         emit StrategyWithdrawalRouted(vaults, grossRequests, grossWithdrawn);
         emit RouterSolverWithdraw(msg.sender, receiver, grossWithdrawn, netAssets, fee, sharesBurned);
@@ -753,7 +710,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
         _token().burnFromRouter(msg.sender, receiver, owner, netAssets, sharesBurned);
 
-        IERC20(dStable).safeTransfer(receiver, netAssets);
+        IERC20(_dStable).safeTransfer(receiver, netAssets);
 
         emit StrategyWithdrawalRouted(vaults, grossAssetAmounts, grossWithdrawn);
         emit RouterSolverWithdraw(msg.sender, receiver, grossWithdrawn, netAssets, fee, sharesBurned);
@@ -767,14 +724,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         whenNotPaused
         returns (uint256 amountReinvested, uint256 incentivePaid)
     {
-        uint256 balance = IERC20(dStable).balanceOf(address(this));
+        uint256 balance = IERC20(_dStable).balanceOf(address(this));
         if (balance == 0) {
             return (0, 0);
         }
 
         uint256 incentive = Math.mulDiv(balance, reinvestIncentiveBps, BasisPointConstants.ONE_HUNDRED_PERCENT_BPS);
         if (incentive > 0) {
-            IERC20(dStable).safeTransfer(msg.sender, incentive);
+            IERC20(_dStable).safeTransfer(msg.sender, incentive);
         }
 
         amountReinvested = balance - incentive;
@@ -1028,15 +985,15 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         (address vaultExpected, uint256 expectedShares) = adapter.previewDepositIntoStrategy(dStableAmount);
         if (vaultExpected != vault) revert AdapterAssetMismatch(adapterAddress, vault, vaultExpected);
 
-        uint256 beforeBal = IERC20(vault).balanceOf(address(collateralVault));
+        uint256 beforeBal = IERC20(vault).balanceOf(address(_collateralVault));
 
-        IERC20(dStable).forceApprove(adapterAddress, dStableAmount);
+        IERC20(_dStable).forceApprove(adapterAddress, dStableAmount);
         (address actualVault, uint256 reportedShares) = adapter.depositIntoStrategy(dStableAmount);
         if (actualVault != vault) {
             revert AdapterAssetMismatch(adapterAddress, vault, actualVault);
         }
 
-        uint256 afterBal = IERC20(vault).balanceOf(address(collateralVault));
+        uint256 afterBal = IERC20(vault).balanceOf(address(_collateralVault));
         actualShares = afterBal - beforeBal;
 
         if (actualShares < expectedShares) {
@@ -1047,7 +1004,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
             revert AdapterSharesMismatch(actualShares, reportedShares);
         }
 
-        IERC20(dStable).forceApprove(adapterAddress, 0);
+        IERC20(_dStable).forceApprove(adapterAddress, 0);
         return actualShares;
     }
 
@@ -1061,7 +1018,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
                 return false;
             }
 
-            uint256 availableShares = IERC20(vault).balanceOf(address(collateralVault));
+            uint256 availableShares = IERC20(vault).balanceOf(address(_collateralVault));
             return strategyShareAmount <= availableShares;
         } catch {
             return false;
@@ -1081,17 +1038,17 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         if (adapter == address(0)) revert AdapterNotFound(vault);
         IDStableConversionAdapterV2 conversionAdapter = IDStableConversionAdapterV2(adapter);
 
-        // Determine how many strategy shares correspond to the requested dStable amount
+        // Determine how many strategy shares correspond to the requested _dStable amount
         uint256 strategyShareAmount = IERC4626(vault).previewWithdraw(dStableAmount);
         if (strategyShareAmount == 0) revert ZeroPreviewWithdrawAmount(vault);
 
-        uint256 availableShares = IERC20(vault).balanceOf(address(collateralVault));
+        uint256 availableShares = IERC20(vault).balanceOf(address(_collateralVault));
         if (strategyShareAmount > availableShares) {
             // Don't silently truncate - revert if insufficient shares
             revert NoLiquidityAvailable();
         }
 
-        collateralVault.transferStrategyShares(vault, strategyShareAmount, address(this));
+        _collateralVault.transferStrategyShares(vault, strategyShareAmount, address(this));
         IERC20(vault).forceApprove(adapter, strategyShareAmount);
 
         receivedDStable = conversionAdapter.withdrawFromStrategy(strategyShareAmount);
@@ -1117,10 +1074,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         if (adapter == address(0)) revert AdapterNotFound(vault);
         IDStableConversionAdapterV2 conversionAdapter = IDStableConversionAdapterV2(adapter);
 
-        uint256 availableShares = IERC20(vault).balanceOf(address(collateralVault));
+        uint256 availableShares = IERC20(vault).balanceOf(address(_collateralVault));
         if (shares > availableShares) revert NoLiquidityAvailable();
 
-        collateralVault.transferStrategyShares(vault, shares, address(this));
+        _collateralVault.transferStrategyShares(vault, shares, address(this));
         IERC20(vault).forceApprove(adapter, shares);
 
         try conversionAdapter.withdrawFromStrategy(shares) returns (uint256 redeemed) {
@@ -1277,7 +1234,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     }
 
     function _getVaultBalanceWithAdapter(address vault, address adapter) internal view returns (uint256 balance) {
-        try IERC20(vault).balanceOf(address(collateralVault)) returns (uint256 shares) {
+        try IERC20(vault).balanceOf(address(_collateralVault)) returns (uint256 shares) {
             if (shares == 0) return 0;
 
             if (adapter == address(0)) {
@@ -1327,7 +1284,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
     function _isVaultHealthyForWithdrawals(address vault) internal view returns (bool healthy) {
         try IERC4626(vault).totalAssets() returns (uint256) {
-            uint256 vaultShares = IERC20(vault).balanceOf(address(collateralVault));
+            uint256 vaultShares = IERC20(vault).balanceOf(address(_collateralVault));
             if (vaultShares == 0) return false;
 
             try IERC4626(vault).previewRedeem(vaultShares) returns (uint256 assets) {
@@ -1344,7 +1301,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256 vaultCount = activeVaults.length;
         for (uint256 i; i < vaultCount; ) {
             address vault = activeVaults[i];
-            uint256 vaultShares = IERC20(vault).balanceOf(address(collateralVault));
+            uint256 vaultShares = IERC20(vault).balanceOf(address(_collateralVault));
             if (vaultShares != 0) {
                 try IERC4626(vault).previewRedeem(vaultShares) returns (uint256 assets) {
                     totalLiquidity += assets;
