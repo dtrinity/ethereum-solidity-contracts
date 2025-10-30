@@ -222,12 +222,7 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
         _addVaultConfig(config);
     }
 
-    function addVaultConfig(
-        address vault,
-        address adapter,
-        uint256 targetBps,
-        VaultStatus status
-    ) external {
+    function addVaultConfig(address vault, address adapter, uint256 targetBps, VaultStatus status) external {
         _addVaultConfig(VaultConfig({ strategyVault: vault, adapter: adapter, targetBps: targetBps, status: status }));
     }
 
@@ -235,12 +230,7 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
         _updateVaultConfig(config);
     }
 
-    function updateVaultConfig(
-        address vault,
-        address adapter,
-        uint256 targetBps,
-        VaultStatus status
-    ) external {
+    function updateVaultConfig(address vault, address adapter, uint256 targetBps, VaultStatus status) external {
         _updateVaultConfig(
             VaultConfig({ strategyVault: vault, adapter: adapter, targetBps: targetBps, status: status })
         );

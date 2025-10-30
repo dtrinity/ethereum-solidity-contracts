@@ -213,11 +213,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         bytes32 actualFingerprint;
         address moduleToken;
         address moduleVault;
-        try IDStakeRouterV2Module(module).moduleMetadata() returns (
-            bytes32 fingerprint,
-            address token,
-            address vault
-        ) {
+        try IDStakeRouterV2Module(module).moduleMetadata() returns (bytes32 fingerprint, address token, address vault) {
             actualFingerprint = fingerprint;
             moduleToken = token;
             moduleVault = vault;
@@ -881,12 +877,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         _delegateToModule(governanceModule);
     }
 
-    function addVaultConfig(
-        address,
-        address,
-        uint256,
-        VaultStatus
-    ) external onlyRole(VAULT_MANAGER_ROLE) {
+    function addVaultConfig(address, address, uint256, VaultStatus) external onlyRole(VAULT_MANAGER_ROLE) {
         _delegateToModule(governanceModule);
     }
 
@@ -894,12 +885,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         _delegateToModule(governanceModule);
     }
 
-    function updateVaultConfig(
-        address,
-        address,
-        uint256,
-        VaultStatus
-    ) external onlyRole(VAULT_MANAGER_ROLE) {
+    function updateVaultConfig(address, address, uint256, VaultStatus) external onlyRole(VAULT_MANAGER_ROLE) {
         _delegateToModule(governanceModule);
     }
 
@@ -1350,5 +1336,4 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             }
         }
     }
-
 }
