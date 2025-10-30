@@ -88,8 +88,8 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     error InvalidWithdrawalFee(uint256 feeBps, uint256 maxFeeBps);
     error VaultMustBeSuspended(address vault);
     error VaultTargetNotZero(address vault, uint256 targetBps);
-    error GovernanceModuleNotSet();
-    error GovernanceModuleCallFailed();
+    error ModuleNotSet();
+    error ModuleCallFailed();
 
     // --- Roles ---
     bytes32 public constant DSTAKE_TOKEN_ROLE = keccak256("DSTAKE_TOKEN_ROLE");
@@ -121,15 +121,6 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         return IDStakeTokenV2Minimal(dStakeToken);
     }
 
-    struct ExchangeLocals {
-        address fromAdapterAddress;
-        address toAdapterAddress;
-        IDStableConversionAdapterV2 fromAdapter;
-        IDStableConversionAdapterV2 toAdapter;
-        uint256 dStableValueIn;
-        uint256 calculatedToStrategyShareAmount;
-    }
-
     enum OperationType {
         DEPOSIT,
         WITHDRAWAL
@@ -152,6 +143,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     mapping(address => uint256) public vaultToIndex;
     mapping(address => bool) public vaultExists;
     address public governanceModule;
+    address public rebalanceModule;
 
     // --- Events ---
     event RouterDepositRouted(
@@ -214,6 +206,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     );
     event MaxVaultCountUpdated(uint256 oldCount, uint256 newCount);
     event GovernanceModuleSet(address indexed governanceModule);
+    event RebalanceModuleSet(address indexed rebalanceModule);
 
     constructor(address _dStakeToken, address _collateralVault) {
         if (_dStakeToken == address(0) || _collateralVault == address(0)) {
@@ -241,13 +234,18 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         emit GovernanceModuleSet(newModule);
     }
 
-    function _delegateToGovernance() private returns (bytes memory result) {
-        address module = governanceModule;
-        if (module == address(0)) revert GovernanceModuleNotSet();
+    function setRebalanceModule(address newModule) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newModule == address(0)) revert ZeroAddress();
+        rebalanceModule = newModule;
+        emit RebalanceModuleSet(newModule);
+    }
+
+    function _delegateToModule(address module) private returns (bytes memory result) {
+        if (module == address(0)) revert ModuleNotSet();
 
         (bool success, bytes memory returndata) = module.delegatecall(msg.data);
         if (!success) {
-            if (returndata.length == 0) revert GovernanceModuleCallFailed();
+            if (returndata.length == 0) revert ModuleCallFailed();
             assembly {
                 revert(add(returndata, 32), mload(returndata))
             }
@@ -793,244 +791,82 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
     function setReinvestIncentive(uint256) external {
         _requireConfigOrToken(_msgSender());
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setWithdrawalFee(uint256) external override {
         _requireConfigOrToken(_msgSender());
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setDepositCap(uint256) external {
         _requireConfigOrToken(_msgSender());
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function recordShortfall(uint256) external {
         _requireConfigOrToken(_msgSender());
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function clearShortfall(uint256) external {
         _requireConfigOrToken(_msgSender());
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     // --- Rebalance/Exchange Functions ---
 
     function rebalanceStrategiesByShares(
-        address fromStrategyShare,
-        address toStrategyShare,
-        uint256 fromShareAmount,
-        uint256 minToShareAmount
+        address,
+        address,
+        uint256,
+        uint256
     ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
-        _rebalanceStrategiesByShares(fromStrategyShare, toStrategyShare, fromShareAmount, minToShareAmount);
-    }
-
-    function _rebalanceStrategiesByShares(
-        address fromStrategyShare,
-        address toStrategyShare,
-        uint256 fromShareAmount,
-        uint256 minToShareAmount
-    ) internal {
-        address fromAdapterAddress = _strategyShareToAdapter[fromStrategyShare];
-        address toAdapterAddress = _strategyShareToAdapter[toStrategyShare];
-        if (fromAdapterAddress == address(0)) revert AdapterNotFound(fromStrategyShare);
-        if (toAdapterAddress == address(0)) revert AdapterNotFound(toStrategyShare);
-
-        VaultConfig memory fromConfig = _getVaultConfig(fromStrategyShare);
-        if (!_isVaultStatusEligible(fromConfig.status, OperationType.WITHDRAWAL)) {
-            revert VaultNotActive(fromStrategyShare);
-        }
-
-        VaultConfig memory toConfig = _getVaultConfig(toStrategyShare);
-        if (!_isVaultStatusEligible(toConfig.status, OperationType.DEPOSIT)) {
-            revert VaultNotActive(toStrategyShare);
-        }
-
-        IDStableConversionAdapterV2 fromAdapter = IDStableConversionAdapterV2(fromAdapterAddress);
-        IDStableConversionAdapterV2 toAdapter = IDStableConversionAdapterV2(toAdapterAddress);
-
-        uint256 dStableAmountEquivalent = fromAdapter.previewWithdrawFromStrategy(fromShareAmount);
-        if (dStableAmountEquivalent <= dustTolerance) {
-            return;
-        }
-        collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
-
-        IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, fromShareAmount);
-        uint256 receivedDStable = fromAdapter.withdrawFromStrategy(fromShareAmount);
-        IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, 0);
-
-        IERC20(dStable).forceApprove(toAdapterAddress, receivedDStable);
-        (address actualToStrategyShare, uint256 resultingToShareAmount) = toAdapter.depositIntoStrategy(
-            receivedDStable
-        );
-        if (actualToStrategyShare != toStrategyShare) {
-            revert AdapterAssetMismatch(toAdapterAddress, toStrategyShare, actualToStrategyShare);
-        }
-        if (resultingToShareAmount < minToShareAmount) {
-            revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);
-        }
-        IERC20(dStable).forceApprove(toAdapterAddress, 0);
-
-        {
-            uint256 previewValue = toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
-            uint256 dustAdjusted = dStableAmountEquivalent > dustTolerance
-                ? dStableAmountEquivalent - dustTolerance
-                : 0;
-            if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(dStable, previewValue, dustAdjusted);
-            }
-        }
-
-        emit StrategySharesExchanged(
-            fromStrategyShare,
-            toStrategyShare,
-            fromShareAmount,
-            resultingToShareAmount,
-            dStableAmountEquivalent,
-            msg.sender
-        );
+        _delegateToModule(rebalanceModule);
     }
 
     function rebalanceStrategiesBySharesViaExternalLiquidity(
-        address fromStrategyShare,
-        address toStrategyShare,
-        uint256 fromShareAmount,
-        uint256 minToShareAmount
+        address,
+        address,
+        uint256,
+        uint256
     ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
-        if (fromShareAmount == 0) revert ZeroInputDStableValue(fromStrategyShare, 0);
-        if (fromStrategyShare == address(0) || toStrategyShare == address(0)) revert ZeroAddress();
-
-        ExchangeLocals memory locals;
-        locals.fromAdapterAddress = _strategyShareToAdapter[fromStrategyShare];
-        locals.toAdapterAddress = _strategyShareToAdapter[toStrategyShare];
-
-        if (locals.fromAdapterAddress == address(0)) revert AdapterNotFound(fromStrategyShare);
-        if (locals.toAdapterAddress == address(0)) revert AdapterNotFound(toStrategyShare);
-
-        VaultConfig memory fromConfig = _getVaultConfig(fromStrategyShare);
-        if (!_isVaultStatusEligible(fromConfig.status, OperationType.WITHDRAWAL)) {
-            revert VaultNotActive(fromStrategyShare);
-        }
-
-        VaultConfig memory toConfig = _getVaultConfig(toStrategyShare);
-        if (!_isVaultStatusEligible(toConfig.status, OperationType.DEPOSIT)) {
-            revert VaultNotActive(toStrategyShare);
-        }
-
-        locals.fromAdapter = IDStableConversionAdapterV2(locals.fromAdapterAddress);
-        locals.toAdapter = IDStableConversionAdapterV2(locals.toAdapterAddress);
-
-        locals.dStableValueIn = locals.fromAdapter.previewWithdrawFromStrategy(fromShareAmount);
-        if (locals.dStableValueIn == 0) revert ZeroInputDStableValue(fromStrategyShare, fromShareAmount);
-
-        (address expectedToShare, uint256 tmpToAmount) = locals.toAdapter.previewDepositIntoStrategy(
-            locals.dStableValueIn
-        );
-        if (expectedToShare != toStrategyShare)
-            revert AdapterAssetMismatch(locals.toAdapterAddress, toStrategyShare, expectedToShare);
-        locals.calculatedToStrategyShareAmount = tmpToAmount;
-
-        if (locals.calculatedToStrategyShareAmount < minToShareAmount) {
-            revert SlippageCheckFailed(toStrategyShare, locals.calculatedToStrategyShareAmount, minToShareAmount);
-        }
-
-        collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
-        IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, fromShareAmount);
-        uint256 receivedDStable = locals.fromAdapter.withdrawFromStrategy(fromShareAmount);
-        IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, 0);
-
-        IERC20(dStable).forceApprove(locals.toAdapterAddress, receivedDStable);
-        (address actualToStrategyShare, uint256 resultingToShareAmount) = locals.toAdapter.depositIntoStrategy(
-            receivedDStable
-        );
-        if (actualToStrategyShare != toStrategyShare)
-            revert AdapterAssetMismatch(locals.toAdapterAddress, toStrategyShare, actualToStrategyShare);
-
-        {
-            uint256 previewValue = locals.toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
-            uint256 dustAdjusted = locals.dStableValueIn > dustTolerance ? locals.dStableValueIn - dustTolerance : 0;
-            if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(dStable, previewValue, dustAdjusted);
-            }
-        }
-
-        // Validate actual conversion result by measuring the share shortfall in dStable units and comparing to tolerance
-        if (resultingToShareAmount < minToShareAmount) {
-            uint256 shareShortfall = minToShareAmount - resultingToShareAmount;
-            uint256 shortfallValue = shareShortfall.mulDiv(
-                locals.dStableValueIn,
-                locals.calculatedToStrategyShareAmount,
-                Math.Rounding.Ceil
-            );
-
-            if (shortfallValue > dustTolerance) {
-                revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);
-            }
-        }
-
-        IERC20(dStable).forceApprove(locals.toAdapterAddress, 0);
-
-        emit StrategySharesExchanged(
-            fromStrategyShare,
-            toStrategyShare,
-            fromShareAmount,
-            resultingToShareAmount,
-            locals.dStableValueIn,
-            msg.sender
-        );
+        _delegateToModule(rebalanceModule);
     }
 
     function rebalanceStrategiesByValue(
-        address fromVault,
-        address toVault,
-        uint256 amount,
-        uint256 minToShareAmount
+        address,
+        address,
+        uint256,
+        uint256
     ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
-        if (amount == 0) revert InvalidAmount();
-        if (fromVault == toVault) revert InvalidVaultConfig();
-
-        VaultConfig memory fromConfig = _getVaultConfig(fromVault);
-        VaultConfig memory toConfig = _getVaultConfig(toVault);
-
-        if (fromConfig.status != VaultStatus.Active || toConfig.status != VaultStatus.Active) {
-            revert VaultNotActive(fromConfig.status == VaultStatus.Active ? toVault : fromVault);
-        }
-
-        if (!_isVaultHealthyForDeposits(toVault)) revert VaultNotActive(toVault);
-        if (!_isVaultHealthyForWithdrawals(fromVault)) revert VaultNotActive(fromVault);
-
-        uint256 requiredVaultAssetAmount = IERC4626(fromVault).previewWithdraw(amount);
-        _rebalanceStrategiesByShares(fromVault, toVault, requiredVaultAssetAmount, minToShareAmount);
-
-        emit StrategiesRebalanced(fromVault, toVault, amount, msg.sender);
+        _delegateToModule(rebalanceModule);
     }
 
     // --- Adapter Management ---
 
     function addAdapter(address, address) external onlyRole(ADAPTER_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function removeAdapter(address) external onlyRole(ADAPTER_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setDefaultDepositStrategyShare(address) external onlyRole(CONFIG_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function clearDefaultDepositStrategyShare() external onlyRole(CONFIG_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setDustTolerance(uint256) external onlyRole(CONFIG_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function sweepSurplus(uint256) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     // --- Vault Configuration ---
@@ -1043,11 +879,11 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
      *      Use this after operational changes (add/remove/pause) to restore precise targets.
      */
     function setVaultConfigs(VaultConfig[] calldata) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function addVaultConfig(VaultConfig calldata) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function addVaultConfig(
@@ -1056,11 +892,11 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256,
         VaultStatus
     ) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function updateVaultConfig(VaultConfig calldata) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function updateVaultConfig(
@@ -1069,31 +905,31 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         uint256,
         VaultStatus
     ) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setVaultStatus(address, VaultStatus) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function removeVault(address) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function removeVaultConfig(address) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function suspendVaultForRemoval(address) external onlyRole(VAULT_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function emergencyPauseVault(address) external onlyRole(PAUSER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function setMaxVaultCount(uint256) external onlyRole(CONFIG_MANAGER_ROLE) {
-        _delegateToGovernance();
+        _delegateToModule(governanceModule);
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {

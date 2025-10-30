@@ -137,4 +137,12 @@ When planning the follow-up implementation, keep these bytecode traps in mind:
   2. Prune duplicated view helpers in the router once read-only module is carved out.
   3. Revisit revert-string compression within the module (still carries legacy messages).
 
+## Rebalance Module Prototype (2025-02-17)
+
+- Implemented `DStakeRouterV2RebalanceModule` and added router delegates (`setRebalanceModule`, `_delegateToModule`) so keeper-only selectors execute out-of-line while keeping role gates on the router.
+- Current sizes (`yarn size:dstake-router`): router **24.728 KiB**, governance module **10.667 KiB**, rebalance module **6.794 KiB**. Router is now ~720 bytes above the 24 KiB ceiling.
+- Remaining gap likely comes from view helpers + withdrawal execution helpers still resident in the router. Next options:
+  1. Shift read-only helper bundle into a lightweight view module (router stubs can staticcall via delegate) or compress revert strings in solver flows.
+  2. Investigate sharing `IDStakeToken` preview logic via smaller utility libraries to further shrink hot-path code.
+
 This ticket captures the exploration performed and the gaps remaining so the next round of work can focus directly on an architectural redesign rather than repeating prior attempts.

@@ -109,8 +109,9 @@ contract DStakeRouterV2GovernanceModule {
     mapping(address => uint256) public vaultToIndex;
     mapping(address => bool) public vaultExists;
 
-    // Reserved slot for router-managed governance module pointer (must mirror router layout)
+    // Reserved slots for router-managed module pointers (must mirror router layout)
     address public governanceModule;
+    address public rebalanceModule;
 
     uint256 public constant MAX_REINVEST_INCENTIVE_BPS = BasisPointConstants.ONE_PERCENT_BPS * 20;
     uint256 public constant MAX_WITHDRAWAL_FEE_BPS = BasisPointConstants.ONE_PERCENT_BPS;

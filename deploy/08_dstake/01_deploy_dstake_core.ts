@@ -118,11 +118,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: false,
     });
 
+    const rebalanceModuleDeploymentName = `${routerDeploymentName}_RebalanceModule`;
+    const rebalanceModuleDeployment = await deploy(rebalanceModuleDeploymentName, {
+      from: deployer,
+      contract: "DStakeRouterV2RebalanceModule",
+      args: [DStakeTokenDeployment.address, collateralVaultDeployment.address],
+      log: false,
+    });
+
     await deployments.execute(
       routerDeploymentName,
       { from: deployer, log: false },
       "setGovernanceModule",
       governanceModuleDeployment.address,
+    );
+
+    await deployments.execute(
+      routerDeploymentName,
+      { from: deployer, log: false },
+      "setRebalanceModule",
+      rebalanceModuleDeployment.address,
     );
 
     // NOTE: Governance permissions will be granted in the post-deployment
