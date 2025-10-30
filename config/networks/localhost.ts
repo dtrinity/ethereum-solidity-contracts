@@ -250,9 +250,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                   },
                 }
               : {}),
-            ...(sfrxUSDDeployment?.address &&
-            mockOracleNameToAddress["sfrxUSD_frxUSD"] &&
-            mockOracleNameToAddress["frxUSD_USD"]
+            ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
               ? {
                   [sfrxUSDDeployment.address]: {
                     feedAsset: sfrxUSDDeployment.address,

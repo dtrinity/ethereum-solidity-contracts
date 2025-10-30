@@ -24,6 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const usdOracleDeployment = await deployments.getOrNull(USD_ORACLE_AGGREGATOR_ID);
+
   if (!usdOracleDeployment) {
     console.log(
       `  ⚠️  USD oracle aggregator deployment not detected – continuing to configure the WETH hard peg but skipping USD aggregator validation.`,
@@ -59,6 +60,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   if (usdOracleDeployment) {
     const usdOracle = await ethers.getContractAt("OracleAggregatorV1_1", usdOracleDeployment.address, signer);
     const usdOracleAddress = await usdOracle.assetOracles(wethAddress);
+
     if (usdOracleAddress === ZeroAddress) {
       throw new Error(
         `WETH is not configured on the USD oracle aggregator ${usdOracleDeployment.address}. Ensure the wrapper setup scripts ran successfully.`,

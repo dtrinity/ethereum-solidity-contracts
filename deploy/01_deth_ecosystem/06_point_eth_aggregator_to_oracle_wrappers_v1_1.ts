@@ -6,6 +6,7 @@ import { getConfig } from "../../config/config";
 import { Config } from "../../config/types";
 import type { OracleAggregatorV1_1 } from "../../typechain-types";
 import {
+  DETH_TOKEN_ID,
   ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_API3_ORACLE_WRAPPER_ID,
   ETH_API3_WRAPPER_WITH_THRESHOLDING_ID,
@@ -13,7 +14,6 @@ import {
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_ORACLE_WRAPPER_ID,
   ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
-  DETH_TOKEN_ID,
 } from "../../typescript/deploy-ids";
 
 type Api3AssetsConfig = Config["oracleAggregators"][string]["api3OracleAssets"];
@@ -27,11 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const oracleConfig = config.oracleAggregators.ETH;
 
   const aggregatorDeployment = await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID);
-  const aggregator = (await hre.ethers.getContractAt(
-    "OracleAggregatorV1_1",
-    aggregatorDeployment.address,
-    signer,
-  )) as OracleAggregatorV1_1;
+  const aggregator = (await hre.ethers.getContractAt("OracleAggregatorV1_1", aggregatorDeployment.address, signer)) as OracleAggregatorV1_1;
 
   const api3Assets = oracleConfig.api3OracleAssets;
   const redstoneAssets = oracleConfig.redstoneOracleAssets;
@@ -48,34 +44,42 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-async function routeApi3Assets(
-  hre: HardhatRuntimeEnvironment,
-  aggregator: OracleAggregatorV1_1,
-  assets: Api3AssetsConfig,
-): Promise<void> {
+/**
+ *
+ * @param hre
+ * @param aggregator
+ * @param assets
+ */
+async function routeApi3Assets(hre: HardhatRuntimeEnvironment, aggregator: OracleAggregatorV1_1, assets: Api3AssetsConfig): Promise<void> {
   if (!assets) {
     return;
   }
 
   const plain = assets.plainApi3OracleWrappers ?? {};
+
   if (Object.keys(plain).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_API3_ORACLE_WRAPPER_ID);
+
     for (const assetAddress of Object.keys(plain)) {
       await ensureOracleMapping(aggregator, assetAddress, wrapperAddress);
     }
   }
 
   const thresholded = assets.api3OracleWrappersWithThresholding ?? {};
+
   if (Object.keys(thresholded).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_API3_WRAPPER_WITH_THRESHOLDING_ID);
+
     for (const assetAddress of Object.keys(thresholded)) {
       await ensureOracleMapping(aggregator, assetAddress, wrapperAddress);
     }
   }
 
   const composite = assets.compositeApi3OracleWrappersWithThresholding ?? {};
+
   if (Object.keys(composite).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID);
+
     for (const feedConfig of Object.values(composite)) {
       const feedAsset = (feedConfig as { feedAsset: string }).feedAsset;
       await ensureOracleMapping(aggregator, feedAsset, wrapperAddress);
@@ -83,6 +87,12 @@ async function routeApi3Assets(
   }
 }
 
+/**
+ *
+ * @param hre
+ * @param aggregator
+ * @param assets
+ */
 async function routeRedstoneAssets(
   hre: HardhatRuntimeEnvironment,
   aggregator: OracleAggregatorV1_1,
@@ -93,24 +103,30 @@ async function routeRedstoneAssets(
   }
 
   const plain = assets.plainRedstoneOracleWrappers ?? {};
+
   if (Object.keys(plain).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_REDSTONE_ORACLE_WRAPPER_ID);
+
     for (const assetAddress of Object.keys(plain)) {
       await ensureOracleMapping(aggregator, assetAddress, wrapperAddress);
     }
   }
 
   const thresholded = assets.redstoneOracleWrappersWithThresholding ?? {};
+
   if (Object.keys(thresholded).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID);
+
     for (const assetAddress of Object.keys(thresholded)) {
       await ensureOracleMapping(aggregator, assetAddress, wrapperAddress);
     }
   }
 
   const composite = assets.compositeRedstoneOracleWrappersWithThresholding ?? {};
+
   if (Object.keys(composite).length > 0) {
     const wrapperAddress = await resolveDeploymentAddress(hre, ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID);
+
     for (const feedConfig of Object.values(composite)) {
       const feedAsset = (feedConfig as { feedAsset: string }).feedAsset;
       await ensureOracleMapping(aggregator, feedAsset, wrapperAddress);
@@ -118,17 +134,29 @@ async function routeRedstoneAssets(
   }
 }
 
+/**
+ *
+ * @param hre
+ * @param deploymentId
+ */
 async function resolveDeploymentAddress(hre: HardhatRuntimeEnvironment, deploymentId: string): Promise<string> {
   const deployment = await hre.deployments.get(deploymentId);
   return deployment.address;
 }
 
+/**
+ *
+ * @param aggregator
+ * @param assetAddress
+ * @param wrapperAddress
+ */
 async function ensureOracleMapping(aggregator: OracleAggregatorV1_1, assetAddress: string, wrapperAddress: string): Promise<void> {
   if (!isUsableAddress(assetAddress)) {
     return;
   }
 
   const current = await aggregator.assetOracles(assetAddress);
+
   if (current.toLowerCase() === wrapperAddress.toLowerCase()) {
     return;
   }
@@ -137,6 +165,10 @@ async function ensureOracleMapping(aggregator: OracleAggregatorV1_1, assetAddres
   console.log(`   ✅ Routed ${assetAddress} to wrapper ${wrapperAddress}`);
 }
 
+/**
+ *
+ * @param value
+ */
 function isUsableAddress(value: string | undefined): value is string {
   if (!value) {
     return false;
@@ -146,6 +178,11 @@ function isUsableAddress(value: string | undefined): value is string {
   return isHexAddress && normalized !== ZeroAddress.toLowerCase();
 }
 
+/**
+ *
+ * @param api3Assets
+ * @param redstoneAssets
+ */
 function hasAnyConfiguredAsset(api3Assets?: Api3AssetsConfig, redstoneAssets?: RedstoneAssetsConfig): boolean {
   const counts = [
     Object.keys(api3Assets?.plainApi3OracleWrappers ?? {}).length,

@@ -49,7 +49,12 @@ contract OracleAggregatorV1_1 is AccessControl, IOracleWrapperV1_1 {
     /* Errors */
     error ZeroAddress(string param);
     error OracleNotContract(address oracle);
-    error UnexpectedBaseCurrency(address asset, address oracle, address expectedBaseCurrency, address oracleBaseCurrency);
+    error UnexpectedBaseCurrency(
+        address asset,
+        address oracle,
+        address expectedBaseCurrency,
+        address oracleBaseCurrency
+    );
     error UnexpectedBaseUnit(address asset, address oracle, uint256 expectedBaseUnit, uint256 oracleBaseUnit);
     error OracleNotSet(address asset);
     error PriceNotAlive(address asset);

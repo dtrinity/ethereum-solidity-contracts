@@ -5,13 +5,13 @@ import {
   DETH_AMO_DEBT_TOKEN_ID,
   DETH_AMO_MANAGER_V2_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  DETH_TOKEN_ID,
   DETH_HARD_PEG_ORACLE_WRAPPER_ID,
+  DETH_TOKEN_ID,
   DUSD_AMO_DEBT_TOKEN_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
-  DUSD_TOKEN_ID,
   DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
+  DUSD_TOKEN_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
@@ -121,10 +121,12 @@ func.dependencies = [
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
 ];
 
-async function resolveOracleForAsset(
-  deployments: HardhatRuntimeEnvironment["deployments"],
-  assetName: string,
-): Promise<string> {
+/**
+ *
+ * @param deployments
+ * @param assetName
+ */
+async function resolveOracleForAsset(deployments: HardhatRuntimeEnvironment["deployments"], assetName: string): Promise<string> {
   switch (assetName) {
     case "dUSD":
       return (await deployments.get(DUSD_HARD_PEG_ORACLE_WRAPPER_ID)).address;

@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
+import { OracleAggregatorConfig } from "../../config/types";
 import {
   DETH_TOKEN_ID,
   DUSD_TOKEN_ID,
@@ -12,7 +13,6 @@ import {
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
 } from "../../typescript/deploy-ids";
-import { OracleAggregatorConfig } from "../../config/types";
 
 type Api3AssetConfig = OracleAggregatorConfig["api3OracleAssets"];
 type RedstoneAssetConfig = OracleAggregatorConfig["redstoneOracleAssets"];
@@ -47,6 +47,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
+/**
+ *
+ * @param hre
+ * @param deployer
+ * @param baseCurrency
+ * @param baseCurrencyUnit
+ * @param assets
+ */
 async function setupApi3Wrappers(
   hre: HardhatRuntimeEnvironment,
   deployer: string,
@@ -60,6 +68,7 @@ async function setupApi3Wrappers(
   }
 
   const plainFeeds = assets.plainApi3OracleWrappers ?? {};
+
   if (Object.keys(plainFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_API3_ORACLE_WRAPPER_ID, {
       from: deployer,
@@ -82,6 +91,7 @@ async function setupApi3Wrappers(
   }
 
   const thresholdFeeds = assets.api3OracleWrappersWithThresholding ?? {};
+
   if (Object.keys(thresholdFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_API3_WRAPPER_WITH_THRESHOLDING_ID, {
       from: deployer,
@@ -98,9 +108,7 @@ async function setupApi3Wrappers(
       assertAddress(assetAddress, "threshold API3 asset address");
       assertAddress(typedConfig.proxy, `threshold API3 proxy for ${assetAddress}`);
       await (await wrapper.setProxy(assetAddress, typedConfig.proxy)).wait();
-      await (
-        await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)
-      ).wait();
+      await (await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)).wait();
       console.log(`   ✅ Set API3 threshold config for asset ${assetAddress}`);
     }
 
@@ -108,6 +116,7 @@ async function setupApi3Wrappers(
   }
 
   const compositeFeeds = assets.compositeApi3OracleWrappersWithThresholding ?? {};
+
   if (Object.keys(compositeFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID, {
       from: deployer,
@@ -144,6 +153,14 @@ async function setupApi3Wrappers(
   }
 }
 
+/**
+ *
+ * @param hre
+ * @param deployer
+ * @param baseCurrency
+ * @param baseCurrencyUnit
+ * @param assets
+ */
 async function setupRedstoneWrappers(
   hre: HardhatRuntimeEnvironment,
   deployer: string,
@@ -157,6 +174,7 @@ async function setupRedstoneWrappers(
   }
 
   const plainFeeds = assets.plainRedstoneOracleWrappers ?? {};
+
   if (Object.keys(plainFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_REDSTONE_ORACLE_WRAPPER_ID, {
       from: deployer,
@@ -179,6 +197,7 @@ async function setupRedstoneWrappers(
   }
 
   const thresholdFeeds = assets.redstoneOracleWrappersWithThresholding ?? {};
+
   if (Object.keys(thresholdFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID, {
       from: deployer,
@@ -195,9 +214,7 @@ async function setupRedstoneWrappers(
       assertAddress(assetAddress, "threshold Redstone asset address");
       assertAddress(typedConfig.feed, `threshold Redstone feed for ${assetAddress}`);
       await (await wrapper.setFeed(assetAddress, typedConfig.feed)).wait();
-      await (
-        await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)
-      ).wait();
+      await (await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)).wait();
       console.log(`   ✅ Set Redstone threshold config for asset ${assetAddress}`);
     }
 
@@ -205,6 +222,7 @@ async function setupRedstoneWrappers(
   }
 
   const compositeFeeds = assets.compositeRedstoneOracleWrappersWithThresholding ?? {};
+
   if (Object.keys(compositeFeeds).length > 0) {
     const deployment = await hre.deployments.deploy(USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID, {
       from: deployer,
@@ -214,10 +232,7 @@ async function setupRedstoneWrappers(
       log: true,
     });
 
-    const wrapper = await hre.ethers.getContractAt(
-      "RedstoneChainlinkCompositeWrapperWithThresholdingV1_1",
-      deployment.address,
-    );
+    const wrapper = await hre.ethers.getContractAt("RedstoneChainlinkCompositeWrapperWithThresholdingV1_1", deployment.address);
 
     for (const [assetAddress, feedConfig] of Object.entries(compositeFeeds)) {
       const typedConfig = feedConfig as CompositeThresholdConfig;
@@ -244,6 +259,13 @@ async function setupRedstoneWrappers(
   }
 }
 
+/**
+ *
+ * @param wrapper
+ * @param feeds
+ * @param baseCurrencyUnit
+ * @param wrapperName
+ */
 async function performOracleSanityChecks(
   wrapper: any,
   feeds: Record<string, unknown>,
@@ -269,6 +291,11 @@ async function performOracleSanityChecks(
   }
 }
 
+/**
+ *
+ * @param value
+ * @param context
+ */
 function assertAddress(value: string, context: string): void {
   if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
     throw new Error(`[oracle-wrappers] Invalid address for ${context}: ${value}`);

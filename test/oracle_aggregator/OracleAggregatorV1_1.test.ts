@@ -35,17 +35,11 @@ describe("OracleAggregatorV1_1", () => {
   });
 
   it("routes prices from configured wrapper", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-      manager,
-    )) as HardPegOracleWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
 
     const asset = ethers.Wallet.createRandom().address;
-    await expect(aggregator.connect(manager).setOracle(asset, await wrapper.getAddress())).to.emit(
-      aggregator,
-      "OracleUpdated",
-    );
+    await expect(aggregator.connect(manager).setOracle(asset, await wrapper.getAddress())).to.emit(aggregator, "OracleUpdated");
 
     const [price, isAlive] = await aggregator.getPriceInfo(asset);
     expect(price).to.equal(BASE_UNIT);
@@ -69,10 +63,7 @@ describe("OracleAggregatorV1_1", () => {
   });
 
   it("rejects incompatible base currency", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-      manager,
-    )) as HardPegOracleWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.Wallet.createRandom().address, BASE_UNIT, BASE_UNIT);
 
     const asset = ethers.Wallet.createRandom().address;
@@ -82,10 +73,7 @@ describe("OracleAggregatorV1_1", () => {
   });
 
   it("rejects incompatible base unit", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-      manager,
-    )) as HardPegOracleWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, 10n ** 18n, 10n ** 18n);
 
     const asset = ethers.Wallet.createRandom().address;
@@ -95,25 +83,17 @@ describe("OracleAggregatorV1_1", () => {
   });
 
   it("reverts when downstream wrapper reports non-live price", async () => {
-    const mockFactory = (await ethers.getContractFactory(
-      "MockOracleAggregator",
-      manager,
-    )) as MockOracleAggregator__factory;
+    const mockFactory = (await ethers.getContractFactory("MockOracleAggregator", manager)) as MockOracleAggregator__factory;
     const mock = await mockFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
     const asset = ethers.Wallet.createRandom().address;
     await mock.setPrice(asset, BASE_UNIT, false);
 
     await aggregator.connect(manager).setOracle(asset, await mock.getAddress());
-    await expect(aggregator.getAssetPrice(asset))
-      .to.be.revertedWithCustomError(aggregator, "PriceNotAlive")
-      .withArgs(asset);
+    await expect(aggregator.getAssetPrice(asset)).to.be.revertedWithCustomError(aggregator, "PriceNotAlive").withArgs(asset);
   });
 
   it("supports removing an oracle", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-      manager,
-    )) as HardPegOracleWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
     const asset = ethers.Wallet.createRandom().address;
 
@@ -129,9 +109,7 @@ describe("API3WrapperV1_1", () => {
   let proxy: MockApi3Proxy;
 
   beforeEach(async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "API3WrapperV1_1",
-    )) as API3WrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("API3WrapperV1_1")) as API3WrapperV1_1__factory;
     wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
 
     const proxyFactory = (await ethers.getContractFactory("MockApi3Proxy")) as MockApi3Proxy__factory;
@@ -160,9 +138,7 @@ describe("API3WrapperV1_1", () => {
 
 describe("RedstoneChainlinkWrapperV1_1", () => {
   it("converts Chainlink-style price feeds", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "RedstoneChainlinkWrapperV1_1",
-    )) as RedstoneChainlinkWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("RedstoneChainlinkWrapperV1_1")) as RedstoneChainlinkWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
 
     const feedFactory = (await ethers.getContractFactory(
@@ -182,9 +158,7 @@ describe("RedstoneChainlinkWrapperV1_1", () => {
 
 describe("HardPegOracleWrapperV1_1", () => {
   it("always returns the configured peg", async () => {
-    const wrapperFactory = (await ethers.getContractFactory(
-      "HardPegOracleWrapperV1_1",
-    )) as HardPegOracleWrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1")) as HardPegOracleWrapperV1_1__factory;
     const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
 
     const [price, isAlive] = await wrapper.getPriceInfo(ethers.ZeroAddress);

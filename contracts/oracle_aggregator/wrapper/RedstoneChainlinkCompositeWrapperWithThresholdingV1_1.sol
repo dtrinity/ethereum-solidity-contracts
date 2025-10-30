@@ -61,7 +61,10 @@ contract RedstoneChainlinkCompositeWrapperWithThresholdingV1_1 is BaseChainlinkW
     error FeedAddressZero();
     error FeedNotContract(address feed);
 
-    constructor(address baseCurrency, uint256 _baseCurrencyUnit) BaseChainlinkWrapperV1_1(baseCurrency, _baseCurrencyUnit) {
+    constructor(
+        address baseCurrency,
+        uint256 _baseCurrencyUnit
+    ) BaseChainlinkWrapperV1_1(baseCurrency, _baseCurrencyUnit) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ORACLE_MANAGER_ROLE, msg.sender);
     }
