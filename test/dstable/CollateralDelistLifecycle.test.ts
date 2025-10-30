@@ -103,24 +103,26 @@ describe("dUSD Collateral delist lifecycle", function () {
     const redeemPortion = mintedDstable / 2n;
     expect(redeemPortion).to.be.gt(0n);
 
-    const preservedOracleConfig = await oracleAggregator.getAssetConfig(collateralInfo.address);
-    await expect(oracleAggregator.connect(oracleManagerSigner).removeAsset(collateralInfo.address))
-      .to.emit(oracleAggregator, "OracleRemoved")
-      .withArgs(collateralInfo.address, preservedOracleConfig.oracle);
+    const preservedOracleAddress = await oracleAggregator.assetOracles(collateralInfo.address);
+    expect(preservedOracleAddress).to.not.equal(hre.ethers.ZeroAddress);
+
+    await expect(oracleAggregator.connect(oracleManagerSigner).removeOracle(collateralInfo.address))
+      .to.emit(oracleAggregator, "OracleUpdated")
+      .withArgs(collateralInfo.address, hre.ethers.ZeroAddress);
 
     await expect(collateralVault.totalValue())
-      .to.be.revertedWithCustomError(oracleAggregator, "AssetNotConfigured")
+      .to.be.revertedWithCustomError(oracleAggregator, "OracleNotSet")
       .withArgs(collateralInfo.address);
 
     const user2AttemptAmount = hre.ethers.parseUnits("100", collateralInfo.decimals);
     await collateral.connect(user2Signer).approve(await issuer.getAddress(), user2AttemptAmount);
     await expect(issuer.connect(user2Signer).issue(user2AttemptAmount, collateralInfo.address, 0))
-      .to.be.revertedWithCustomError(oracleAggregator, "AssetNotConfigured")
+      .to.be.revertedWithCustomError(oracleAggregator, "OracleNotSet")
       .withArgs(collateralInfo.address);
 
     await dstable.connect(user1Signer).approve(await redeemer.getAddress(), redeemPortion);
     await expect(redeemer.connect(user1Signer).redeem(redeemPortion, collateralInfo.address, 0))
-      .to.be.revertedWithCustomError(oracleAggregator, "AssetNotConfigured")
+      .to.be.revertedWithCustomError(oracleAggregator, "OracleNotSet")
       .withArgs(collateralInfo.address);
 
     await expect(issuer.connect(issuerPauserSigner).setAssetMintingPause(collateralInfo.address, true))
@@ -140,18 +142,9 @@ describe("dUSD Collateral delist lifecycle", function () {
     const navAfterDustIsolation = await collateralVault.totalValue();
     expect(navAfterDustIsolation).to.equal(navBeforeIssuance);
 
-    await oracleAggregator
-      .connect(oracleManagerSigner)
-      .configureAsset(
-        collateralInfo.address,
-        preservedOracleConfig.oracle,
-        preservedOracleConfig.fallbackOracle,
-        preservedOracleConfig.risk.maxStaleTime,
-        preservedOracleConfig.risk.heartbeat,
-        preservedOracleConfig.risk.maxDeviationBps,
-        preservedOracleConfig.risk.minAnswer,
-        preservedOracleConfig.risk.maxAnswer,
-      );
+    await expect(oracleAggregator.connect(oracleManagerSigner).setOracle(collateralInfo.address, preservedOracleAddress))
+      .to.emit(oracleAggregator, "OracleUpdated")
+      .withArgs(collateralInfo.address, preservedOracleAddress);
 
     await expect(collateralVault.connect(collateralManagerSigner).allowCollateral(collateralInfo.address))
       .to.emit(collateralVault, "CollateralAllowed")

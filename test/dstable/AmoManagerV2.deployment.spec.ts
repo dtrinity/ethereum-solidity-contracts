@@ -182,8 +182,8 @@ function runDeploymentTestsForDStable(
 
     describe("Oracle Configuration Validation", () => {
       it("should register AmoDebtToken with hard peg oracle", async function () {
-        const assetConfig = await oracleAggregatorContract.getAssetConfig(amoDebtTokenAddress);
-        expect(assetConfig.oracle).to.not.equal(hre.ethers.ZeroAddress);
+        const oracleAddress = await oracleAggregatorContract.assetOracles(amoDebtTokenAddress);
+        expect(oracleAddress).to.not.equal(hre.ethers.ZeroAddress);
       });
     });
 

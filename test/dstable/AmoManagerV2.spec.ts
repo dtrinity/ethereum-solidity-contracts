@@ -529,15 +529,11 @@ function runTestsForDStable(
         it("should allow operations when prices remain within tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory(
-            "HardPegOracleWrapperV1_1",
-            await hre.ethers.getSigner(deployer),
-          );
-
           const mildDriftPrice = (baseCurrencyUnit * 1005n) / 1000n; // +0.5%
-          const mildDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+          const MockOracleFactory = await hre.ethers.getContractFactory("MockOracleAggregator", await hre.ethers.getSigner(deployer));
+          const mildDriftOracle = await MockOracleFactory.deploy(baseCurrency, baseCurrencyUnit);
           await mildDriftOracle.waitForDeployment();
-          await mildDriftOracle.configurePeg(dstableInfo.address, mildDriftPrice, 0, 0);
+          await mildDriftOracle.setPrice(dstableInfo.address, mildDriftPrice, true);
           await oracleAggregatorContract.setOracle(dstableInfo.address, await mildDriftOracle.getAddress());
 
           await expect(amoManagerV2.connect(amoManagerSigner).increaseAmoSupply(amount, amoWallet)).to.not.be.reverted;
@@ -546,15 +542,11 @@ function runTestsForDStable(
         it("should revert when dStable price exceeds tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory(
-            "HardPegOracleWrapperV1_1",
-            await hre.ethers.getSigner(deployer),
-          );
-
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
-          const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+          const MockOracleFactory = await hre.ethers.getContractFactory("MockOracleAggregator", await hre.ethers.getSigner(deployer));
+          const severeDriftOracle = await MockOracleFactory.deploy(baseCurrency, baseCurrencyUnit);
           await severeDriftOracle.waitForDeployment();
-          await severeDriftOracle.configurePeg(dstableInfo.address, severeDriftPrice, 0, 0);
+          await severeDriftOracle.setPrice(dstableInfo.address, severeDriftPrice, true);
           await oracleAggregatorContract.setOracle(dstableInfo.address, await severeDriftOracle.getAddress());
 
           const guard = await amoManagerV2.pegDeviationBps();
@@ -567,15 +559,11 @@ function runTestsForDStable(
         it("should revert when debt token price exceeds tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory(
-            "HardPegOracleWrapperV1_1",
-            await hre.ethers.getSigner(deployer),
-          );
-
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
-          const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+          const MockOracleFactory = await hre.ethers.getContractFactory("MockOracleAggregator", await hre.ethers.getSigner(deployer));
+          const severeDriftOracle = await MockOracleFactory.deploy(baseCurrency, baseCurrencyUnit);
           await severeDriftOracle.waitForDeployment();
-          await severeDriftOracle.configurePeg(await amoDebtToken.getAddress(), severeDriftPrice, 0, 0);
+          await severeDriftOracle.setPrice(await amoDebtToken.getAddress(), severeDriftPrice, true);
           await oracleAggregatorContract.setOracle(await amoDebtToken.getAddress(), await severeDriftOracle.getAddress());
 
           const guard = await amoManagerV2.pegDeviationBps();
@@ -588,15 +576,11 @@ function runTestsForDStable(
         it("should respect updated peg deviation tolerance", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory(
-            "HardPegOracleWrapperV1_1",
-            await hre.ethers.getSigner(deployer),
-          );
-
           const severeDriftPrice = (baseCurrencyUnit * 102n) / 100n; // +2%
-          const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+          const MockOracleFactory = await hre.ethers.getContractFactory("MockOracleAggregator", await hre.ethers.getSigner(deployer));
+          const severeDriftOracle = await MockOracleFactory.deploy(baseCurrency, baseCurrencyUnit);
           await severeDriftOracle.waitForDeployment();
-          await severeDriftOracle.configurePeg(dstableInfo.address, severeDriftPrice, 0, 0);
+          await severeDriftOracle.setPrice(dstableInfo.address, severeDriftPrice, true);
           await oracleAggregatorContract.setOracle(dstableInfo.address, await severeDriftOracle.getAddress());
 
           await amoManagerV2.setPegDeviationBps(30_000n); // 3%
@@ -607,15 +591,11 @@ function runTestsForDStable(
         it("should allow disabling peg guard by setting tolerance to zero", async function () {
           const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
           const amount = hre.ethers.parseUnits("10", dstableInfo.decimals);
-          const HardPegOracleFactory = await hre.ethers.getContractFactory(
-            "HardPegOracleWrapperV1_1",
-            await hre.ethers.getSigner(deployer),
-          );
-
           const severeDriftPrice = (baseCurrencyUnit * 105n) / 100n; // +5%
-          const severeDriftOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+          const MockOracleFactory = await hre.ethers.getContractFactory("MockOracleAggregator", await hre.ethers.getSigner(deployer));
+          const severeDriftOracle = await MockOracleFactory.deploy(baseCurrency, baseCurrencyUnit);
           await severeDriftOracle.waitForDeployment();
-          await severeDriftOracle.configurePeg(dstableInfo.address, severeDriftPrice, 0, 0);
+          await severeDriftOracle.setPrice(dstableInfo.address, severeDriftPrice, true);
           await oracleAggregatorContract.setOracle(dstableInfo.address, await severeDriftOracle.getAddress());
 
           await amoManagerV2.setPegDeviationBps(0n);

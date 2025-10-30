@@ -24,10 +24,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const usdOracleDeployment = await deployments.getOrNull(USD_ORACLE_AGGREGATOR_ID);
-
   if (!usdOracleDeployment) {
-    console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: ⏭️  (skipping – USD oracle aggregator not deployed in current fixture)`);
-    return true;
+    console.log(
+      `  ⚠️  USD oracle aggregator deployment not detected – continuing to configure the WETH hard peg but skipping USD aggregator validation.`,
+    );
   }
 
   const hardPegDeployment = await deployments.deploy(WETH_HARD_PEG_ORACLE_WRAPPER_ID, {
@@ -56,12 +56,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     console.log(`  ✅ WETH oracle already points to HardPeg wrapper ${hardPegDeployment.address}`);
   }
 
-  const usdOracle = await ethers.getContractAt("OracleAggregatorV1_1", usdOracleDeployment.address, signer);
-  const usdOracleAddress = await usdOracle.assetOracles(wethAddress);
-  if (usdOracleAddress === ZeroAddress) {
-    throw new Error(
-      `WETH is not configured on the USD oracle aggregator ${usdOracleDeployment.address}. Ensure the wrapper setup scripts ran successfully.`,
-    );
+  if (usdOracleDeployment) {
+    const usdOracle = await ethers.getContractAt("OracleAggregatorV1_1", usdOracleDeployment.address, signer);
+    const usdOracleAddress = await usdOracle.assetOracles(wethAddress);
+    if (usdOracleAddress === ZeroAddress) {
+      throw new Error(
+        `WETH is not configured on the USD oracle aggregator ${usdOracleDeployment.address}. Ensure the wrapper setup scripts ran successfully.`,
+      );
+    }
   }
 
   console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: ✅`);
