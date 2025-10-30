@@ -4,14 +4,7 @@ import { parseUnits, ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import {
-  DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-  DETH_TOKEN_ID,
-  DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-  DUSD_TOKEN_ID,
-  INCENTIVES_PROXY_ID,
-  SDUSD_DSTAKE_TOKEN_ID,
-} from "../../typescript/deploy-ids";
+import { DETH_TOKEN_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID, SDUSD_DSTAKE_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import {
   rateStrategyHighLiquidityStable,
@@ -21,9 +14,6 @@ import {
 } from "../dlend/interest-rate-strategies";
 import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
-
-const HARD_PEG_PRICE = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
-const YIELD_BEARING_PRICE = (ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT * 11n) / 10n;
 
 /**
  * Get the configuration for the network
@@ -185,40 +175,10 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: ZeroAddress,
-        roles: {
-          admins: [deployer],
-          oracleManagers: [deployer],
-          guardians: [deployer],
-          globalMaxStaleTime: 0,
-        },
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
-          api3OracleWrappersWithThresholding: {
-            ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
-              ? {
-                  [frxUSDDeployment.address]: {
-                    proxy: mockOracleNameToAddress["frxUSD_USD"],
-                    lowerThreshold: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPrice: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
-              : {}),
-          },
-          compositeApi3OracleWrappersWithThresholding: {
-            ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
-              ? {
-                  [sfrxUSDDeployment.address]: {
-                    feedAsset: sfrxUSDDeployment.address,
-                    proxy1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
-                    proxy2: mockOracleNameToAddress["frxUSD_USD"],
-                    lowerThresholdInBase1: 0n,
-                    fixedPriceInBase1: 0n,
-                    lowerThresholdInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                    fixedPriceInBase2: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-                  },
-                }
-              : {}),
-          },
+          api3OracleWrappersWithThresholding: {},
+          compositeApi3OracleWrappersWithThresholding: {},
         },
         redstoneOracleAssets: {
           plainRedstoneOracleWrappers: {
@@ -283,208 +243,11 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
               : {}),
           },
         },
-        wrappers: {
-          chainlink: {
-            deploymentId: "USD_ChainlinkWrapperV1_1",
-            assets: {},
-          },
-          api3: {
-            deploymentId: "USD_API3WrapperV1_1",
-            assets: {},
-          },
-          rateComposite: {
-            deploymentId: "USD_ChainlinkRateCompositeWrapperV1_1",
-            assets: {},
-          },
-          hardPeg: {
-            deploymentId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-            assets: {
-              ...(USDCDeployment?.address
-                ? {
-                    [USDCDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(dUSDDeployment?.address
-                ? {
-                    [dUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(USDTDeployment?.address
-                ? {
-                    [USDTDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(AUSDDeployment?.address
-                ? {
-                    [AUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(frxUSDDeployment?.address
-                ? {
-                    [frxUSDDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(WETHDeployment?.address
-                ? {
-                    [WETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(sfrxUSDDeployment?.address
-                ? {
-                    [sfrxUSDDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(dETHDeployment?.address
-                ? {
-                    [dETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(stETHDeployment?.address
-                ? {
-                    [stETHDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(yUSDDeployment?.address
-                ? {
-                    [yUSDDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-            },
-          },
-        },
-        assets: {
-          ...(USDCDeployment?.address
-            ? {
-                [USDCDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(dUSDDeployment?.address
-            ? {
-                [dUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(USDTDeployment?.address
-            ? {
-                [USDTDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(AUSDDeployment?.address
-            ? {
-                [AUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(frxUSDDeployment?.address
-            ? {
-                [frxUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(WETHDeployment?.address
-            ? {
-                [WETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(sfrxUSDDeployment?.address
-            ? {
-                [sfrxUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(dETHDeployment?.address
-            ? {
-                [dETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(stETHDeployment?.address
-            ? {
-                [stETHDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(yUSDDeployment?.address
-            ? {
-                [yUSDDeployment.address]: {
-                  primaryWrapperId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-        },
       },
       ETH: {
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: WETHDeployment?.address || ZeroAddress, // Base currency is WETH
-        roles: {
-          admins: [deployer],
-          oracleManagers: [deployer],
-          guardians: [deployer],
-          globalMaxStaleTime: 0,
-        },
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -500,78 +263,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           },
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
-        },
-        wrappers: {
-          chainlink: {
-            deploymentId: "ETH_ChainlinkWrapperV1_1",
-            assets: {},
-          },
-          api3: {
-            deploymentId: "ETH_API3WrapperV1_1",
-            assets: {},
-          },
-          rateComposite: {
-            deploymentId: "ETH_ChainlinkRateCompositeWrapperV1_1",
-            assets: {},
-          },
-          hardPeg: {
-            deploymentId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-            assets: {
-              ...(WETHDeployment?.address
-                ? {
-                    [WETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(stETHDeployment?.address
-                ? {
-                    [stETHDeployment.address]: {
-                      pricePeg: YIELD_BEARING_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-              ...(dETHDeployment?.address
-                ? {
-                    [dETHDeployment.address]: {
-                      pricePeg: HARD_PEG_PRICE,
-                      lowerGuard: 0n,
-                      upperGuard: 0n,
-                    },
-                  }
-                : {}),
-            },
-          },
-        },
-        assets: {
-          ...(WETHDeployment?.address
-            ? {
-                [WETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(stETHDeployment?.address
-            ? {
-                [stETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
-          ...(dETHDeployment?.address
-            ? {
-                [dETHDeployment.address]: {
-                  primaryWrapperId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
-                  risk: { maxDeviationBps: 0 },
-                },
-              }
-            : {}),
         },
       },
     },

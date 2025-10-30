@@ -5,17 +5,16 @@ import {
   DETH_AMO_DEBT_TOKEN_ID,
   DETH_AMO_MANAGER_V2_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  DETH_HARD_PEG_ORACLE_WRAPPER_ID,
   DETH_TOKEN_ID,
+  DETH_HARD_PEG_ORACLE_WRAPPER_ID,
   DUSD_AMO_DEBT_TOKEN_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
-  DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
   DUSD_TOKEN_ID,
+  DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
-import { DEFAULT_ORACLE_HEARTBEAT_SECONDS } from "../../typescript/oracle_aggregator/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, ethers } = hre;
@@ -32,7 +31,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       collateralVaultId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
       amoManagerV2Id: DUSD_AMO_MANAGER_V2_ID,
       amoDebtTokenId: DUSD_AMO_DEBT_TOKEN_ID,
-      hardPegOracleId: DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
     },
     {
       name: "dETH",
@@ -41,7 +39,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
       amoManagerV2Id: DETH_AMO_MANAGER_V2_ID,
       amoDebtTokenId: DETH_AMO_DEBT_TOKEN_ID,
-      hardPegOracleId: DETH_HARD_PEG_ORACLE_WRAPPER_ID,
     },
   ];
 
@@ -69,7 +66,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     console.log(`  🔧 Ensuring oracle entry for ${amoConfig.name} debt token...`);
-    const hardPegDeployment = await deployments.get(amoConfig.hardPegOracleId);
     const deployerSigner = await ethers.getSigner(deployer);
     console.log(`    ℹ️ Loading OracleAggregatorV1_1 at ${oracleDeployment.address}`);
     const oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", oracleDeployment.address, deployerSigner);
@@ -82,51 +78,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       );
     }
 
-    const hardPegWrapper = await ethers.getContractAt("HardPegOracleWrapperV1_1", hardPegDeployment.address, deployerSigner);
+    const currentOracle = await oracleAggregator.assetOracles(debtTokenDeployment.address);
+    const targetOracle = await resolveOracleForAsset(deployments, amoConfig.name);
 
-    const baseCurrencyUnit = await oracleAggregator.BASE_CURRENCY_UNIT();
-    const lowerGuard = 0n;
-    const upperGuard = 0n;
-
-    let assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
-    const assetConfigured = assetConfig.risk.exists;
-    const currentOracle = assetConfigured ? assetConfig.oracle : ethers.ZeroAddress;
-
-    if (currentOracle !== hardPegDeployment.address) {
-      const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, hardPegDeployment.address);
+    if (currentOracle.toLowerCase() !== targetOracle.toLowerCase()) {
+      const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, targetOracle);
       await tx.wait();
       console.log(`  ✅ Set hard peg oracle for ${amoConfig.name} debt token`);
     } else {
       console.log(`  ✅ Hard peg oracle already configured for ${amoConfig.name} debt token`);
-    }
-
-    assetConfig = await oracleAggregator.getAssetConfig(debtTokenDeployment.address);
-
-    const configuredHeartbeat = assetConfig.risk.exists ? Number(assetConfig.risk.heartbeat) : 0;
-
-    if (configuredHeartbeat === 0) {
-      const tx = await oracleAggregator.updateAssetRiskConfig(
-        debtTokenDeployment.address,
-        Number(assetConfig.risk.maxStaleTime ?? 0),
-        DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-        Number(assetConfig.risk.maxDeviationBps ?? 0),
-        assetConfig.risk.minAnswer ?? 0n,
-        assetConfig.risk.maxAnswer ?? 0n,
-      );
-      await tx.wait();
-      console.log(`  ✅ Applied default heartbeat for ${amoConfig.name} debt token`);
-    } else {
-      console.log(`  ✅ Heartbeat already configured for ${amoConfig.name} debt token`);
-    }
-
-    const pegInfo = await hardPegWrapper.pegConfig(debtTokenDeployment.address);
-
-    if (pegInfo.pricePeg === 0n) {
-      const tx = await hardPegWrapper.configurePeg(debtTokenDeployment.address, baseCurrencyUnit, lowerGuard, upperGuard);
-      await tx.wait();
-      console.log(`  ✅ Configured hard peg price for ${amoConfig.name} debt token`);
-    } else {
-      console.log(`  ✅ Hard peg price already configured for ${amoConfig.name} debt token`);
     }
 
     console.log(`  🏛️ Deploying ${amoConfig.name} AMO Manager V2...`);
@@ -160,3 +120,17 @@ func.dependencies = [
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
 ];
+
+async function resolveOracleForAsset(
+  deployments: HardhatRuntimeEnvironment["deployments"],
+  assetName: string,
+): Promise<string> {
+  switch (assetName) {
+    case "dUSD":
+      return (await deployments.get(DUSD_HARD_PEG_ORACLE_WRAPPER_ID)).address;
+    case "dETH":
+      return (await deployments.get(DETH_HARD_PEG_ORACLE_WRAPPER_ID)).address;
+    default:
+      throw new Error(`Unknown AMO asset ${assetName}; hard peg wrapper not configured`);
+  }
+}

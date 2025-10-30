@@ -17,43 +17,55 @@
 
 pragma solidity ^0.8.20;
 
-import { IProxy } from "../interface/api3/IProxy.sol";
-import "../interface/api3/BaseAPI3WrapperV1_1.sol";
+import "../interface/chainlink/BaseChainlinkWrapperV1_1.sol";
+import "../interface/chainlink/IPriceFeed.sol";
 
 /**
- * @title API3WrapperV1_1
- * @dev Implementation of IAPI3Wrapper for standard API3 oracles
+ * @title RedstoneChainlinkWrapperV1_1
+ * @dev Implementation of BaseChainlinkWrapper for Redstone oracle feeds that follow Chainlink AggregatorV3Interface
  */
-contract API3WrapperV1_1 is BaseAPI3WrapperV1_1 {
-    mapping(address => IProxy) public assetToProxy;
+contract RedstoneChainlinkWrapperV1_1 is BaseChainlinkWrapperV1_1 {
+    mapping(address => IPriceFeed) public assetToFeed;
 
-    error ProxyNotSet(address asset);
-    error ProxyAddressZero();
-    error ProxyNotContract(address proxy);
+    error FeedAddressZero();
+    error FeedNotContract(address feed);
 
-    constructor(address baseCurrency, uint256 _baseCurrencyUnit) BaseAPI3WrapperV1_1(baseCurrency, _baseCurrencyUnit) {}
+    constructor(
+        address baseCurrency,
+        uint256 _baseCurrencyUnit
+    ) BaseChainlinkWrapperV1_1(baseCurrency, _baseCurrencyUnit) {}
 
     function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
-        IProxy api3Proxy = assetToProxy[asset];
-        if (address(api3Proxy) == address(0)) {
-            revert ProxyNotSet(asset);
+        IPriceFeed feed = assetToFeed[asset];
+        if (address(feed) == address(0)) {
+            revert FeedNotSet(asset);
         }
 
-        (int224 value, uint32 timestamp) = api3Proxy.read();
-        price = value > 0 ? uint256(uint224(value)) : 0;
+        (, int256 answer, , uint256 updatedAt, ) = feed.latestRoundData();
 
-        isAlive = price > 0 && timestamp + API3_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
+        // Validate the oracle data
+        if (answer <= 0) {
+            revert InvalidPrice();
+        }
+
+        price = uint256(answer);
+        isAlive = updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
 
         price = _convertToBaseCurrencyUnit(price);
     }
 
-    function setProxy(address asset, address proxy) external onlyRole(ORACLE_MANAGER_ROLE) {
-        if (proxy == address(0)) {
-            revert ProxyAddressZero();
+    /**
+     * @notice Sets the price feed for an asset
+     * @param asset The address of the asset
+     * @param feed The address of the Redstone Chainlink-compatible price feed
+     */
+    function setFeed(address asset, address feed) external onlyRole(ORACLE_MANAGER_ROLE) {
+        if (feed == address(0)) {
+            revert FeedAddressZero();
         }
-        if (proxy.code.length == 0) {
-            revert ProxyNotContract(proxy);
+        if (feed.code.length == 0) {
+            revert FeedNotContract(feed);
         }
-        assetToProxy[asset] = IProxy(proxy);
+        assetToFeed[asset] = IPriceFeed(feed);
     }
 }

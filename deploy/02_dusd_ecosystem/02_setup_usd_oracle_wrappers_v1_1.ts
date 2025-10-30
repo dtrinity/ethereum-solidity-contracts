@@ -1,430 +1,278 @@
-import { ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import {
-  ChainlinkFeedAssetConfig,
-  ChainlinkRateCompositeAssetConfig,
-  HardPegAssetConfig,
-  OracleAggregatorConfig,
-  OracleWrapperDeploymentConfig,
-} from "../../config/types";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
-import { DEFAULT_ORACLE_HEARTBEAT_SECONDS, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT } from "../../typescript/oracle_aggregator/constants";
+  DETH_TOKEN_ID,
+  DUSD_TOKEN_ID,
+  USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  USD_API3_ORACLE_WRAPPER_ID,
+  USD_API3_WRAPPER_WITH_THRESHOLDING_ID,
+  USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  USD_REDSTONE_ORACLE_WRAPPER_ID,
+  USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+} from "../../typescript/deploy-ids";
+import { OracleAggregatorConfig } from "../../config/types";
 
-type ChainlinkAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>["assets"]>;
-type ChainlinkCompositeAssetMap = NonNullable<OracleWrapperDeploymentConfig<ChainlinkRateCompositeAssetConfig>["assets"]>;
-type HardPegAssetMap = NonNullable<OracleWrapperDeploymentConfig<HardPegAssetConfig>["assets"]>;
+type Api3AssetConfig = OracleAggregatorConfig["api3OracleAssets"];
+type RedstoneAssetConfig = OracleAggregatorConfig["redstoneOracleAssets"];
 
-const CHAINLINK_AGGREGATOR_INTERFACE = "contracts/oracle_aggregator/interface/chainlink/IAggregatorV3Interface.sol:AggregatorV3Interface";
+type ThresholdConfig = {
+  lowerThreshold: bigint;
+  fixedPrice: bigint;
+};
+
+type CompositeThresholdConfig = {
+  feedAsset: string;
+  feed1: string;
+  feed2: string;
+  lowerThresholdInBase1: bigint;
+  fixedPriceInBase1: bigint;
+  lowerThresholdInBase2: bigint;
+  fixedPriceInBase2: bigint;
+};
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const { deployer } = await hre.getNamedAccounts();
-  const signer = await hre.ethers.getSigner(deployer);
-
   const config = await getConfig(hre);
   const oracleConfig = config.oracleAggregators.USD;
 
-  // Keep the deployer as the initial admin; governance migration happens manually post-deploy.
-  await deployChainlinkWrapper(hre, oracleConfig, deployer, signer);
-  await deployApi3Wrapper(hre, oracleConfig, deployer);
-  await deployCompositeWrapper(hre, oracleConfig, deployer);
-  await deployHardPegWrapper(hre, oracleConfig, deployer);
+  const baseCurrencyUnit = 10n ** BigInt(oracleConfig.priceDecimals);
+  const baseCurrency = oracleConfig.baseCurrency;
+
+  await setupApi3Wrappers(hre, deployer, baseCurrency, baseCurrencyUnit, oracleConfig.api3OracleAssets);
+  await setupRedstoneWrappers(hre, deployer, baseCurrency, baseCurrencyUnit, oracleConfig.redstoneOracleAssets);
 
   console.log(`🔮 ${__filename.split("/").slice(-2).join("/")}: ✅`);
   return true;
 };
 
-/**
- * Deploys the Chainlink wrapper contract and configures feeds using the deployer as admin.
- *
- * @param hre Hardhat runtime environment
- * @param oracleConfig Oracle configuration for the current network
- * @param deployer Deployer address responsible for managing the wrapper
- * @param signer Ethers signer bound to the deployer
- */
-async function deployChainlinkWrapper(
+async function setupApi3Wrappers(
   hre: HardhatRuntimeEnvironment,
-  oracleConfig: OracleAggregatorConfig,
   deployer: string,
-  signer: any,
+  baseCurrency: string,
+  baseCurrencyUnit: bigint,
+  assets?: Api3AssetConfig,
 ): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers?.chainlink;
-  const assets = (wrapperConfig?.assets as ChainlinkAssetMap | undefined) || {};
-
-  if (!wrapperConfig || Object.keys(assets).length === 0) {
+  if (!assets) {
+    console.log("  ⏭️  No API3 oracle assets configured – skipping");
     return;
   }
 
-  const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
-    from: deployer,
-    contract: "ChainlinkFeedWrapperV1_1",
-    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
-    log: true,
-    autoMine: true,
-  });
+  const plainFeeds = assets.plainApi3OracleWrappers ?? {};
+  if (Object.keys(plainFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_API3_ORACLE_WRAPPER_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "API3WrapperV1_1",
+      autoMine: true,
+      log: true,
+    });
 
-  const wrapper = await hre.ethers.getContractAt("ChainlinkFeedWrapperV1_1", deployment.address, signer);
+    const wrapper = await hre.ethers.getContractAt("API3WrapperV1_1", deployment.address);
 
-  const feedCache = new Map<string, string>();
-
-  for (const [assetAddress, assetConfig] of Object.entries(assets)) {
-    if (!isUsableAddress(assetAddress)) {
-      continue;
+    for (const [assetAddress, proxyAddress] of Object.entries(plainFeeds)) {
+      assertAddress(assetAddress, "plain API3 asset address");
+      assertAddress(proxyAddress, `plain API3 proxy for ${assetAddress}`);
+      await (await wrapper.setProxy(assetAddress, proxyAddress)).wait();
+      console.log(`   ✅ Set API3 proxy ${proxyAddress} for asset ${assetAddress}`);
     }
 
-    const feedAddress = await ensureChainlinkFeed(hre, deployer, assetAddress, assetConfig, feedCache);
+    await performOracleSanityChecks(wrapper, plainFeeds, baseCurrencyUnit, "plain API3 proxies");
+  }
 
-    const heartbeatSeconds =
-      typeof assetConfig.heartbeat === "number" && assetConfig.heartbeat > 0 ? assetConfig.heartbeat : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
+  const thresholdFeeds = assets.api3OracleWrappersWithThresholding ?? {};
+  if (Object.keys(thresholdFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_API3_WRAPPER_WITH_THRESHOLDING_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "API3WrapperWithThresholdingV1_1",
+      autoMine: true,
+      log: true,
+    });
 
-    await (
-      await wrapper.configureFeed(
-        assetAddress,
-        feedAddress,
-        heartbeatSeconds,
-        assetConfig.maxStaleTime ?? 0,
-        assetConfig.maxDeviationBps ?? 0,
-        assetConfig.minAnswer ?? 0n,
-        assetConfig.maxAnswer ?? 0n,
-      )
-    ).wait();
+    const wrapper = await hre.ethers.getContractAt("API3WrapperWithThresholdingV1_1", deployment.address);
+
+    for (const [assetAddress, feedConfig] of Object.entries(thresholdFeeds)) {
+      const typedConfig = feedConfig as { proxy: string } & ThresholdConfig;
+      assertAddress(assetAddress, "threshold API3 asset address");
+      assertAddress(typedConfig.proxy, `threshold API3 proxy for ${assetAddress}`);
+      await (await wrapper.setProxy(assetAddress, typedConfig.proxy)).wait();
+      await (
+        await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)
+      ).wait();
+      console.log(`   ✅ Set API3 threshold config for asset ${assetAddress}`);
+    }
+
+    await performOracleSanityChecks(wrapper, thresholdFeeds, baseCurrencyUnit, "API3 proxies with thresholding");
+  }
+
+  const compositeFeeds = assets.compositeApi3OracleWrappersWithThresholding ?? {};
+  if (Object.keys(compositeFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "API3CompositeWrapperWithThresholdingV1_1",
+      autoMine: true,
+      log: true,
+    });
+
+    const wrapper = await hre.ethers.getContractAt("API3CompositeWrapperWithThresholdingV1_1", deployment.address);
+
+    for (const [assetAddress, feedConfig] of Object.entries(compositeFeeds)) {
+      const typedConfig = feedConfig as CompositeThresholdConfig;
+      assertAddress(assetAddress, "composite API3 asset address");
+      assertAddress(typedConfig.feedAsset, "composite API3 feed asset");
+      assertAddress(typedConfig.proxy1, "composite API3 proxy1");
+      assertAddress(typedConfig.proxy2, "composite API3 proxy2");
+
+      await (
+        await wrapper.addCompositeFeed(
+          typedConfig.feedAsset,
+          typedConfig.proxy1,
+          typedConfig.proxy2,
+          typedConfig.lowerThresholdInBase1,
+          typedConfig.fixedPriceInBase1,
+          typedConfig.lowerThresholdInBase2,
+          typedConfig.fixedPriceInBase2,
+        )
+      ).wait();
+      console.log(`   ✅ Set composite API3 feed for asset ${assetAddress}`);
+    }
+
+    await performOracleSanityChecks(wrapper, compositeFeeds, baseCurrencyUnit, "API3 composite proxies");
   }
 }
 
-/**
- * Deploys the API3 wrapper contract with the deployer managing administration.
- *
- * @param hre Hardhat runtime environment
- * @param oracleConfig Oracle configuration for the current network
- * @param deployer Deployer address responsible for managing the wrapper
- */
-async function deployApi3Wrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers?.api3;
-  const assets = wrapperConfig?.assets || {};
-
-  if (!wrapperConfig || Object.keys(assets).length === 0) {
-    return;
-  }
-
-  await hre.deployments.deploy(wrapperConfig.deploymentId, {
-    from: deployer,
-    contract: "API3WrapperV1_1",
-    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
-    log: true,
-    autoMine: true,
-  });
-
-  // TODO: wire API3 asset configuration once feeds are defined in config.
-}
-
-/**
- * Deploys the composite wrapper contract while the deployer retains administrative control.
- *
- * @param hre Hardhat runtime environment
- * @param oracleConfig Oracle configuration for the current network
- * @param deployer Deployer address responsible for managing the wrapper
- */
-async function deployCompositeWrapper(
+async function setupRedstoneWrappers(
   hre: HardhatRuntimeEnvironment,
-  oracleConfig: OracleAggregatorConfig,
   deployer: string,
+  baseCurrency: string,
+  baseCurrencyUnit: bigint,
+  assets?: RedstoneAssetConfig,
 ): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers?.rateComposite;
-  const assets = (wrapperConfig?.assets as ChainlinkCompositeAssetMap | undefined) || {};
-
-  if (!wrapperConfig || Object.keys(assets).length === 0) {
+  if (!assets) {
+    console.log("  ⏭️  No Redstone oracle assets configured – skipping");
     return;
   }
 
-  const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
-    from: deployer,
-    contract: "ChainlinkRateCompositeWrapperV1_1",
-    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
-    log: true,
-    autoMine: true,
-  });
+  const plainFeeds = assets.plainRedstoneOracleWrappers ?? {};
+  if (Object.keys(plainFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_REDSTONE_ORACLE_WRAPPER_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "RedstoneChainlinkWrapperV1_1",
+      autoMine: true,
+      log: true,
+    });
 
-  const wrapper = await hre.ethers.getContractAt(
-    "ChainlinkRateCompositeWrapperV1_1",
-    deployment.address,
-    await hre.ethers.getSigner(deployer),
-  );
+    const wrapper = await hre.ethers.getContractAt("RedstoneChainlinkWrapperV1_1", deployment.address);
 
-  for (const [assetAddress, assetConfig] of Object.entries(assets)) {
-    if (!isUsableAddress(assetAddress)) {
-      continue;
+    for (const [assetAddress, feed] of Object.entries(plainFeeds)) {
+      assertAddress(assetAddress, "plain Redstone asset address");
+      assertAddress(feed, `plain Redstone feed for ${assetAddress}`);
+      await (await wrapper.setFeed(assetAddress, feed)).wait();
+      console.log(`   ✅ Set Redstone feed ${feed} for asset ${assetAddress}`);
     }
 
-    if (!assetConfig.priceFeed || !isUsableAddress(assetConfig.priceFeed)) {
-      throw new Error(`Composite asset ${assetAddress} missing priceFeed configuration`);
+    await performOracleSanityChecks(wrapper, plainFeeds, baseCurrencyUnit, "plain Redstone feeds");
+  }
+
+  const thresholdFeeds = assets.redstoneOracleWrappersWithThresholding ?? {};
+  if (Object.keys(thresholdFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "RedstoneChainlinkWrapperWithThresholdingV1_1",
+      autoMine: true,
+      log: true,
+    });
+
+    const wrapper = await hre.ethers.getContractAt("RedstoneChainlinkWrapperWithThresholdingV1_1", deployment.address);
+
+    for (const [assetAddress, feedConfig] of Object.entries(thresholdFeeds)) {
+      const typedConfig = feedConfig as { feed: string } & ThresholdConfig;
+      assertAddress(assetAddress, "threshold Redstone asset address");
+      assertAddress(typedConfig.feed, `threshold Redstone feed for ${assetAddress}`);
+      await (await wrapper.setFeed(assetAddress, typedConfig.feed)).wait();
+      await (
+        await wrapper.setThresholdConfig(assetAddress, typedConfig.lowerThreshold, typedConfig.fixedPrice)
+      ).wait();
+      console.log(`   ✅ Set Redstone threshold config for asset ${assetAddress}`);
     }
 
-    const priceFeedDecimals = assetConfig.priceFeedDecimals ?? (await getAggregatorDecimals(hre, assetConfig.priceFeed));
-    const priceHeartbeat =
-      typeof assetConfig.priceHeartbeat === "number" && assetConfig.priceHeartbeat > 0
-        ? assetConfig.priceHeartbeat
-        : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
-
-    const { rateProviderAddress, rateDecimals } = await resolveRateProvider(hre, deployer, assetAddress, assetConfig);
-
-    const rateHeartbeat =
-      typeof assetConfig.rateHeartbeat === "number" && assetConfig.rateHeartbeat > 0
-        ? assetConfig.rateHeartbeat
-        : DEFAULT_ORACLE_HEARTBEAT_SECONDS;
-
-    await (
-      await wrapper.configureComposite(
-        assetAddress,
-        assetConfig.priceFeed,
-        priceFeedDecimals,
-        rateProviderAddress,
-        rateDecimals,
-        priceHeartbeat,
-        rateHeartbeat,
-        assetConfig.maxStaleTime ?? 0,
-        assetConfig.maxDeviationBps ?? 0,
-        assetConfig.minAnswer ?? 0n,
-        assetConfig.maxAnswer ?? 0n,
-      )
-    ).wait();
-  }
-}
-
-/**
- * Deploys the hard peg wrapper and configures guards for each configured asset.
- *
- * @param hre Hardhat runtime environment
- * @param oracleConfig Oracle configuration for the current network
- * @param deployer Deployer address responsible for managing the wrapper
- */
-async function deployHardPegWrapper(hre: HardhatRuntimeEnvironment, oracleConfig: OracleAggregatorConfig, deployer: string): Promise<void> {
-  const wrapperConfig = oracleConfig.wrappers?.hardPeg;
-  const assets = (wrapperConfig?.assets as HardPegAssetMap | undefined) || {};
-
-  if (!wrapperConfig || Object.keys(assets).length === 0) {
-    return;
+    await performOracleSanityChecks(wrapper, thresholdFeeds, baseCurrencyUnit, "Redstone feeds with thresholding");
   }
 
-  const deployment = await hre.deployments.deploy(wrapperConfig.deploymentId, {
-    from: deployer,
-    contract: "HardPegOracleWrapperV1_1",
-    args: [oracleConfig.baseCurrency, ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, deployer],
-    log: true,
-    autoMine: true,
-  });
+  const compositeFeeds = assets.compositeRedstoneOracleWrappersWithThresholding ?? {};
+  if (Object.keys(compositeFeeds).length > 0) {
+    const deployment = await hre.deployments.deploy(USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID, {
+      from: deployer,
+      args: [baseCurrency, baseCurrencyUnit],
+      contract: "RedstoneChainlinkCompositeWrapperWithThresholdingV1_1",
+      autoMine: true,
+      log: true,
+    });
 
-  const wrapper = await hre.ethers.getContractAt("HardPegOracleWrapperV1_1", deployment.address, await hre.ethers.getSigner(deployer));
+    const wrapper = await hre.ethers.getContractAt(
+      "RedstoneChainlinkCompositeWrapperWithThresholdingV1_1",
+      deployment.address,
+    );
 
-  for (const [assetAddress, assetConfig] of Object.entries(assets)) {
-    const isZeroAddress = assetAddress.toLowerCase() === ZeroAddress.toLowerCase();
+    for (const [assetAddress, feedConfig] of Object.entries(compositeFeeds)) {
+      const typedConfig = feedConfig as CompositeThresholdConfig;
+      assertAddress(assetAddress, "composite Redstone asset address");
+      assertAddress(typedConfig.feedAsset, "composite Redstone feed asset");
+      assertAddress(typedConfig.feed1, "composite Redstone feed1");
+      assertAddress(typedConfig.feed2, "composite Redstone feed2");
 
-    if (!isZeroAddress && !isUsableAddress(assetAddress)) {
-      continue;
+      await (
+        await wrapper.addCompositeFeed(
+          typedConfig.feedAsset,
+          typedConfig.feed1,
+          typedConfig.feed2,
+          typedConfig.lowerThresholdInBase1,
+          typedConfig.fixedPriceInBase1,
+          typedConfig.lowerThresholdInBase2,
+          typedConfig.fixedPriceInBase2,
+        )
+      ).wait();
+      console.log(`   ✅ Set composite Redstone feed for asset ${assetAddress}`);
     }
 
-    await (
-      await wrapper.configurePeg(assetAddress, assetConfig.pricePeg, assetConfig.lowerGuard ?? 0n, assetConfig.upperGuard ?? 0n)
-    ).wait();
+    await performOracleSanityChecks(wrapper, compositeFeeds, baseCurrencyUnit, "composite Redstone feeds");
   }
 }
 
-/**
- * Resolves or deploys the rate provider required for composite feeds.
- *
- * @param hre Hardhat runtime environment
- * @param deployer Deployer address used for mock deployments
- * @param assetAddress Asset identifier being configured
- * @param assetConfig Composite configuration for the asset
- */
-async function resolveRateProvider(
-  hre: HardhatRuntimeEnvironment,
-  deployer: string,
-  assetAddress: string,
-  assetConfig: ChainlinkRateCompositeAssetConfig,
-): Promise<{ rateProviderAddress: string; rateDecimals: number }> {
-  if (assetConfig.rateProvider && isUsableAddress(assetConfig.rateProvider)) {
-    return {
-      rateProviderAddress: assetConfig.rateProvider,
-      rateDecimals: assetConfig.rateDecimals ?? 18,
-    };
+async function performOracleSanityChecks(
+  wrapper: any,
+  feeds: Record<string, unknown>,
+  baseCurrencyUnit: bigint,
+  wrapperName: string,
+): Promise<void> {
+  for (const [assetAddress] of Object.entries(feeds)) {
+    try {
+      const price = await wrapper.getAssetPrice(assetAddress);
+      const normalizedPrice = Number(price) / Number(baseCurrencyUnit);
+
+      if (normalizedPrice < 0.9 || normalizedPrice > 2) {
+        console.warn(
+          `   ⚠️  Sanity check warning for asset ${assetAddress} in ${wrapperName}: normalized price ${normalizedPrice} outside [0.9, 2]`,
+        );
+      } else {
+        console.log(`   🔍 Sanity check passed for ${assetAddress} in ${wrapperName}: ${normalizedPrice}`);
+      }
+    } catch (error) {
+      console.error(`   ❌ Error during sanity check for ${assetAddress} in ${wrapperName}:`, error);
+      throw error;
+    }
   }
-
-  const deploymentId = assetConfig.rateProviderDeploymentId ?? `MockRateProvider_${assetAddress}`;
-  const deployment = await hre.deployments.deploy(deploymentId, {
-    from: deployer,
-    contract: "MockRateProvider",
-    args: [],
-    log: false,
-    autoMine: true,
-  });
-
-  const rateProviderAddress = deployment.address;
-  const rateDecimals = assetConfig.rateDecimals ?? 18;
-
-  let rateValue: bigint;
-  let updatedAt: bigint;
-
-  if (assetConfig.rateFeed && isUsableAddress(assetConfig.rateFeed)) {
-    const { answer, updatedAt: feedUpdatedAt, decimals } = await getLatestAnswer(hre, assetConfig.rateFeed);
-
-    rateValue = scaleValue(answer, assetConfig.rateFeedDecimals ?? decimals, rateDecimals);
-    updatedAt = feedUpdatedAt;
-  } else if (assetConfig.mockRate) {
-    const raw = hre.ethers.parseUnits(assetConfig.mockRate.value, assetConfig.mockRate.decimals);
-    rateValue = scaleValue(BigInt(raw.toString()), assetConfig.mockRate.decimals, rateDecimals);
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
-    const baseTimestamp = BigInt(latestBlock?.timestamp ?? Math.floor(Date.now() / 1000));
-    const offset = BigInt(assetConfig.mockRate.updatedAtOffsetSeconds ?? 0);
-    updatedAt = baseTimestamp + offset;
-  } else {
-    throw new Error(`Composite asset ${assetAddress} missing rateFeed or mockRate configuration`);
-  }
-
-  if (rateValue <= 0n) {
-    throw new Error(`Composite asset ${assetAddress} produced non-positive rate value`);
-  }
-
-  if (updatedAt === 0n) {
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
-    updatedAt = BigInt(latestBlock?.timestamp ?? Math.floor(Date.now() / 1000));
-  }
-
-  const signer = await hre.ethers.getSigner(deployer);
-  const rateProvider = await hre.ethers.getContractAt("MockRateProvider", rateProviderAddress, signer);
-  await (await rateProvider.setRate(rateValue, updatedAt)).wait();
-
-  return {
-    rateProviderAddress,
-    rateDecimals,
-  };
 }
 
-/**
- * Fetches the decimals configured for an on-chain Chainlink-style feed.
- *
- * @param hre Hardhat runtime environment
- * @param feedAddress Address of the feed
- */
-async function getAggregatorDecimals(hre: HardhatRuntimeEnvironment, feedAddress: string): Promise<number> {
-  const feed = await hre.ethers.getContractAt(CHAINLINK_AGGREGATOR_INTERFACE, feedAddress);
-  return Number(await feed.decimals());
-}
-
-/**
- * Retrieves the latest answer and timestamp from a Chainlink-style feed.
- *
- * @param hre Hardhat runtime environment
- * @param feedAddress Address of the feed
- */
-async function getLatestAnswer(
-  hre: HardhatRuntimeEnvironment,
-  feedAddress: string,
-): Promise<{ answer: bigint; updatedAt: bigint; decimals: number }> {
-  const feed = await hre.ethers.getContractAt(CHAINLINK_AGGREGATOR_INTERFACE, feedAddress);
-  const decimals = Number(await feed.decimals());
-  const latest = await feed.latestRoundData();
-  return {
-    answer: BigInt(latest.answer),
-    updatedAt: BigInt(latest.updatedAt),
-    decimals,
-  };
-}
-
-/**
- * Scales a value from one decimal precision to another.
- *
- * @param value Numeric value expressed with `fromDecimals`
- * @param fromDecimals Current decimal precision
- * @param toDecimals Target decimal precision
- */
-function scaleValue(value: bigint, fromDecimals: number, toDecimals: number): bigint {
-  if (fromDecimals === toDecimals) {
-    return value;
+function assertAddress(value: string, context: string): void {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
+    throw new Error(`[oracle-wrappers] Invalid address for ${context}: ${value}`);
   }
-
-  if (fromDecimals < toDecimals) {
-    const factor = 10n ** BigInt(toDecimals - fromDecimals);
-    return value * factor;
-  }
-  const divisor = 10n ** BigInt(fromDecimals - toDecimals);
-  return value / divisor;
-}
-
-/**
- * Resolves the Chainlink feed for an asset, deploying a mock feed when configured to do so.
- *
- * @param hre Hardhat runtime environment
- * @param deployer Deployer address used for mock deployment
- * @param assetAddress Asset identifier being configured
- * @param assetConfig Chainlink configuration for the asset
- * @param cache Cache of previously deployed mocks
- */
-async function ensureChainlinkFeed(
-  hre: HardhatRuntimeEnvironment,
-  deployer: string,
-  assetAddress: string,
-  assetConfig: ChainlinkFeedAssetConfig,
-  cache: Map<string, string>,
-): Promise<string> {
-  if (assetConfig.feed && isUsableAddress(assetConfig.feed)) {
-    return assetConfig.feed;
-  }
-
-  if (!assetConfig.mock) {
-    throw new Error(`Chainlink asset ${assetAddress} missing mock configuration`);
-  }
-
-  const mockId = assetConfig.mock.id ?? `chainlink-${assetAddress}`;
-  const cacheKey = `chainlink:${mockId}`;
-
-  if (cache.has(cacheKey)) {
-    return cache.get(cacheKey)!;
-  }
-
-  const deploymentName = `MockChainlinkAggregatorV3_${mockId}`;
-  const description = assetConfig.mock.description ?? mockId;
-
-  const deployment = await hre.deployments.deploy(deploymentName, {
-    from: deployer,
-    contract: "MockChainlinkAggregatorV3",
-    args: [assetConfig.mock.decimals, description],
-    log: false,
-    autoMine: true,
-  });
-
-  const feed = await hre.ethers.getContractAt("MockChainlinkAggregatorV3", deployment.address, await hre.ethers.getSigner(deployer));
-
-  const answer = hre.ethers.parseUnits(assetConfig.mock.value, assetConfig.mock.decimals);
-
-  if (assetConfig.mock.timestampOffsetSeconds !== undefined) {
-    const timestamp = BigInt(Math.floor(Date.now() / 1000) + assetConfig.mock.timestampOffsetSeconds);
-    await (await feed.setMockWithTimestamp(answer, timestamp)).wait();
-  } else {
-    await (await feed.setMock(answer)).wait();
-  }
-
-  cache.set(cacheKey, deployment.address);
-  return deployment.address;
-}
-
-/**
- * Checks whether the supplied string is a valid non-zero Ethereum address.
- *
- * @param value Value to validate
- */
-function isUsableAddress(value: string | undefined): value is string {
-  if (!value) {
-    return false;
-  }
-  const normalized = value.toLowerCase();
-  const isHexAddress = normalized.startsWith("0x") && normalized.length === 42;
-
-  if (!isHexAddress) {
-    return false;
-  }
-  return normalized !== ZeroAddress.toLowerCase();
 }
 
 func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-wrappers"];

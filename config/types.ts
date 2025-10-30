@@ -67,87 +67,6 @@ export interface WalletAddresses {
   readonly incentivesVault: string;
 }
 
-export interface OracleWrapperDeploymentConfig<TAssetConfig> {
-  readonly deploymentId: string;
-  readonly adminRole?: string;
-  readonly assets?: {
-    [assetAddress: string]: TAssetConfig;
-  };
-}
-
-export interface ChainlinkFeedMockConfig {
-  readonly id?: string;
-  readonly description?: string;
-  readonly decimals: number;
-  readonly value: string;
-  readonly timestampOffsetSeconds?: number;
-}
-
-export interface ChainlinkFeedAssetConfig {
-  readonly feed?: string;
-  readonly feedDeploymentId?: string;
-  readonly heartbeat?: number;
-  readonly maxStaleTime?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-  readonly mock?: ChainlinkFeedMockConfig;
-}
-
-export interface ChainlinkRateCompositeAssetConfig {
-  readonly priceFeed: string; // Spot feed priced in the aggregator base currency (e.g. USDS/USD)
-  readonly rateProvider?: string; // Optional on-chain rate provider; overrides rateFeed/mockRate if provided
-  readonly rateProviderDeploymentId?: string; // Optional deployment id when auto-deploying mock rate providers
-  readonly rateFeed?: string; // Optional feed used to derive the rate when no rateProvider is supplied (e.g. sUSDS/USDS)
-  readonly priceFeedDecimals?: number; // Optional override for price feed decimals; defaults to on-chain value
-  readonly rateFeedDecimals?: number; // Optional override for rate feed decimals; defaults to on-chain value
-  readonly rateDecimals?: number; // Target decimals for the rate provider value (defaults to 18)
-  readonly priceHeartbeat?: number; // Optional heartbeat override for the price feed
-  readonly rateHeartbeat?: number; // Optional heartbeat override for the rate provider
-  readonly maxStaleTime?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-  readonly mockRate?: {
-    readonly value: string; // Fallback rate when neither rateProvider nor rateFeed set
-    readonly decimals: number;
-    readonly updatedAtOffsetSeconds?: number;
-  };
-}
-
-export interface Api3FeedAssetConfig {
-  readonly proxy?: string;
-  readonly lowerThreshold?: bigint;
-  readonly fixedPrice?: bigint;
-  readonly mock?: {
-    readonly id?: string;
-    readonly description?: string;
-    readonly decimals: number;
-    readonly value: string;
-    readonly timestampOffsetSeconds?: number;
-  };
-}
-
-export interface HardPegAssetConfig {
-  readonly pricePeg: bigint;
-  readonly lowerGuard?: bigint;
-  readonly upperGuard?: bigint;
-}
-
-export interface OracleAssetRiskConfig {
-  readonly maxStaleTime?: number;
-  readonly heartbeatOverride?: number;
-  readonly maxDeviationBps?: number;
-  readonly minAnswer?: bigint;
-  readonly maxAnswer?: bigint;
-}
-
-export interface OracleAssetRouting {
-  readonly primaryWrapperId: string;
-  readonly fallbackWrapperId?: string;
-  readonly risk?: OracleAssetRiskConfig;
-}
-
 export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
@@ -200,21 +119,6 @@ export interface OracleAggregatorConfig {
   };
   readonly chainlinkCompositeAggregator?: {
     [assetAddress: string]: ChainlinkCompositeAggregatorConfig;
-  };
-  readonly wrappers?: {
-    chainlink?: OracleWrapperDeploymentConfig<ChainlinkFeedAssetConfig>;
-    api3?: OracleWrapperDeploymentConfig<Api3FeedAssetConfig>;
-    rateComposite?: OracleWrapperDeploymentConfig<ChainlinkRateCompositeAssetConfig>;
-    hardPeg?: OracleWrapperDeploymentConfig<HardPegAssetConfig>;
-  };
-  readonly assets?: {
-    [assetAddress: string]: OracleAssetRouting;
-  };
-  readonly roles?: {
-    admins: string[];
-    oracleManagers: string[];
-    guardians: string[];
-    globalMaxStaleTime: number;
   };
 }
 

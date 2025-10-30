@@ -5,11 +5,7 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import { DETH_A_TOKEN_WRAPPER_ID, DETH_TOKEN_ID, DUSD_A_TOKEN_WRAPPER_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID } from "../../typescript/deploy-ids";
-import {
-  DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-  ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
-  ORACLE_AGGREGATOR_PRICE_DECIMALS,
-} from "../../typescript/oracle_aggregator/constants";
+import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
 import { strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
@@ -199,228 +195,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       : {}),
   };
 
-  const usdChainlinkWrapperAssets = {
-    ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
-      ? {
-          [USDCDeployment.address]: {
-            feed: mockOracleNameToAddress["USDC_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 200,
-          },
-        }
-      : {}),
-    ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
-      ? {
-          [USDTDeployment.address]: {
-            feed: mockOracleNameToAddress["USDT_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 200,
-          },
-        }
-      : {}),
-    ...(USDSDeployment?.address && mockOracleNameToAddress["USDS_USD"]
-      ? {
-          [USDSDeployment.address]: {
-            feed: mockOracleNameToAddress["USDS_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 200,
-          },
-        }
-      : {}),
-    ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
-      ? {
-          [frxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["frxUSD_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 200,
-          },
-        }
-      : {}),
-    ...(fxUSDDeployment?.address && mockOracleNameToAddress["fxUSD_USD"]
-      ? {
-          [fxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["fxUSD_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 250,
-          },
-        }
-      : {}),
-    ...(aUSDCDeployment?.address && mockOracleNameToAddress["aUSDC_USD"]
-      ? {
-          [aUSDCDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDC_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 250,
-          },
-        }
-      : {}),
-    ...(aUSDTDeployment?.address && mockOracleNameToAddress["aUSDT_USD"]
-      ? {
-          [aUSDTDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDT_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 250,
-          },
-        }
-      : {}),
-    ...(WETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? {
-          [WETHDeployment.address]: {
-            feed: mockOracleNameToAddress["WETH_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 1000,
-          },
-        }
-      : {}),
-    ...(dETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
-      ? {
-          [dETHDeployment.address]: {
-            feed: mockOracleNameToAddress["WETH_USD"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 1000,
-          },
-        }
-      : {}),
-  };
-
-  const usdCompositeWrapperAssets = {
-    ...(sUSDSDeployment?.address && mockOracleNameToAddress["USDS_USD"] && mockOracleNameToAddress["sUSDS_USDS"]
-      ? {
-          [sUSDSDeployment.address]: {
-            priceFeed: mockOracleNameToAddress["USDS_USD"],
-            rateFeed: mockOracleNameToAddress["sUSDS_USDS"],
-            rateDecimals: 18,
-            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 300,
-          },
-        }
-      : {}),
-    ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"] && mockOracleNameToAddress["sfrxUSD_frxUSD"]
-      ? {
-          [sfrxUSDDeployment.address]: {
-            priceFeed: mockOracleNameToAddress["frxUSD_USD"],
-            rateFeed: mockOracleNameToAddress["sfrxUSD_frxUSD"],
-            rateDecimals: 18,
-            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 300,
-          },
-        }
-      : {}),
-    ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxUSD_USD"] && mockOracleNameToAddress["fxSAVE_fxUSD"]
-      ? {
-          [fxSAVEDeployment.address]: {
-            priceFeed: mockOracleNameToAddress["fxUSD_USD"],
-            rateFeed: mockOracleNameToAddress["fxSAVE_fxUSD"],
-            rateDecimals: 18,
-            priceHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            rateHeartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 350,
-          },
-        }
-      : {}),
-  };
-
-  const usdOracleRouting = {
-    ...(USDCDeployment?.address
-      ? {
-          [USDCDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 200 },
-          },
-        }
-      : {}),
-    ...(USDTDeployment?.address
-      ? {
-          [USDTDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 200 },
-          },
-        }
-      : {}),
-    ...(USDSDeployment?.address
-      ? {
-          [USDSDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 200 },
-          },
-        }
-      : {}),
-    ...(frxUSDDeployment?.address
-      ? {
-          [frxUSDDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 200 },
-          },
-        }
-      : {}),
-    ...(fxUSDDeployment?.address
-      ? {
-          [fxUSDDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 250 },
-          },
-        }
-      : {}),
-    ...(aUSDCDeployment?.address
-      ? {
-          [aUSDCDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 250 },
-          },
-        }
-      : {}),
-    ...(aUSDTDeployment?.address
-      ? {
-          [aUSDTDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 250 },
-          },
-        }
-      : {}),
-    ...(WETHDeployment?.address
-      ? {
-          [WETHDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 1000 },
-          },
-        }
-      : {}),
-    ...(dETHDeployment?.address
-      ? {
-          [dETHDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 1000 },
-          },
-        }
-      : {}),
-    ...(sUSDSDeployment?.address
-      ? {
-          [sUSDSDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
-            risk: { maxDeviationBps: 300 },
-          },
-        }
-      : {}),
-    ...(sfrxUSDDeployment?.address
-      ? {
-          [sfrxUSDDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
-            risk: { maxDeviationBps: 300 },
-          },
-        }
-      : {}),
-    ...(fxSAVEDeployment?.address
-      ? {
-          [fxSAVEDeployment.address]: {
-            primaryWrapperId: "USD_ChainlinkRateCompositeWrapperV1_1",
-            risk: { maxDeviationBps: 350 },
-          },
-        }
-      : {}),
-  };
-
   const ethPlainRedstoneFeeds = {
     ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
       ? { [stETHDeployment.address]: mockOracleNameToAddress["stETH_WETH"] }
@@ -430,63 +204,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       : {}),
     ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"]
       ? { [rETHDeployment.address]: mockOracleNameToAddress["rETH_WETH"] }
-      : {}),
-  };
-
-  const ethChainlinkWrapperAssets = {
-    ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"]
-      ? {
-          [stETHDeployment.address]: {
-            feed: mockOracleNameToAddress["stETH_WETH"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 500,
-          },
-        }
-      : {}),
-    ...(sfrxETHDeployment?.address && mockOracleNameToAddress["sfrxETH_WETH"]
-      ? {
-          [sfrxETHDeployment.address]: {
-            feed: mockOracleNameToAddress["sfrxETH_WETH"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 500,
-          },
-        }
-      : {}),
-    ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"]
-      ? {
-          [rETHDeployment.address]: {
-            feed: mockOracleNameToAddress["rETH_WETH"],
-            heartbeat: DEFAULT_ORACLE_HEARTBEAT_SECONDS,
-            maxDeviationBps: 500,
-          },
-        }
-      : {}),
-  };
-
-  const ethOracleRouting = {
-    ...(stETHDeployment?.address
-      ? {
-          [stETHDeployment.address]: {
-            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 500 },
-          },
-        }
-      : {}),
-    ...(sfrxETHDeployment?.address
-      ? {
-          [sfrxETHDeployment.address]: {
-            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 500 },
-          },
-        }
-      : {}),
-    ...(rETHDeployment?.address
-      ? {
-          [rETHDeployment.address]: {
-            primaryWrapperId: "ETH_ChainlinkWrapperV1_1",
-            risk: { maxDeviationBps: 500 },
-          },
-        }
       : {}),
   };
 
@@ -643,25 +360,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           redstoneOracleWrappersWithThresholding: usdThresholdRedstoneFeeds,
           compositeRedstoneOracleWrappersWithThresholding: usdCompositeRedstoneFeeds,
         },
-        wrappers: {
-          ...(Object.keys(usdChainlinkWrapperAssets).length > 0
-            ? {
-                chainlink: {
-                  deploymentId: "USD_ChainlinkWrapperV1_1",
-                  assets: usdChainlinkWrapperAssets,
-                },
-              }
-            : {}),
-          ...(Object.keys(usdCompositeWrapperAssets).length > 0
-            ? {
-                rateComposite: {
-                  deploymentId: "USD_ChainlinkRateCompositeWrapperV1_1",
-                  assets: usdCompositeWrapperAssets,
-                },
-              }
-            : {}),
-        },
-        assets: usdOracleRouting,
       },
       ETH: {
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
@@ -677,17 +375,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
-        wrappers: {
-          ...(Object.keys(ethChainlinkWrapperAssets).length > 0
-            ? {
-                chainlink: {
-                  deploymentId: "ETH_ChainlinkWrapperV1_1",
-                  assets: ethChainlinkWrapperAssets,
-                },
-              }
-            : {}),
-        },
-        assets: ethOracleRouting,
       },
     },
     dStables: {

@@ -14,8 +14,6 @@ import {
 import { getTokenContractForAddress, getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { getConfig } from "../../config/config";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
-import { DEFAULT_ORACLE_HEARTBEAT_SECONDS } from "../../typescript/oracle_aggregator/constants";
-
 // Run tests for each dStable configuration
 const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DETH_CONFIG];
 
@@ -113,15 +111,13 @@ function runTestsForDStable(
 
       // Deploy HardPegOracleWrapperV1_1 for the debt token (returns fixed price of 1.0)
       const HardPegOracleFactory = await hre.ethers.getContractFactory("HardPegOracleWrapperV1_1", await hre.ethers.getSigner(deployer));
-      const hardPegOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, deployer);
+      const hardPegOracle = await HardPegOracleFactory.deploy(baseCurrency, baseCurrencyUnit, baseCurrencyUnit);
       await hardPegOracle.waitForDeployment();
-      await hardPegOracle.configurePeg(await amoDebtToken.getAddress(), baseCurrencyUnit, 0, 0);
 
       // Grant ORACLE_MANAGER_ROLE to deployer and set the oracle before deploying the manager
       const oracleManagerRole = await oracleAggregatorContract.ORACLE_MANAGER_ROLE();
       await oracleAggregatorContract.grantRole(oracleManagerRole, deployer);
       await oracleAggregatorContract.setOracle(await amoDebtToken.getAddress(), await hardPegOracle.getAddress());
-      await oracleAggregatorContract.updateAssetRiskConfig(await amoDebtToken.getAddress(), 0, DEFAULT_ORACLE_HEARTBEAT_SECONDS, 0, 0, 0);
 
       // Deploy AmoManagerV2
       const AmoManagerV2Factory = await hre.ethers.getContractFactory("AmoManagerV2", await hre.ethers.getSigner(deployer));
