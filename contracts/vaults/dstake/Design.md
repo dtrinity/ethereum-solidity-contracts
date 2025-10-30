@@ -156,6 +156,8 @@ To keep the router deployable after the V2 feature growth, the contract now spli
    - Adjust withdrawal fee via `router.setWithdrawalFee()` (token proxy emits router events) within the 1% cap.
    - Tune caller incentive with `setReinvestIncentive()` (max 20%).
    - Schedule or automate `reinvestFees()` so fees re-enter strategies regularly.
+   - **Repay shortfalls while paused:** When covering a `settlementShortfall`, first `pause()` the router, move the reimbursement assets on-chain, call `clearShortfall(...)`, and only then `unpause()`. Pausing blocks new share issuance (including solver deposits), preventing opportunistic entrants from capturing the repayment uplift.
+   - **Re-route deposits when a vault caps out:** If the lead auto-deposit vault hits an upstream `maxDeposit` limit, rotate the vault order via `setVaultConfigs` (or remove/re-add the capped vault) so another vault leads the deterministic selector. This keeps ERC4626 deposits and fee reinvests flowing while the capped vault recovers.
 
 4. **Rebalance exposure**
    - Use solver deposit/withdraw functions for one-off targeted moves without changing target allocations.
