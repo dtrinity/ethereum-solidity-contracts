@@ -13,7 +13,7 @@ import {
 } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
-import { strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 const STABLE_THRESHOLD = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
@@ -503,6 +503,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       rateStrategies: [rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile],
       reservesConfig: {
         dUSD: strategyDUSD,
+        dETH: strategyDETH,
         sfrxETH: strategySFRXETH,
       },
     },
