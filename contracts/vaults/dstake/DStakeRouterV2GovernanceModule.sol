@@ -10,6 +10,7 @@ import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
 import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
+import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 
 /**
  * @title DStakeRouterV2GovernanceModule
@@ -18,7 +19,7 @@ import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
  *      layout for all shared state variables, including inherited OpenZeppelin base contracts. Access control checks
  *      are enforced at the router level before delegating to this module.
  */
-contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage {
+contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV2Module {
     using SafeERC20 for IERC20;
     using AllocationCalculator for uint256[];
     using Math for uint256;
@@ -72,6 +73,16 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage {
     event MaxVaultCountUpdated(uint256 oldCount, uint256 newCount);
 
     constructor(address dStakeToken_, address collateralVault_) DStakeRouterV2Storage(dStakeToken_, collateralVault_) {}
+
+    // --- Module metadata ---
+
+    function moduleMetadata()
+        external
+        view
+        returns (bytes32 storageFingerprint, address dStakeTokenAddress, address collateralVaultAddress)
+    {
+        return (STORAGE_FINGERPRINT, _dStakeToken, address(_collateralVault));
+    }
 
     // --- Governance entry points (delegate-called) ---
 

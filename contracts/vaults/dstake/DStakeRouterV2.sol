@@ -15,6 +15,7 @@ import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { WithdrawalFeeMath } from "../../common/WithdrawalFeeMath.sol";
 import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
+import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 
 interface IDStakeTokenV2Minimal {
     function asset() external view returns (address);
@@ -88,6 +89,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     error VaultTargetNotZero(address vault, uint256 targetBps);
     error ModuleNotSet();
     error ModuleCallFailed();
+    error ModuleMetadataQueryFailed(address module);
+    error ModuleStorageMismatch(bytes32 expected, bytes32 actual);
+    error ModuleTokenMismatch(address expected, address actual);
+    error ModuleCollateralVaultMismatch(address expected, address actual);
 
     // --- Roles ---
     bytes32 public constant DSTAKE_TOKEN_ROLE = keccak256("DSTAKE_TOKEN_ROLE");
@@ -175,12 +180,14 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
     function setGovernanceModule(address newModule) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newModule == address(0)) revert ZeroAddress();
+        _assertModuleCompatibility(newModule);
         governanceModule = newModule;
         emit GovernanceModuleSet(newModule);
     }
 
     function setRebalanceModule(address newModule) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newModule == address(0)) revert ZeroAddress();
+        _assertModuleCompatibility(newModule);
         rebalanceModule = newModule;
         emit RebalanceModuleSet(newModule);
     }
@@ -196,6 +203,37 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             }
         }
         return returndata;
+    }
+
+    function _assertModuleCompatibility(address module) private view {
+        bytes32 expectedFingerprint = STORAGE_FINGERPRINT;
+        address expectedToken = _dStakeToken;
+        address expectedVault = address(_collateralVault);
+
+        bytes32 actualFingerprint;
+        address moduleToken;
+        address moduleVault;
+        try IDStakeRouterV2Module(module).moduleMetadata() returns (
+            bytes32 fingerprint,
+            address token,
+            address vault
+        ) {
+            actualFingerprint = fingerprint;
+            moduleToken = token;
+            moduleVault = vault;
+        } catch {
+            revert ModuleMetadataQueryFailed(module);
+        }
+
+        if (actualFingerprint != expectedFingerprint) {
+            revert ModuleStorageMismatch(expectedFingerprint, actualFingerprint);
+        }
+        if (moduleToken != expectedToken) {
+            revert ModuleTokenMismatch(expectedToken, moduleToken);
+        }
+        if (moduleVault != expectedVault) {
+            revert ModuleCollateralVaultMismatch(expectedVault, moduleVault);
+        }
     }
 
     // --- Core Router Functions ---

@@ -64,6 +64,7 @@ abstract contract DStakeRouterV2Storage is AccessControl, ReentrancyGuard, Pausa
     // --- Constants ---
     uint256 public constant MAX_REINVEST_INCENTIVE_BPS = BasisPointConstants.ONE_PERCENT_BPS * 20;
     uint256 public constant MAX_WITHDRAWAL_FEE_BPS = BasisPointConstants.ONE_PERCENT_BPS;
+    bytes32 internal constant STORAGE_FINGERPRINT = keccak256("dtrinity.dstake.router.v2.storage:1");
 
     constructor(address dStakeToken_, address collateralVault_) {
         if (dStakeToken_ == address(0) || collateralVault_ == address(0)) {

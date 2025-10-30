@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
 import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
+import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 
 /**
  * @title DStakeRouterV2RebalanceModule
@@ -15,7 +16,7 @@ import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
  * @dev Storage layout mirrors the router, including inherited OpenZeppelin base contracts. All functions assume they
  *      are executed through delegatecall from the router, which enforces access control.
  */
-contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage {
+contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2Module {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -58,6 +59,16 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage {
     }
 
     constructor(address dStakeToken_, address collateralVault_) DStakeRouterV2Storage(dStakeToken_, collateralVault_) {}
+
+    // --- Module metadata ---
+
+    function moduleMetadata()
+        external
+        view
+        returns (bytes32 storageFingerprint, address dStakeTokenAddress, address collateralVaultAddress)
+    {
+        return (STORAGE_FINGERPRINT, _dStakeToken, address(_collateralVault));
+    }
 
     // --- Rebalance entry points (delegate-called) ---
 
