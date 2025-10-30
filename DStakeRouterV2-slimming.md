@@ -77,11 +77,54 @@ When planning the follow-up implementation, keep these bytecode traps in mind:
 
 **Call frequency ranking:** Core user flows > Solver ops > Rebalance > Fee reinvest > Governance toggles. This ordering guides which functions stay resident in the main router and which can migrate behind a fallback or helper after baseline slimming.
 
+## Governance Offload Notes (2025-02-17)
+
+- **Candidate selectors for delegation:**  
+  - Vault topology management (`setVaultConfigs`, `add/update/remove` overloads, `setVaultStatus`, `suspendVaultForRemoval`, `removeVaultConfig`).  
+  - Treasury knobs (`setDepositCap`, `setMaxVaultCount`, `setDustTolerance`, `setReinvestIncentive`, `setWithdrawalFee`).  
+  - Emergency actions (`emergencyPauseVault`, `sweepSurplus`, `recordShortfall`, `clearShortfall`).
+- **Module shape under consideration:** deploy a `DStakeRouterV2GovernanceModule` contract that mirrors the router storage layout via an abstract `DStakeRouterV2Storage` base. Cold-path functions on the router become minimal stubs that `delegatecall` into the module, shrinking router runtime while keeping the ABI surface intact.
+- **Routing strategy:** keep the router ABI by retaining function signatures; each stub executes `_delegateTo(governanceModule)` (single assembly helper) so all parameter decoding stays inside the module. Fallback gating is unnecessary for the first iteration.
+- **Safety guardrails:**  
+  1. Restricted selectors table to ensure only approved governance/admin calls can delegate outward.  
+  2. Module inherits the same role checks (`onlyRole`) so authorization logic remains unchanged after delegation.  
+  3. Storage base contract documents slot order to prevent drift if new state variables are introduced.
+- **Open questions before coding:**  
+  - How to version/deploy the module alongside the router in existing Hardhat scripts (linking + address injection).  
+  - Whether to keep `_syncAdapter`, `_removeAdapter`, `_clearVaultConfigs` in the base contract or duplicate them in the module to avoid tight coupling.  
+  - Test coverage required to validate delegatecall plumbing (focus on vault lifecycle + fee knob regression tests).
+
 ## Deliverables for Future Implementation
 
 - Prototype decomposition (multi-library or diamond) that compiles successfully with all tests passing.
 - Updated deployment scripts linking new libraries/facets.
 - Documentation on storage layout and upgrade implications.
 - Verified bytecode size reports demonstrating ≤ 24 576 bytes for the deployed router contract.
+
+## Multi-Module Split Blueprint (Draft)
+
+1. **Slice definition**  
+   - `RouterCore`: keep ERC-4626 surface (`handleDeposit/Withdraw`, solver flows, reinvest) plus token/dStable bookkeeping.  
+   - `RouterRebalance`: move share/value rebalance flows, fee shortfall bookkeeping, surplus sweep.  
+   - `RouterGovernance`: encapsulate vault topology + admin knobs (build on delegate module above).  
+   - `RouterViews`: optional facet for read helpers if the view footprint remains large after other moves.
+
+2. **Shared storage contract**  
+   - Extract state declarations and cross-cutting helpers (`_getVaultConfig`, `_isVaultHealthy*`, `_syncAdapter`, `_removeAdapter`) into `DStakeRouterV2Storage`.  
+   - Each module inherits the storage base and reuses the same custom errors/events via `import`.
+
+3. **Call dispatch strategy**  
+   - Maintain a thin `DStakeRouterV2` wrapper exposing the public ABI; each function body delegates to the relevant module via private helpers (per-slice delegate).  
+   - Keep hot-path functions inline to avoid delegatecall overhead, but isolate cold paths + rebalancing behind delegatecall.  
+   - Optionally add fallback dispatcher for future expansion once tooling + tests can tolerate it.
+
+4. **Deployment impact**  
+   - Hardhat deploy script to deploy modules first, record addresses, and store them in router constructor args (`struct ModuleConfig { bytes4[] selectors; address implementation; }`).  
+   - Add regression test harness to simulate governable upgrades (swap module address, verify storage untouched).
+
+5. **Validation plan**  
+   - Re-run full test suite with focus on solver flows + governance edges.  
+   - Compare event emissions and view outputs before/after split.  
+   - Size report per module + router to ensure each unit under 12 KiB, aggregated router runtime < 24 576 bytes.
 
 This ticket captures the exploration performed and the gaps remaining so the next round of work can focus directly on an architectural redesign rather than repeating prior attempts.
