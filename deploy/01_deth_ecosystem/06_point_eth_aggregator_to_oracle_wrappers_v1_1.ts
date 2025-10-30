@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { Config } from "../../config/types";
-import type { OracleAggregatorV1_1 } from "../../typechain-types";
+import type { OracleAggregatorV1_1 as OracleAggregatorV11 } from "../../typechain-types";
 import {
   DETH_TOKEN_ID,
   ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const oracleConfig = config.oracleAggregators.ETH;
 
   const aggregatorDeployment = await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID);
-  const aggregator = (await hre.ethers.getContractAt("OracleAggregatorV1_1", aggregatorDeployment.address, signer)) as OracleAggregatorV1_1;
+  const aggregator = (await hre.ethers.getContractAt("OracleAggregatorV1_1", aggregatorDeployment.address, signer)) as OracleAggregatorV11;
 
   const api3Assets = oracleConfig.api3OracleAssets;
   const redstoneAssets = oracleConfig.redstoneOracleAssets;
@@ -46,11 +46,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
 /**
  *
- * @param hre
- * @param aggregator
- * @param assets
+ *Routes every API3-backed asset to the appropriate wrapper address on the aggregator.
+ *
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param aggregator Oracle aggregator instance to configure.
+ * @param assets Configuration for all API3 feeds supported by the network.
  */
-async function routeApi3Assets(hre: HardhatRuntimeEnvironment, aggregator: OracleAggregatorV1_1, assets: Api3AssetsConfig): Promise<void> {
+async function routeApi3Assets(hre: HardhatRuntimeEnvironment, aggregator: OracleAggregatorV11, assets: Api3AssetsConfig): Promise<void> {
   if (!assets) {
     return;
   }
@@ -89,13 +91,15 @@ async function routeApi3Assets(hre: HardhatRuntimeEnvironment, aggregator: Oracl
 
 /**
  *
- * @param hre
- * @param aggregator
- * @param assets
+ *Routes every Redstone-backed asset to the appropriate wrapper address on the aggregator.
+ *
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param aggregator Oracle aggregator instance to configure.
+ * @param assets Configuration for all Redstone feeds supported by the network.
  */
 async function routeRedstoneAssets(
   hre: HardhatRuntimeEnvironment,
-  aggregator: OracleAggregatorV1_1,
+  aggregator: OracleAggregatorV11,
   assets: RedstoneAssetsConfig,
 ): Promise<void> {
   if (!assets) {
@@ -136,8 +140,10 @@ async function routeRedstoneAssets(
 
 /**
  *
- * @param hre
- * @param deploymentId
+ *Resolves a deployment id to the live contract address.
+ *
+ * @param hre Hardhat runtime used to query hardhat-deploy artifacts.
+ * @param deploymentId Identifier of the deployment to resolve.
  */
 async function resolveDeploymentAddress(hre: HardhatRuntimeEnvironment, deploymentId: string): Promise<string> {
   const deployment = await hre.deployments.get(deploymentId);
@@ -146,11 +152,13 @@ async function resolveDeploymentAddress(hre: HardhatRuntimeEnvironment, deployme
 
 /**
  *
- * @param aggregator
- * @param assetAddress
- * @param wrapperAddress
+ *Ensures an asset points to the desired wrapper on the aggregator, updating it if needed.
+ *
+ * @param aggregator Oracle aggregator instance to mutate.
+ * @param assetAddress Collateral address whose oracle should be configured.
+ * @param wrapperAddress Wrapper contract that should serve the price.
  */
-async function ensureOracleMapping(aggregator: OracleAggregatorV1_1, assetAddress: string, wrapperAddress: string): Promise<void> {
+async function ensureOracleMapping(aggregator: OracleAggregatorV11, assetAddress: string, wrapperAddress: string): Promise<void> {
   if (!isUsableAddress(assetAddress)) {
     return;
   }
@@ -166,8 +174,9 @@ async function ensureOracleMapping(aggregator: OracleAggregatorV1_1, assetAddres
 }
 
 /**
+ * Determines if a provided value is a usable, non-zero Ethereum address.
  *
- * @param value
+ * @param value String candidate to validate.
  */
 function isUsableAddress(value: string | undefined): value is string {
   if (!value) {
@@ -179,9 +188,10 @@ function isUsableAddress(value: string | undefined): value is string {
 }
 
 /**
+ * Checks whether any API3 or Redstone assets are configured for deployment.
  *
- * @param api3Assets
- * @param redstoneAssets
+ * @param api3Assets API3 asset configuration block.
+ * @param redstoneAssets Redstone asset configuration block.
  */
 function hasAnyConfiguredAsset(api3Assets?: Api3AssetsConfig, redstoneAssets?: RedstoneAssetsConfig): boolean {
   const counts = [

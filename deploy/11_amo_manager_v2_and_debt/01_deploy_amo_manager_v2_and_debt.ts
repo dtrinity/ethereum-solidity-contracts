@@ -122,9 +122,10 @@ func.dependencies = [
 ];
 
 /**
+ * Resolves the hard-peg wrapper address for the provided AMO asset.
  *
- * @param deployments
- * @param assetName
+ * @param deployments Hardhat deployments helper used to lookup existing contracts.
+ * @param assetName Canonical asset name (e.g. dUSD) that needs an oracle.
  */
 async function resolveOracleForAsset(deployments: HardhatRuntimeEnvironment["deployments"], assetName: string): Promise<string> {
   switch (assetName) {

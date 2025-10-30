@@ -48,12 +48,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 };
 
 /**
+ * Deploys and configures all API3-backed oracle wrappers for the USD aggregator.
  *
- * @param hre
- * @param deployer
- * @param baseCurrency
- * @param baseCurrencyUnit
- * @param assets
+ * @param hre Hardhat runtime used for deployments and contract lookups.
+ * @param deployer Account that pays for the wrapper deployments.
+ * @param baseCurrency Asset used as the aggregator base currency (e.g. USD).
+ * @param baseCurrencyUnit Number of base currency units corresponding to one whole unit (10**decimals).
+ * @param assets Configuration object describing each API3 feed to wire.
  */
 async function setupApi3Wrappers(
   hre: HardhatRuntimeEnvironment,
@@ -154,12 +155,13 @@ async function setupApi3Wrappers(
 }
 
 /**
+ * Deploys and configures all Redstone-backed oracle wrappers for the USD aggregator.
  *
- * @param hre
- * @param deployer
- * @param baseCurrency
- * @param baseCurrencyUnit
- * @param assets
+ * @param hre Hardhat runtime used for deployments and contract lookups.
+ * @param deployer Account that pays for the wrapper deployments.
+ * @param baseCurrency Asset used as the aggregator base currency (e.g. USD).
+ * @param baseCurrencyUnit Number of base currency units corresponding to one whole unit (10**decimals).
+ * @param assets Configuration object describing each Redstone feed to wire.
  */
 async function setupRedstoneWrappers(
   hre: HardhatRuntimeEnvironment,
@@ -260,11 +262,12 @@ async function setupRedstoneWrappers(
 }
 
 /**
+ * Performs lightweight sanity checks by sampling wrapper prices and logging any extreme values.
  *
- * @param wrapper
- * @param feeds
- * @param baseCurrencyUnit
- * @param wrapperName
+ * @param wrapper Deployed wrapper instance to query.
+ * @param feeds Mapping of asset addresses to feed configuration.
+ * @param baseCurrencyUnit Scaling factor that converts prices into the base currency.
+ * @param wrapperName Label used in logs so operators know which wrapper emitted the message.
  */
 async function performOracleSanityChecks(
   wrapper: any,
@@ -292,9 +295,10 @@ async function performOracleSanityChecks(
 }
 
 /**
+ * Asserts that a supplied value is a valid Ethereum address.
  *
- * @param value
- * @param context
+ * @param value Address-like string to validate.
+ * @param context Human-readable context used when throwing an error.
  */
 function assertAddress(value: string, context: string): void {
   if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
