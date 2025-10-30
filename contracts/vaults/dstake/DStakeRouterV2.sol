@@ -88,6 +88,8 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     error InvalidWithdrawalFee(uint256 feeBps, uint256 maxFeeBps);
     error VaultMustBeSuspended(address vault);
     error VaultTargetNotZero(address vault, uint256 targetBps);
+    error GovernanceModuleNotSet();
+    error GovernanceModuleCallFailed();
 
     // --- Roles ---
     bytes32 public constant DSTAKE_TOKEN_ROLE = keccak256("DSTAKE_TOKEN_ROLE");
@@ -149,6 +151,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
     VaultConfig[] public vaultConfigs;
     mapping(address => uint256) public vaultToIndex;
     mapping(address => bool) public vaultExists;
+    address public governanceModule;
 
     // --- Events ---
     event RouterDepositRouted(
@@ -210,6 +213,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         address indexed initiator
     );
     event MaxVaultCountUpdated(uint256 oldCount, uint256 newCount);
+    event GovernanceModuleSet(address indexed governanceModule);
 
     constructor(address _dStakeToken, address _collateralVault) {
         if (_dStakeToken == address(0) || _collateralVault == address(0)) {
@@ -229,6 +233,26 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         _grantRole(VAULT_MANAGER_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         _grantRole(DSTAKE_TOKEN_ROLE, _dStakeToken);
+    }
+
+    function setGovernanceModule(address newModule) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newModule == address(0)) revert ZeroAddress();
+        governanceModule = newModule;
+        emit GovernanceModuleSet(newModule);
+    }
+
+    function _delegateToGovernance() private returns (bytes memory result) {
+        address module = governanceModule;
+        if (module == address(0)) revert GovernanceModuleNotSet();
+
+        (bool success, bytes memory returndata) = module.delegatecall(msg.data);
+        if (!success) {
+            if (returndata.length == 0) revert GovernanceModuleCallFailed();
+            assembly {
+                revert(add(returndata, 32), mload(returndata))
+            }
+        }
+        return returndata;
     }
 
     // --- Core Router Functions ---
@@ -360,14 +384,6 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         if (account != dStakeToken && !hasRole(CONFIG_MANAGER_ROLE, account)) {
             revert UnauthorizedConfigCaller();
         }
-    }
-
-    function _clearDefaultDepositStrategyShare() internal {
-        if (defaultDepositStrategyShare == address(0)) {
-            return;
-        }
-        defaultDepositStrategyShare = address(0);
-        emit DefaultDepositStrategyShareSet(address(0));
     }
 
     function _selectAutoDepositVault() internal view returns (address targetVault) {
@@ -775,64 +791,29 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         return (amountReinvested, incentivePaid);
     }
 
-    function setReinvestIncentive(uint256 newIncentiveBps) external {
+    function setReinvestIncentive(uint256) external {
         _requireConfigOrToken(_msgSender());
-        if (newIncentiveBps > MAX_REINVEST_INCENTIVE_BPS) {
-            revert InvalidReinvestIncentive(newIncentiveBps, MAX_REINVEST_INCENTIVE_BPS);
-        }
-        reinvestIncentiveBps = newIncentiveBps;
-        emit ReinvestIncentiveSet(newIncentiveBps);
+        _delegateToGovernance();
     }
 
-    function setWithdrawalFee(uint256 newFeeBps) external override {
+    function setWithdrawalFee(uint256) external override {
         _requireConfigOrToken(_msgSender());
-        if (newFeeBps > MAX_WITHDRAWAL_FEE_BPS) {
-            revert InvalidWithdrawalFee(newFeeBps, MAX_WITHDRAWAL_FEE_BPS);
-        }
-        uint256 previous = _withdrawalFeeBps;
-        if (previous == newFeeBps) {
-            return;
-        }
-        _withdrawalFeeBps = newFeeBps;
-        emit WithdrawalFeeSet(previous, newFeeBps);
+        _delegateToGovernance();
     }
 
-    function setDepositCap(uint256 newCap) external {
+    function setDepositCap(uint256) external {
         _requireConfigOrToken(_msgSender());
-        if (newCap != 0 && newCap < totalManagedAssets()) {
-            revert InvalidDepositCap(newCap, totalManagedAssets());
-        }
-        uint256 previous = depositCap;
-        depositCap = newCap;
-        emit DepositCapUpdated(previous, newCap);
+        _delegateToGovernance();
     }
 
-    function recordShortfall(uint256 delta) external {
+    function recordShortfall(uint256) external {
         _requireConfigOrToken(_msgSender());
-        if (delta == 0) {
-            return;
-        }
-        uint256 newShortfall = settlementShortfall + delta;
-        if (newShortfall > totalManagedAssets()) {
-            revert SettlementShortfallTooHigh(newShortfall, totalManagedAssets());
-        }
-        uint256 previous = settlementShortfall;
-        settlementShortfall = newShortfall;
-        emit SettlementShortfallUpdated(previous, newShortfall);
+        _delegateToGovernance();
     }
 
-    function clearShortfall(uint256 amount) external {
+    function clearShortfall(uint256) external {
         _requireConfigOrToken(_msgSender());
-        if (amount == 0) {
-            return;
-        }
-        uint256 previous = settlementShortfall;
-        if (amount >= previous) {
-            settlementShortfall = 0;
-        } else {
-            settlementShortfall = previous - amount;
-        }
-        emit SettlementShortfallUpdated(previous, settlementShortfall);
+        _delegateToGovernance();
     }
 
     // --- Rebalance/Exchange Functions ---
@@ -1028,112 +1009,28 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
 
     // --- Adapter Management ---
 
-    function addAdapter(address strategyShare, address adapterAddress) external onlyRole(ADAPTER_MANAGER_ROLE) {
-        _addAdapter(strategyShare, adapterAddress);
+    function addAdapter(address, address) external onlyRole(ADAPTER_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    function _addAdapter(address strategyShare, address adapterAddress) internal {
-        if (adapterAddress == address(0) || strategyShare == address(0)) revert ZeroAddress();
-        address adapterStrategyShare = IDStableConversionAdapterV2(adapterAddress).strategyShare();
-        if (adapterStrategyShare != strategyShare)
-            revert AdapterAssetMismatch(adapterAddress, strategyShare, adapterStrategyShare);
-        if (
-            _strategyShareToAdapter[strategyShare] != address(0) &&
-            _strategyShareToAdapter[strategyShare] != adapterAddress
-        ) {
-            revert VaultAssetManagedByDifferentAdapter(strategyShare, _strategyShareToAdapter[strategyShare]);
-        }
-        _strategyShareToAdapter[strategyShare] = adapterAddress;
-
-        if (vaultExists[strategyShare]) {
-            vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
-        }
-
-        try collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
-
-        emit AdapterSet(strategyShare, adapterAddress);
+    function removeAdapter(address) external onlyRole(ADAPTER_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    function removeAdapter(address strategyShare) external onlyRole(ADAPTER_MANAGER_ROLE) {
-        if (!_removeAdapter(strategyShare)) revert AdapterNotFound(strategyShare);
-    }
-
-    function _syncAdapter(address strategyShare, address adapterAddress) internal {
-        address currentAdapter = _strategyShareToAdapter[strategyShare];
-        if (currentAdapter == adapterAddress) {
-            return;
-        }
-
-        if (adapterAddress == address(0)) {
-            if (currentAdapter != address(0)) {
-                _removeAdapter(strategyShare);
-            }
-            return;
-        }
-
-        if (currentAdapter != address(0)) {
-            address adapterStrategyShare = IDStableConversionAdapterV2(adapterAddress).strategyShare();
-            if (adapterStrategyShare != strategyShare) {
-                revert AdapterAssetMismatch(adapterAddress, strategyShare, adapterStrategyShare);
-            }
-
-            _strategyShareToAdapter[strategyShare] = adapterAddress;
-            if (vaultExists[strategyShare]) {
-                vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
-            }
-            try collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
-            emit AdapterSet(strategyShare, adapterAddress);
-            return;
-        }
-
-        _addAdapter(strategyShare, adapterAddress);
-    }
-
-    function setDefaultDepositStrategyShare(address strategyShare) external onlyRole(CONFIG_MANAGER_ROLE) {
-        if (_strategyShareToAdapter[strategyShare] == address(0)) revert AdapterNotFound(strategyShare);
-        if (vaultExists[strategyShare]) {
-            VaultConfig memory config = _getVaultConfig(strategyShare);
-            if (!_isVaultStatusEligible(config.status, OperationType.DEPOSIT)) {
-                revert VaultNotActive(strategyShare);
-            }
-        }
-        defaultDepositStrategyShare = strategyShare;
-        emit DefaultDepositStrategyShareSet(strategyShare);
+    function setDefaultDepositStrategyShare(address) external onlyRole(CONFIG_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
     function clearDefaultDepositStrategyShare() external onlyRole(CONFIG_MANAGER_ROLE) {
-        _clearDefaultDepositStrategyShare();
+        _delegateToGovernance();
     }
 
-    function setDustTolerance(uint256 _dustTolerance) external onlyRole(CONFIG_MANAGER_ROLE) {
-        dustTolerance = _dustTolerance;
-        emit DustToleranceSet(_dustTolerance);
+    function setDustTolerance(uint256) external onlyRole(CONFIG_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    function sweepSurplus(uint256 maxAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
-        uint256 balance = IERC20(dStable).balanceOf(address(this));
-        if (balance == 0) revert ZeroInputDStableValue(dStable, 0);
-
-        uint256 amountToSweep = (maxAmount == 0 || maxAmount > balance) ? balance : maxAmount;
-        address adapterAddress = _strategyShareToAdapter[defaultDepositStrategyShare];
-        if (adapterAddress == address(0)) revert AdapterNotFound(defaultDepositStrategyShare);
-
-        IDStableConversionAdapterV2 adapter = IDStableConversionAdapterV2(adapterAddress);
-        address strategyShare = adapter.strategyShare();
-
-        VaultConfig memory config = _getVaultConfig(strategyShare);
-        if (!_isVaultStatusEligible(config.status, OperationType.DEPOSIT)) {
-            revert VaultNotActive(strategyShare);
-        }
-
-        IERC20(dStable).forceApprove(adapterAddress, amountToSweep);
-        (address mintedShare, ) = adapter.depositIntoStrategy(amountToSweep);
-        if (mintedShare != strategyShare) revert AdapterAssetMismatch(adapterAddress, strategyShare, mintedShare);
-
-        // Prevent residual allowances for the adapter regardless of token behaviour.
-        IERC20(dStable).forceApprove(adapterAddress, 0);
-
-        emit SurplusSwept(amountToSweep, mintedShare);
+    function sweepSurplus(uint256) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        _delegateToGovernance();
     }
 
     // --- Vault Configuration ---
@@ -1145,176 +1042,58 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
      *      is not exactly `BasisPointConstants.ONE_HUNDRED_PERCENT_BPS` (1,000,000 bps).
      *      Use this after operational changes (add/remove/pause) to restore precise targets.
      */
-    function setVaultConfigs(VaultConfig[] calldata configs) external onlyRole(VAULT_MANAGER_ROLE) {
-        uint256 totalTargetBps = 0;
-        uint256 configCount = configs.length;
-        for (uint256 i; i < configCount; ) {
-            totalTargetBps += configs[i].targetBps;
-            unchecked {
-                ++i;
-            }
-        }
-        if (totalTargetBps != BasisPointConstants.ONE_HUNDRED_PERCENT_BPS) {
-            revert TotalAllocationInvalid(totalTargetBps);
-        }
-
-        _clearVaultConfigs();
-        for (uint256 i; i < configCount; ) {
-            _addVaultConfig(configs[i]);
-            unchecked {
-                ++i;
-            }
-        }
+    function setVaultConfigs(VaultConfig[] calldata) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Adds a vault configuration without enforcing total target-sum normalization.
-     * @dev Does NOT validate that the sum of all targets equals 100%. This is intentional to
-     *      allow emergency/operational changes. When totals differ from 100% across the active set:
-     *      - Deposits/withdrawals still function; routing uses `targetBps` as-is (no normalization).
-     *      - Behavior may become biased or perpetually chasing targets. Prefer calling
-     *        `setVaultConfigs` afterward to restore a strict 100% total.
-     */
-    function addVaultConfig(VaultConfig calldata config) external onlyRole(VAULT_MANAGER_ROLE) {
-        _addVaultConfig(config);
+    function addVaultConfig(VaultConfig calldata) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Adds a vault configuration without enforcing total target-sum normalization.
-     * @dev See notes on the overload above. Intended for operational flexibility.
-     */
     function addVaultConfig(
-        address vault,
-        address adapter,
-        uint256 targetBps,
-        VaultStatus status
+        address,
+        address,
+        uint256,
+        VaultStatus
     ) external onlyRole(VAULT_MANAGER_ROLE) {
-        _addVaultConfig(VaultConfig({ strategyVault: vault, adapter: adapter, targetBps: targetBps, status: status }));
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Updates a vault configuration without enforcing total target-sum normalization.
-     * @dev Does NOT enforce that the new overall total equals 100%. Safe to use during
-     *      emergencies (e.g., temporarily setting a vault inactive). Consider following
-     *      up with `setVaultConfigs` to re-establish an exact 100% layout.
-     */
-    function updateVaultConfig(VaultConfig calldata config) external onlyRole(VAULT_MANAGER_ROLE) {
-        _updateVaultConfig(config);
+    function updateVaultConfig(VaultConfig calldata) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Updates a vault configuration without enforcing total target-sum normalization.
-     * @dev See notes on the overload above. Targets are used as-is by the router.
-     */
     function updateVaultConfig(
-        address vault,
-        address adapter,
-        uint256 targetBps,
-        VaultStatus status
+        address,
+        address,
+        uint256,
+        VaultStatus
     ) external onlyRole(VAULT_MANAGER_ROLE) {
-        _updateVaultConfig(
-            VaultConfig({ strategyVault: vault, adapter: adapter, targetBps: targetBps, status: status })
-        );
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Updates only the status of a vault configuration.
-     * @dev Convenience helper for governance to quickly quarantine or reactivate vaults without
-     *      needing to resupply adapter/target details.
-     * @param vault Address of the vault to update.
-     * @param status New status to set.
-     */
-    function setVaultStatus(address vault, VaultStatus status) external onlyRole(VAULT_MANAGER_ROLE) {
-        if (!vaultExists[vault]) revert VaultNotFound(vault);
-        uint256 index = vaultToIndex[vault];
-        VaultConfig storage config = vaultConfigs[index];
-        if (config.status == status) {
-            return;
-        }
-
-        config.status = status;
-
-        emit VaultConfigUpdated(config.strategyVault, config.adapter, config.targetBps, status);
+    function setVaultStatus(address, VaultStatus) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Removes a vault configuration without rebalancing or normalizing targets.
-     * @dev Does NOT enforce that the remaining targets sum to 100%. Routing continues to
-     *      use the remaining `targetBps` values verbatim. For precise allocation behavior,
-     *      call `setVaultConfigs` after removals to rebalance back to 100%.
-     */
-    function removeVault(address vault) external onlyRole(VAULT_MANAGER_ROLE) {
-        if (!vaultExists[vault]) revert VaultNotFound(vault);
-        _removeVault(vault);
+    function removeVault(address) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Alias for removing a vault configuration (no allocation-sum enforcement).
-     * @dev Identical behavior to `removeVault`. Totals may deviate from 100% after removal.
-     *      This is acceptable for emergency operations. Prefer re-normalizing with
-     *      `setVaultConfigs` when feasible.
-     */
-    function removeVaultConfig(address vault) external onlyRole(VAULT_MANAGER_ROLE) {
-        if (!vaultExists[vault]) revert VaultNotFound(vault);
-        _removeVault(vault);
+    function removeVaultConfig(address) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    function suspendVaultForRemoval(address vault) external onlyRole(VAULT_MANAGER_ROLE) {
-        _suspendVaultForRemoval(vault);
+    function suspendVaultForRemoval(address) external onlyRole(VAULT_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
-    /**
-     * @notice Marks a vault inactive without altering its stored `targetBps`.
-     * @dev This does NOT change totals or perform normalization. The inactive vault is
-     *      excluded from routing decisions, and the active-set targets are used as-is.
-     *      After emergencies, call `setVaultConfigs` if you require active targets to
-     *      sum to exactly 100% again.
-     */
-    function emergencyPauseVault(address vault) external onlyRole(PAUSER_ROLE) {
-        if (!vaultExists[vault]) revert VaultNotFound(vault);
-        uint256 index = vaultToIndex[vault];
-        vaultConfigs[index].status = VaultStatus.Suspended;
-        emit VaultConfigUpdated(
-            vault,
-            vaultConfigs[index].adapter,
-            vaultConfigs[index].targetBps,
-            VaultStatus.Suspended
-        );
+    function emergencyPauseVault(address) external onlyRole(PAUSER_ROLE) {
+        _delegateToGovernance();
     }
 
-    function _suspendVaultForRemoval(address vault) internal {
-        if (!vaultExists[vault]) revert VaultNotFound(vault);
-        uint256 index = vaultToIndex[vault];
-        VaultConfig storage config = vaultConfigs[index];
-
-        bool mutated;
-        if (config.status != VaultStatus.Suspended) {
-            config.status = VaultStatus.Suspended;
-            mutated = true;
-        }
-
-        if (config.targetBps != 0) {
-            config.targetBps = 0;
-            mutated = true;
-        }
-
-        if (defaultDepositStrategyShare == vault) {
-            _clearDefaultDepositStrategyShare();
-        }
-
-        if (mutated) {
-            emit VaultConfigUpdated(vault, config.adapter, config.targetBps, VaultStatus.Suspended);
-        }
-    }
-
-    function setMaxVaultCount(uint256 _maxVaultCount) external onlyRole(CONFIG_MANAGER_ROLE) {
-        if (_maxVaultCount == 0 || _maxVaultCount < vaultConfigs.length) {
-            revert InvalidMaxVaultCount(_maxVaultCount);
-        }
-
-        uint256 oldValue = maxVaultCount;
-        maxVaultCount = _maxVaultCount;
-        emit MaxVaultCountUpdated(oldValue, _maxVaultCount);
+    function setMaxVaultCount(uint256) external onlyRole(CONFIG_MANAGER_ROLE) {
+        _delegateToGovernance();
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {
@@ -1741,101 +1520,4 @@ contract DStakeRouterV2 is IDStakeRouterV2, AccessControl, ReentrancyGuard, Paus
         }
     }
 
-    function _addVaultConfig(VaultConfig memory config) internal {
-        if (config.strategyVault == address(0) || config.adapter == address(0)) revert ZeroAddress();
-        if (vaultExists[config.strategyVault]) revert VaultAlreadyExists(config.strategyVault);
-        if (vaultConfigs.length >= maxVaultCount) revert InvalidVaultConfig();
-
-        uint256 index = vaultConfigs.length;
-        vaultConfigs.push(config);
-        vaultToIndex[config.strategyVault] = index;
-        vaultExists[config.strategyVault] = true;
-
-        _syncAdapter(config.strategyVault, config.adapter);
-
-        emit VaultConfigAdded(config.strategyVault, config.adapter, config.targetBps, config.status);
-    }
-
-    function _updateVaultConfig(VaultConfig memory config) internal {
-        if (!vaultExists[config.strategyVault]) revert VaultNotFound(config.strategyVault);
-
-        uint256 index = vaultToIndex[config.strategyVault];
-        vaultConfigs[index] = config;
-
-        _syncAdapter(config.strategyVault, config.adapter);
-
-        emit VaultConfigUpdated(config.strategyVault, config.adapter, config.targetBps, config.status);
-    }
-
-    function _removeVault(address vault) internal {
-        uint256 indexToRemove = vaultToIndex[vault];
-        uint256 lastIndex = vaultConfigs.length - 1;
-
-        _suspendVaultForRemoval(vault);
-
-        if (_strategyShareToAdapter[vault] != address(0)) {
-            _removeAdapter(vault);
-        }
-
-        if (indexToRemove != lastIndex) {
-            VaultConfig memory lastConfig = vaultConfigs[lastIndex];
-            vaultConfigs[indexToRemove] = lastConfig;
-            vaultToIndex[lastConfig.strategyVault] = indexToRemove;
-        }
-
-        vaultConfigs.pop();
-        delete vaultToIndex[vault];
-        delete vaultExists[vault];
-
-        emit VaultConfigRemoved(vault);
-    }
-
-    function _clearVaultConfigs() internal {
-        uint256 configCount = vaultConfigs.length;
-        for (uint256 i; i < configCount; ) {
-            address vault = vaultConfigs[i].strategyVault;
-            _suspendVaultForRemoval(vault);
-            _removeAdapter(vault);
-            delete vaultToIndex[vault];
-            delete vaultExists[vault];
-            unchecked {
-                ++i;
-            }
-        }
-        delete vaultConfigs;
-    }
-
-    function _removeAdapter(address strategyShare) internal returns (bool removed) {
-        address adapterAddress = _strategyShareToAdapter[strategyShare];
-        if (adapterAddress == address(0)) {
-            return false;
-        }
-
-        if (vaultExists[strategyShare]) {
-            VaultConfig storage config = vaultConfigs[vaultToIndex[strategyShare]];
-            if (config.status != VaultStatus.Suspended) {
-                revert VaultMustBeSuspended(strategyShare);
-            }
-            if (config.targetBps != 0) {
-                revert VaultTargetNotZero(strategyShare, config.targetBps);
-            }
-        }
-
-        // Drop support in the collateral vault even if the position still holds dust so it stops affecting TVL.
-        // Important in cases where the strategyShare is paused or otherwise non-transferrable
-        collateralVault.removeSupportedStrategyShare(strategyShare);
-
-        if (defaultDepositStrategyShare == strategyShare) {
-            _clearDefaultDepositStrategyShare();
-        }
-
-        delete _strategyShareToAdapter[strategyShare];
-
-        if (vaultExists[strategyShare]) {
-            vaultConfigs[vaultToIndex[strategyShare]].adapter = address(0);
-        }
-
-        emit AdapterRemoved(strategyShare, adapterAddress);
-        return true;
-    }
 }

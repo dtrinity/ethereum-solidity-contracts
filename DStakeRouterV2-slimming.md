@@ -127,4 +127,14 @@ When planning the follow-up implementation, keep these bytecode traps in mind:
    - Compare event emissions and view outputs before/after split.  
    - Size report per module + router to ensure each unit under 12 KiB, aggregated router runtime < 24 576 bytes.
 
+## Governance Module Prototype (2025-02-17)
+
+- Delegated the full governance/configuration surface from `DStakeRouterV2` into `DStakeRouterV2GovernanceModule`, retaining the router ABI via thin forwarding stubs guarded by existing role checks.
+- Router runtime shrank to **28.283 KiB** (‒7.254 KiB) while the governing module compiles to **10.638 KiB** (`yarn size:dstake-router`). Additional decomposition still required to hit the 24 KiB deployed target.
+- Storage layout mirrored between router and module; the router now exposes `setGovernanceModule(address)` for deployment wiring. Hardhat deploy script `deploy/08_dstake/01_deploy_dstake_core.ts` deploys the module per instance and links it post-router deployment.
+- Next reduction levers before full facet split:
+  1. Evaluate moving the rebalancer flows into their own module (largest remaining cold path).
+  2. Prune duplicated view helpers in the router once read-only module is carved out.
+  3. Revisit revert-string compression within the module (still carries legacy messages).
+
 This ticket captures the exploration performed and the gaps remaining so the next round of work can focus directly on an architectural redesign rather than repeating prior attempts.
