@@ -1,28 +1,31 @@
 # Oracle Aggregator V1.1 Stack
 
-The V1.1 release introduces a hardened oracle stack centred around `OracleAggregatorV1_1`
-and a refreshed suite of wrappers. Key components include:
+The slimmed-down V1.1 stack keeps the aggregator stateless and moves most
+oracle logic into small, provider-specific wrappers:
 
-- `OracleAggregatorV1_1` – central registry of per-asset configuration with last good price
-  caching, guardian driven freeze/LGP flow, fallback orchestration and deviation gating.
-- `ChainlinkFeedWrapperV1_1` – canonical Chainlink adapter with heartbeat overrides,
-  min/max clamps and optional rate-of-change detection.
-- `API3WrapperV1_1` – API3 proxy integration with heartbeat metadata respect and
-  configurable bounds.
-- `ChainlinkRateCompositeWrapperV1_1` – combines a Chainlink spot feed with an external
-  rate provider to deliver composite prices with per-leg liveness checks.
-- `HardPegOracleWrapperV1_1` – guardian governed peg with guard-rails and manual
-  overrides for hard-pegged assets.
+- `OracleAggregatorV1_1` – routes assets to wrappers and enforces base currency
+  compatibility. No fallback routing, guardian flow, or last-good price store.
+- `API3WrapperV1_1` (+ threshold and composite variants) – reads API3 proxies,
+  normalises to the aggregator base unit, and optionally applies thresholding
+  to cap drawdowns when the feed decays towards a peg.
+- `RedstoneChainlinkWrapperV1_1` (+ threshold and composite variants) – consumes
+  Chainlink-compatible feeds, converts decimals, and carries the heartbeat
+  policies defined in the wrapper base contracts.
+- `HardPegOracleWrapperV1_1` – returns a constructor-set value for assets that
+  should always trade at the configured peg.
 
-Operational roles:
+Every wrapper inherits from a lightweight base contract that exposes
+`DEFAULT_ADMIN_ROLE` and `ORACLE_MANAGER_ROLE`. Operators use the manager role to
+register feeds, proxies, and optional threshold parameters, or to adjust the
+heartbeat stale time limit.
 
-- **Admins** manage role assignments via a two-step handover.
-- **Oracle Managers** update feeds, thresholds, and oracle wiring.
-- **Guardians** can freeze assets, push last good prices, and unfreeze once conditions
-  normalise.
+## Integration Checklist
 
-## Existing considerations
+1. Deploy the wrapper with the same base currency and unit as the target
+   aggregator.
+2. Configure feeds/proxies via the wrapper’s `ORACLE_MANAGER_ROLE`.
+3. Optionally tune the heartbeat buffer with `setHeartbeatStaleTimeLimit`.
+4. Call `setOracle(asset, wrapperAddress)` on the aggregator.
 
-### Why don't we have a generic CompositeOracleWrapper which allows us to composite feeds from different oracle providers?
-There is risk in surfacing a partially desynced oracle feed. If we decide to mix and match,
-we should do a thorough risk analysis first.
+This design keeps the aggregator simple while preserving the ability to enforce
+provider-specific safety rails inside the wrappers themselves.

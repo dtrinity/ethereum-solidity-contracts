@@ -24,7 +24,13 @@ export async function setupNewReserves(hre: HardhatRuntimeEnvironment, reserveSy
   const { deployer } = await hre.getNamedAccounts();
   const signer = await hre.ethers.getSigner(deployer);
   const config = await getConfig(hre);
-  const { reservesConfig } = config.dLend;
+  const dLendConfig = config.dLend;
+
+  if (!dLendConfig) {
+    throw new Error(`dLend configuration is required for network ${hre.network.name}`);
+  }
+
+  const { reservesConfig } = dLendConfig;
 
   const targetReserveSymbols = reserveSymbolsToSetup ? reserveSymbolsToSetup : Object.keys(reservesConfig);
 

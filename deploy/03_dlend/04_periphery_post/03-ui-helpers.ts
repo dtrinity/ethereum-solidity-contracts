@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const priceOracle = await deployments.get(PRICE_ORACLE_ID);
 
   // Deploy UiIncentiveDataProvider first
-  const _uiIncentiveDataProvider = await deploy(UI_INCENTIVE_DATA_PROVIDER_ID, {
+  await deploy(UI_INCENTIVE_DATA_PROVIDER_ID, {
     from: deployer,
     args: [], // No constructor arguments needed
     log: true,

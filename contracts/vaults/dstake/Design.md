@@ -4,6 +4,8 @@
 
 dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g., dUSD) and receive dSTAKE shares (`ERC4626`). Capital is routed into external lending protocols through pluggable adapters while accounting, fees, and governance live on the dSTAKE side. This document captures the current architecture and the operational handles maintainers rely on.
 
+To keep the router deployable after the V2 feature growth, the contract now splits rarely used governance and rebalance flows into delegatecall modules. The thin `DStakeRouterV2` contract owns the hot deposit/withdraw path, enforces access control, and dispatches to module contracts that share the same storage layout fingerprint and immutables. This split keeps the creation bytecode under the ~24 KB limit without sacrificing determinism or upgradability.
+
 ## Component Map
 
 - `DStakeTokenV2` – upgradeable ERC4626 share token (`contracts/vaults/dstake/DStakeTokenV2.sol`)
@@ -19,12 +21,23 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
   - Refuses to value a strategy share without a live adapter; NAV queries revert so governance must restore pricing or pause deposits before removal.
   - Grants `ROUTER_ROLE` to the active router so only the router can move collateral.
 
-- `DStakeRouterV2` – deterministic orchestrator (`contracts/vaults/dstake/DStakeRouterV2.sol`)
-  - Owns vault configuration, adapter registry, hook logic, and operational limits.
+- `DStakeRouterV2` – deterministic orchestrator and module dispatcher (`contracts/vaults/dstake/DStakeRouterV2.sol`)
   - Receives deposit/withdraw callbacks from the token, performs single-strategy attempts, and transfers net assets directly to recipients.
   - Provides solver routes that accept vault/amount arrays for multi-vault servicing, typically from dSTAKE deposits/withdrawals.
-  - Houses withdrawal fee calculation, incentive handling, reinvestment, settlement shortfall tracking, and emits detailed operational events.
-  - Supports collateral exchanges, pausing, dust tolerance settings, surplus sweeping, and vault health checks under unified control flags.
+  - Retains the withdrawal-fee engine, incentive handling, settlement shortfall tracking, and emits operational events while keeping the main bytecode lean.
+  - Wires delegatecall modules via `setGovernanceModule` / `setRebalanceModule`, validating storage fingerprints plus immutable token/collateral addresses before use.
+
+- `DStakeRouterV2GovernanceModule` – delegate-called configuration surface (`contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol`)
+  - Hosts adapter registry mutations, vault config lifecycle, dust/default tuning, fee & cap updates, shortfall bookkeeping, surplus sweeping, and pause helpers.
+  - Enforces identical storage layout by inheriting `DStakeRouterV2Storage`; router role-gates every entry point before delegating.
+
+- `DStakeRouterV2RebalanceModule` – delegate-called rebalance surface (`contracts/vaults/dstake/DStakeRouterV2RebalanceModule.sol`)
+  - Implements share/value rebalances and external-liquidity assisted swaps, sharing the same slippage, dust, and health checks as the router.
+  - Accessible only through the router dispatcher; direct calls revert because the module expects delegatecall context.
+
+- `DStakeRouterV2Storage` – shared storage contract (`contracts/vaults/dstake/DStakeRouterV2Storage.sol`)
+  - Bakes the immutable token, collateral vault, and dSTABLE addresses into every module and the router.
+  - Publishes a storage fingerprint consumed by `IDStakeRouterV2Module` to prevent wiring mismatched builds.
 
 - Adapters (`contracts/vaults/dstake/adapters/`)
   - Implement `IDStableConversionAdapterV2`. Each adapter knows how to convert dSTABLE ↔ specific strategy shares and report valuations in dSTABLE terms.
@@ -61,6 +74,7 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 ### Collateral exchanges & rebalances
 - Governance or operations can trigger `rebalanceStrategiesByShares`, `rebalanceStrategiesBySharesViaExternalLiquidity`, or `rebalanceStrategiesByValue` to move exposure between strategies. These functions work entirely in dSTABLE terms, consult adapter previews, enforce slippage via `dustTolerance`, and stage transfers through the collateral vault.
 - `sweepSurplus()` converts any dSTABLE left on the router (for example from rounding during withdrawals) back into the default deposit strategy shares.
+- Internally these admin flows execute inside `DStakeRouterV2RebalanceModule` so the router’s creation bytecode stays under the deployment limit while still emitting the familiar events.
 
 ## Router V2 Details
 
@@ -69,7 +83,9 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 - **Allowance hygiene** – All approvals use OZ `forceApprove` and immediately zero allowances afterward so non-standard tokens stay compatible and no residual approvals linger.
 - **Health checks & liveness** – Strategies must pass protocol health probes (`previewDeposit`, `previewRedeem`) to be considered active for an operation. Paused or unhealthy strategies are skipped automatically across auto-routing, solver withdrawals, rebalances, and surplus sweeps.
 - **Adapter registry** – `_strategyShareToAdapter` pairs strategy shares with adapters. Adding an active strategy automatically registers the adapter and whitelists the strategy shares on the collateral vault. Removing a strategy also evacuates the adapter mapping.
-- **Governance knobs** – `setVaultConfigs`, `add/update/removeVault`, `setDefaultDepositStrategyShare`, `setDustTolerance`, `setMaxVaultCount`, `setDepositCap`, `setWithdrawalFee`, `setReinvestIncentive`, surplus sweeping, pause controls, and settlement shortfall bookkeeping (`recordShortfall` / `clearShortfall`) all live on the router under dedicated roles.
+- **Governance knobs (module delegations)** – `setVaultConfigs`, `add/update/removeVault`, `setDefaultDepositStrategyShare`, `setDustTolerance`, `setMaxVaultCount`, `setDepositCap`, `setWithdrawalFee`, `setReinvestIncentive`, surplus sweeping, pause controls, and settlement shortfall bookkeeping (`recordShortfall` / `clearShortfall`) are implemented inside `DStakeRouterV2GovernanceModule`. The router checks the caller’s role, then delegatecalls into the module so these rarely used handlers stay out of the router’s deploy-time bytecode.
+- **Rebalance helpers (module delegations)** – Share/value rebalances live inside `DStakeRouterV2RebalanceModule`, which mirrors the router’s slippage and health checks while keeping the main contract’s creation bytecode small enough for deployment.
+- **Module guardrails** – `setGovernanceModule` / `setRebalanceModule` verify a storage fingerprint and the immutable token/collateral vault addresses advertised by the module via `moduleMetadata()`. Any mismatch reverts, preventing accidental wiring of incompatible binaries or stale storage layouts.
 - **Collateral exchanges** – Exchanges validate adapter previews in both directions and enforce `dustTolerance` when comparing expected vs realised dSTABLE value, preventing silent degradation across strategies.
 - **Surplus handling** – Router retains withdrawal fees and any interim dSTABLE from solver operations. `reinvestFees()` and `sweepSurplus()` recycle these balances into the default strategy, first confirming the default vault is still eligible before forwarding funds; events document caller incentives and compounding cadence.
 
@@ -118,6 +134,7 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 - Router is `Pausable` and `ReentrancyGuard` protected. Deposit/withdraw paths halt when paused; solver routes are also gated by the same modifier chain.
 - Collateral vault ignores unknown dust in TVL calculations so third parties cannot block accounting by donating unsupported tokens.
 - Solver paths require the caller to supply dSTABLE or permit share burns; router enforces net settlement and fee deduction before any transfer to the recipient.
+- Module wiring is guarded by a storage fingerprint and immutable token/collateral vault checks so delegatecall modules cannot corrupt state; reentrancy guards and pause flags apply uniformly because modules execute within the router context.
 
 ## Operational Playbooks
 
@@ -129,6 +146,8 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 
 2. **Rotate routers**
    - Deploy the new router with references to the token and collateral vault.
+   - Deploy matching governance/rebalance modules (or reuse existing ones) using the same token and collateral vault addresses so their immutables and storage fingerprint line up with the router build.
+   - From `DEFAULT_ADMIN_ROLE`, call `setGovernanceModule(address)` and `setRebalanceModule(address)`; the router emits wiring events after verifying fingerprints/immutables. Until these are set, governance/rebalance entry points revert with `ModuleNotSet`.
    - Governance grants the router roles (`setRouter` on the collateral vault; `setRouter` on the token) and assigns appropriate admin/config roles.
    - The router handles adapter bookkeeping internally but still checks `ADAPTER_MANAGER_ROLE` for calls such as `removeAdapter`; keep that role delegated even when the router offboards itself.
    - Optionally migrate vault configs by reusing `setVaultConfigs` on the new router.
@@ -137,15 +156,22 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
    - Adjust withdrawal fee via `router.setWithdrawalFee()` (token proxy emits router events) within the 1% cap.
    - Tune caller incentive with `setReinvestIncentive()` (max 20%).
    - Schedule or automate `reinvestFees()` so fees re-enter strategies regularly.
+   - **Repay shortfalls while paused:** When covering a `settlementShortfall`, first `pause()` the router, move the reimbursement assets on-chain, call `clearShortfall(...)`, and only then `unpause()`. Pausing blocks new share issuance (including solver deposits), preventing opportunistic entrants from capturing the repayment uplift.
+   - **Re-route deposits when a vault caps out:** If the lead auto-deposit vault hits an upstream `maxDeposit` limit, rotate the vault order via `setVaultConfigs` (or remove/re-add the capped vault) so another vault leads the deterministic selector. This keeps ERC4626 deposits and fee reinvests flowing while the capped vault recovers.
 
 4. **Rebalance exposure**
    - Use solver deposit/withdraw functions for one-off targeted moves without changing target allocations.
    - For structural changes, update vault configs or run `rebalanceStrategiesByShares`, `rebalanceStrategiesBySharesViaExternalLiquidity`, or `rebalanceStrategiesByValue` with conservative `min` values.
 
 5. **Offboard a strategy**
-- Mark the vault impaired or suspended so auto-routing stops using it, then migrate positions via solver withdrawals or operator swaps.
-- Call `router.suspendVaultForRemoval(vault)` to zero the target weight, clear default-deposit pointers, and freeze routing before tearing anything down.
-- Once suspended, `removeAdapter` unregisters the strategy share even if balances remain, quarantining dust from NAV. Recover stranded tokens (or reinstall an adapter) before reactivating or onboarding a replacement strategy.
+   - Mark the vault impaired or suspended so auto-routing stops using it, then migrate positions via solver withdrawals or operator swaps.
+   - Call `router.suspendVaultForRemoval(vault)` to zero the target weight, clear default-deposit pointers, and freeze routing before tearing anything down.
+   - Once suspended, `removeAdapter` unregisters the strategy share even if balances remain, quarantining dust from NAV. Recover stranded tokens (or reinstall an adapter) before reactivating or onboarding a replacement strategy.
+
+6. **Rotate a module without swapping the router**
+   - Deploy the replacement module with the same token/collateral vault constructor arguments as the existing module.
+   - Use `setGovernanceModule` or `setRebalanceModule` (as appropriate) to point the router at the new address; incompatible binaries fail the fingerprint check.
+   - Review emitted wiring events and confirm downstream functions (e.g., `setVaultConfigs`, `rebalanceStrategiesByShares`) succeed on a dry run before executing production changes.
 
 > **Invariant coverage:** `foundry/test/dstake/RouterGovernanceInvariant.t.sol` fuzzes the full governance toolchain (`suspendVaultForRemoval`, adapter removal/reinstalls, `setVaultConfigs`, default-share updates) while solver deposit/withdraw routes continue to run. The harness enforces that default vaults stay active, target weights never exceed 100%, withdrawal fee previews match solver share exits, and router NAV/shortfall bookkeeping remain synced with the collateral vault even as adapters churn.
 
@@ -155,6 +181,9 @@ dSTAKE is a yield-bearing stablecoin vault. Users deposit a dSTABLE asset (e.g.,
 
 - Token: `contracts/vaults/dstake/DStakeTokenV2.sol`
 - Router: `contracts/vaults/dstake/DStakeRouterV2.sol`
+- Router governance module: `contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol`
+- Router rebalance module: `contracts/vaults/dstake/DStakeRouterV2RebalanceModule.sol`
+- Router shared storage: `contracts/vaults/dstake/DStakeRouterV2Storage.sol`
 - Collateral Vault: `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`
 - Adapters: `contracts/vaults/dstake/adapters/`
 - Interfaces: `contracts/vaults/dstake/interfaces/`

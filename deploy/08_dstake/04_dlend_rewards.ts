@@ -4,7 +4,11 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DLendRewardManagerConfig, DStakeInstanceConfig } from "../../config/types";
-import { DStakeRewardManagerDLend } from "../../typechain-types";
+import {
+  DStakeRewardManagerDLend__factory as DStakeRewardManagerDLendFactory,
+  EmissionManager__factory as EmissionManagerFactory,
+  RewardsController__factory as RewardsControllerFactory,
+} from "../../typechain-types";
 import {
   DETH_A_TOKEN_WRAPPER_ID,
   DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
@@ -29,6 +33,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log("No dSTAKE configuration found for this network. Skipping dLend rewards manager deployment.");
     return;
   }
+
+  const deployerSigner = await ethers.getSigner(deployer);
 
   // --- Validation Loop ---
   for (const instanceKey in config.dStake) {
@@ -226,14 +232,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // Authorize this manager as a claimer via EmissionManager
-    const deployerSigner = await ethers.getSigner(deployer);
     const emissionManagerDeployment = await deployments.get(EMISSION_MANAGER_ID);
-    const emissionManager = await ethers.getContractAt("EmissionManager", emissionManagerDeployment.address);
+    const emissionManager = EmissionManagerFactory.connect(emissionManagerDeployment.address, deployerSigner);
 
     // Attempt to authorize this manager as a claimer only on first deploy; otherwise verify and skip.
     const emissionOwner = await emissionManager.owner();
     const rewardsController = await emissionManager.getRewardsController();
-    const rewardsControllerContract = await ethers.getContractAt("RewardsController", rewardsController);
+    const rewardsControllerContract = RewardsControllerFactory.connect(rewardsController, deployerSigner);
     const existingClaimer = await rewardsControllerContract.getClaimer(targetStaticATokenWrapperAddress);
     const needsClaimerUpdate = existingClaimer.toLowerCase() !== deployment.address.toLowerCase();
 
@@ -250,7 +255,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // --- Configure Roles ---
     if (deployment.address) {
-      const rewardManager: DStakeRewardManagerDLend = await ethers.getContractAt("DStakeRewardManagerDLend", deployment.address);
+      const rewardManager = DStakeRewardManagerDLendFactory.connect(deployment.address, deployerSigner);
       const DEFAULT_ADMIN_ROLE = await rewardManager.DEFAULT_ADMIN_ROLE();
       const REWARDS_MANAGER_ROLE = await rewardManager.REWARDS_MANAGER_ROLE();
 

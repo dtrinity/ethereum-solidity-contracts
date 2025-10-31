@@ -110,6 +110,36 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: false,
     });
 
+    const governanceModuleDeploymentName = `${routerDeploymentName}_GovernanceModule`;
+    const governanceModuleDeployment = await deploy(governanceModuleDeploymentName, {
+      from: deployer,
+      contract: "DStakeRouterV2GovernanceModule",
+      args: [DStakeTokenDeployment.address, collateralVaultDeployment.address],
+      log: false,
+    });
+
+    const rebalanceModuleDeploymentName = `${routerDeploymentName}_RebalanceModule`;
+    const rebalanceModuleDeployment = await deploy(rebalanceModuleDeploymentName, {
+      from: deployer,
+      contract: "DStakeRouterV2RebalanceModule",
+      args: [DStakeTokenDeployment.address, collateralVaultDeployment.address],
+      log: false,
+    });
+
+    await deployments.execute(
+      routerDeploymentName,
+      { from: deployer, log: false },
+      "setGovernanceModule",
+      governanceModuleDeployment.address,
+    );
+
+    await deployments.execute(
+      routerDeploymentName,
+      { from: deployer, log: false },
+      "setRebalanceModule",
+      rebalanceModuleDeployment.address,
+    );
+
     // NOTE: Governance permissions will be granted in the post-deployment
     // role-migration script. No additional role grants are necessary here.
   }

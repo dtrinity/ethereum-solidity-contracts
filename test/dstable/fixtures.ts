@@ -2,13 +2,11 @@ import hre, { deployments } from "hardhat";
 
 import {
   DETH_AMO_DEBT_TOKEN_ID,
-  DETH_AMO_MANAGER_ID,
   DETH_AMO_MANAGER_V2_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_ISSUER_V2_CONTRACT_ID,
   DETH_REDEEMER_CONTRACT_ID,
   DUSD_AMO_DEBT_TOKEN_ID,
-  DUSD_AMO_MANAGER_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
@@ -24,7 +22,6 @@ export interface DStableFixtureConfig {
   issuerContractId: string;
   redeemerContractId: string;
   collateralVaultContractId: string;
-  amoManagerId: string;
   oracleAggregatorId: string;
   peggedCollaterals: string[];
   yieldBearingCollaterals: string[];
@@ -38,43 +35,10 @@ export const createDStableFixture = (config: DStableFixtureConfig) => {
     await deployments.fixture(); // Start from a fresh deployment
     await deployments.fixture(["local-setup", config.symbol.toLowerCase()]); // Include local-setup to use the mock Oracle
     // IssuerV2 and RedeemerV2 are now deployed as part of the standard ecosystem tags
-
-    const { deployer } = await hre.getNamedAccounts();
-    const { walletAddresses } = await getConfig(hre);
-
-    const { address: issuerAddress } = await deployments.get(config.issuerContractId);
-    const issuer = await hre.ethers.getContractAt("IssuerV2", issuerAddress, await hre.ethers.getSigner(deployer));
-
-    const amoManagerRole = await issuer.AMO_MANAGER_ROLE();
-    if (!(await issuer.hasRole(amoManagerRole, walletAddresses.governanceMultisig))) {
-      await (await issuer.grantRole(amoManagerRole, walletAddresses.governanceMultisig)).wait();
-    }
   });
 };
 
 // Create an AMO fixture factory for any dstable based on its configuration
-export const createDStableAmoFixture = (config: DStableFixtureConfig) => {
-  return deployments.createFixture(async ({ deployments }) => {
-    const standaloneMinimalFixture = createDStableFixture(config);
-    await standaloneMinimalFixture(deployments);
-
-    const { deployer } = await hre.getNamedAccounts();
-    const { address: amoManagerAddress } = await deployments.get(config.amoManagerId);
-
-    const { tokenInfo: dstableInfo } = await getTokenContractForSymbol(hre, deployer, config.symbol);
-
-    const { address: oracleAggregatorAddress } = await deployments.get(config.oracleAggregatorId);
-
-    // Deploy MockAmoVault using standard deployment
-    await hre.deployments.deploy("MockAmoVault", {
-      from: deployer,
-      args: [dstableInfo.address, amoManagerAddress, deployer, deployer, deployer, oracleAggregatorAddress],
-      autoMine: true,
-      log: false,
-    });
-  });
-};
-
 // Create an AMO V2 fixture factory that provisions the debt AMO stack in addition to base setup
 export const createDStableAmoV2Fixture = (config: DStableFixtureConfig) => {
   return deployments.createFixture(async ({ deployments }) => {
@@ -95,7 +59,6 @@ export const DUSD_CONFIG: DStableFixtureConfig = {
   issuerContractId: DUSD_ISSUER_V2_CONTRACT_ID,
   redeemerContractId: DUSD_REDEEMER_CONTRACT_ID,
   collateralVaultContractId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
-  amoManagerId: DUSD_AMO_MANAGER_ID,
   amoManagerV2Id: DUSD_AMO_MANAGER_V2_ID,
   amoDebtTokenId: DUSD_AMO_DEBT_TOKEN_ID,
   oracleAggregatorId: USD_ORACLE_AGGREGATOR_ID,
@@ -108,7 +71,6 @@ export const DETH_CONFIG: DStableFixtureConfig = {
   issuerContractId: DETH_ISSUER_V2_CONTRACT_ID,
   redeemerContractId: DETH_REDEEMER_CONTRACT_ID,
   collateralVaultContractId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  amoManagerId: DETH_AMO_MANAGER_ID,
   amoManagerV2Id: DETH_AMO_MANAGER_V2_ID,
   amoDebtTokenId: DETH_AMO_DEBT_TOKEN_ID,
   oracleAggregatorId: ETH_ORACLE_AGGREGATOR_ID,

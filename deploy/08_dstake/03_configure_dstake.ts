@@ -4,6 +4,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
+import { DStakeTokenV2__factory as DStakeTokenV2Factory } from "../../typechain-types/factories/contracts/vaults/dstake";
+import { DStakeCollateralVaultV2__factory as DStakeCollateralVaultV2Factory } from "../../typechain-types/factories/contracts/vaults/dstake/DStakeCollateralVaultV2.sol";
+import { DStakeRouterV2__factory as DStakeRouterV2Factory } from "../../typechain-types/factories/contracts/vaults/dstake/DStakeRouterV2.sol";
 import {
   DETH_A_TOKEN_WRAPPER_ID,
   DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
@@ -77,16 +80,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // (Permissions remain with the deployer; role migration happens later.)
     // Get Typechain instances
-    const dstakeToken = await ethers.getContractAt(
-      "DStakeTokenV2",
-      dstakeTokenDeployment.address,
-      await ethers.getSigner(deployer), // Use deployer as signer for read calls
-    );
-    const collateralVault = await ethers.getContractAt(
-      "DStakeCollateralVaultV2",
-      collateralVaultDeployment.address,
-      await ethers.getSigner(deployer), // Use deployer as signer for read calls
-    );
+    const dstakeToken = DStakeTokenV2Factory.connect(dstakeTokenDeployment.address, deployerSigner);
+    const collateralVault = DStakeCollateralVaultV2Factory.connect(collateralVaultDeployment.address, deployerSigner);
 
     // --- Configure DStakeToken ---
     const currentRouter = await dstakeToken.router();
@@ -106,7 +101,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // --- Configure DStakeCollateralVault ---
-    const routerContract = await ethers.getContractAt("DStakeRouterV2", routerDeployment.address, deployerSigner);
+    const routerContract = DStakeRouterV2Factory.connect(routerDeployment.address, deployerSigner);
 
     const vaultRouter = await collateralVault.router();
     const vaultRouterRole = await collateralVault.ROUTER_ROLE();

@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const _walletBalanceProvider = await deploy(WALLET_BALANCE_PROVIDER_ID, {
+  await deploy(WALLET_BALANCE_PROVIDER_ID, {
     from: deployer,
     args: [],
     log: true,

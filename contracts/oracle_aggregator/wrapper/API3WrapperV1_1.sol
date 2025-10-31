@@ -1,236 +1,59 @@
 // SPDX-License-Identifier: MIT
+/* ———————————————————————————————————————————————————————————————————————————————— *
+ *    _____     ______   ______     __     __   __     __     ______   __  __       *
+ *   /\  __-.  /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \      *
+ *   \ \ \/\ \ \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \     *
+ *    \ \____-    \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\    *
+ *     \/____/     \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/    *
+ *                                                                                  *
+ * ————————————————————————————————— dtrinity.org ————————————————————————————————— *
+ *                                                                                  *
+ *                                         ▲                                        *
+ *                                        ▲ ▲                                       *
+ *                                                                                  *
+ * ———————————————————————————————————————————————————————————————————————————————— *
+ * dTRINITY Protocol: https://github.com/dtrinity                                   *
+ * ———————————————————————————————————————————————————————————————————————————————— */
+
 pragma solidity ^0.8.20;
 
-import { OracleBaseV1_1 } from "../OracleBaseV1_1.sol";
-import { IOracleWrapperV1_1 } from "../interface/IOracleWrapperV1_1.sol";
-import { IApi3Proxy } from "../interface/api3/IApi3Proxy.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IProxy } from "../interface/api3/IProxy.sol";
+import "../interface/api3/BaseAPI3WrapperV1_1.sol";
 
-contract API3WrapperV1_1 is OracleBaseV1_1, IOracleWrapperV1_1 {
-    using SafeCast for uint256;
-    using SafeCast for int256;
+/**
+ * @title API3WrapperV1_1
+ * @dev Implementation of IAPI3Wrapper for standard API3 oracles
+ */
+contract API3WrapperV1_1 is BaseAPI3WrapperV1_1 {
+    mapping(address => IProxy) public assetToProxy;
 
-    uint16 public constant MAX_BPS = 10_000;
+    error ProxyNotSet(address asset);
+    error ProxyAddressZero();
+    error ProxyNotContract(address proxy);
 
-    struct ProxyConfig {
-        address proxy;
-        uint8 decimals;
-        uint256 decimalsFactor;
-        AssetConfig risk;
-        PriceData lastGoodPrice;
+    constructor(address baseCurrency, uint256 _baseCurrencyUnit) BaseAPI3WrapperV1_1(baseCurrency, _baseCurrencyUnit) {}
+
+    function getPriceInfo(address asset) public view virtual override returns (uint256 price, bool isAlive) {
+        IProxy api3Proxy = assetToProxy[asset];
+        if (address(api3Proxy) == address(0)) {
+            revert ProxyNotSet(asset);
+        }
+
+        (int224 value, uint32 timestamp) = api3Proxy.read();
+        price = value > 0 ? uint256(uint224(value)) : 0;
+
+        isAlive = price > 0 && timestamp + API3_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
+
+        price = _convertToBaseCurrencyUnit(price);
     }
 
-    mapping(address => ProxyConfig) private _proxyConfigs;
-
-    event ProxyConfigured(
-        address indexed asset,
-        address indexed proxy,
-        uint8 decimals,
-        uint64 heartbeat,
-        uint64 maxStaleTime,
-        uint16 maxDeviationBps,
-        uint192 minAnswer,
-        uint192 maxAnswer
-    );
-    event ProxyRemoved(address indexed asset, address indexed proxy);
-    event ProxyHeartbeatUpdated(address indexed asset, uint64 previousHeartbeat, uint64 newHeartbeat);
-    event ProxyBoundsUpdated(address indexed asset, uint192 minAnswer, uint192 maxAnswer);
-    event ProxyDeviationUpdated(address indexed asset, uint16 previousDeviationBps, uint16 newDeviationBps);
-    event ProxyObservationRecorded(address indexed asset, uint192 price, uint64 updatedAt);
-
-    error ProxyNotConfigured(address asset);
-    error ProxyNotContract(address proxy);
-    error InvalidProxyDecimals(uint8 decimals);
-    error ProxyPriceNotAlive(address asset);
-    error InvalidDeviationSetting();
-    error InvalidAnswerBounds(uint192 minAnswer, uint192 maxAnswer);
-
-    constructor(
-        address baseCurrency_,
-        uint256 baseCurrencyUnit_,
-        address initialAdmin
-    ) OracleBaseV1_1(baseCurrency_, baseCurrencyUnit_, initialAdmin) {}
-
-    function configureProxy(
-        address asset,
-        address proxy,
-        uint8 decimals,
-        uint64 heartbeat,
-        uint64 maxStaleTime,
-        uint16 maxDeviationBps,
-        uint192 minAnswer,
-        uint192 maxAnswer
-    ) external onlyRole(ORACLE_MANAGER_ROLE) {
+    function setProxy(address asset, address proxy) external onlyRole(ORACLE_MANAGER_ROLE) {
+        if (proxy == address(0)) {
+            revert ProxyAddressZero();
+        }
         if (proxy.code.length == 0) {
             revert ProxyNotContract(proxy);
         }
-        if (decimals == 0 || decimals > 24) {
-            revert InvalidProxyDecimals(decimals);
-        }
-        if (maxDeviationBps > MAX_BPS) {
-            revert InvalidDeviationSetting();
-        }
-        if (maxAnswer != 0 && minAnswer > maxAnswer) {
-            revert InvalidAnswerBounds(minAnswer, maxAnswer);
-        }
-        heartbeat = _requireConfiguredHeartbeat(heartbeat);
-
-        ProxyConfig storage config = _proxyConfigs[asset];
-        config.proxy = proxy;
-        config.decimals = decimals;
-        config.decimalsFactor = 10 ** uint256(decimals);
-        config.risk.heartbeat = heartbeat;
-        config.risk.maxStaleTime = maxStaleTime;
-        config.risk.maxDeviationBps = maxDeviationBps;
-        config.risk.minAnswer = minAnswer;
-        config.risk.maxAnswer = maxAnswer;
-        config.risk.exists = true;
-        config.lastGoodPrice = PriceData({ price: 0, updatedAt: 0, isAlive: false });
-
-        emit ProxyConfigured(asset, proxy, decimals, heartbeat, maxStaleTime, maxDeviationBps, minAnswer, maxAnswer);
-    }
-
-    function removeProxy(address asset) external onlyRole(ORACLE_MANAGER_ROLE) {
-        ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.risk.exists) {
-            revert ProxyNotConfigured(asset);
-        }
-        address previousProxy = config.proxy;
-        delete _proxyConfigs[asset];
-        emit ProxyRemoved(asset, previousProxy);
-    }
-
-    function updateProxyHeartbeat(address asset, uint64 newHeartbeat) external onlyRole(ORACLE_MANAGER_ROLE) {
-        ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.risk.exists) {
-            revert ProxyNotConfigured(asset);
-        }
-        uint64 previous = config.risk.heartbeat;
-        newHeartbeat = _requireConfiguredHeartbeat(newHeartbeat);
-        config.risk.heartbeat = newHeartbeat;
-        emit ProxyHeartbeatUpdated(asset, previous, newHeartbeat);
-    }
-
-    function updateProxyBounds(
-        address asset,
-        uint192 minAnswer,
-        uint192 maxAnswer
-    ) external onlyRole(ORACLE_MANAGER_ROLE) {
-        ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.risk.exists) {
-            revert ProxyNotConfigured(asset);
-        }
-        config.risk.minAnswer = minAnswer;
-        config.risk.maxAnswer = maxAnswer;
-        emit ProxyBoundsUpdated(asset, minAnswer, maxAnswer);
-    }
-
-    function updateProxyDeviation(address asset, uint16 newDeviationBps) external onlyRole(ORACLE_MANAGER_ROLE) {
-        if (newDeviationBps > MAX_BPS) {
-            revert InvalidDeviationSetting();
-        }
-        ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.risk.exists) {
-            revert ProxyNotConfigured(asset);
-        }
-        uint16 previous = config.risk.maxDeviationBps;
-        config.risk.maxDeviationBps = newDeviationBps;
-        emit ProxyDeviationUpdated(asset, previous, newDeviationBps);
-    }
-
-    function recordLastGoodPrice(address asset) external onlyRole(ORACLE_MANAGER_ROLE) returns (PriceData memory) {
-        PriceData memory data = getPriceInfo(asset);
-        if (!data.isAlive) {
-            revert ProxyPriceNotAlive(asset);
-        }
-        ProxyConfig storage config = _proxyConfigs[asset];
-        config.lastGoodPrice = data;
-        emit ProxyObservationRecorded(asset, data.price, data.updatedAt);
-        return data;
-    }
-
-    function getAssetPrice(address asset) external view override returns (uint256) {
-        PriceData memory data = getPriceInfo(asset);
-        if (!data.isAlive) {
-            revert ProxyPriceNotAlive(asset);
-        }
-        return data.price;
-    }
-
-    function getPriceInfo(address asset) public view override returns (PriceData memory) {
-        ProxyConfig storage config = _proxyConfigs[asset];
-        if (!config.risk.exists) {
-            revert ProxyNotConfigured(asset);
-        }
-
-        (int224 rawValue, uint256 timestamp) = IApi3Proxy(config.proxy).read();
-        PriceData memory data;
-        bool alive = true;
-
-        if (rawValue <= 0) {
-            alive = false;
-        }
-        if (timestamp == 0 || timestamp > block.timestamp) {
-            alive = false;
-        }
-
-        uint64 updatedAt = timestamp.toUint64();
-        uint256 normalizedPrice = 0;
-
-        if (alive) {
-            uint256 magnitude = uint256(int256(rawValue));
-            uint256 decimalsFactor = config.decimalsFactor;
-            normalizedPrice = Math.mulDiv(magnitude, BASE_CURRENCY_UNIT(), decimalsFactor);
-
-            if (config.risk.minAnswer != 0 && normalizedPrice < config.risk.minAnswer) {
-                alive = false;
-            }
-            if (config.risk.maxAnswer != 0 && normalizedPrice > config.risk.maxAnswer) {
-                alive = false;
-            }
-
-            uint64 heartbeat = _requireConfiguredHeartbeat(config.risk.heartbeat);
-            uint64 staleLimit = config.risk.maxStaleTime == 0 ? DEFAULT_MAX_STALE_TIME : config.risk.maxStaleTime;
-            if (block.timestamp - updatedAt > heartbeat + staleLimit) {
-                alive = false;
-            }
-
-            if (alive && config.risk.maxDeviationBps != 0 && config.lastGoodPrice.price != 0) {
-                uint192 referencePrice = config.lastGoodPrice.price;
-                uint256 difference = normalizedPrice > referencePrice
-                    ? normalizedPrice - referencePrice
-                    : referencePrice - normalizedPrice;
-                uint256 deviationBps = Math.mulDiv(difference, MAX_BPS, referencePrice);
-                if (deviationBps > config.risk.maxDeviationBps) {
-                    alive = false;
-                }
-            }
-        } else {
-            normalizedPrice = rawValue > 0
-                ? Math.mulDiv(uint256(int256(rawValue)), BASE_CURRENCY_UNIT(), config.decimalsFactor)
-                : 0;
-        }
-
-        if (normalizedPrice > type(uint192).max) {
-            alive = false;
-        }
-
-        data.price = normalizedPrice.toUint192();
-        data.updatedAt = updatedAt;
-        data.isAlive = alive;
-        return data;
-    }
-
-    function proxyConfig(address asset) external view returns (ProxyConfig memory) {
-        return _proxyConfigs[asset];
-    }
-
-    function BASE_CURRENCY() public view override(OracleBaseV1_1, IOracleWrapperV1_1) returns (address) {
-        return OracleBaseV1_1.BASE_CURRENCY();
-    }
-
-    function BASE_CURRENCY_UNIT() public view override(OracleBaseV1_1, IOracleWrapperV1_1) returns (uint256) {
-        return OracleBaseV1_1.BASE_CURRENCY_UNIT();
+        assetToProxy[asset] = IProxy(proxy);
     }
 }

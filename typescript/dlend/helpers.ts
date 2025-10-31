@@ -35,12 +35,18 @@ export async function getPoolLibraries(hre: HardhatRuntimeEnvironment): Promise<
  * @param chunkSize - The size of each chunk
  * @returns The array of chunks
  */
-export const chunk = <T>(arr: Array<T>, chunkSize: number): Array<Array<T>> => {
-  return arr.reduce(
-    (prevVal: any, currVal: any, currIndx: number, array: Array<T>) =>
-      !(currIndx % chunkSize) ? prevVal.concat([array.slice(currIndx, currIndx + chunkSize)]) : prevVal,
-    [],
-  );
+export const chunk = <T>(arr: T[], chunkSize: number): T[][] => {
+  if (chunkSize <= 0) {
+    throw new Error("chunk size must be greater than 0");
+  }
+
+  const result: T[][] = [];
+
+  for (let index = 0; index < arr.length; index += chunkSize) {
+    result.push(arr.slice(index, index + chunkSize));
+  }
+
+  return result;
 };
 
 /**

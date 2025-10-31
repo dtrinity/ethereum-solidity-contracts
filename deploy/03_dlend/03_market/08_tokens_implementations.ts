@@ -109,7 +109,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (!isStableDebtInitialized) {
     try {
-      const _initStableDebtTokenResponse = await stableDebtTokenContract.initialize(
+      await stableDebtTokenContract.initialize(
         poolAddress, // initializingPool
         ZeroAddress, // underlyingAsset
         ZeroAddress, // incentivesController
@@ -154,7 +154,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (!isVariableDebtInitialized) {
     try {
-      const _initVariableDebtTokenResponse = await variableDebtTokenContract.initialize(
+      await variableDebtTokenContract.initialize(
         poolAddress, // initializingPool
         ZeroAddress, // underlyingAsset
         ZeroAddress, // incentivesController

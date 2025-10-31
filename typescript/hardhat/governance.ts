@@ -17,16 +17,11 @@ import { isMainnet } from "./deploy";
  *   continues without blocking to keep local/test deployments progressing.
  */
 export class GovernanceExecutor {
-  private readonly hre: HardhatRuntimeEnvironment;
-  private readonly signer: Signer;
   private readonly safeManager?: SafeManager;
   private readonly transactions: SafeTransactionData[] = [];
   readonly useSafe: boolean;
 
   constructor(hre: HardhatRuntimeEnvironment, signer: Signer, safeConfig?: SafeConfig) {
-    this.hre = hre;
-    this.signer = signer;
-
     const envForce = process.env.USE_SAFE?.toLowerCase() === "true";
     // Enable Safe governance on mainnet by default (using shared helper), or when forced via env
     const isMainnetNetwork = isMainnet(hre.network.name);

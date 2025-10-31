@@ -16,8 +16,17 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node", "hardhat", "@nomicfoundation/hardhat-ethers", "@nomicfoundation/hardhat-chai-matchers", "hardhat-deploy"]
   },
-  "include": ["scripts/**/*", "lib/**/*", "configs/**/*.ts", "types/**/*.d.ts"],
+  "include": [
+    "hardhat.config.ts",
+    "scripts/**/*.ts",
+    "deploy/**/*.ts",
+    "config/**/*.ts",
+    "typescript/**/*.ts",
+    "lib/**/*.ts",
+    "types/**/*.d.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

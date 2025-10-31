@@ -1,9 +1,7 @@
-import { ethers } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getConfig } from "../config/networks/katana_mainnet";
+import hre, { ethers } from "hardhat";
+import type { Config, OracleAggregatorConfig } from "../config/types";
+import { getConfig } from "../config/config";
 import { ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../typescript/oracle_aggregator/constants";
-
-const hre = require("hardhat") as HardhatRuntimeEnvironment;
 
 // API3 Proxy interface for reading price data
 const API3_PROXY_ABI = [
@@ -106,7 +104,7 @@ function analyzeScaling(
 /**
  * Get human-readable symbol from asset address
  */
-function getAssetSymbol(address: string, config: any): string {
+function getAssetSymbol(address: string, config: Config): string {
   const tokenMap: Record<string, string> = {
     [config.tokenAddresses.frxUSD]: "frxUSD",
     [config.tokenAddresses.sfrxUSD]: "sfrxUSD",
@@ -128,7 +126,9 @@ async function extractAPI3Feeds(): Promise<FeedInfo[]> {
   const config = await getConfig(hre);
   const feeds: FeedInfo[] = [];
 
-  for (const [baseCurrency, aggregatorConfig] of Object.entries(config.oracleAggregators)) {
+  const aggregatorEntries = Object.entries(config.oracleAggregators) as Array<[string, OracleAggregatorConfig]>;
+
+  for (const [baseCurrency, aggregatorConfig] of aggregatorEntries) {
     console.log(`\n🔍 Analyzing ${baseCurrency} Oracle Aggregator:`);
 
     const { api3OracleAssets } = aggregatorConfig;

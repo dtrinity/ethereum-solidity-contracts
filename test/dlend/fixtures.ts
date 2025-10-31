@@ -141,7 +141,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
 
   // Mint dUSD
   const dusdIssuerAddress = (await hre.deployments.get(DUSD_ISSUER_V2_CONTRACT_ID)).address;
-  const dusdIssuer = await hre.ethers.getContractAt("IssuerV2", dusdIssuerAddress);
+  const dusdIssuer = await hre.ethers.getContractAt("IssuerV2_1", dusdIssuerAddress);
   const usdOracleAddress = (await hre.deployments.get(USD_ORACLE_AGGREGATOR_ID)).address;
   const usdOracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", usdOracleAddress);
 
@@ -163,7 +163,7 @@ async function setupDLendFixture(): Promise<DLendFixtureResult> {
 
   // Then mint dETH
   const dsIssuerAddress = (await hre.deployments.get(DETH_ISSUER_V2_CONTRACT_ID)).address;
-  const dsIssuer = await hre.ethers.getContractAt("IssuerV2", dsIssuerAddress);
+  const dsIssuer = await hre.ethers.getContractAt("IssuerV2_1", dsIssuerAddress);
   const ethOracleAddress = (await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID)).address;
   const ethOracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", ethOracleAddress);
 

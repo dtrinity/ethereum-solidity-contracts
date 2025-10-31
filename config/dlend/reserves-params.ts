@@ -100,3 +100,22 @@ export const strategySFRXUSD: IReserveParams = {
   liquidationProtocolFee: "1000",
   strategy: rateStrategyMediumLiquidityStable,
 };
+
+// sfrxETH reserve parameters - collateral only
+export const strategySFRXETH: IReserveParams = {
+  aTokenImpl: "ATokenImpl",
+  reserveFactor: "1500", // 15%
+  supplyCap: "500", // 500 sfrxETH
+  borrowingEnabled: false, // Depositable collateral but cannot be borrowed
+  stableBorrowRateEnabled: false,
+  reserveDecimals: "18",
+  borrowCap: "0",
+  debtCeiling: "0",
+  borrowableIsolation: false,
+  flashLoanEnabled: true,
+  baseLTVAsCollateral: "7000", // 70%
+  liquidationThreshold: "8000", // 80%
+  liquidationBonus: "10750", // 7.5%
+  liquidationProtocolFee: "1000",
+  strategy: rateStrategyMediumLiquidityVolatile,
+};

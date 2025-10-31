@@ -1,11 +1,13 @@
-import "@typechain/hardhat";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
+import "hardhat-contract-sizer";
 import "dotenv/config";
+import "@typechain/hardhat";
 
+import type { Signer, TransactionRequest, TransactionResponse } from "ethers";
 import { extendEnvironment, HardhatUserConfig } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -14,20 +16,22 @@ import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Wrapper function to add a delay to transactions
+const wrapSigner = <TSigner extends Signer>(signer: TSigner, hre: HardhatRuntimeEnvironment): TSigner => {
+  const originalSendTransaction = signer.sendTransaction.bind(signer);
 
-const wrapSigner = (signer: any, hre: HardhatRuntimeEnvironment): any => {
-  const originalSendTransaction = signer.sendTransaction;
-
-  signer.sendTransaction = async (tx: any): Promise<any> => {
-    const result = await originalSendTransaction.apply(signer, [tx]);
+  const wrappedSendTransaction: (tx: TransactionRequest) => Promise<TransactionResponse> = async (tx) => {
+    const result = await originalSendTransaction(tx);
 
     if (hre.network.live) {
-      const sleepTime = 30000; // 30 seconds to reduce flakiness from eventual consistency
+      const sleepTime = 20000; // 20 seconds to reduce flakiness from eventual consistency
       console.log(`\n>>> Waiting ${sleepTime}ms after transaction to ${result.to || "a new contract"}`);
       await sleep(sleepTime);
     }
     return result;
   };
+
+  (signer as TSigner & { sendTransaction: typeof wrappedSendTransaction }).sendTransaction = wrappedSendTransaction;
+
   return signer;
 };
 
@@ -35,18 +39,18 @@ extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   // Wrap hre.ethers.getSigner
   const originalGetSigner = hre.ethers.getSigner;
 
-  hre.ethers.getSigner = async (address): Promise<any> => {
+  hre.ethers.getSigner = (async (address) => {
     const signer = await originalGetSigner(address);
     return wrapSigner(signer, hre);
-  };
+  }) as typeof hre.ethers.getSigner;
 
   // Wrap hre.ethers.getSigners
   const originalGetSigners = hre.ethers.getSigners;
 
-  hre.ethers.getSigners = async (): Promise<any[]> => {
+  hre.ethers.getSigners = (async () => {
     const signers = await originalGetSigners();
     return signers.map((signer) => wrapSigner(signer, hre));
-  };
+  }) as typeof hre.ethers.getSigners;
 });
 
 /* eslint-disable camelcase -- Network names follow specific naming conventions that require snake_case */
@@ -104,8 +108,48 @@ const config: HardhatUserConfig = {
           viaIR: true,
         },
       },
+      "contracts/vaults/dstake/DStakeRouterV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/DStakeTokenV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/DStakeCollateralVaultV2.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
       // Contracts that import DStakeRouterDLend
       "contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+      "contracts/vaults/dstake/rewards/DStakeRewardManagerMetaMorpho.sol": {
         version: "0.8.20",
         settings: {
           optimizer: {
@@ -203,6 +247,12 @@ const config: HardhatUserConfig = {
   sourcify: {
     // Just here to mute warning
     enabled: false,
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    only: ["DStakeRouterV2"],
   },
 };
 /* eslint-enable camelcase -- Re-enabling camelcase rule after network definitions */

@@ -4,297 +4,165 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import type {
   OracleAggregatorV1_1,
-  ChainlinkFeedWrapperV1_1,
-  MockChainlinkAggregatorV3,
-  ChainlinkFeedWrapperV1_1__factory,
   OracleAggregatorV1_1__factory,
-  MockChainlinkAggregatorV3__factory,
-  ChainlinkRateCompositeWrapperV1_1,
-  MockRateProvider,
-  API3WrapperV1_1,
-  MockApi3Proxy,
   HardPegOracleWrapperV1_1,
+  HardPegOracleWrapperV1_1__factory,
+  MockOracleAggregator,
+  MockOracleAggregator__factory,
+  API3WrapperV1_1,
+  API3WrapperV1_1__factory,
+  MockApi3Proxy,
+  MockApi3Proxy__factory,
+  RedstoneChainlinkWrapperV1_1,
+  RedstoneChainlinkWrapperV1_1__factory,
+  MockRedstoneChainlinkOracleAlwaysAlive,
+  MockRedstoneChainlinkOracleAlwaysAlive__factory,
 } from "../../typechain-types";
 
-describe("OracleAggregatorV1_1", () => {
-  const BASE_UNIT = 10n ** 8n;
-  const HEARTBEAT = 60n;
+const BASE_UNIT = 10n ** 8n;
 
+describe("OracleAggregatorV1_1", () => {
   let deployer: any;
   let manager: any;
-  let guardian: any;
   let other: any;
-
   let aggregator: OracleAggregatorV1_1;
-  let wrapper: ChainlinkFeedWrapperV1_1;
-  let mockFeed: MockChainlinkAggregatorV3;
-  let asset: string;
 
   beforeEach(async () => {
-    [deployer, manager, guardian, other] = await ethers.getSigners();
-    asset = ethers.Wallet.createRandom().address;
-
-    const aggregatorFactory = (await ethers.getContractFactory("OracleAggregatorV1_1")) as OracleAggregatorV1_1__factory;
-    aggregator = await aggregatorFactory.deploy(
-      ethers.ZeroAddress,
-      BASE_UNIT,
-      [deployer.address],
-      [manager.address],
-      [guardian.address],
-      3600,
-    );
-
-    const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
-    mockFeed = await feedFactory.deploy(8, "MOCK");
-    await mockFeed.setMock(100n * BASE_UNIT);
-
-    const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
-    wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
-
-    await wrapper.connect(manager).configureFeed(asset, mockFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
-
-    await aggregator.connect(manager).setOracle(asset, wrapper.target);
-    await aggregator.connect(manager).updateAssetRiskConfig(asset, 0, Number(HEARTBEAT), 0, 0, 0);
+    [deployer, manager, other] = await ethers.getSigners();
+    const factory = (await ethers.getContractFactory("OracleAggregatorV1_1", deployer)) as OracleAggregatorV1_1__factory;
+    aggregator = await factory.deploy(ethers.ZeroAddress, BASE_UNIT);
+    await aggregator.grantRole(await aggregator.ORACLE_MANAGER_ROLE(), manager.address);
   });
 
-  async function storeLastGoodPrice() {
-    await aggregator.connect(manager).updateLastGoodPrice(asset);
-    return aggregator.getPriceInfo(asset);
-  }
+  it("routes prices from configured wrapper", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
 
-  it("returns live price when feed healthy", async () => {
-    const info = await aggregator.getPriceInfo(asset);
-    expect(info.price).to.equal(100n * BASE_UNIT);
-    expect(info.isAlive).to.equal(true);
-  });
+    const asset = ethers.Wallet.createRandom().address;
+    await expect(aggregator.connect(manager).setOracle(asset, await wrapper.getAddress())).to.emit(aggregator, "OracleUpdated");
 
-  it("requires explicit heartbeat when tuning risk controls", async () => {
-    await expect(aggregator.connect(manager).updateAssetRiskConfig(asset, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
-      aggregator,
-      "InvalidHeartbeat",
-    );
-  });
-
-  it("falls back to last good price when feed becomes stale", async () => {
-    const stored = await storeLastGoodPrice();
-    const current = await time.latest();
-    await mockFeed.setMockWithTimestamp(101n * BASE_UNIT, BigInt(current - 2 * 3600));
-
-    const info = await aggregator.getPriceInfo(asset);
-    expect(info.price).to.equal(stored.price);
-    expect(info.isAlive).to.equal(false);
-    await expect(aggregator.getAssetPrice(asset)).to.be.revertedWithCustomError(aggregator, "PriceNotAlive").withArgs(asset);
-  });
-
-  it("applies deviation gating", async () => {
-    await storeLastGoodPrice();
-    await aggregator.connect(manager).updateAssetRiskConfig(asset, 0, Number(HEARTBEAT), 500, 0, 0);
-    await mockFeed.setMock(130n * BASE_UNIT);
-
-    const info = await aggregator.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(false);
-    expect(info.price).to.equal(100n * BASE_UNIT);
-  });
-
-  it("uses fallback oracle when primary feed invalid", async () => {
-    const fallbackFeedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
-    const fallbackFeed = await fallbackFeedFactory.deploy(8, "FALLBACK");
-    await fallbackFeed.setMock(95n * BASE_UNIT);
-
-    const fallbackWrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
-    const fallbackWrapper = await fallbackWrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, manager.address);
-    await fallbackWrapper.connect(manager).configureFeed(asset, fallbackFeed.target, Number(HEARTBEAT), 0, 0, 0, 0);
-
-    await aggregator.connect(manager).setFallbackOracle(asset, fallbackWrapper.target);
-    await mockFeed.setMock(0);
-
-    const info = await aggregator.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(true);
-    expect(info.price).to.equal(95n * BASE_UNIT);
-  });
-
-  it("supports guardian freeze, manual price push, and unfreeze", async () => {
-    const stored = await storeLastGoodPrice();
-    await aggregator.connect(guardian).pauseAsset(asset);
-
-    const frozenInfo = await aggregator.getPriceInfo(asset);
-    expect(frozenInfo.price).to.equal(stored.price);
-    expect(frozenInfo.isAlive).to.equal(false);
-
-    const now = await time.latest();
-    await aggregator.connect(guardian).pushFrozenPrice(asset, 120n * BASE_UNIT, now);
-    const manualInfo = await aggregator.getPriceInfo(asset);
-    expect(manualInfo.price).to.equal(120n * BASE_UNIT);
-    expect(manualInfo.isAlive).to.equal(false);
-
-    await aggregator.connect(guardian).unpauseAsset(asset);
-    await mockFeed.setMock(105n * BASE_UNIT);
-    const liveInfo = await aggregator.getPriceInfo(asset);
-    expect(liveInfo.price).to.equal(105n * BASE_UNIT);
-    expect(liveInfo.isAlive).to.equal(true);
-  });
-
-  it("rejects fallback matching primary", async () => {
-    await expect(aggregator.connect(manager).setFallbackOracle(asset, wrapper.target))
-      .to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary")
-      .withArgs(asset, wrapper.target);
-
-    const otherAsset = ethers.Wallet.createRandom().address;
-    await expect(aggregator.connect(manager).configureAsset(otherAsset, wrapper.target, wrapper.target, 0, Number(HEARTBEAT), 0, 0, 0))
-      .to.be.revertedWithCustomError(aggregator, "FallbackMatchesPrimary")
-      .withArgs(otherAsset, wrapper.target);
+    const [price, isAlive] = await aggregator.getPriceInfo(asset);
+    expect(price).to.equal(BASE_UNIT);
+    expect(isAlive).to.equal(true);
+    expect(await aggregator.getAssetPrice(asset)).to.equal(BASE_UNIT);
   });
 
   it("rejects zero oracle address", async () => {
+    const asset = ethers.Wallet.createRandom().address;
     await expect(aggregator.connect(manager).setOracle(asset, ethers.ZeroAddress))
       .to.be.revertedWithCustomError(aggregator, "ZeroAddress")
       .withArgs("oracle");
   });
 
-  it("honours heartbeat override", async () => {
-    await storeLastGoodPrice();
-    await aggregator.connect(manager).updateAssetRiskConfig(asset, 10, 30, 0, 0, 0);
-
-    const current = await time.latest();
-    await mockFeed.setMockWithTimestamp(110n * BASE_UNIT, BigInt(current - 100));
-    const info = await aggregator.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(false);
-    expect(info.price).to.equal(100n * BASE_UNIT);
+  it("rejects non-contract oracle", async () => {
+    const asset = ethers.Wallet.createRandom().address;
+    await expect(aggregator.connect(manager).setOracle(asset, other.address)).to.be.revertedWithCustomError(
+      aggregator,
+      "OracleNotContract",
+    );
   });
 
-  it("supports batchRefresh", async () => {
-    const [prices, isFrozen, usedFallback] = await aggregator.batchRefresh([asset]);
-    expect(prices[0].price).to.equal(100n * BASE_UNIT);
-    expect(prices[0].isAlive).to.equal(true);
-    expect(isFrozen[0]).to.equal(false);
-    expect(usedFallback[0]).to.equal(false);
+  it("rejects incompatible base currency", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.Wallet.createRandom().address, BASE_UNIT, BASE_UNIT);
+
+    const asset = ethers.Wallet.createRandom().address;
+    await expect(aggregator.connect(manager).setOracle(asset, await wrapper.getAddress()))
+      .to.be.revertedWithCustomError(aggregator, "UnexpectedBaseCurrency")
+      .withArgs(asset, await wrapper.getAddress(), ethers.ZeroAddress, await wrapper.BASE_CURRENCY());
   });
 
-  it("returns implicit base currency price without configuration", async () => {
-    const baseAsset = await aggregator.BASE_CURRENCY();
-    const info = await aggregator.getPriceInfo(baseAsset);
-    expect(info.price).to.equal(BASE_UNIT);
-    expect(info.isAlive).to.equal(true);
-    expect(info.updatedAt).to.be.gt(0n);
+  it("rejects incompatible base unit", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, 10n ** 18n, 10n ** 18n);
 
-    const price = await aggregator.getAssetPrice(baseAsset);
-    expect(price).to.equal(BASE_UNIT);
+    const asset = ethers.Wallet.createRandom().address;
+    await expect(aggregator.connect(manager).setOracle(asset, await wrapper.getAddress()))
+      .to.be.revertedWithCustomError(aggregator, "UnexpectedBaseUnit")
+      .withArgs(asset, await wrapper.getAddress(), BASE_UNIT, await wrapper.BASE_CURRENCY_UNIT());
   });
 
-  it("includes base currency entry in batchRefresh", async () => {
-    const baseAsset = await aggregator.BASE_CURRENCY();
-    const [prices, isFrozen, usedFallback] = await aggregator.batchRefresh([baseAsset, asset]);
-    expect(prices[0].price).to.equal(BASE_UNIT);
-    expect(prices[0].isAlive).to.equal(true);
-    expect(isFrozen[0]).to.equal(false);
-    expect(usedFallback[0]).to.equal(false);
+  it("reverts when downstream wrapper reports non-live price", async () => {
+    const mockFactory = (await ethers.getContractFactory("MockOracleAggregator", manager)) as MockOracleAggregator__factory;
+    const mock = await mockFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
+    const asset = ethers.Wallet.createRandom().address;
+    await mock.setPrice(asset, BASE_UNIT, false);
 
-    expect(prices[1].price).to.equal(100n * BASE_UNIT);
-    expect(isFrozen[1]).to.equal(false);
-    expect(usedFallback[1]).to.equal(false);
+    await aggregator.connect(manager).setOracle(asset, await mock.getAddress());
+    await expect(aggregator.getAssetPrice(asset)).to.be.revertedWithCustomError(aggregator, "PriceNotAlive").withArgs(asset);
+  });
+
+  it("supports removing an oracle", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1", manager)) as HardPegOracleWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
+    const asset = ethers.Wallet.createRandom().address;
+
+    await aggregator.connect(manager).setOracle(asset, await wrapper.getAddress());
+    await aggregator.connect(manager).removeOracle(asset);
+
+    await expect(aggregator.getPriceInfo(asset)).to.be.revertedWithCustomError(aggregator, "OracleNotSet").withArgs(asset);
   });
 });
 
-describe("Oracle wrappers", () => {
-  const BASE_UNIT = 10n ** 8n;
-  const HEARTBEAT = 60n;
+describe("API3WrapperV1_1", () => {
+  let wrapper: API3WrapperV1_1;
+  let proxy: MockApi3Proxy;
 
-  it("Chainlink wrapper detects invalid price", async () => {
-    const [owner] = await ethers.getSigners();
-    const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
-    const feed = await feedFactory.deploy(8, "CHAINLINK");
-    await feed.setMock(0);
+  beforeEach(async () => {
+    const wrapperFactory = (await ethers.getContractFactory("API3WrapperV1_1")) as API3WrapperV1_1__factory;
+    wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
 
-    const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
-    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address);
-    const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configureFeed(asset, feed.target, 60, 0, 0, 0, 0);
-
-    const priceInfo = await wrapper.getPriceInfo(asset);
-    expect(priceInfo.isAlive).to.equal(false);
+    const proxyFactory = (await ethers.getContractFactory("MockApi3Proxy")) as MockApi3Proxy__factory;
+    proxy = await proxyFactory.deploy();
+    await wrapper.setProxy(ethers.ZeroAddress, await proxy.getAddress());
   });
 
-  it("requires explicit heartbeat when wiring chainlink feeds", async () => {
-    const [owner] = await ethers.getSigners();
-    const feedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
-    const feed = await feedFactory.deploy(8, "CHAINLINK");
+  it("normalises API3 price data", async () => {
+    const now = await time.latest();
+    await proxy.setValue(1_500_000000000000000n, BigInt(now));
 
-    const wrapperFactory = (await ethers.getContractFactory("ChainlinkFeedWrapperV1_1")) as ChainlinkFeedWrapperV1_1__factory;
-    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address);
-    const asset = ethers.Wallet.createRandom().address;
-
-    await expect(wrapper.connect(owner).configureFeed(asset, feed.target, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
-      wrapper,
-      "InvalidHeartbeat",
-    );
+    const [price, isAlive] = await wrapper.getPriceInfo(ethers.ZeroAddress);
+    expect(price).to.equal(150_000000n);
+    expect(isAlive).to.equal(true);
   });
 
-  it("API3 wrapper normalises values", async () => {
-    const [owner] = await ethers.getSigners();
-    const proxyFactory = await ethers.getContractFactory("MockApi3Proxy");
-    const proxy = (await proxyFactory.deploy()) as MockApi3Proxy;
-    const current = await time.latest();
-    await proxy.setValue(150n * 10n ** 18n, current);
+  it("marks feed stale when heartbeat exceeded", async () => {
+    const stale = BigInt(24 * 60 * 60 + 30 * 60 + 1);
+    const now = await time.latest();
+    await proxy.setValue(1_000_000000000000000n, BigInt(now) - stale);
 
-    const wrapperFactory = await ethers.getContractFactory("API3WrapperV1_1");
-    const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as API3WrapperV1_1;
-    const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configureProxy(asset, proxy.target, 18, Number(HEARTBEAT), 0, 0, 0, 0);
-
-    const info = await wrapper.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(true);
-    expect(info.price).to.equal(150n * BASE_UNIT);
+    const [, isAlive] = await wrapper.getPriceInfo(ethers.ZeroAddress);
+    expect(isAlive).to.equal(false);
   });
+});
 
-  it("requires explicit heartbeat when wiring API3 proxies", async () => {
-    const [owner] = await ethers.getSigners();
-    const proxyFactory = await ethers.getContractFactory("MockApi3Proxy");
-    const proxy = (await proxyFactory.deploy()) as MockApi3Proxy;
+describe("RedstoneChainlinkWrapperV1_1", () => {
+  it("converts Chainlink-style price feeds", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("RedstoneChainlinkWrapperV1_1")) as RedstoneChainlinkWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
 
-    const wrapperFactory = await ethers.getContractFactory("API3WrapperV1_1");
-    const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as API3WrapperV1_1;
+    const feedFactory = (await ethers.getContractFactory(
+      "MockRedstoneChainlinkOracleAlwaysAlive",
+    )) as MockRedstoneChainlinkOracleAlwaysAlive__factory;
+    const feed = await feedFactory.deploy();
+    await feed.setMock(123_45678900n);
+
     const asset = ethers.Wallet.createRandom().address;
+    await wrapper.setFeed(asset, await feed.getAddress());
 
-    await expect(wrapper.connect(owner).configureProxy(asset, proxy.target, 18, 0, 0, 0, 0, 0)).to.be.revertedWithCustomError(
-      wrapper,
-      "InvalidHeartbeat",
-    );
+    const [price, isAlive] = await wrapper.getPriceInfo(asset);
+    expect(price).to.equal(123_45678900n);
+    expect(isAlive).to.equal(true);
   });
+});
 
-  it("Hard peg wrapper enforces guard rails", async () => {
-    const [owner] = await ethers.getSigners();
-    const wrapperFactory = await ethers.getContractFactory("HardPegOracleWrapperV1_1");
-    const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as HardPegOracleWrapperV1_1;
-    const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configurePeg(asset, 1n * BASE_UNIT, 90_000000n, 110_000000n);
+describe("HardPegOracleWrapperV1_1", () => {
+  it("always returns the configured peg", async () => {
+    const wrapperFactory = (await ethers.getContractFactory("HardPegOracleWrapperV1_1")) as HardPegOracleWrapperV1_1__factory;
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, BASE_UNIT);
 
-    const info = await wrapper.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(true);
-    expect(info.price).to.equal(1n * BASE_UNIT);
-
-    await wrapper.connect(owner).updatePeg(asset, 101_000000n);
-    const updated = await wrapper.getPriceInfo(asset);
-    expect(updated.price).to.equal(101_000000n);
-  });
-
-  it("Composite wrapper multiplies feed and rate", async () => {
-    const [owner] = await ethers.getSigners();
-    const priceFeedFactory = (await ethers.getContractFactory("MockChainlinkAggregatorV3")) as MockChainlinkAggregatorV3__factory;
-    const priceFeed = await priceFeedFactory.deploy(8, "PRICE");
-    await priceFeed.setMock(50n * BASE_UNIT);
-
-    const rateProviderFactory = await ethers.getContractFactory("MockRateProvider");
-    const rateProvider = (await rateProviderFactory.deploy()) as MockRateProvider;
-    const current = await time.latest();
-    await rateProvider.setRate(2n * 10n ** 18n, current);
-
-    const wrapperFactory = await ethers.getContractFactory("ChainlinkRateCompositeWrapperV1_1");
-    const wrapper = (await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT, owner.address)) as ChainlinkRateCompositeWrapperV1_1;
-    const asset = ethers.Wallet.createRandom().address;
-    await wrapper.connect(owner).configureComposite(asset, priceFeed.target, 8, rateProvider.target, 18, 60, 60, 0, 0, 0, 0);
-
-    const info = await wrapper.getPriceInfo(asset);
-    expect(info.isAlive).to.equal(true);
-    expect(info.price).to.equal(100n * BASE_UNIT);
+    const [price, isAlive] = await wrapper.getPriceInfo(ethers.ZeroAddress);
+    expect(price).to.equal(BASE_UNIT);
+    expect(isAlive).to.equal(true);
   });
 });

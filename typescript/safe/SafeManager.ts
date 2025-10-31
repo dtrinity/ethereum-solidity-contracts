@@ -1,10 +1,8 @@
-import SafeApiKit from "@safe-global/api-kit";
 import Safe from "@safe-global/protocol-kit";
 import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import {
-  SafeCompletedTransaction,
   SafeConfig,
   SafeDeploymentState,
   SafeManagerOptions,
@@ -20,25 +18,14 @@ import {
  */
 export class SafeManager {
   private protocolKit?: Safe;
-  private apiKit?: SafeApiKit;
   private signer: Signer;
   private config: SafeConfig;
   private hre: HardhatRuntimeEnvironment;
-  private options: SafeManagerOptions;
 
   constructor(hre: HardhatRuntimeEnvironment, signer: Signer, options: SafeManagerOptions) {
     this.hre = hre;
     this.signer = signer;
     this.config = options.safeConfig;
-    this.options = {
-      ...options,
-      retryAttempts: options.retryAttempts ?? 3,
-      retryDelayMs: options.retryDelayMs ?? 1000,
-      // Enforce offline-only mode regardless of provided options
-      enableApiKit: false,
-      enableTransactionService: false,
-      signingMode: "none",
-    };
   }
 
   /**
@@ -69,14 +56,6 @@ export class SafeManager {
 
       // Verify Safe configuration
       await this.verifySafeConfiguration();
-
-      if (this.options.enableApiKit && this.config.txServiceUrl) {
-        console.log(`🔄 Initializing Safe API Kit for chain ${this.config.chainId}`);
-        this.apiKit = new SafeApiKit({
-          chainId: BigInt(this.config.chainId),
-          txServiceUrl: this.config.txServiceUrl,
-        });
-      }
 
       console.log(`✅ Safe Manager initialized successfully`);
     } catch (error) {
@@ -201,44 +180,6 @@ export class SafeManager {
   }
 
   /**
-   * Propose transaction to Safe Transaction Service
-   *
-   * @param safeTransaction - The Safe transaction object
-   * @param safeTxHash - The Safe transaction hash
-   * @param description - Optional description for the transaction
-   */
-  private async proposeTransactionToService(safeTransaction: any, safeTxHash: string, description?: string): Promise<void> {
-    if (!this.apiKit) {
-      console.log(`ℹ️ API Kit not available, skipping transaction service proposal`);
-      return;
-    }
-
-    try {
-      const signerAddress = await this.signer.getAddress();
-      const signature = safeTransaction.signatures?.get(signerAddress);
-      const senderSignature = signature?.data || (this.options.signingMode === "none" ? "0x" : undefined);
-
-      if (!senderSignature) {
-        throw new Error("Signature not found for current signer");
-      }
-
-      await this.apiKit.proposeTransaction({
-        safeAddress: this.config.safeAddress,
-        safeTransactionData: safeTransaction.data,
-        safeTxHash,
-        senderAddress: signerAddress,
-        senderSignature,
-        origin: description || "dTRINITY Safe Manager",
-      });
-
-      console.log(`📤 Transaction proposed to Safe Transaction Service`);
-    } catch (error) {
-      console.warn(`⚠️ Failed to propose to transaction service:`, error);
-      // Don't throw - this is not critical for local operation
-    }
-  }
-
-  /**
    * Check if a transaction with given hash exists and its status
    *
    * @param safeTxHash - The Safe transaction hash to check
@@ -304,42 +245,6 @@ export class SafeManager {
       console.log(`💾 Stored pending transaction: ${description}`);
     } catch (error) {
       console.warn(`⚠️ Failed to store pending transaction:`, error);
-    }
-  }
-
-  /**
-   * Store completed transaction info in deployment artifacts
-   *
-   * @param safeTxHash - The Safe transaction hash
-   * @param transactionHash - The actual blockchain transaction hash
-   * @param description - Description of the transaction
-   */
-  private async storeCompletedTransaction(safeTxHash: string, transactionHash: string, description: string): Promise<void> {
-    try {
-      const deploymentState = await this.getDeploymentState();
-
-      // Remove from pending transactions (avoid reassigning readonly prop)
-      const indexToRemove = deploymentState.pendingTransactions.findIndex((tx) => tx.safeTxHash === safeTxHash);
-
-      if (indexToRemove !== -1) {
-        deploymentState.pendingTransactions.splice(indexToRemove, 1);
-      }
-
-      // Add to completed transactions
-      const completedTransaction: SafeCompletedTransaction = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        safeTxHash,
-        transactionHash,
-        description,
-        executedAt: Date.now(),
-      };
-
-      deploymentState.completedTransactions.push(completedTransaction);
-      await this.saveDeploymentState(deploymentState);
-
-      console.log(`💾 Stored completed transaction: ${description}`);
-    } catch (error) {
-      console.warn(`⚠️ Failed to store completed transaction:`, error);
     }
   }
 

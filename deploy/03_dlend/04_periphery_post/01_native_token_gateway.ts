@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get pool address
   const pool = await deployments.get(POOL_PROXY_ID);
 
-  const _wrappedTokenGateway = await deploy("WrappedTokenGatewayV3", {
+  await deploy("WrappedTokenGatewayV3", {
     from: deployer,
     args: [wrappedNativeTokenAddress, deployer, pool.address],
     log: true,

@@ -14,12 +14,20 @@ export type OracleProvider = "REDSTONE";
 const redstoneFeeds: OracleFeedConfig[] = [
   { name: "USDC_USD", price: "1" },
   { name: "USDT_USD", price: "1" },
+  { name: "USDS_USD", price: "1" },
   { name: "AUSD_USD", price: "1" },
   { name: "frxUSD_USD", price: "1" },
+  { name: "fxUSD_USD", price: "1" },
   { name: "yUSD_USD", price: "1" },
+  { name: "aUSDC_USD", price: "1" },
+  { name: "aUSDT_USD", price: "1" },
   { name: "sfrxUSD_frxUSD", price: "1.05" },
+  { name: "sUSDS_USDS", price: "1.02" },
+  { name: "fxSAVE_fxUSD", price: "1.02" },
   { name: "WETH_USD", price: "3200" },
   { name: "stETH_WETH", price: "1.0" },
+  { name: "sfrxETH_WETH", price: "1.02" },
+  { name: "rETH_WETH", price: "1.03" },
 ];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

@@ -9,7 +9,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
   const config = await getConfig(hre);
-  const { rateStrategies, reservesConfig } = config.dLend;
+  const dLendConfig = config.dLend;
+
+  if (!dLendConfig) {
+    throw new Error(`dLend configuration is required for network ${hre.network.name}`);
+  }
+
+  const { rateStrategies, reservesConfig } = dLendConfig;
 
   const addressProviderDeployedResult = await hre.deployments.get(POOL_ADDRESSES_PROVIDER_ID);
 
