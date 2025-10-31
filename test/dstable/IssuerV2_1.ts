@@ -2,13 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import {
-  CollateralHolderVault,
-  IssuerV2_1,
-  OracleAggregatorV1_1,
-  TestERC20,
-  TestMintableERC20,
-} from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2_1, OracleAggregatorV1_1, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
@@ -298,8 +292,10 @@ dstableConfigs.forEach((config) => {
         await issuerV2_1.issueUsingExcessCollateral(user2, expectedMint);
 
         // Attempting to mint any additional amount should revert because there is no further excess collateral
-        await expect(issuerV2_1.issueUsingExcessCollateral(user2, 1n))
-          .to.be.revertedWithCustomError(issuerV2_1, "IssuanceSurpassesCollateral");
+        await expect(issuerV2_1.issueUsingExcessCollateral(user2, 1n)).to.be.revertedWithCustomError(
+          issuerV2_1,
+          "IssuanceSurpassesCollateral",
+        );
       });
     });
   });

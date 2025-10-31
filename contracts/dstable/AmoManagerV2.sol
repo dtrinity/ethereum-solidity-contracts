@@ -162,7 +162,6 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
         ) {
             revert InvariantViolation(expectedDebtFromDstable, actualDebtIncrease);
         }
-
     }
 
     /**
@@ -213,7 +212,6 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
         ) {
             revert InvariantViolation(expectedDebtFromDstable, actualDebtDecrease);
         }
-
     }
 
     /* Collateral AMO Operations */

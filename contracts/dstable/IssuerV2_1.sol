@@ -69,9 +69,11 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param _dstable The address of the dStable stablecoin
      * @param oracle The address of the price oracle
      */
-    constructor(address _collateralVault, address _dstable, IPriceOracleGetter oracle)
-        OracleAware(oracle, oracle.BASE_CURRENCY_UNIT())
-    {
+    constructor(
+        address _collateralVault,
+        address _dstable,
+        IPriceOracleGetter oracle
+    ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
         collateralVault = CollateralVault(_collateralVault);
         dstable = IMintableERC20(_dstable);
         dstableDecimals = dstable.decimals();
@@ -89,11 +91,11 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param collateralAsset The address of the collateral asset being deposited
      * @param minDStable The minimum amount of dStable the caller expects (slippage guard)
      */
-    function issue(uint256 collateralAmount, address collateralAsset, uint256 minDStable)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function issue(
+        uint256 collateralAmount,
+        address collateralAsset,
+        uint256 minDStable
+    ) external whenNotPaused nonReentrant {
         if (!isAssetMintingEnabled(collateralAsset)) {
             revert AssetMintingPaused(collateralAsset);
         }
@@ -127,11 +129,10 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param receiver The address to receive the minted dStable tokens
      * @param dstableAmount The amount of dStable to mint
      */
-    function issueUsingExcessCollateral(address receiver, uint256 dstableAmount)
-        external
-        onlyRole(INCENTIVES_MANAGER_ROLE)
-        whenNotPaused
-    {
+    function issueUsingExcessCollateral(
+        address receiver,
+        uint256 dstableAmount
+    ) external onlyRole(INCENTIVES_MANAGER_ROLE) whenNotPaused {
         dstable.mint(receiver, dstableAmount);
 
         uint256 totalSupply = dstable.totalSupply();

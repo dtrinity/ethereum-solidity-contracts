@@ -3,7 +3,12 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { DETH_COLLATERAL_VAULT_CONTRACT_ID, DETH_ISSUER_V2_CONTRACT_ID, DETH_TOKEN_ID, ETH_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
+import {
+  DETH_COLLATERAL_VAULT_CONTRACT_ID,
+  DETH_ISSUER_V2_CONTRACT_ID,
+  DETH_TOKEN_ID,
+  ETH_ORACLE_AGGREGATOR_ID,
+} from "../../typescript/deploy-ids";
 
 /**
  * Ensures the Issuer contract can mint the dETH token.

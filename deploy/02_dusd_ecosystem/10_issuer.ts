@@ -3,7 +3,12 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { DUSD_COLLATERAL_VAULT_CONTRACT_ID, DUSD_ISSUER_V2_CONTRACT_ID, DUSD_TOKEN_ID, USD_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
+import {
+  DUSD_COLLATERAL_VAULT_CONTRACT_ID,
+  DUSD_ISSUER_V2_CONTRACT_ID,
+  DUSD_TOKEN_ID,
+  USD_ORACLE_AGGREGATOR_ID,
+} from "../../typescript/deploy-ids";
 
 /**
  * Ensures the Issuer contract can mint the target dStable.
