@@ -43,5 +43,7 @@
   "deploy_dstake_adapters": 1761825892,
   "deploy_redeemer_v2": 1761825963,
   "configure_dstake": 1761826777,
-  "dstake_dlend_rewards": 1761826958
+  "dstake_dlend_rewards": 1761826958,
+  "dETH_IssuerV2_1": 1761888868,
+  "dUSD_IssuerV2_1": 1761888903
 }
