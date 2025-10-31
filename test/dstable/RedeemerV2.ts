@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import { CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2_1, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { ONE_HUNDRED_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import {
   DETH_REDEEMER_CONTRACT_ID,
@@ -41,7 +41,7 @@ const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DETH_CONFIG];
 dstableConfigs.forEach((config) => {
   describe(`RedeemerV2 for ${config.symbol}`, () => {
     let redeemer: RedeemerV2;
-    let issuer: IssuerV2;
+    let issuer: IssuerV2_1;
     let collateralVault: CollateralHolderVault;
     let oracle: OracleAggregatorV1_1;
     let collateralContracts: Map<string, TestERC20> = new Map();
@@ -64,9 +64,9 @@ dstableConfigs.forEach((config) => {
       const oracleAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracle = await hre.ethers.getContractAt("OracleAggregatorV1_1", oracleAddress, await hre.ethers.getSigner(deployer));
 
-      // IssuerV2 from deployments
+      // Issuer from deployments
       const issuerAddress = (await hre.deployments.get(config.issuerContractId)).address;
-      issuer = (await hre.ethers.getContractAt("IssuerV2", issuerAddress, await hre.ethers.getSigner(deployer))) as unknown as IssuerV2;
+      issuer = (await hre.ethers.getContractAt("IssuerV2_1", issuerAddress, await hre.ethers.getSigner(deployer))) as unknown as IssuerV2_1;
 
       // Token
       const { contract, tokenInfo } = await getTokenContractForSymbol(hre, deployer, config.symbol);
@@ -79,7 +79,7 @@ dstableConfigs.forEach((config) => {
         collateralContracts.set(symbol, result.contract);
         collateralInfos.set(symbol, result.tokenInfo);
 
-        // Fund user and mint dstable by going through IssuerV2 fixture's deployments
+        // Fund user and mint dstable via issuer fixture deployments
         const amount = hre.ethers.parseUnits("1000", result.tokenInfo.decimals);
         await result.contract.transfer(user1, amount);
       }

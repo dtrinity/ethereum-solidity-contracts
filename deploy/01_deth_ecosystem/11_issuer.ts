@@ -1,15 +1,9 @@
-import { Signer, ZeroAddress } from "ethers";
+import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import {
-  DETH_AMO_DEBT_TOKEN_ID,
-  DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  DETH_ISSUER_V2_CONTRACT_ID,
-  DETH_TOKEN_ID,
-  ETH_ORACLE_AGGREGATOR_ID,
-} from "../../typescript/deploy-ids";
+import { DETH_COLLATERAL_VAULT_CONTRACT_ID, DETH_ISSUER_V2_CONTRACT_ID, DETH_TOKEN_ID, ETH_ORACLE_AGGREGATOR_ID } from "../../typescript/deploy-ids";
 
 /**
  * Ensures the Issuer contract can mint the dETH token.
@@ -41,13 +35,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { tokenAddresses } = await getConfig(hre);
   const { address: oracleAggregatorAddress } = await deployments.get(ETH_ORACLE_AGGREGATOR_ID);
   const { address: collateralVaultAddress } = await deployments.get(DETH_COLLATERAL_VAULT_CONTRACT_ID);
-  const amoDebtTokenDeployment = await deployments.getOrNull(DETH_AMO_DEBT_TOKEN_ID);
-  const amoDebtTokenAddress = amoDebtTokenDeployment?.address ?? ZeroAddress;
-
   const deployResult = await deployments.deploy(DETH_ISSUER_V2_CONTRACT_ID, {
     from: deployer,
-    contract: "IssuerV2",
-    args: [collateralVaultAddress, tokenAddresses.dETH, oracleAggregatorAddress, amoDebtTokenAddress],
+    contract: "IssuerV2_1",
+    args: [collateralVaultAddress, tokenAddresses.dETH, oracleAggregatorAddress],
     log: true,
     autoMine: true,
   });

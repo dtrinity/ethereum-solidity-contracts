@@ -6,12 +6,10 @@ import {
   DETH_AMO_DEBT_TOKEN_ID,
   DETH_AMO_MANAGER_V2_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  DETH_ISSUER_V2_CONTRACT_ID,
   DETH_TOKEN_ID,
   DUSD_AMO_DEBT_TOKEN_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
-  DUSD_ISSUER_V2_CONTRACT_ID,
   DUSD_TOKEN_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
@@ -36,7 +34,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       collateralVaultId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
       amoManagerV2Id: DUSD_AMO_MANAGER_V2_ID,
       amoDebtTokenId: DUSD_AMO_DEBT_TOKEN_ID,
-      issuerId: DUSD_ISSUER_V2_CONTRACT_ID,
     },
     {
       name: "dETH",
@@ -45,7 +42,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
       amoManagerV2Id: DETH_AMO_MANAGER_V2_ID,
       amoDebtTokenId: DETH_AMO_DEBT_TOKEN_ID,
-      issuerId: DETH_ISSUER_V2_CONTRACT_ID,
     },
   ];
 
@@ -57,15 +53,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const collateralVaultDeployment = await deployments.get(amoConfig.collateralVaultId);
     const amoManagerDeployment = await deployments.get(amoConfig.amoManagerV2Id);
     const debtTokenDeployment = await deployments.get(amoConfig.amoDebtTokenId);
-    const issuerDeployment = await deployments.get(amoConfig.issuerId);
 
     const dstable = await ethers.getContractAt("ERC20StablecoinUpgradeable", tokenDeployment.address, deployerSigner);
     const oracle = await ethers.getContractAt("OracleAggregatorV1_1", oracleDeployment.address, deployerSigner);
     const collateralVault = await ethers.getContractAt("CollateralHolderVault", collateralVaultDeployment.address, deployerSigner);
     const amoManager = await ethers.getContractAt("AmoManagerV2", amoManagerDeployment.address, deployerSigner);
     const debtToken = await ethers.getContractAt("AmoDebtToken", debtTokenDeployment.address, deployerSigner);
-    const issuer = await ethers.getContractAt("IssuerV2", issuerDeployment.address, deployerSigner);
-
     console.log(`  📊 Verifying oracle price feed for debt token...`);
 
     const baseCurrencyUnit = await oracle.BASE_CURRENCY_UNIT();
@@ -129,13 +122,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.log(`    ✅ Added AMO Manager V2 to debt token allowlist`);
     } else {
       console.log(`    ✅ AMO Manager V2 already allowlisted on debt token`);
-    }
-
-    if ((await issuer.amoDebtToken()) !== debtTokenDeployment.address) {
-      await issuer.setAmoDebtToken(debtTokenDeployment.address);
-      console.log(`    ✅ Linked issuer to AMO debt token`);
-    } else {
-      console.log(`    ✅ Issuer already references AMO debt token`);
     }
 
     if ((await amoManager.collateralVault()) !== collateralVaultDeployment.address) {

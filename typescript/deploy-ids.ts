@@ -26,7 +26,7 @@ export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_Redstone
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";
 export const DUSD_ISSUER_CONTRACT_ID = "dUSD_Issuer";
-export const DUSD_ISSUER_V2_CONTRACT_ID = "dUSD_IssuerV2";
+export const DUSD_ISSUER_V2_CONTRACT_ID = "dUSD_IssuerV2_1";
 export const DUSD_REDEEMER_CONTRACT_ID = "dUSD_Redeemer";
 export const DUSD_COLLATERAL_VAULT_CONTRACT_ID = "dUSD_CollateralHolderVault";
 export const DUSD_AMO_MANAGER_V2_ID = "dUSD_AmoManagerV2";
@@ -36,7 +36,7 @@ export const DUSD_HARD_PEG_ORACLE_WRAPPER_ID = "dUSD_HardPegOracleWrapper";
 // dETH
 export const DETH_TOKEN_ID = "dETH";
 export const DETH_ISSUER_CONTRACT_ID = "dETH_Issuer";
-export const DETH_ISSUER_V2_CONTRACT_ID = "dETH_IssuerV2";
+export const DETH_ISSUER_V2_CONTRACT_ID = "dETH_IssuerV2_1";
 export const DETH_REDEEMER_CONTRACT_ID = "dETH_Redeemer";
 export const DETH_COLLATERAL_VAULT_CONTRACT_ID = "dETH_CollateralHolderVault";
 export const DETH_AMO_MANAGER_V2_ID = "dETH_AmoManagerV2";

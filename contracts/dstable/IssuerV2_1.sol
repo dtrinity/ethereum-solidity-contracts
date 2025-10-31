@@ -27,14 +27,13 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/common/IAaveOracle.sol";
 import "contracts/common/IMintableERC20.sol";
 import "./CollateralVault.sol";
-import "./AmoDebtToken.sol";
 import "./OracleAware.sol";
 
 /**
- * @title IssuerV2
- * @notice Extended issuer responsible for issuing dStable tokens with asset-level minting overrides and global pause
+ * @title IssuerV2_1
+ * @notice Issuer responsible for minting dStable tokens with asset-level controls and collateral backing checks
  */
-contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
+contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20Metadata;
 
     /* Core state */
@@ -42,12 +41,10 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     IMintableERC20 public dstable;
     uint8 public immutable dstableDecimals;
     CollateralVault public collateralVault;
-    AmoDebtToken public amoDebtToken;
 
     /* Events */
 
     event CollateralVaultSet(address indexed collateralVault);
-    event AmoDebtTokenSet(address indexed amoDebtToken);
     event AssetMintingPauseUpdated(address indexed asset, bool paused);
 
     /* Roles */
@@ -58,7 +55,7 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     /* Errors */
 
     error SlippageTooHigh(uint256 minDStable, uint256 dstableAmount);
-    error IssuanceSurpassesExcessCollateral(uint256 collateralInDstable, uint256 circulatingDstable);
+    error IssuanceSurpassesCollateral(uint256 collateralInDstable, uint256 totalDstable);
     error AssetMintingPaused(address asset);
 
     /* Overrides */
@@ -67,22 +64,17 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     mapping(address => bool) public assetMintingPaused;
 
     /**
-     * @notice Initializes the IssuerV2 contract with core dependencies
+     * @notice Initializes the IssuerV2_1 contract with core dependencies
      * @param _collateralVault The address of the collateral vault
      * @param _dstable The address of the dStable stablecoin
      * @param oracle The address of the price oracle
-     * @param _amoDebtToken The address of the AMO debt accounting token
      */
-    constructor(
-        address _collateralVault,
-        address _dstable,
-        IPriceOracleGetter oracle,
-        address _amoDebtToken
-    ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
+    constructor(address _collateralVault, address _dstable, IPriceOracleGetter oracle)
+        OracleAware(oracle, oracle.BASE_CURRENCY_UNIT())
+    {
         collateralVault = CollateralVault(_collateralVault);
         dstable = IMintableERC20(_dstable);
         dstableDecimals = dstable.decimals();
-        amoDebtToken = AmoDebtToken(_amoDebtToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         grantRole(INCENTIVES_MANAGER_ROLE, msg.sender);
@@ -94,21 +86,15 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     /**
      * @notice Issues dStable tokens in exchange for collateral from the caller
      * @param collateralAmount The amount of collateral to deposit
-     * @param collateralAsset The address of the collateral asset
-     * @param minDStable The minimum amount of dStable to receive, used for slippage protection
+     * @param collateralAsset The address of the collateral asset being deposited
+     * @param minDStable The minimum amount of dStable the caller expects (slippage guard)
      */
-    function issue(
-        uint256 collateralAmount,
-        address collateralAsset,
-        uint256 minDStable
-    ) external nonReentrant whenNotPaused {
-        // Ensure the collateral asset is supported by the vault before any further processing
-        if (!collateralVault.isCollateralSupported(collateralAsset)) {
-            revert CollateralVault.UnsupportedCollateral(collateralAsset);
-        }
-
-        // Ensure the issuer has not paused this asset for minting
-        if (assetMintingPaused[collateralAsset]) {
+    function issue(uint256 collateralAmount, address collateralAsset, uint256 minDStable)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        if (!isAssetMintingEnabled(collateralAsset)) {
             revert AssetMintingPaused(collateralAsset);
         }
 
@@ -126,6 +112,13 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         // Transfer collateral directly to vault
         IERC20Metadata(collateralAsset).safeTransferFrom(msg.sender, address(collateralVault), collateralAmount);
 
+        // Ensure post-mint total supply remains backed by collateral value
+        uint256 postSupply = dstable.totalSupply() + dstableAmount;
+        uint256 collateralCover = collateralInDstable();
+        if (collateralCover < postSupply) {
+            revert IssuanceSurpassesCollateral(collateralCover, postSupply);
+        }
+
         dstable.mint(msg.sender, dstableAmount);
     }
 
@@ -134,37 +127,18 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param receiver The address to receive the minted dStable tokens
      * @param dstableAmount The amount of dStable to mint
      */
-    function issueUsingExcessCollateral(
-        address receiver,
-        uint256 dstableAmount
-    ) external onlyRole(INCENTIVES_MANAGER_ROLE) whenNotPaused {
+    function issueUsingExcessCollateral(address receiver, uint256 dstableAmount)
+        external
+        onlyRole(INCENTIVES_MANAGER_ROLE)
+        whenNotPaused
+    {
         dstable.mint(receiver, dstableAmount);
 
-        // We don't use the buffer value here because we only mint up to the excess collateral
-        uint256 _circulatingDstable = circulatingDstable();
-        uint256 _collateralInDstable = collateralInDstable();
-        if (_collateralInDstable < _circulatingDstable) {
-            revert IssuanceSurpassesExcessCollateral(_collateralInDstable, _circulatingDstable);
+        uint256 totalSupply = dstable.totalSupply();
+        uint256 collateralCover = collateralInDstable();
+        if (collateralCover < totalSupply) {
+            revert IssuanceSurpassesCollateral(collateralCover, totalSupply);
         }
-    }
-
-    /**
-     * @notice Calculates the circulating supply of dStable tokens
-     * @return The amount of dStable tokens that are not backing AMO debt
-     */
-    function circulatingDstable() public view returns (uint256) {
-        uint256 totalDstable = dstable.totalSupply();
-        uint256 amoDebtSupply = address(amoDebtToken) != address(0) ? amoDebtToken.totalSupply() : 0;
-
-        if (amoDebtSupply == 0) {
-            return totalDstable;
-        }
-
-        uint8 debtDecimals = amoDebtToken.decimals();
-        uint256 amoDebtBaseValue = Math.mulDiv(amoDebtSupply, baseCurrencyUnit, 10 ** debtDecimals);
-        uint256 amoBackedDstable = baseValueToDstableAmount(amoDebtBaseValue);
-
-        return totalDstable - amoBackedDstable;
     }
 
     /**
@@ -172,8 +146,8 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @return The amount of dStable tokens equivalent to the collateral value
      */
     function collateralInDstable() public view returns (uint256) {
-        uint256 _collateralInBase = collateralVault.totalValue();
-        return baseValueToDstableAmount(_collateralInBase);
+        uint256 collateralInBase = collateralVault.totalValue();
+        return baseValueToDstableAmount(collateralInBase);
     }
 
     /**
@@ -190,20 +164,13 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @dev Asset must be supported by the collateral vault and not paused by issuer
      */
     function isAssetMintingEnabled(address asset) public view returns (bool) {
-        if (!collateralVault.isCollateralSupported(asset)) return false;
+        if (!collateralVault.isCollateralSupported(asset)) {
+            return false;
+        }
         return !assetMintingPaused[asset];
     }
 
     /* Admin */
-
-    /**
-     * @notice Sets the AMO debt token used for circulation accounting
-     * @param _amoDebtToken The address of the AMO debt token
-     */
-    function setAmoDebtToken(address _amoDebtToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        amoDebtToken = AmoDebtToken(_amoDebtToken);
-        emit AmoDebtTokenSet(_amoDebtToken);
-    }
 
     /**
      * @notice Sets the collateral vault address
@@ -220,7 +187,6 @@ contract IssuerV2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param paused True to pause minting; false to enable
      */
     function setAssetMintingPause(address asset, bool paused) external onlyRole(PAUSER_ROLE) {
-        // Optional guard: if vault does not support the asset, setting an override is meaningless
         if (!collateralVault.isCollateralSupported(asset)) {
             revert CollateralVault.UnsupportedCollateral(asset);
         }

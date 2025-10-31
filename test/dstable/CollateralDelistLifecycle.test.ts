@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import hre, { getNamedAccounts } from "hardhat";
 
-import { CollateralHolderVault, IssuerV2, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2_1, OracleAggregatorV1_1, RedeemerV2, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { getConfig } from "../../config/config";
 import { TokenInfo, getTokenContractForSymbol } from "../../typescript/token/utils";
 import { createDStableFixture, DUSD_CONFIG } from "./fixtures";
@@ -11,7 +11,7 @@ describe("dUSD Collateral delist lifecycle", function () {
   const collateralSymbol = "USDC";
   const fixture = createDStableFixture(DUSD_CONFIG);
 
-  let issuer: IssuerV2;
+  let issuer: IssuerV2_1;
   let redeemer: RedeemerV2;
   let collateralVault: CollateralHolderVault;
   let oracleAggregator: OracleAggregatorV1_1;
@@ -46,7 +46,7 @@ describe("dUSD Collateral delist lifecycle", function () {
     governanceSigner = await hre.ethers.getSigner(governanceAddress);
 
     const issuerAddress = (await hre.deployments.get(DUSD_CONFIG.issuerContractId)).address;
-    issuer = await hre.ethers.getContractAt("IssuerV2", issuerAddress, deployerSigner);
+    issuer = await hre.ethers.getContractAt("IssuerV2_1", issuerAddress, deployerSigner);
 
     const redeemerAddress = (await hre.deployments.get(DUSD_CONFIG.redeemerContractId)).address;
     redeemer = await hre.ethers.getContractAt("RedeemerV2", redeemerAddress, deployerSigner);
