@@ -128,6 +128,14 @@ interface IEmissionManager {
     function getEmissionAdmin(address reward) external view returns (address);
 
     /**
+     * @dev Updates a user's blacklist status preventing reward claims
+     * @dev Only callable by the owner of the EmissionManager
+     * @param user The address of the user
+     * @param isBlacklisted True to blacklist the user, false to remove them from the blacklist
+     */
+    function setUserBlacklist(address user, bool isBlacklisted) external;
+
+    /**
      * @dev Recieve more fund from the user to existing reward
      * @param reward The reward address is being distributed
      * @param amount The token amount is being funded

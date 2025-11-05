@@ -107,6 +107,11 @@ contract EmissionManager is Ownable, IEmissionManager {
     }
 
     /// @inheritdoc IEmissionManager
+    function setUserBlacklist(address user, bool isBlacklisted) external override onlyOwner {
+        _rewardsController.setUserBlacklist(user, isBlacklisted);
+    }
+
+    /// @inheritdoc IEmissionManager
     function setRewardsController(address controller) external override onlyOwner {
         _rewardsController = IRewardsController(controller);
     }
