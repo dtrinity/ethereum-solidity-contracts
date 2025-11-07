@@ -57,6 +57,9 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
     // a check to see if the provided reward oracle contains `getAssetPrice`.
     mapping(address => IAaveOracle) internal _rewardOracle;
 
+    // Track addresses that are blocked from claiming rewards
+    mapping(address => bool) internal _userBlacklist;
+
     modifier onlyAuthorizedClaimers(address claimer, address user) {
         require(_authorizedClaimers[user] == claimer, "CLAIMER_UNAUTHORIZED");
         _;
@@ -91,6 +94,11 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
     /// @inheritdoc IRewardsController
     function getTransferStrategy(address reward) external view override returns (address) {
         return address(_transferStrategy[reward]);
+    }
+
+    /// @inheritdoc IRewardsController
+    function isUserBlacklisted(address user) external view override returns (bool) {
+        return _userBlacklist[user];
     }
 
     /// @inheritdoc IRewardsController
@@ -197,6 +205,13 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
     }
 
     /// @inheritdoc IRewardsController
+    function setUserBlacklist(address user, bool isBlacklisted) external override onlyEmissionManager {
+        require(user != address(0), "INVALID_USER_ADDRESS");
+        _userBlacklist[user] = isBlacklisted;
+        emit UserBlacklistUpdated(user, isBlacklisted);
+    }
+
+    /// @inheritdoc IRewardsController
     function depositRewardFrom(address reward, uint256 amount, address from) external onlyEmissionManager {
         require(_isRewardEnabled[reward] == true, "ONLY_ALLOW_DEPOSIT_TO_ENABLED_REWARD");
         address transferStrategyAddress = address(_transferStrategy[reward]);
@@ -252,6 +267,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
         address to,
         address reward
     ) internal returns (uint256) {
+        _requireNotBlacklisted(user);
         if (amount == 0) {
             return 0;
         }
@@ -298,6 +314,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
         address user,
         address to
     ) internal returns (address[] memory rewardsList, uint256[] memory claimedAmounts) {
+        _requireNotBlacklisted(user);
         uint256 rewardsListLength = _rewardsList.length;
         rewardsList = new address[](rewardsListLength);
         claimedAmounts = new uint256[](rewardsListLength);
@@ -381,5 +398,9 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
         require(rewardOracle.getAssetPrice(rewardOracle.BASE_CURRENCY()) > 0, "ORACLE_MUST_RETURN_PRICE");
         _rewardOracle[reward] = rewardOracle;
         emit RewardOracleUpdated(reward, address(rewardOracle));
+    }
+
+    function _requireNotBlacklisted(address user) internal view {
+        require(!_userBlacklist[user], "USER_BLACKLISTED");
     }
 }

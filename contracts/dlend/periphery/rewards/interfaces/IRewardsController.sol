@@ -66,6 +66,13 @@ interface IRewardsController is IRewardsDistributor {
     event RewardOracleUpdated(address indexed reward, address indexed rewardOracle);
 
     /**
+     * @dev Emitted when a user blacklist status is updated
+     * @param user The address of the user
+     * @param isBlacklisted True if the user is now blacklisted, false otherwise
+     */
+    event UserBlacklistUpdated(address indexed user, bool indexed isBlacklisted);
+
+    /**
      * @dev Whitelists an address to claim the rewards on behalf of another address
      * @param user The address of the user
      * @param claimer The address of the claimer
@@ -89,6 +96,20 @@ interface IRewardsController is IRewardsDistributor {
      * @param rewardOracle The address of price aggregator that follows IAaveOracle interface
      */
     function setRewardOracle(address reward, IAaveOracle rewardOracle) external;
+
+    /**
+     * @dev Blacklists or un-blacklists a user from claiming rewards
+     * @param user The address of the user
+     * @param isBlacklisted True to blacklist the user, false to remove them from the blacklist
+     */
+    function setUserBlacklist(address user, bool isBlacklisted) external;
+
+    /**
+     * @dev Returns whether a user is currently blacklisted
+     * @param user The address of the user
+     * @return True if the user is blacklisted, false otherwise
+     */
+    function isUserBlacklisted(address user) external view returns (bool);
 
     /**
      * @dev Get the price aggregator oracle address
