@@ -553,4 +553,52 @@ describe("RewardClaimable", function () {
       );
     });
   });
+
+  describe("recoverClaimedRewards", function () {
+    beforeEach(async function () {
+      await mockVault.grantRole(rewardsManagerRole, await user.getAddress());
+    });
+
+    it("distributes held rewards applying treasury fees", async function () {
+      const rewardTokens = [await rewardToken1.getAddress(), await rewardToken2.getAddress()];
+      const rewardBalances = [ethers.parseEther("5"), ethers.parseEther("3")];
+
+      await rewardToken1.burn(await mockVault.getAddress(), await rewardToken1.balanceOf(await mockVault.getAddress()));
+      await rewardToken2.burn(await mockVault.getAddress(), await rewardToken2.balanceOf(await mockVault.getAddress()));
+      await rewardToken1.mint(await mockVault.getAddress(), rewardBalances[0]);
+      await rewardToken2.mint(await mockVault.getAddress(), rewardBalances[1]);
+
+      const initialTreasuryBalances = [
+        await rewardToken1.balanceOf(await treasury.getAddress()),
+        await rewardToken2.balanceOf(await treasury.getAddress()),
+      ];
+      const initialUserBalances = [
+        await rewardToken1.balanceOf(await user.getAddress()),
+        await rewardToken2.balanceOf(await user.getAddress()),
+      ];
+
+      const treasuryFeeBps = await mockVault.treasuryFeeBps();
+      const expectedTreasuryFee1 = (rewardBalances[0] * treasuryFeeBps) / BigInt(ONE_HUNDRED_PERCENT_BPS);
+      const expectedTreasuryFee2 = (rewardBalances[1] * treasuryFeeBps) / BigInt(ONE_HUNDRED_PERCENT_BPS);
+
+      await expect(mockVault.connect(user).recoverClaimedRewards(rewardTokens, await user.getAddress()))
+        .to.emit(mockVault, "RewardsRecovered")
+        .withArgs(rewardTokens, await user.getAddress());
+
+      expect((await rewardToken1.balanceOf(await treasury.getAddress())) - initialTreasuryBalances[0]).to.equal(expectedTreasuryFee1);
+      expect((await rewardToken2.balanceOf(await treasury.getAddress())) - initialTreasuryBalances[1]).to.equal(expectedTreasuryFee2);
+
+      expect((await rewardToken1.balanceOf(await user.getAddress())) - initialUserBalances[0]).to.equal(
+        rewardBalances[0] - expectedTreasuryFee1,
+      );
+      expect((await rewardToken2.balanceOf(await user.getAddress())) - initialUserBalances[1]).to.equal(
+        rewardBalances[1] - expectedTreasuryFee2,
+      );
+    });
+
+    it("reverts for zero token list", async function () {
+      await expect(mockVault.connect(user).recoverClaimedRewards([], await user.getAddress()))
+        .to.be.revertedWithCustomError(mockVault, "ZeroRewardTokens");
+    });
+  });
 });

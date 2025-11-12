@@ -46,6 +46,7 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
     event TreasuryFeeBpsUpdated(uint256 oldTreasuryFeeBps, uint256 newTreasuryFeeBps);
     event ExchangeThresholdUpdated(uint256 oldExchangeThreshold, uint256 newExchangeThreshold);
     event RewardCompounded(address exchangeAsset, uint256 amount, address[] rewardTokens);
+    event RewardsRecovered(address[] rewardTokens, address receiver);
 
     // Custom errors
     error ExchangeAmountTooLow(uint256 amount, uint256 threshold);
@@ -237,4 +238,39 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
      * @param amount The amount of exchange asset to deposit
      */
     function _processExchangeAssetDeposit(uint256 amount) internal virtual;
+
+    /**
+     * @dev Distributes previously claimed rewards without requiring another exchange deposit.
+     * @param rewardTokens The reward tokens to distribute.
+     * @param receiver The address to receive the net rewards.
+     */
+    function recoverClaimedRewards(
+        address[] calldata rewardTokens,
+        address receiver
+    ) external nonReentrant onlyRole(REWARDS_MANAGER_ROLE) {
+        if (receiver == address(0)) {
+            revert ZeroReceiverAddress();
+        }
+        if (rewardTokens.length == 0) {
+            revert ZeroRewardTokens();
+        }
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            address token = rewardTokens[i];
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance == 0) {
+                continue;
+            }
+
+            uint256 treasuryFee = getTreasuryFee(balance);
+            if (treasuryFee > balance) {
+                revert TreasuryFeeExceedsRewardAmount(treasuryFee, balance);
+            }
+
+            IERC20(token).safeTransfer(treasury, treasuryFee);
+            IERC20(token).safeTransfer(receiver, balance - treasuryFee);
+        }
+
+        emit RewardsRecovered(rewardTokens, receiver);
+    }
 }
