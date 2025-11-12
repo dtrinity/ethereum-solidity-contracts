@@ -16,16 +16,9 @@ const GENERIC_ADAPTER_CONTRACT = "GenericERC4626ConversionAdapter";
 
 /**
  * Deploys the generic ERC4626 adapter with router/admin wiring.
+ * @param params Deployment utilities and configuration for the current dSTAKE instance.
  */
-async function deployGenericAdapter({
-  deployments,
-  deployer,
-  instanceConfig,
-  vaultAsset,
-  collateralVaultAddress,
-  routerDeploymentName,
-  dStableSymbol,
-}: {
+async function deployGenericAdapter(params: {
   deployments: HardhatRuntimeEnvironment["deployments"];
   deployer: string;
   instanceConfig: DStakeInstanceConfig;
@@ -34,6 +27,8 @@ async function deployGenericAdapter({
   routerDeploymentName: string;
   dStableSymbol: string;
 }): Promise<void> {
+  const { deployments, deployer, instanceConfig, vaultAsset, collateralVaultAddress, routerDeploymentName, dStableSymbol } = params;
+
   const routerDeployment = await deployments.getOrNull(routerDeploymentName);
   if (!routerDeployment) {
     throw new Error(`Router ${routerDeploymentName} not found while deploying ${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`);
