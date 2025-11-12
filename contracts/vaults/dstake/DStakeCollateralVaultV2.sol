@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
+import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -40,6 +41,8 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
     error CannotRescueRestrictedToken(address token);
     error ETHTransferFailed(address receiver, uint256 amount);
     error AdapterValuationUnavailable(address strategyShare);
+    error RemainingBalanceAboveAbsoluteDust(address strategyShare, uint256 value, uint256 maxValue);
+    error RemainingBalanceAboveRelativeDust(address strategyShare, uint256 value, uint256 maxValue);
 
     // --- Events ---
     event TokenRescued(address indexed token, address indexed receiver, uint256 amount);
@@ -52,6 +55,9 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
     address public router; // The DStakeRouter allowed to interact
 
     EnumerableSet.AddressSet private _supportedStrategyShares; // Set of supported strategy shares
+
+    uint256 public constant ABSOLUTE_DUST_THRESHOLD = 1e6; // 1 dStable unit assuming 6 decimals
+    uint256 public constant RELATIVE_DUST_THRESHOLD_BPS = 10 * BasisPointConstants.ONE_BPS; // 0.1%
 
     // --- Constructor ---
     constructor(address _dStakeVaultShare, address _dStableAsset) {
@@ -70,28 +76,8 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
     /**
      * @inheritdoc IDStakeCollateralVaultV2
      */
-    function totalValueInDStable() external view override returns (uint256 dStableValue) {
-        uint256 totalValue = 0;
-        uint256 len = _supportedStrategyShares.length();
-        for (uint256 i = 0; i < len; i++) {
-            address strategyShare = _supportedStrategyShares.at(i);
-            uint256 balance = IERC20(strategyShare).balanceOf(address(this));
-            if (balance == 0) continue;
-
-            address adapterAddress = IAdapterProvider(router).strategyShareToAdapter(strategyShare);
-
-            if (adapterAddress != address(0)) {
-                totalValue += IDStableConversionAdapterV2(adapterAddress).strategyShareValueInDStable(
-                    strategyShare,
-                    balance
-                );
-                continue;
-            }
-
-            // Force operators to supply a live adapter before valuing the position so NAV cannot silently drop to zero.
-            revert AdapterValuationUnavailable(strategyShare);
-        }
-        return totalValue;
+    function totalValueInDStable() external view override returns (uint256) {
+        return _totalValueInDStable();
     }
 
     // --- External Functions (Router Interactions) ---
@@ -140,10 +126,22 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
      */
     function removeSupportedStrategyShare(address strategyShare) external onlyRole(ROUTER_ROLE) {
         if (!_isSupported(strategyShare)) revert StrategyShareNotSupported(strategyShare);
-        // NOTE: Previously this function reverted if the vault still held a
-        // non-zero balance of the share, causing a griefing / DoS vector:
-        // anyone could deposit 1 wei of the token to block removal. The
-        // check has been removed so governance can always delist a share.
+
+        uint256 balance = IERC20(strategyShare).balanceOf(address(this));
+        if (balance > 0) {
+            uint256 remainingValue = _strategyShareValueInDStable(strategyShare, balance);
+            if (remainingValue > ABSOLUTE_DUST_THRESHOLD) {
+                revert RemainingBalanceAboveAbsoluteDust(strategyShare, remainingValue, ABSOLUTE_DUST_THRESHOLD);
+            }
+
+            uint256 totalValue = _totalValueInDStable();
+            uint256 maxRelativeDust = (totalValue * RELATIVE_DUST_THRESHOLD_BPS) /
+                BasisPointConstants.ONE_HUNDRED_PERCENT_BPS;
+
+            if (remainingValue > maxRelativeDust) {
+                revert RemainingBalanceAboveRelativeDust(strategyShare, remainingValue, maxRelativeDust);
+            }
+        }
 
         _supportedStrategyShares.remove(strategyShare);
         emit StrategyShareRemoved(strategyShare);
@@ -190,6 +188,30 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
      */
     function getSupportedStrategyShares() external view returns (address[] memory) {
         return _supportedStrategyShares.values();
+    }
+
+    function _strategyShareValueInDStable(address strategyShare, uint256 balance) private view returns (uint256) {
+        if (balance == 0) {
+            return 0;
+        }
+
+        address adapterAddress = IAdapterProvider(router).strategyShareToAdapter(strategyShare);
+        if (adapterAddress == address(0)) {
+            revert AdapterValuationUnavailable(strategyShare);
+        }
+
+        return IDStableConversionAdapterV2(adapterAddress).strategyShareValueInDStable(strategyShare, balance);
+    }
+
+    function _totalValueInDStable() private view returns (uint256 dStableValue) {
+        uint256 len = _supportedStrategyShares.length();
+        for (uint256 i = 0; i < len; i++) {
+            address strategyShare = _supportedStrategyShares.at(i);
+            uint256 balance = IERC20(strategyShare).balanceOf(address(this));
+            if (balance == 0) continue;
+
+            dStableValue += _strategyShareValueInDStable(strategyShare, balance);
+        }
     }
 
     // --- Recovery Functions ---

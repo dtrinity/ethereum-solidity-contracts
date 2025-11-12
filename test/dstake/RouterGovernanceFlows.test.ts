@@ -26,6 +26,9 @@ const VAULT_STATUS = {
 } as const;
 
 const MAX_NAV_DRIFT = 1n;
+const ABSOLUTE_DUST_THRESHOLD = 1_000_000n; // 1 dStable (6 decimals)
+const RELATIVE_DUST_THRESHOLD_BPS = 1_000n; // 0.1%
+const ONE_HUNDRED_PERCENT_BPS = 1_000_000n;
 
 type ParsedRouterEvent = ReturnType<DStakeRouterV2["interface"]["parseLog"]> | undefined;
 
@@ -261,7 +264,7 @@ describe("DStakeRouterV2 governance flows", function () {
         await expectNavInvariant(navBefore);
       });
 
-      it("removes an adapter with dust and restores NAV after reconfiguration", async function () {
+      it("only removes adapters once balances fall below dust thresholds", async function () {
         const depositReceipt = await depositThroughRouter(toUnits("420"));
         const depositEvent = parseRouterEvent(depositReceipt, "RouterDepositRouted");
         const targetVault = depositEvent?.args?.strategyVault as string;
@@ -269,14 +272,48 @@ describe("DStakeRouterV2 governance flows", function () {
         const targetConfig = multiVault.vaults.find((vault) => vault.strategyVault === targetVault)!;
         const alternateVault = multiVault.vaults.find((vault) => vault.strategyVault !== targetVault)!;
 
-        const primaryBalance = await shareBalance(targetVault);
-        await router.connect(governance).rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, primaryBalance / 3n, 1n);
-
         const navBeforeRemoval = await dStakeToken.totalAssets();
         const adapterAddress = await router.strategyShareToAdapter(targetVault);
+        const adapter = (await ethers.getContractAt("IDStableConversionAdapterV2", adapterAddress)) as IDStableConversionAdapterV2;
 
         await router.connect(governance).suspendVaultForRemoval(targetVault);
-        expect(await shareBalance(targetVault)).to.be.gt(0n);
+        await expect(router.connect(governance).removeAdapter(targetVault)).to.be.revertedWithCustomError(
+          collateralVault,
+          "RemainingBalanceAboveAbsoluteDust",
+        );
+
+        await router.connect(governance).setVaultStatus(targetVault, VAULT_STATUS.Active);
+
+        const primaryBalance = await shareBalance(targetVault);
+        let sharesToKeep = primaryBalance / 10_000n;
+        if (sharesToKeep === 0n) {
+          sharesToKeep = 1n;
+        }
+        const sharesToMove = primaryBalance > sharesToKeep ? primaryBalance - sharesToKeep : primaryBalance;
+        if (sharesToMove > 0n) {
+          await router
+            .connect(governance)
+            .rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, sharesToMove, 1n);
+        }
+
+        let remainingBalance = await shareBalance(targetVault);
+        let remainingValue = await adapter.strategyShareValueInDStable(targetVault, remainingBalance);
+
+        if (remainingValue > ABSOLUTE_DUST_THRESHOLD && remainingBalance > 1n) {
+          await router
+            .connect(governance)
+            .rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, remainingBalance - 1n, 1n);
+          remainingBalance = await shareBalance(targetVault);
+          remainingValue = await adapter.strategyShareValueInDStable(targetVault, remainingBalance);
+        }
+
+        expect(remainingValue).to.be.lte(ABSOLUTE_DUST_THRESHOLD);
+        const totalValue = await collateralVault.totalValueInDStable();
+        const maxRelativeDust = (totalValue * RELATIVE_DUST_THRESHOLD_BPS) / ONE_HUNDRED_PERCENT_BPS;
+        expect(remainingValue).to.be.lte(maxRelativeDust);
+
+        await router.connect(governance).suspendVaultForRemoval(targetVault);
+        expect(await shareBalance(targetVault)).to.be.lte(remainingBalance);
         await router.connect(governance).removeAdapter(targetVault);
         expect(await router.strategyShareToAdapter(targetVault)).to.equal(ethers.ZeroAddress);
 
