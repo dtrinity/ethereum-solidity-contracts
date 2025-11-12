@@ -61,6 +61,35 @@ describe("dSTAKE v2 core flows", function () {
         await dStableToken.mint(recipient, amount);
       };
 
+      const resolveTokenAdmin = async (): Promise<string> => {
+        const candidates = [adminAddr, deployerAddr, userAddr, otherAddr];
+        const defaultAdminRole = await dStakeToken.DEFAULT_ADMIN_ROLE();
+        for (const candidate of candidates) {
+          if (await dStakeToken.hasRole(defaultAdminRole, candidate)) {
+            return candidate;
+          }
+        }
+        throw new Error("No token admin signer available");
+      };
+
+      const deployRouterPair = async (admin: string) => {
+        const adminSigner = await ethers.getSigner(admin);
+        const dStakeTokenAddress = await dStakeToken.getAddress();
+        const assetAddress = await dStakeToken.asset();
+
+        const collateralFactory = await ethers.getContractFactory("DStakeCollateralVaultV2", adminSigner);
+        const collateralCandidate = (await collateralFactory.deploy(dStakeTokenAddress, assetAddress)) as DStakeCollateralVaultV2;
+        await collateralCandidate.waitForDeployment();
+
+        const routerFactory = await ethers.getContractFactory("DStakeRouterV2", adminSigner);
+        const routerCandidate = (await routerFactory.deploy(dStakeTokenAddress, await collateralCandidate.getAddress())) as DStakeRouterV2;
+        await routerCandidate.waitForDeployment();
+
+        await collateralCandidate.connect(adminSigner).setRouter(await routerCandidate.getAddress());
+
+        return { routerCandidate, collateralCandidate };
+      };
+
       it("registers adapter for the default strategy share", async function () {
         const adapterAddress = await router.strategyShareToAdapter(vaultAssetAddress);
         expect(adapterAddress).to.not.equal(ethers.ZeroAddress);
@@ -191,6 +220,40 @@ describe("dSTAKE v2 core flows", function () {
         await expect(router.connect(otherSigner).setWithdrawalFee(1)).to.be.revertedWithCustomError(router, "UnauthorizedConfigCaller");
 
         await router.connect(adminSigner).setWithdrawalFee(0);
+      });
+
+      it("blocks router migration while settlement shortfall remains", async function () {
+        const routerAdminSigner = await ethers.getSigner(adminAddr);
+        const tokenAdmin = await resolveTokenAdmin();
+        const tokenAdminSigner = await ethers.getSigner(tokenAdmin);
+        const userSigner = await ethers.getSigner(userAddr);
+        const depositAmount = toUnits("250", dStableDecimals);
+
+        await mintDStable(userAddr, depositAmount);
+        await dStableToken.connect(userSigner).approve(await dStakeToken.getAddress(), depositAmount);
+        await dStakeToken.connect(userSigner).deposit(depositAmount, userAddr);
+
+        const shortfall = depositAmount / 4n === 0n ? 1n : depositAmount / 4n;
+        await router.connect(routerAdminSigner).recordShortfall(shortfall);
+
+        const { routerCandidate, collateralCandidate } = await deployRouterPair(tokenAdmin);
+
+        await expect(
+          dStakeToken.connect(tokenAdminSigner).migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
+        )
+          .to.be.revertedWithCustomError(dStakeToken, "RouterShortfallOutstanding")
+          .withArgs(shortfall);
+
+        await router.connect(routerAdminSigner).clearShortfall(shortfall);
+
+        await expect(
+          dStakeToken.connect(tokenAdminSigner).migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
+        )
+          .to.emit(dStakeToken, "RouterSet")
+          .withArgs(await routerCandidate.getAddress());
+
+        expect(await dStakeToken.router()).to.equal(await routerCandidate.getAddress());
+        expect(await dStakeToken.collateralVault()).to.equal(await collateralCandidate.getAddress());
       });
     });
   });

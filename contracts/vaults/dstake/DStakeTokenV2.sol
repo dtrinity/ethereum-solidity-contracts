@@ -29,6 +29,7 @@ contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, AccessControlUpgrad
     error ERC4626ExceedsMaxRedeem(uint256 shares, uint256 maxShares);
     error RouterCollateralMismatch(address router, address expectedVault, address actualVault);
     error RouterTokenMismatch(address router, address expectedToken, address actualToken);
+    error RouterShortfallOutstanding(uint256 shortfall);
 
     // --- State ---
     IDStakeCollateralVaultV2 public collateralVault;
@@ -335,6 +336,13 @@ contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, AccessControlUpgrad
     function migrateCore(address newRouter, address newCollateralVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newRouter == address(0) || newCollateralVault == address(0)) {
             revert ZeroAddress();
+        }
+
+        if (address(router) != address(0)) {
+            uint256 shortfall = router.currentShortfall();
+            if (shortfall > 0) {
+                revert RouterShortfallOutstanding(shortfall);
+            }
         }
 
         IDStakeRouterV2 routerCandidate = IDStakeRouterV2(newRouter);

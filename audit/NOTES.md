@@ -109,7 +109,7 @@
 ### Tracking table
 | ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
 | --- | --- | --- | --- | --- | --- | --- |
-| M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | TBD | Pending | ERC4626 invariant + migration sims |
+| M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | dz | Resolved (dz/hashlock-audit-findings) | ERC4626 invariant + migration sims |
 | L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | TBD | Pending | Idle vault accrual tests |
 | L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Pending | Vault removal + NAV tests |
 | QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | TBD | Pending | Adapter unit tests |
@@ -205,8 +205,8 @@
 
 ### RouterOps – Hashlock M-01 & L-02 (Nov 2025)
 - **Investigation:** Re-ran M-01/L-02 scenarios; confirmed router migrations ignore outstanding `settlementShortfall` and vault removal without dust gating craters NAV.
-- **Mitigations:** Added `RouterShortfallOutstanding` guard so `DStakeTokenV2.migrateCore` reverts until `router.currentShortfall() == 0`. `DStakeCollateralVaultV2.removeSupportedStrategyShare` now checks both ≤1 dStable absolute value and ≤0.1% of TVL before delisting (adapter-valued), preventing griefing while blocking meaningful removals.
-- **Validation:** `yarn hardhat test test/dstake/DStakeToken.ts test/dstake/RouterGovernanceFlows.test.ts` plus shared pre-push guardrails (lint, solhint, invariant suites).
+- **Mitigations:** Drafted a minimal patch that introduces `RouterShortfallOutstanding(shortfall)` and checks the legacy router state before switching; `migrateCore` now reverts until `router.currentShortfall() == 0`, preserving share price continuity. `DStakeCollateralVaultV2.removeSupportedStrategyShare` now checks both ≤1 dStable absolute value and ≤0.1% of TVL before delisting (adapter-valued), preventing griefing while blocking meaningful removals.
+- **Validation:** Added a regression spec in `test/dstake/DStakeToken.ts` that records a shortfall, attempts migration (expects `RouterShortfallOutstanding`), clears the shortfall, and confirms migration proceeds. Full sweep: `yarn hardhat test test/dstake/DStakeToken.ts test/dstake/RouterGovernanceFlows.test.ts` plus shared pre-push guardrails (lint, solhint, invariant suites).
 - **Open items:** Governance SOP to codify “clear shortfall → migrate router” and suspend→drain→remove flows; consider configurable thresholds for very small vaults.
 - **PR:** https://github.com/dtrinity/ethereum-solidity-contracts/pull/16 (branch `routerops/hashlock-m01-l02`).
 
