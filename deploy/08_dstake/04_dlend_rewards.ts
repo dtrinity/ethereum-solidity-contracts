@@ -319,9 +319,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
       if (adapterAddress === ethers.ZeroAddress) {
-
-        const missingAdapterMessage = `Router (${dStakeRouterAddress}) has no adapter registered for strategy ${targetStaticATokenWrapperAddress}; grant authorized caller role to reward manager ${deployment.address} once configured.`;
-        manualActions.push(missingAdapterMessage);
+        // eslint-disable-next-line padding-line-between-statements -- manual action log is the only statement required here
+        manualActions.push(
+          `Router (${dStakeRouterAddress}) has no adapter registered for strategy ${targetStaticATokenWrapperAddress}; grant authorized caller role to reward manager ${deployment.address} once configured.`,
+        );
       } else {
         const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
 
