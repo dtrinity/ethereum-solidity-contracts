@@ -291,9 +291,7 @@ describe("DStakeRouterV2 governance flows", function () {
         }
         const sharesToMove = primaryBalance > sharesToKeep ? primaryBalance - sharesToKeep : primaryBalance;
         if (sharesToMove > 0n) {
-          await router
-            .connect(governance)
-            .rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, sharesToMove, 1n);
+          await router.connect(governance).rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, sharesToMove, 1n);
         }
 
         let remainingBalance = await shareBalance(targetVault);

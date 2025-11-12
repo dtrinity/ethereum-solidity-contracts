@@ -78,17 +78,11 @@ describe("dSTAKE v2 core flows", function () {
         const assetAddress = await dStakeToken.asset();
 
         const collateralFactory = await ethers.getContractFactory("DStakeCollateralVaultV2", adminSigner);
-        const collateralCandidate = (await collateralFactory.deploy(
-          dStakeTokenAddress,
-          assetAddress,
-        )) as DStakeCollateralVaultV2;
+        const collateralCandidate = (await collateralFactory.deploy(dStakeTokenAddress, assetAddress)) as DStakeCollateralVaultV2;
         await collateralCandidate.waitForDeployment();
 
         const routerFactory = await ethers.getContractFactory("DStakeRouterV2", adminSigner);
-        const routerCandidate = (await routerFactory.deploy(
-          dStakeTokenAddress,
-          await collateralCandidate.getAddress(),
-        )) as DStakeRouterV2;
+        const routerCandidate = (await routerFactory.deploy(dStakeTokenAddress, await collateralCandidate.getAddress())) as DStakeRouterV2;
         await routerCandidate.waitForDeployment();
 
         await collateralCandidate.connect(adminSigner).setRouter(await routerCandidate.getAddress());
@@ -245,9 +239,7 @@ describe("dSTAKE v2 core flows", function () {
         const { routerCandidate, collateralCandidate } = await deployRouterPair(tokenAdmin);
 
         await expect(
-          dStakeToken
-            .connect(tokenAdminSigner)
-            .migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
+          dStakeToken.connect(tokenAdminSigner).migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
         )
           .to.be.revertedWithCustomError(dStakeToken, "RouterShortfallOutstanding")
           .withArgs(shortfall);
@@ -255,9 +247,7 @@ describe("dSTAKE v2 core flows", function () {
         await router.connect(routerAdminSigner).clearShortfall(shortfall);
 
         await expect(
-          dStakeToken
-            .connect(tokenAdminSigner)
-            .migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
+          dStakeToken.connect(tokenAdminSigner).migrateCore(await routerCandidate.getAddress(), await collateralCandidate.getAddress()),
         )
           .to.emit(dStakeToken, "RouterSet")
           .withArgs(await routerCandidate.getAddress());
