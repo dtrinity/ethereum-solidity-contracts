@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,7 +12,7 @@ import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAda
  * @notice Conversion adapter that bridges a dSTABLE asset directly into an ERC4626 vault where the
  *         share token is used as a dSTAKE strategy. Useful for idle vaults that simply hold dUSD.
  */
-contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
+contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2, AccessControl {
     using SafeERC20 for IERC20;
 
     // --- Errors ---
@@ -20,13 +21,19 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
     error VaultAssetMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
 
+    // --- Roles ---
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
+
+    // --- Events ---
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized);
+
     // --- State ---
     address public immutable dStable;
     IERC4626 public immutable vault;
     address public immutable collateralVault;
 
-    constructor(address _dStable, address _vault, address _collateralVault) {
-        if (_dStable == address(0) || _vault == address(0) || _collateralVault == address(0)) {
+    constructor(address _dStable, address _vault, address _collateralVault, address _router, address _admin) {
+        if (_dStable == address(0) || _vault == address(0) || _collateralVault == address(0) || _router == address(0) || _admin == address(0)) {
             revert ZeroAddress();
         }
 
@@ -37,13 +44,19 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
         dStable = _dStable;
         vault = IERC4626(_vault);
         collateralVault = _collateralVault;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        if (_admin != msg.sender) {
+            _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        }
+        _setAuthorizedCaller(_router, true);
     }
 
     // --- IDStableConversionAdapterV2 ---
 
     function depositIntoStrategy(
         uint256 stableAmount
-    ) external override returns (address shareToken, uint256 strategyShareAmount) {
+    ) external override onlyRole(AUTHORIZED_CALLER_ROLE) returns (address shareToken, uint256 strategyShareAmount) {
         if (stableAmount == 0) {
             revert InvalidAmount();
         }
@@ -55,7 +68,12 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
         shareToken = address(vault);
     }
 
-    function withdrawFromStrategy(uint256 strategyShareAmount) external override returns (uint256 stableAmount) {
+    function withdrawFromStrategy(uint256 strategyShareAmount)
+        external
+        override
+        onlyRole(AUTHORIZED_CALLER_ROLE)
+        returns (uint256 stableAmount)
+    {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }
@@ -98,5 +116,26 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
 
     function vaultAsset() external view override returns (address) {
         return address(vault);
+    }
+
+    /**
+     * @notice Adds or removes an authorized caller (router, reward manager, etc).
+     */
+    function setAuthorizedCaller(address caller, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setAuthorizedCaller(caller, allowed);
+    }
+
+    function _setAuthorizedCaller(address caller, bool allowed) internal {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (allowed) {
+            _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+        } else {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+        }
+
+        emit AuthorizedCallerUpdated(caller, allowed);
     }
 }

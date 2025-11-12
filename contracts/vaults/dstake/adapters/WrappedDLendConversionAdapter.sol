@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
@@ -14,7 +15,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
  * @dev Implements the IDStableConversionAdapterV2 interface.
  *      Interacts with a specific StaticATokenLM contract provided at deployment.
  */
-contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
+contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessControl {
     using SafeERC20 for IERC20;
 
     // --- Errors ---
@@ -23,6 +24,10 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
     error StaticATokenUnderlyingMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
     error WrappedDepositFailed(bytes reason);
+
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
+
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized);
 
     // --- State ---
     address public immutable dStable; // The underlying dSTABLE asset (e.g., dUSD)
@@ -34,9 +39,13 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
      * @param _dStable The address of the dSTABLE asset (e.g., dUSD)
      * @param _wrappedDLendToken The address of the wrapped dLEND token (StaticATokenLM, e.g., wddUSD)
      * @param _collateralVault The address of the DStakeCollateralVaultV2
+     * @param _router The router/governance module allowed to call conversion functions
+     * @param _admin Address that can manage authorized callers
      */
-    constructor(address _dStable, address _wrappedDLendToken, address _collateralVault) {
-        if (_dStable == address(0) || _wrappedDLendToken == address(0) || _collateralVault == address(0)) {
+    constructor(address _dStable, address _wrappedDLendToken, address _collateralVault, address _router, address _admin) {
+        if (
+            _dStable == address(0) || _wrappedDLendToken == address(0) || _collateralVault == address(0) || _router == address(0) || _admin == address(0)
+        ) {
             revert ZeroAddress();
         }
         dStable = _dStable;
@@ -47,6 +56,12 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
         if (IERC4626(_wrappedDLendToken).asset() != _dStable) {
             revert StaticATokenUnderlyingMismatch(_dStable, IERC4626(_wrappedDLendToken).asset());
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        if (_admin != msg.sender) {
+            _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        }
+        _setAuthorizedCaller(_router, true);
     }
 
     // --- IDStableConversionAdapterV2 Implementation ---
@@ -59,7 +74,7 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override returns (address _strategyShare, uint256 strategyShareAmount) {
+    ) external override onlyRole(AUTHORIZED_CALLER_ROLE) returns (address _strategyShare, uint256 strategyShareAmount) {
         if (dStableAmount == 0) {
             revert InvalidAmount();
         }
@@ -90,7 +105,12 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
      * @dev Converts wrappedDLendToken -> dStable by withdrawing from StaticATokenLM.
      *      The StaticATokenLM contract sends the dStable directly to msg.sender.
      */
-    function withdrawFromStrategy(uint256 strategyShareAmount) external override returns (uint256 dStableAmount) {
+    function withdrawFromStrategy(uint256 strategyShareAmount)
+        external
+        override
+        onlyRole(AUTHORIZED_CALLER_ROLE)
+        returns (uint256 dStableAmount)
+    {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }
@@ -161,5 +181,26 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
         uint256 strategyShareAmount
     ) public view override returns (uint256 dStableAmount) {
         dStableAmount = IERC4626(address(wrappedDLendToken)).previewRedeem(strategyShareAmount);
+    }
+
+    /**
+     * @notice Adds or removes an authorized caller (router, reward manager, etc).
+     */
+    function setAuthorizedCaller(address caller, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setAuthorizedCaller(caller, allowed);
+    }
+
+    function _setAuthorizedCaller(address caller, bool allowed) internal {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (allowed) {
+            _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+        } else {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+        }
+
+        emit AuthorizedCallerUpdated(caller, allowed);
     }
 }

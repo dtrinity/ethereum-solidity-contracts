@@ -19,6 +19,9 @@ import {
   POOL_DATA_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
 
+const CALLER_MANAGER_ABI = ["function setAuthorizedCaller(address caller, bool allowed) external"];
+const ROUTER_LOOKUP_ABI = ["function strategyShareToAdapter(address strategyShare) external view returns (address)"];
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -312,6 +315,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`          Granted DEFAULT_ADMIN_ROLE to ${deployer}`);
         }
       }
+      const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
+      const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
+      if (adapterAddress === ethers.ZeroAddress) {
+        manualActions.push(
+          `Router (${dStakeRouterAddress}) has no adapter registered for strategy ${targetStaticATokenWrapperAddress}; grant authorized caller role to reward manager ${deployment.address} once configured.`,
+        );
+      } else {
+        const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
+        try {
+          await callerManager.setAuthorizedCaller(deployment.address, true);
+          console.log(`          Authorized reward manager ${deployment.address} on adapter ${adapterAddress}`);
+        } catch (error) {
+          manualActions.push(`Adapter ${adapterAddress}.setAuthorizedCaller(${deployment.address}, true) (deployer lacks admin role).`);
+        }
+      }
+
       console.log(`    Set up DStakeRewardManagerDLend for ${instanceKey}.`);
     }
   }

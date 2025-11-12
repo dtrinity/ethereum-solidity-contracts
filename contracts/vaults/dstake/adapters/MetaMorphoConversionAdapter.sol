@@ -36,6 +36,8 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
     using SafeERC20 for IERC20;
     using Math for uint256;
 
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
+
     // --- Constants ---
     uint256 private constant MIN_SHARES = 1; // Minimum shares to prevent dust attacks (1 wei)
 
@@ -58,6 +60,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
     event ConversionFromVault(address indexed to, uint256 vaultShares, uint256 dStableAmount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
     event MaxSlippageUpdated(uint256 oldSlippage, uint256 newSlippage);
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized);
 
     // --- Immutable State ---
     address public immutable dStable;
@@ -70,13 +73,15 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      * @param _dStable The address of the dSTABLE asset (e.g., dUSD)
      * @param _metaMorphoVault The address of the MetaMorpho vault (must be ERC4626)
      * @param _collateralVault The address of the DStakeCollateralVaultV2
+     * @param _router The router allowed to invoke conversion functions
      * @param _initialAdmin The initial admin address (will be transferred to governance later)
      */
-    constructor(address _dStable, address _metaMorphoVault, address _collateralVault, address _initialAdmin) {
+    constructor(address _dStable, address _metaMorphoVault, address _collateralVault, address _router, address _initialAdmin) {
         if (
             _dStable == address(0) ||
             _metaMorphoVault == address(0) ||
             _collateralVault == address(0) ||
+            _router == address(0) ||
             _initialAdmin == address(0)
         ) {
             revert ZeroAddress();
@@ -89,6 +94,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
         // Initialize access control - grant admin role to both initial admin and collateral vault
         _grantRole(DEFAULT_ADMIN_ROLE, _initialAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, _collateralVault);
+        _grantRole(AUTHORIZED_CALLER_ROLE, _router);
 
         // Initialize slippage to 1% (backward compatibility)
         maxSlippageBps = BasisPointConstants.ONE_PERCENT_BPS;
@@ -111,7 +117,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override nonReentrant returns (address _strategyShare, uint256 strategyShareAmount) {
+    ) external override nonReentrant onlyRole(AUTHORIZED_CALLER_ROLE) returns (address _strategyShare, uint256 strategyShareAmount) {
         if (dStableAmount == 0) revert InvalidAmount();
 
         // 1. Pull dStable from caller (router)
@@ -154,7 +160,13 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function withdrawFromStrategy(
         uint256 strategyShareAmount
-    ) external override nonReentrant returns (uint256 dStableAmount) {
+    )
+        external
+        override
+        nonReentrant
+        onlyRole(AUTHORIZED_CALLER_ROLE)
+        returns (uint256 dStableAmount)
+    {
         if (strategyShareAmount == 0) revert InvalidAmount();
 
         // 1. Pull vault shares from caller (router)
@@ -273,6 +285,10 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
         emit MaxSlippageUpdated(oldSlippage, newSlippageBps);
     }
 
+    function setAuthorizedCaller(address caller, bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setAuthorizedCaller(caller, allowed);
+    }
+
     // --- Emergency Functions ---
 
     /**
@@ -292,6 +308,20 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
         }
 
         emit EmergencyWithdraw(token, amount);
+    }
+
+    function _setAuthorizedCaller(address caller, bool allowed) internal {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (allowed) {
+            _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+        } else {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+        }
+
+        emit AuthorizedCallerUpdated(caller, allowed);
     }
 
     // --- View Functions ---

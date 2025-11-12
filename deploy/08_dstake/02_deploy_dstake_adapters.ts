@@ -12,6 +12,53 @@ import {
   POOL_ADDRESSES_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
 
+const GENERIC_ADAPTER_CONTRACT = "GenericERC4626ConversionAdapter";
+
+/**
+ * Deploys the generic ERC4626 adapter with router/admin wiring.
+ *
+ * @param params Object containing adapter deployment context.
+ * @param params.deployments Hardhat deployment helper.
+ * @param params.deployer Address performing the deployment.
+ * @param params.instanceConfig Per-instance dSTAKE configuration.
+ * @param params.vaultAsset ERC4626 vault asset address.
+ * @param params.collateralVaultAddress Live collateral vault address.
+ * @param params.routerAddress Router allowed to trigger conversions.
+ * @param params.dStableSymbol Symbol suffix for readability.
+ */
+async function deployGenericAdapter(params: {
+  deployments: HardhatRuntimeEnvironment["deployments"];
+  deployer: string;
+  instanceConfig: DStakeInstanceConfig;
+  vaultAsset: string;
+  collateralVaultAddress: string;
+  routerAddress: string;
+  dStableSymbol: string;
+}): Promise<void> {
+  const { deployments, deployer, instanceConfig, vaultAsset, collateralVaultAddress, routerAddress, dStableSymbol } = params;
+
+  if (!routerAddress || routerAddress === ethers.ZeroAddress) {
+    throw new Error(`Router address missing while deploying ${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`);
+  }
+
+  const deploymentName = `${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`;
+  const existingAdapter = await deployments.getOrNull(deploymentName);
+  if (existingAdapter) {
+    console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
+    return;
+  }
+
+  const adminAddress =
+    instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : deployer;
+
+  await deployments.deploy(deploymentName, {
+    from: deployer,
+    contract: GENERIC_ADAPTER_CONTRACT,
+    args: [instanceConfig.dStable, vaultAsset, collateralVaultAddress, routerAddress, adminAddress],
+    log: true,
+  });
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -51,11 +98,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Get the collateral vault address from deployment
     const collateralVault = await deployments.getOrNull(collateralVaultDeploymentName);
+    const routerDeployment = await deployments.getOrNull(routerDeploymentName);
 
-    if (!collateralVault) {
-      console.log(`    Error: ${collateralVaultDeploymentName} not found. Make sure dStakeCore is deployed first.`);
+    if (!collateralVault || !routerDeployment) {
+      console.log(
+        `    Error: missing core components for ${dStableSymbol}. Vault: ${!!collateralVault}, router: ${!!routerDeployment}. Skipping.`,
+      );
       continue;
     }
+
+    const routerAddress = routerDeployment.address;
 
     for (const adapterConfig of instanceConfig.adapters) {
       const { adapterContract } = adapterConfig;
@@ -104,21 +156,31 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
           continue;
         }
+        const adminAddress =
+          instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : deployer;
+
         await deploy(deploymentName, {
           from: deployer,
           contract: adapterContract,
-          args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
+          args: [instanceConfig.dStable, vaultAsset, collateralVault.address, routerAddress, adminAddress],
           log: true,
         });
-        // If router already exists, ensure adapter wiring is refreshed later (configure script handles mapping).
-        const routerDeployment = await deployments.getOrNull(routerDeploymentName);
-
-        if (!routerDeployment) {
-          throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
-        }
       } else {
         if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
           throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
+        }
+
+        if (adapterContract === GENERIC_ADAPTER_CONTRACT) {
+          await deployGenericAdapter({
+            deployments,
+            deployer,
+            instanceConfig,
+            vaultAsset,
+            collateralVaultAddress: collateralVault.address,
+            routerAddress,
+            dStableSymbol,
+          });
+          continue;
         }
       }
     }

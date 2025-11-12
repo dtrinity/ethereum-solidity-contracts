@@ -76,6 +76,8 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       expect(adapterAddress).to.not.equal(ZeroAddress);
       // Ensure deployer is registered as router on collateralVault
       await collateralVault.setRouter(deployer.address);
+      // Allow named router signer (user1) to exercise adapter flows in tests
+      await adapter.connect(deployer).setAuthorizedCaller(user1.address, true);
     });
 
     describe("Initialization & Deployment State", function () {
@@ -221,6 +223,25 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         const previewAmt = parseUnits(20, vaultAssetDecimals);
         const expected = await wrapper.previewRedeem(previewAmt);
         expect(await adapter.previewWithdrawFromStrategy(previewAmt)).to.equal(expected);
+      });
+    });
+
+    describe("caller authorization", function () {
+      it("reverts when caller lacks authorization", async function () {
+        const amt = parseUnits(1, dStableDecimals);
+        await dStableToken.connect(user2).approve(adapterAddress, amt);
+        await expect(adapter.connect(user2).depositIntoStrategy(amt)).to.be.revertedWithCustomError(
+          adapter,
+          "AccessControlUnauthorizedAccount",
+        );
+      });
+
+      it("allows admin to authorize a new caller", async function () {
+        const amt = parseUnits(1, dStableDecimals);
+        await stable.mint(user2.address, amt);
+        await dStableToken.connect(user2).approve(adapterAddress, amt);
+        await adapter.connect(deployer).setAuthorizedCaller(user2.address, true);
+        await expect(adapter.connect(user2).depositIntoStrategy(amt)).to.emit(adapter, "ConversionToVault");
       });
     });
   });
