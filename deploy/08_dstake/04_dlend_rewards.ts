@@ -319,15 +319,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
       if (adapterAddress === ethers.ZeroAddress) {
+
         manualActions.push(
           `Router (${dStakeRouterAddress}) has no adapter registered for strategy ${targetStaticATokenWrapperAddress}; grant authorized caller role to reward manager ${deployment.address} once configured.`,
         );
       } else {
         const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
+
         try {
           await callerManager.setAuthorizedCaller(deployment.address, true);
           console.log(`          Authorized reward manager ${deployment.address} on adapter ${adapterAddress}`);
-        } catch (_error) {
+        } catch {
           manualActions.push(`Adapter ${adapterAddress}.setAuthorizedCaller(${deployment.address}, true) (deployer lacks admin role).`);
         }
       }
