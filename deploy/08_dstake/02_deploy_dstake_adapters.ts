@@ -135,9 +135,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           }
 
           const adminAddress =
-            instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress
-              ? instanceConfig.initialAdmin
-              : deployer;
+            instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : deployer;
 
           await deploy(deploymentName, {
             from: deployer,
