@@ -16,7 +16,14 @@ const GENERIC_ADAPTER_CONTRACT = "GenericERC4626ConversionAdapter";
 
 /**
  * Deploys the generic ERC4626 adapter with router/admin wiring.
- * @param params Deployment utilities and configuration for the current dSTAKE instance.
+ *
+ * @param params.deployments Hardhat deployment helper.
+ * @param params.deployer Address performing the deployment.
+ * @param params.instanceConfig Per-instance dSTAKE configuration.
+ * @param params.vaultAsset ERC4626 vault asset address.
+ * @param params.collateralVaultAddress Live collateral vault address.
+ * @param params.routerDeploymentName Deployment identifier for the router.
+ * @param params.dStableSymbol Symbol suffix for log readability.
  */
 async function deployGenericAdapter(params: {
   deployments: HardhatRuntimeEnvironment["deployments"];
@@ -35,6 +42,7 @@ async function deployGenericAdapter(params: {
   }
 
   const deploymentName = `${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`;
+
   const existingAdapter = await deployments.getOrNull(deploymentName);
   if (existingAdapter) {
     console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
