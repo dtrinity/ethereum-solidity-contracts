@@ -104,21 +104,48 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
           continue;
         }
+        const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+
+        if (!routerDeployment) {
+          throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
+        }
+
         await deploy(deploymentName, {
           from: deployer,
           contract: adapterContract,
           args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
           log: true,
         });
-        // If router already exists, ensure adapter wiring is refreshed later (configure script handles mapping).
-        const routerDeployment = await deployments.getOrNull(routerDeploymentName);
-
-        if (!routerDeployment) {
-          throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
-        }
       } else {
         if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
           throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
+        }
+
+        if (adapterContract === "GenericERC4626ConversionAdapter") {
+          const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+          if (!routerDeployment) {
+            throw new Error(`Router ${routerDeploymentName} not found while deploying ${adapterContract}_${dStableSymbol}`);
+          }
+
+          const deploymentName = `${adapterContract}_${dStableSymbol}`;
+          const existingAdapter = await deployments.getOrNull(deploymentName);
+          if (existingAdapter) {
+            console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
+            continue;
+          }
+
+          const adminAddress =
+            instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress
+              ? instanceConfig.initialAdmin
+              : deployer;
+
+          await deploy(deploymentName, {
+            from: deployer,
+            contract: adapterContract,
+            args: [instanceConfig.dStable, vaultAsset, collateralVault.address, adminAddress],
+            log: true,
+          });
+          continue;
         }
       }
     }
