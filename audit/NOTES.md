@@ -1,0 +1,193 @@
+# Hashlock Audit Validation Notes
+
+## Inputs Reviewed
+- `Design.md` (platform overview for dStable, dStake, and dLend coordination)
+- `contracts/dstable/Design.md` (issuer/redeemer/AMO mechanics)
+- `contracts/oracle_aggregator/Design.md` (pricing surface shared by issuers and redeemers)
+- `contracts/vaults/dstake/Design.md` plus `contracts/vaults/dstake/rewards/Design.md` (router/token/collateral vault and DLend reward flows)
+- `contracts/vaults/rewards_claimable/Design.md` (RewardClaimable base hooks)
+- `contracts/vaults/vesting/Design.md` (relevant to sdAsset lockups referenced by audits)
+- `audit/hashlock_dstable_findings.md`
+- `audit/hashlock_dstake_findings.md`
+
+## Workflow Checklist Template
+1. **Scope sync** – ☐ Confirm contract + network targets, pull latest deployments, and capture current admin topology.
+2. **Design alignment** – ☐ Map the finding to the documented invariants/modules above; note any drift to be backported to docs.
+3. **Fix shape** – ☐ Draft implementation notes + acceptance criteria, highlight migrations or storage changes.
+4. **Validation plan** – ☐ Identify unit/integration/simulation coverage, manual runbooks, and monitoring alerts to update.
+5. **Implementation** – ☐ Land code, run agreed test suites, capture gas/stat diff impacts.
+6. **Ops sign-off** – ☐ Document go/no-go, required governance actions, and rollout/upgrade steps.
+7. **Post-mortem & comms** – ☐ Update CHANGELOG/Design docs, prepare public disclosure (if any), and notify stakeholders.
+
+## Domain Context Snapshots
+
+### dStable quick references
+- Collateralized issuance/redemption lives in `IssuerV2_1` and `RedeemerV2` with oracle-backed valuations (`contracts/dstable/Design.md`).
+- `CollateralVault` custody plus AMO tooling (`AmoManagerV2`) enforce `totalSupply ≤ vaultValue` with peg-guard tolerances.
+- Shared `OracleAware` base wires the aggregator + base unit across the stack.
+- Governance touch points include vault rotation, fee receivers, tolerance knobs, and role-gated pauses; losing admin access bricks those levers.
+
+### dStake quick references
+- `DStakeTokenV2` (ERC4626) defers all capital routing to `DStakeRouterV2`; NAV = router TVL minus router shortfall (`contracts/vaults/dstake/Design.md`).
+- Router orchestrates adapters, solver routes, fee retention, module delegatecalls, and deterministic allocation logic.
+- `DStakeCollateralVaultV2` only ever holds strategy shares; adapters mint/burn directly there and rely on router role gating.
+- Reward flows reuse `RewardClaimable` semantics (thresholded compounding, role-gated settlement) while DLend-specific managers extend exchange/deposit hooks.
+
+## dStable Finding Portfolio
+
+### Tracking table
+| ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
+| --- | --- | --- | --- | --- | --- | --- |
+| L-01 | Missing role revocation protection | Low | Guard `DEFAULT_ADMIN_ROLE` in `contracts/dstable/IssuerV2_1.sol` & `contracts/dstable/RedeemerV2.sol` | TBD | Pending | Unit + access-control fuzz |
+| L-02 | Missing constructor input validation | Low | Zero-address guards for Issuer constructor wiring | TBD | Pending | Deployment script + ctor tests |
+| L-03 | Permit front-running in admin function | Low | `AmoManagerV2.repayWithPermit` tolerant handling | TBD | Pending | E2E AMO decrease rehearsal |
+| I-01 | Missing zero check in `setCollateralVault` | Info | Prevent accidental zeroing of `collateralVault` | TBD | Pending | Admin tx sim |
+| I-02 | Gas optimization in `setFeeReceiver` | Info | Skip redundant writes/events in `RedeemerV2` | TBD | Pending | Regression tests + event diff |
+| I-03 | Redundant AccessControl inheritance | Info | Remove double inheritance since `OracleAware` already extends AC | TBD | Pending | Compile + role regression |
+| I-04 | Missing bounds check in `setTolerance` | Info | Sanity-check AMO tolerance updates | TBD | Pending | AMO invariant harness |
+
+### Validation templates
+
+#### L-01 – Missing role revocation protection
+- **Scope reference:** `contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol`.
+- **Audit callout:** Prevent loss of `DEFAULT_ADMIN_ROLE` via `revokeRole/renounceRole`.
+- **Proposed fix cues:** Count admins before removal; consider two-step admin transfers.
+- **Validation tasks:** ☐ Extend access-control tests to cover last-admin revoke/renounce. ☐ Fuzz grant/revoke flows via Foundry invariant harness. ☐ Confirm upgrade bytecode size + storage layout unaffected.
+- **Implication prompts:** Does introducing `getRoleMemberCount` require `AccessControlEnumerable`? Any governance processes relying on renouncing to freeze config?
+- **Recommendation slot:** ☐ Adopt Hashlock fix as-is ☐ Rework (notes:) ☐ Needs product decision.
+
+#### L-02 – Missing constructor input validation
+- **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.
+- **Audit callout:** Guard `_collateralVault`, `_dstable`, `oracle` against zero.
+- **Proposed fix cues:** Mirror RedeemerV2’s `CannotBeZeroAddress` pattern.
+- **Validation tasks:** ☐ Add ctor revert tests. ☐ Diff deployment scripts/config to ensure parameters remain non-zero. ☐ Confirm no proxy initializer expectations change.
+- **Implication prompts:** Will factories or upgrades rely on deferred initialization? Do we need similar guard rails elsewhere (eg. AmoManager)?
+- **Recommendation slot:** ☐ Ship guard ☐ Document-only ☐ Needs architecture confirmation.
+
+#### L-03 – Permit front-running in admin function
+- **Scope reference:** `contracts/dstable/AmoManagerV2.sol`.
+- **Audit callout:** `repayWithPermit` front-run yields benign failure; document or add graceful path.
+- **Proposed fix cues:** Try/catch permit, fall back to allowance check; update NatSpec.
+- **Validation tasks:** ☐ Build unit test covering consumed permit + fallback. ☐ Simulate AMO bot replay after permit already used. ☐ Update runbook for admins.
+- **Implication prompts:** Will try/catch bloat bytecode? Should we instead drop the helper and rely on `repayFrom` only?
+- **Recommendation slot:** ☐ Accept doc-only ☐ Harden code ☐ Defer.
+
+#### I-01 – Missing zero-address check in `setCollateralVault`
+- **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.
+- **Audit callout:** Prevent admin from bricking issuance by pointing to `address(0)`.
+- **Proposed fix cues:** Add `CannotBeZeroAddress` revert; emit event once validated.
+- **Validation tasks:** ☐ Regression test for zero input revert. ☐ Scripted dry-run of vault rotation with new guard.
+- **Implication prompts:** Should other setters (`setRedeemer`, `setFeeReceiver`) share a base modifier? Do we need upgrade gating for multi-sig flows?
+
+#### I-02 – Gas optimization in `setFeeReceiver`
+- **Scope reference:** `contracts/dstable/RedeemerV2.sol`.
+- **Audit callout:** Short-circuit identical assignments to save SSTORE/event.
+- **Validation tasks:** ☐ Add require that new receiver differs. ☐ Verify event watchers expect update only on change. ☐ Re-run gas snapshots if available.
+- **Implication prompts:** Any downstream automation expecting redundant events (probably not)? Should we generalize to other setters?
+
+#### I-03 – Redundant AccessControl inheritance
+- **Scope reference:** `contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol`.
+- **Audit callout:** `OracleAware` already extends AccessControl; remove duplicate inheritance.
+- **Validation tasks:** ☐ Confirm compiler linearization unaffected. ☐ Run access-control regression/invariants. ☐ Ensure storage layout diff is nil.
+- **Implication prompts:** Are there contracts relying on `AccessControl` public methods order? Need doc update noting inheritance chain?
+
+#### I-04 – Missing bounds check in `setTolerance`
+- **Scope reference:** `contracts/dstable/AmoManagerV2.sol`.
+- **Audit callout:** Guard tolerance updates to avoid bricking AMO ops or overly loose invariants.
+- **Proposed fix cues:** Enforce `0 < tolerance ≤ baseCurrencyUnit / 10000` (or configurable), emit event.
+- **Validation tasks:** ☐ Extend AMO invariant tests for tolerance extremes. ☐ Document governance process for emergency override (if any). ☐ Evaluate need for two-step “unchecked” function.
+- **Implication prompts:** Does tolerance live in basis points or base units? Should future markets require higher ceilings? Consider configurability per asset?
+
+## dStake Finding Portfolio
+
+### Tracking table
+| ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
+| --- | --- | --- | --- | --- | --- | --- |
+| M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | TBD | Pending | ERC4626 invariant + migration sims |
+| L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | TBD | Pending | Idle vault accrual tests |
+| L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Pending | Vault removal + NAV tests |
+| QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | TBD | Pending | Adapter unit tests |
+| QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | TBD | Pending | Access tests |
+| QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | TBD | Pending | Rescue tests |
+| QA-04 | Missing allowance reset in GenericERC4626 adapter | QA | Zero approvals after deposit | TBD | Pending | Allowance hygiene tests |
+| QA-05 | Reward compounding threshold required to recover omissions | QA | Add recovery flow in `RewardClaimable` | TBD | Pending | Reward manager tests |
+| Q-06 | Missing last-admin protection across dStake AC contracts | QA | Same pattern as dStable L-01 applied to router/token/vault/adapters | TBD | Pending | Access invariants |
+| TAG-01 | Redundant `getWithdrawalFeeBps` | Tag | Remove duplicate view | TBD | Pending | ABI diff |
+| TAG-02 | `reinvestFees` CEI deviation | Tag | Reshuffle CEI order | TBD | Pending | Fee reinvest tests |
+
+### Validation templates
+
+#### M-01 – Router migration during active shortfall
+- **Scope reference:** `contracts/vaults/dstake/DStakeTokenV2.sol`.
+- **Audit callout:** `migrateCore` ignores outstanding shortfall, inflating price.
+- **Proposed fix cues:** Require `router.currentShortfall() == 0` or propagate into new router before switch.
+- **Validation tasks:** ☐ Simulate migration with artificial shortfall to confirm revert/logging. ☐ Update governance SOP for clearing shortfalls prior to router swaps. ☐ Extend ERC4626 invariant tests to cover migration gating.
+- **Implication prompts:** How to handle legitimate migrations where shortfall should follow? Need helper to copy shortfall state? Document upgrade sequencing.
+
+#### L-01 – Emission schedule reserve validation
+- **Scope reference:** `contracts/vaults/dstake/vaults/DStakeIdleVault.sol`.
+- **Audit callout:** `setEmissionSchedule` should assert reserve ≥ duration * rate.
+- **Validation tasks:** ☐ Unit test insufficient reserve revert. ☐ Ensure withdraw-unreleased rewards flow still functions. ☐ Update ops dashboard to surface reserve sufficiency metric.
+- **Implication prompts:** Should partial top-ups extend end date automatically? Need emergency override for manual halts?
+
+#### L-02 – Vault removal dust thresholds
+- **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`, router governance module.
+- **Audit callout:** Removing supported share with balance drops TVL instantly.
+- **Proposed fix cues:** Dual threshold (absolute + relative) plus suspend-first workflow.
+- **Validation tasks:** ☐ Add unit/integration tests for removal at/above thresholds. ☐ Cover griefing scenario with 1 wei donations. ☐ Update SOP for vault sunsets (suspend → withdraw → remove).
+- **Implication prompts:** Need adapter hook to report value? Should router enforce same check before governance removal call?
+
+#### QA-01 – Adapter emergency withdrawal
+- **Scope reference:** `contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol`.
+- **Audit callout:** No admin recovery hook for stranded dStable.
+- **Validation tasks:** ☐ Implement + test `emergencyWithdraw`. ☐ Document usage + require pause? ☐ Compare with MetaMorpho adapter pattern for consistency.
+- **Implication prompts:** Should event include reason? How to prevent misuse while allowing timely recovery?
+
+#### QA-02 – Adapter caller restrictions
+- **Scope reference:** All dStake adapters.
+- **Audit callout:** Public access creates footgun; only router should interact.
+- **Validation tasks:** ☐ Introduce immutable router param + modifier. ☐ Add tests ensuring non-router calls revert. ☐ Evaluate need for multi-router support (future upgrades).
+- **Implication prompts:** Any tooling (simulators) calling adapters directly? Document revert reason for UX clarity.
+
+#### QA-03 – Collateral vault dStable rescue
+- **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`.
+- **Audit callout:** Arbitrary dStable transfers currently unrecoverable.
+- **Validation tasks:** ☐ Allow rescue for `dStable`, keep strategy share block. ☐ Test accidental transfer scenario. ☐ Update ops docs to discourage direct sends.
+- **Implication prompts:** Should rescue require time delay or multisig ack? Need monitoring for unexpected dStable balances.
+
+#### QA-04 – Adapter allowance reset
+- **Scope reference:** Generic ERC4626 adapter.
+- **Audit callout:** Missing `forceApprove(..., 0)` after deposit.
+- **Validation tasks:** ☐ Add zeroing + tests verifying no stale allowance. ☐ Confirm no regressions with tokens requiring allowance reset (USDT-style).
+- **Implication prompts:** Unify allowance helper across adapters to avoid rework? Document rationale.
+
+#### QA-05 – Reward compounding recovery path
+- **Scope reference:** `contracts/vaults/rewards_claimable/RewardClaimable.sol`.
+- **Audit callout:** Omitted reward tokens require paying threshold twice.
+- **Validation tasks:** ☐ Design `distributeClaimedRewards` (no exchange deposit). ☐ Add tests for omission -> recovery flow. ☐ Update automation runbooks to track expected token list.
+- **Implication prompts:** Should managers store canonical reward token set on-chain? Need guard to ensure recovery cannot be abused to bypass threshold entirely?
+
+#### Q-06 – Last-admin protection across dStake
+- **Scope reference:** `DStakeRouterV2`, `DStakeTokenV2`, `DStakeCollateralVaultV2`, adapters, rewards managers.
+- **Audit callout:** Mirror dStable L-01 fix across all AccessControl surfaces.
+- **Validation tasks:** ☐ Inventory contracts inheriting AccessControl. ☐ Apply shared mixin or base contract for last-admin guard. ☐ Expand invariants ensuring at least one admin persists.
+- **Implication prompts:** Will module delegatecalls inherit guard automatically? Need to coordinate with upgradeable proxies for token?
+
+#### TAG-01 – Redundant `getWithdrawalFeeBps`
+- **Scope reference:** `contracts/vaults/dstake/DStakeTokenV2.sol`.
+- **Audit callout:** Remove duplicate getter.
+- **Validation tasks:** ☐ Delete function, run ABI diff, update clients. ☐ Verify no TS helpers use it (`typescript/` search).
+- **Implication prompts:** If external integrators rely on it, plan deprecation? Provide alias in TypeScript SDK?
+
+#### TAG-02 – `reinvestFees` CEI alignment
+- **Scope reference:** `contracts/vaults/dstake/DStakeRouterV2.sol`.
+- **Audit callout:** Emit events before/after external calls? reorder for CEI clarity.
+- **Validation tasks:** ☐ Refactor to compute values, emit, then transfer/deposit. ☐ Confirm `nonReentrant` still guards critical paths. ☐ Update tests watching events/incentives.
+- **Implication prompts:** Should we split events (incentive vs reinvest) for better observability? Any risk of double emissions after reorder?
+
+## Recommendation Scratchpad
+- Prioritize `M-01`, `L-02 (dStake)`, and `L-01 (dStable)` before informational items; unresolved accounting breaks can impact users fastest.
+- Consider bundling AccessControl hardening (dStable L-01 + dStake Q-06) into a shared mixin to reduce duplicate auditing surface.
+- Coordinate adapter-related fixes (QA-01/02/04) in one release to limit redeploy churn and simplify audits.
+- Draft governance communication template covering: reason for shortfall gating, new emission funding requirements, and adapter usage warnings.
+- Metrics to add once fixes land: shortfall-attempted-migration alert, emission funding sufficiency dashboard, collateral vault unsupported-token monitor.
