@@ -33,11 +33,10 @@ abstract contract LastAdminAccessControlUpgradeable is AccessControlEnumerableUp
     /**
      * @dev Overrides OZ renounceRole to prevent the final admin from renouncing.
      */
-    function renounceRole(bytes32 role, address account)
-        public
-        virtual
-        override(AccessControlUpgradeable, IAccessControl)
-    {
+    function renounceRole(
+        bytes32 role,
+        address account
+    ) public virtual override(AccessControlUpgradeable, IAccessControl) {
         _revertIfRemovingLastAdmin(role, account);
         super.renounceRole(role, account);
     }
