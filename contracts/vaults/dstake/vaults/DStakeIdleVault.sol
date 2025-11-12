@@ -26,6 +26,7 @@ contract DStakeIdleVault is ERC4626, AccessControl, ReentrancyGuard {
     error ZeroAddress();
     error InvalidEmissionWindow();
     error InsufficientRewardReserve();
+    error UnboundedEmissionRate();
 
     // --- Events ---
     event EmissionScheduleSet(uint64 indexed start, uint64 indexed end, uint256 emissionPerSecond);
@@ -120,17 +121,28 @@ contract DStakeIdleVault is ERC4626, AccessControl, ReentrancyGuard {
     /// @param end Timestamp when emissions end (exclusive)
     /// @param rate Emission rate in dUSD per second
     function setEmissionSchedule(uint64 start, uint64 end, uint256 rate) external onlyRole(REWARD_MANAGER_ROLE) {
-        if (end != 0 && end <= start) {
-            revert InvalidEmissionWindow();
-        }
         _accrue();
+        _applyEmissionSchedule(start, end, rate);
+    }
 
-        emissionStart = start;
-        emissionEnd = end;
-        emissionPerSecond = rate;
-        lastEmissionUpdate = uint64(block.timestamp);
-
-        emit EmissionScheduleSet(start, end, rate);
+    /// @notice Top up reserves and configure a new emission schedule atomically.
+    /// @param start Timestamp when emissions start (inclusive)
+    /// @param end Timestamp when emissions end (exclusive)
+    /// @param rate Emission rate in dUSD per second
+    /// @param topUpAmount Additional rewards to fund before activating the schedule
+    function fundAndScheduleEmission(
+        uint64 start,
+        uint64 end,
+        uint256 rate,
+        uint256 topUpAmount
+    ) external onlyRole(REWARD_MANAGER_ROLE) {
+        _accrue();
+        if (topUpAmount > 0) {
+            IERC20(asset()).safeTransferFrom(msg.sender, address(this), topUpAmount);
+            rewardReserve += topUpAmount;
+            emit RewardsFunded(msg.sender, topUpAmount);
+        }
+        _applyEmissionSchedule(start, end, rate);
     }
 
     /// @notice Manually accrue any pending emissions into the vault shares.
@@ -152,6 +164,19 @@ contract DStakeIdleVault is ERC4626, AccessControl, ReentrancyGuard {
             return 0;
         }
         return rewardReserve - pending;
+    }
+
+    /// @notice Amount of reserve required to sustain `rate` emissions through `end`.
+    function requiredReserve(uint64 start, uint64 end, uint256 rate) public view returns (uint256) {
+        if (rate == 0 || end == 0) {
+            return 0;
+        }
+        uint64 currentTime = uint64(block.timestamp);
+        uint64 effectiveStart = start > currentTime ? start : currentTime;
+        if (end <= effectiveStart) {
+            return 0;
+        }
+        return uint256(end - effectiveStart) * rate;
     }
 
     // --- Internal helpers ---
@@ -198,5 +223,26 @@ contract DStakeIdleVault is ERC4626, AccessControl, ReentrancyGuard {
             return rewardReserve;
         }
         return accrued;
+    }
+
+    function _applyEmissionSchedule(uint64 start, uint64 end, uint256 rate) internal {
+        if (end != 0 && end <= start) {
+            revert InvalidEmissionWindow();
+        }
+        if (rate > 0 && end == 0) {
+            revert UnboundedEmissionRate();
+        }
+
+        uint256 required = requiredReserve(start, end, rate);
+        if (required > rewardReserve) {
+            revert InsufficientRewardReserve();
+        }
+
+        emissionStart = start;
+        emissionEnd = end;
+        emissionPerSecond = rate;
+        lastEmissionUpdate = uint64(block.timestamp);
+
+        emit EmissionScheduleSet(start, end, rate);
     }
 }

@@ -24,6 +24,40 @@ async function deployIdleVaultFixture(): Promise<{
 }
 
 describe("IdleVaultRewardSweep", function () {
+  it("requires reserve coverage before enabling emissions", async function () {
+    const { vault, asset, treasury } = await deployIdleVaultFixture();
+
+    const emissionRate = ethers.parseUnits("1", 18);
+    const start = (await time.latest()) + 10;
+    const duration = 3 * 24 * 60 * 60; // three days
+    const end = start + duration;
+    const requiredFunding = emissionRate * BigInt(duration);
+
+    await expect(vault.connect(treasury).setEmissionSchedule(start, end, emissionRate)).to.be.revertedWithCustomError(
+      vault,
+      "InsufficientRewardReserve",
+    );
+
+    await asset.mint(treasury.address, requiredFunding);
+    await asset.connect(treasury).approve(vault.target, ethers.MaxUint256);
+    await expect(vault.connect(treasury).fundAndScheduleEmission(start, end, emissionRate, requiredFunding))
+      .to.emit(vault, "RewardsFunded")
+      .withArgs(treasury.address, requiredFunding)
+      .and.to.emit(vault, "EmissionScheduleSet")
+      .withArgs(start, end, emissionRate);
+  });
+
+  it("reverts unbounded emission rates", async function () {
+    const { vault, treasury } = await deployIdleVaultFixture();
+    const emissionRate = ethers.parseUnits("1", 18);
+    const start = await time.latest();
+
+    await expect(vault.connect(treasury).setEmissionSchedule(start, 0, emissionRate)).to.be.revertedWithCustomError(
+      vault,
+      "UnboundedEmissionRate",
+    );
+  });
+
   it("allows the treasury to strip idle emissions before a fresh depositor enters", async function () {
     const { vault, asset, treasury, alice } = await deployIdleVaultFixture();
 
@@ -38,8 +72,7 @@ describe("IdleVaultRewardSweep", function () {
     await vault.connect(treasury).deposit(sentinelDeposit, treasury.address);
 
     const start = await time.latest();
-    await vault.connect(treasury).setEmissionSchedule(start, start + emissionDuration, emissionRate);
-    await vault.connect(treasury).fundRewards(fundingAmount);
+    await vault.connect(treasury).fundAndScheduleEmission(start, start + emissionDuration, emissionRate, fundingAmount);
 
     await time.increase(3600);
     const pendingBeforeSweep = await vault.pendingEmission();
@@ -92,8 +125,7 @@ describe("IdleVaultRewardSweep", function () {
     await vault.connect(treasury).deposit(sentinelDeposit, treasury.address);
 
     const start = await time.latest();
-    await vault.connect(treasury).setEmissionSchedule(start, start + emissionDuration, emissionRate);
-    await vault.connect(treasury).fundRewards(fundingAmount);
+    await vault.connect(treasury).fundAndScheduleEmission(start, start + emissionDuration, emissionRate, fundingAmount);
 
     let cumulativeCollected = 0n;
 
@@ -128,5 +160,24 @@ describe("IdleVaultRewardSweep", function () {
 
     const sentinelSharesFinal = await vault.balanceOf(treasury.address);
     expect(sentinelSharesFinal).to.be.gt(0n);
+  });
+
+  it("exposes reserve requirements for monitoring", async function () {
+    const { vault, asset, treasury } = await deployIdleVaultFixture();
+    const emissionRate = ethers.parseUnits("3", 18);
+    const duration = 12 * 60 * 60;
+    const start = (await time.latest()) + 30;
+    const end = start + duration;
+    const requiredFunding = emissionRate * BigInt(duration);
+
+    await asset.mint(treasury.address, requiredFunding);
+    await asset.connect(treasury).approve(vault.target, ethers.MaxUint256);
+
+    const required = await vault.requiredReserve(start, end, emissionRate);
+    expect(required).to.equal(requiredFunding);
+
+    await vault.connect(treasury).fundRewards(requiredFunding);
+    await vault.connect(treasury).setEmissionSchedule(start, end, emissionRate);
+    expect(await vault.rewardReserve()).to.equal(requiredFunding);
   });
 });

@@ -110,7 +110,7 @@
 | ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
 | --- | --- | --- | --- | --- | --- | --- |
 | M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | dz | Resolved (dz/hashlock-audit-findings) | ERC4626 invariant + migration sims |
-| L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | TBD | Pending | Idle vault accrual tests |
+| L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | dz | Resolved (dz/hashlock-audit-findings) | Idle vault accrual tests |
 | L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Pending | Vault removal + NAV tests |
 | QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | TBD | Pending | Adapter unit tests |
 | QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | TBD | Pending | Access tests |
@@ -133,8 +133,9 @@
 #### L-01 – Emission schedule reserve validation
 - **Scope reference:** `contracts/vaults/dstake/vaults/DStakeIdleVault.sol`.
 - **Audit callout:** `setEmissionSchedule` should assert reserve ≥ duration * rate.
-- **Validation tasks:** ☐ Unit test insufficient reserve revert. ☐ Ensure withdraw-unreleased rewards flow still functions. ☐ Update ops dashboard to surface reserve sufficiency metric.
-- **Implication prompts:** Should partial top-ups extend end date automatically? Need emergency override for manual halts?
+- **Fix summary:** Added `_applyEmissionSchedule` guard that requires finite windows, prevents positive-rate unbounded streams, and verifies `rewardReserve` covers the remaining duration. Introduced `fundAndScheduleEmission` helper to top up + activate atomically plus a `requiredReserve` view for ops tooling.
+- **Validation tasks:** ✅ Unit tests for insufficient reserve, helper flow, unbounded revert, and observability (`yarn hardhat test test/amo/IdleVaultRewardSweep.test.ts`). ☐ Update ops dashboard to surface reserve sufficiency metric / promote helper usage.
+- **Implication prompts:** Helper is now preferred path; legacy `setEmissionSchedule` remains for rate reductions. Consider documenting the new error surface for multisig operators.
 
 #### L-02 – Vault removal dust thresholds
 - **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`, router governance module.
