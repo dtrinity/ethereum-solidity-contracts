@@ -191,3 +191,10 @@
 - Coordinate adapter-related fixes (QA-01/02/04) in one release to limit redeploy churn and simplify audits.
 - Draft governance communication template covering: reason for shortfall gating, new emission funding requirements, and adapter usage warnings.
 - Metrics to add once fixes land: shortfall-attempted-migration alert, emission funding sufficiency dashboard, collateral vault unsupported-token monitor.
+
+### RouterOps – Hashlock M-01 & L-02 (Nov 2025)
+- **Investigation:** Re-ran M-01/L-02 scenarios against current deployments. Confirmed `DStakeTokenV2.migrateCore` could still point at a fresh router while the legacy router held non-zero `settlementShortfall`, instantly lifting NAV. Also reproduced L-02 by removing a supported share with ~1% TVL left; TVL plunged with no guardrails.
+- **Mitigations:** Added `RouterShortfallOutstanding` guard so migrations revert unless `router.currentShortfall() == 0`, forcing ops to clear losses before upgrades. `DStakeCollateralVaultV2.removeSupportedStrategyShare` now requires both (a) ≤1 dStable of absolute value and (b) ≤0.1% of vault TVL before delisting, using adapter valuations to neutralize griefing donations.
+- **Validation:** `yarn hardhat test test/dstake/DStakeToken.ts test/dstake/RouterGovernanceFlows.test.ts` plus shared pre-push guardrails (lint, solhint, invariant suites).
+- **Open items:** Need governance SOP + runbook updates covering “clear shortfall → migrate router” sequencing and the new suspend→drain→remove workflow (no code change yet). Thresholds are constants; consider configurability if we ever operate dStake with sub-$1 TVL.
+- **PR:** https://github.com/dtrinity/ethereum-solidity-contracts/pull/16 (branch `routerops/hashlock-m01-l02`).
