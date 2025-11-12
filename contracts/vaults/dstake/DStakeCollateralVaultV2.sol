@@ -5,9 +5,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { LastAdminAccessControl } from "../../common/LastAdminAccessControl.sol";
 
 // ---------------------------------------------------------------------------
 // Internal interface to query the router's public mapping without importing the
@@ -25,7 +25,7 @@ interface IAdapterProvider {
  *      DStakeTokenV2 governance.
  *      Uses AccessControl for role-based access control.
  */
-contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, ReentrancyGuard {
+contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, LastAdminAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 

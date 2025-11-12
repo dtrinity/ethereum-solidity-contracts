@@ -17,7 +17,6 @@
 
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -31,7 +30,7 @@ import "./OracleAware.sol";
  * @title RedeemerV2
  * @notice Extended Redeemer with global pause and per-asset redemption pause controls
  */
-contract RedeemerV2 is AccessControl, OracleAware, Pausable, ReentrancyGuard {
+contract RedeemerV2 is OracleAware, Pausable, ReentrancyGuard {
     /* Constants */
     uint256 public immutable MAX_FEE_BPS;
 

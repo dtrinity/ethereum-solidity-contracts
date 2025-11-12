@@ -3,10 +3,10 @@ pragma solidity ^0.8.20;
 
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { LastAdminAccessControl } from "../../../common/LastAdminAccessControl.sol";
 
 /**
  * @title DStakeIdleVault
@@ -16,7 +16,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
  *      interaction or explicit `accrueRewards` calls. Reserves that are not yet released are excluded
  *      from the ERC4626 accounting so they do not dilute share pricing before they vest.
  */
-contract DStakeIdleVault is ERC4626, AccessControl, ReentrancyGuard {
+contract DStakeIdleVault is ERC4626, LastAdminAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // --- Roles ---

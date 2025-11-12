@@ -33,6 +33,12 @@
 - `DStakeCollateralVaultV2` only ever holds strategy shares; adapters mint/burn directly there and rely on router role gating.
 - Reward flows reuse `RewardClaimable` semantics (thresholded compounding, role-gated settlement) while DLend-specific managers extend exchange/deposit hooks.
 
+## AccessControl Hardening – HASHLOCK L-01 (dStable) & Q-06 (dStake)
+- **Findings recap:** Hashlock flagged that several Issuer/Redeemer contracts (L-01) and the dStake router/token/collateral stack (Q-06) could brick governance by revoking the final `DEFAULT_ADMIN_ROLE`.
+- **Implementation:** Introduced a shared `LastAdminAccessControl` (+ upgradeable variant) that inherits OZ `AccessControlEnumerable` and blocks the last-admin `revokeRole/renounceRole` path. Wired the mixin into `OracleAware` (affecting `IssuerV2_1`, `RedeemerV2`, and `CollateralVault` derivatives) plus the dStake router, token, collateral vault, idle vault, and MetaMorpho adapter.
+- **Testing:** `yarn hardhat test test/dstable/IssuerV2_1.ts test/dstable/RedeemerV2.ts`, `yarn hardhat test test/dstake/DStakeToken.ts`, `yarn hardhat test test/dstake/RouterGovernanceFlows.test.ts`.
+- **Status / PR:** Changes staged on branch `ac-hardening`; PR pending (`gh pr create` once validation + review notes finalize).
+
 ## dStable Finding Portfolio
 
 ### Tracking table

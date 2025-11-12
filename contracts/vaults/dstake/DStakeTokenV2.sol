@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ERC4626Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
 import { IDStakeRouterV2 } from "./interfaces/IDStakeRouterV2.sol";
@@ -12,8 +11,9 @@ import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { WithdrawalFeeMath } from "../../common/WithdrawalFeeMath.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { LastAdminAccessControlUpgradeable } from "../../common/LastAdminAccessControlUpgradeable.sol";
 
-contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, AccessControlUpgradeable {
+contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, LastAdminAccessControlUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -54,7 +54,7 @@ contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, AccessControlUpgrad
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __ERC4626_init(_dStable);
-        __AccessControl_init();
+        __LastAdminAccessControl_init();
 
         if (address(_dStable) == address(0) || _initialAdmin == address(0) || _initialFeeManager == address(0)) {
             revert ZeroAddress();

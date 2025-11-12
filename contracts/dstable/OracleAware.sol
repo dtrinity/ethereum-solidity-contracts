@@ -17,14 +17,14 @@
 
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "contracts/common/LastAdminAccessControl.sol";
 import "contracts/common/IAaveOracle.sol";
 
 /**
  * @title OracleAware
  * @notice Abstract contract that provides oracle functionality to other contracts
  */
-abstract contract OracleAware is AccessControl {
+abstract contract OracleAware is LastAdminAccessControl {
     /* Core state */
 
     IPriceOracleGetter public oracle;

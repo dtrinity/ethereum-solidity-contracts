@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
+import { LastAdminAccessControl } from "../../common/LastAdminAccessControl.sol";
 import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
 
 /**
@@ -13,7 +13,7 @@ import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.
  * @notice Shared storage layout for {@link DStakeRouterV2} and its delegatecall modules.
  * @dev Inherit this contract to guarantee storage slot alignment across the router and modules.
  */
-abstract contract DStakeRouterV2Storage is AccessControl, ReentrancyGuard, Pausable {
+abstract contract DStakeRouterV2Storage is LastAdminAccessControl, ReentrancyGuard, Pausable {
     // --- Errors ---
     error ZeroAddress();
 

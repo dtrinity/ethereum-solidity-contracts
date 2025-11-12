@@ -6,9 +6,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
 import { BasisPointConstants } from "../../../common/BasisPointConstants.sol";
+import { LastAdminAccessControl } from "../../../common/LastAdminAccessControl.sol";
 
 /**
  * @title MetaMorphoConversionAdapter
@@ -32,7 +32,7 @@ import { BasisPointConstants } from "../../../common/BasisPointConstants.sol";
  * 4. Future-proofing against MetaMorpho vaults that may implement dynamic fees
  * 5. Emergency situations where governance may need to allow higher slippage to prevent DoS
  */
-contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyGuard, AccessControl {
+contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyGuard, LastAdminAccessControl {
     using SafeERC20 for IERC20;
     using Math for uint256;
 

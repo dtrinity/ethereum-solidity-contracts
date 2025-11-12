@@ -17,7 +17,6 @@
 
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -33,7 +32,7 @@ import "./OracleAware.sol";
  * @title IssuerV2_1
  * @notice Issuer responsible for minting dStable tokens with asset-level controls and collateral backing checks
  */
-contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
+contract IssuerV2_1 is OracleAware, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20Metadata;
 
     /* Core state */
