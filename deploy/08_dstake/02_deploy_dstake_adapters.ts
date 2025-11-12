@@ -14,6 +14,9 @@ import {
 
 const GENERIC_ADAPTER_CONTRACT = "GenericERC4626ConversionAdapter";
 
+/**
+ * Deploys the generic ERC4626 adapter with router/admin wiring.
+ */
 async function deployGenericAdapter({
   deployments,
   deployer,
@@ -30,7 +33,7 @@ async function deployGenericAdapter({
   collateralVaultAddress: string;
   routerDeploymentName: string;
   dStableSymbol: string;
-}) {
+}): Promise<void> {
   const routerDeployment = await deployments.getOrNull(routerDeploymentName);
   if (!routerDeployment) {
     throw new Error(`Router ${routerDeploymentName} not found while deploying ${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`);
