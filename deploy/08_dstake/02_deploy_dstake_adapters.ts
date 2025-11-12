@@ -122,6 +122,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
 
         if (adapterContract === "GenericERC4626ConversionAdapter") {
+
           const routerDeployment = await deployments.getOrNull(routerDeploymentName);
           if (!routerDeployment) {
             throw new Error(`Router ${routerDeploymentName} not found while deploying ${adapterContract}_${dStableSymbol}`);
