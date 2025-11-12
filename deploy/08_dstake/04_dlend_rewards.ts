@@ -22,12 +22,20 @@ import {
 const CALLER_MANAGER_ABI = ["function setAuthorizedCaller(address caller, bool allowed) external"];
 const ROUTER_LOOKUP_ABI = ["function strategyShareToAdapter(address strategyShare) external view returns (address)"];
 
+/**
+ * Records the manual action required to authorize a reward manager when an adapter mapping is missing.
+ *
+ * @param manualActions Manual action accumulator.
+ * @param routerAddress Router lacking the adapter mapping.
+ * @param strategyShare Strategy share that needs a matching adapter.
+ * @param rewardManager Reward manager requiring authorization.
+ */
 function recordMissingAdapterManualAction(
   manualActions: string[],
   routerAddress: string,
   strategyShare: string,
   rewardManager: string,
-) {
+): void {
   manualActions.push(
     `Router (${routerAddress}) has no adapter registered for strategy ${strategyShare}; grant authorized caller role to reward manager ${rewardManager} once configured.`,
   );
@@ -330,12 +338,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
       if (adapterAddress === ethers.ZeroAddress) {
-        recordMissingAdapterManualAction(
-          manualActions,
-          dStakeRouterAddress,
-          targetStaticATokenWrapperAddress,
-          deployment.address,
-        );
+        recordMissingAdapterManualAction(manualActions, dStakeRouterAddress, targetStaticATokenWrapperAddress, deployment.address);
       } else {
         const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
         try {
