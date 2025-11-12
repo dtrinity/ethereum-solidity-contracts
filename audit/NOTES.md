@@ -33,6 +33,12 @@
 - `DStakeCollateralVaultV2` only ever holds strategy shares; adapters mint/burn directly there and rely on router role gating.
 - Reward flows reuse `RewardClaimable` semantics (thresholded compounding, role-gated settlement) while DLend-specific managers extend exchange/deposit hooks.
 
+## AccessControl Hardening – HASHLOCK L-01 (dStable) & Q-06 (dStake)
+- **Findings recap:** Hashlock noted Issuer/Redeemer contracts plus the dStake router/token/collateral stack could permanently lose governance if the final `DEFAULT_ADMIN_ROLE` were revoked (L-01 & Q-06).
+- **Implementation:** Subagent **AC-Hardening** introduced shared `LastAdminAccessControl` (+ upgradeable variant) that inherits OZ `AccessControlEnumerable` and prevents the last-admin `revokeRole/renounceRole` path. The mixins are wired through `OracleAware`, `CollateralVault`, `DStakeRouterV2`, `DStakeTokenV2`, `DStakeCollateralVaultV2`, `DStakeIdleVault`, and `MetaMorphoConversionAdapter`.
+- **Testing:** `yarn hardhat test test/dstable/IssuerV2_1.ts test/dstable/RedeemerV2.ts`, `yarn hardhat test test/dstake/DStakeTokenV2.test.ts`, `yarn hardhat test test/dstake/DStakeRouterV2Governance.test.ts`.
+- **PR:** https://github.com/dtrinity/ethereum-solidity-contracts/pull/15 (branch `ac-hardening` via `worktrees/ac-hardening`).
+
 ## dStable Finding Portfolio
 
 ### Tracking table
@@ -142,30 +148,35 @@
 - **Audit callout:** No admin recovery hook for stranded dStable.
 - **Validation tasks:** ☐ Implement + test `emergencyWithdraw`. ☐ Document usage + require pause? ☐ Compare with MetaMorpho adapter pattern for consistency.
 - **Implication prompts:** Should event include reason? How to prevent misuse while allowing timely recovery?
+- **Dec 2025 Update:** Added `emergencyWithdraw`, AccessControl wiring, and an ETH-capable receive hook to `GenericERC4626ConversionAdapter`; see PR [#17](https://github.com/dtrinity/ethereum-solidity-contracts/pull/17). Tests: `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.ts`.
 
 #### QA-02 – Adapter caller restrictions
 - **Scope reference:** All dStake adapters.
 - **Audit callout:** Public access creates footgun; only router should interact.
 - **Validation tasks:** ☐ Introduce immutable router param + modifier. ☐ Add tests ensuring non-router calls revert. ☐ Evaluate need for multi-router support (future upgrades).
 - **Implication prompts:** Any tooling (simulators) calling adapters directly? Document revert reason for UX clarity.
+- **Dec 2025 Update:** All dStake adapters now gate calls via `AUTHORIZED_CALLER_ROLE` and expose `setAuthorizedCaller`; reward manager deployment also auto-allow-lists itself. PR [#18](https://github.com/dtrinity/ethereum-solidity-contracts/pull/18). Tests: `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts` plus new access harnesses.
 
 #### QA-03 – Collateral vault dStable rescue
 - **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`.
 - **Audit callout:** Arbitrary dStable transfers currently unrecoverable.
 - **Validation tasks:** ☐ Allow rescue for `dStable`, keep strategy share block. ☐ Test accidental transfer scenario. ☐ Update ops docs to discourage direct sends.
 - **Implication prompts:** Should rescue require time delay or multisig ack? Need monitoring for unexpected dStable balances.
+- **Dec 2025 Update:** Removed the dStable block from `rescueToken` and added a regression spec covering accidental transfers. PR [#19](https://github.com/dtrinity/ethereum-solidity-contracts/pull/19). Tests: `yarn hardhat test test/dstake/DStakeCollateralVaultV2.rescue.test.ts`.
 
 #### QA-04 – Adapter allowance reset
 - **Scope reference:** Generic ERC4626 adapter.
 - **Audit callout:** Missing `forceApprove(..., 0)` after deposit.
 - **Validation tasks:** ☐ Add zeroing + tests verifying no stale allowance. ☐ Confirm no regressions with tokens requiring allowance reset (USDT-style).
 - **Implication prompts:** Unify allowance helper across adapters to avoid rework? Document rationale.
+- **Dec 2025 Update:** `GenericERC4626ConversionAdapter` now zeroes vault allowances after deposits with coverage in `test/dstake/GenericERC4626ConversionAdapter.allowance.test.ts`. PR [#20](https://github.com/dtrinity/ethereum-solidity-contracts/pull/20).
 
 #### QA-05 – Reward compounding recovery path
 - **Scope reference:** `contracts/vaults/rewards_claimable/RewardClaimable.sol`.
 - **Audit callout:** Omitted reward tokens require paying threshold twice.
 - **Validation tasks:** ☐ Design `distributeClaimedRewards` (no exchange deposit). ☐ Add tests for omission -> recovery flow. ☐ Update automation runbooks to track expected token list.
 - **Implication prompts:** Should managers store canonical reward token set on-chain? Need guard to ensure recovery cannot be abused to bypass threshold entirely?
+- **Dec 2025 Update:** Added `recoverClaimedRewards` (emits `RewardsRecovered`) so stuck tokens can be redistributed without another threshold payment. PR [#21](https://github.com/dtrinity/ethereum-solidity-contracts/pull/21). Tests extended in `test/reward_claimable/RewardClaimable.ts`.
 
 #### Q-06 – Last-admin protection across dStake
 - **Scope reference:** `DStakeRouterV2`, `DStakeTokenV2`, `DStakeCollateralVaultV2`, adapters, rewards managers.
@@ -191,3 +202,19 @@
 - Coordinate adapter-related fixes (QA-01/02/04) in one release to limit redeploy churn and simplify audits.
 - Draft governance communication template covering: reason for shortfall gating, new emission funding requirements, and adapter usage warnings.
 - Metrics to add once fixes land: shortfall-attempted-migration alert, emission funding sufficiency dashboard, collateral vault unsupported-token monitor.
+
+### RouterOps – Hashlock M-01 & L-02 (Nov 2025)
+- **Investigation:** Re-ran M-01/L-02 scenarios; confirmed router migrations ignore outstanding `settlementShortfall` and vault removal without dust gating craters NAV.
+- **Mitigations:** Added `RouterShortfallOutstanding` guard so `DStakeTokenV2.migrateCore` reverts until `router.currentShortfall() == 0`. `DStakeCollateralVaultV2.removeSupportedStrategyShare` now checks both ≤1 dStable absolute value and ≤0.1% of TVL before delisting (adapter-valued), preventing griefing while blocking meaningful removals.
+- **Validation:** `yarn hardhat test test/dstake/DStakeToken.ts test/dstake/RouterGovernanceFlows.test.ts` plus shared pre-push guardrails (lint, solhint, invariant suites).
+- **Open items:** Governance SOP to codify “clear shortfall → migrate router” and suspend→drain→remove flows; consider configurable thresholds for very small vaults.
+- **PR:** https://github.com/dtrinity/ethereum-solidity-contracts/pull/16 (branch `routerops/hashlock-m01-l02`).
+
+### AdapterOps – Hashlock QA-01..QA-05 (Nov 2025)
+- **Investigation:** Audited adapter + reward flows called out in QA-01..QA-05 and replayed the Hashlock reproductions (orphaned shares via public adapters, unrecoverable dStable in the collateral vault, thresholded reward omissions). Determined QA-01/02/03/04 are straightforward code fixes; QA-05 needs a product call because it changes compounding economics.
+- **Mitigations:**
+  - **QA-01 (emergency withdraw) & QA-04 (allowance reset):** `GenericERC4626ConversionAdapter` now inherits OZ `AccessControl`, adds `emergencyWithdraw`, accepts ETH, and zeroes allowances after deposits. Deployment script wires router/admin roles. (PR https://github.com/dtrinity/ethereum-solidity-contracts/pull/17 – branch `adapterops/hashlock-qa-01`)
+  - **QA-02 (router-only callers):** Generic, WrappedDLend, and MetaMorpho adapters now gate `depositIntoStrategy` / `withdrawFromStrategy` behind an allowlist (router, optional automation) with `setAuthorizedCaller` helpers. Deployment + reward-manager scripts auto-authorize the router and DLend reward managers. (PR https://github.com/dtrinity/ethereum-solidity-contracts/pull/18 – branch `adapterops/hashlock-qa-02`)
+  - **QA-03 (dStable rescue):** Removed the dStable restriction from `DStakeCollateralVaultV2.rescueToken` so governance can recover accidental transfers; added a focused rescue test. (PR https://github.com/dtrinity/ethereum-solidity-contracts/pull/19 – branch `adapterops/hashlock-qa-03`)
+- **Testing:** `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.ts`, `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts`, `yarn hardhat test test/dstake/DStakeRewardManagerDLend.ts`, `yarn hardhat test test/dstake/DStakeRewardManagerMetaMorpho.test.ts`, `yarn hardhat test test/dstake/DStakeCollateralVaultV2.rescue.test.ts`, plus shared pre-push guardrails (lint, solhint, Hardhat suite).
+- **Open items (QA-05):** Still evaluating options for a “distribute claimed rewards without fresh exchange asset” helper in `RewardClaimable`. Needs product alignment on whether threshold bypass is acceptable, how to authenticate the reward-token list, and if automation should remain permissioned. Documented requirements for a follow-up design session before writing code.
