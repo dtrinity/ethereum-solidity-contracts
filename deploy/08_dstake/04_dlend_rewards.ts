@@ -337,10 +337,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
+
       if (adapterAddress === ethers.ZeroAddress) {
         recordMissingAdapterManualAction(manualActions, dStakeRouterAddress, targetStaticATokenWrapperAddress, deployment.address);
       } else {
         const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
+
         try {
           await callerManager.setAuthorizedCaller(deployment.address, true);
           console.log(`          Authorized reward manager ${deployment.address} on adapter ${adapterAddress}`);
