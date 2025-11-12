@@ -46,6 +46,7 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
 
     event CollateralVaultSet(address indexed collateralVault);
     event AssetMintingPauseUpdated(address indexed asset, bool paused);
+    event AssetDepositCapUpdated(address indexed asset, uint256 cap);
 
     /* Roles */
 
@@ -57,11 +58,14 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     error SlippageTooHigh(uint256 minDStable, uint256 dstableAmount);
     error IssuanceSurpassesCollateral(uint256 collateralInDstable, uint256 totalDstable);
     error AssetMintingPaused(address asset);
+    error AssetDepositCapExceeded(address asset, uint256 cap, uint256 projectedBalance);
 
     /* Overrides */
 
     // If true, minting with this collateral asset is paused at the issuer level
     mapping(address => bool) public assetMintingPaused;
+    // Maximum amount of each asset that can be deposited via the issuer (0 = no cap)
+    mapping(address => uint256) public assetDepositCap;
 
     /**
      * @notice Initializes the IssuerV2_1 contract with core dependencies
@@ -98,6 +102,14 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     ) external whenNotPaused nonReentrant {
         if (!isAssetMintingEnabled(collateralAsset)) {
             revert AssetMintingPaused(collateralAsset);
+        }
+
+        uint256 cap = assetDepositCap[collateralAsset];
+        if (cap > 0) {
+            uint256 projectedBalance = IERC20Metadata(collateralAsset).balanceOf(address(collateralVault)) + collateralAmount;
+            if (projectedBalance > cap) {
+                revert AssetDepositCapExceeded(collateralAsset, cap, projectedBalance);
+            }
         }
 
         uint8 collateralDecimals = IERC20Metadata(collateralAsset).decimals();
@@ -193,6 +205,20 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         }
         assetMintingPaused[asset] = paused;
         emit AssetMintingPauseUpdated(asset, paused);
+    }
+
+    /**
+     * @notice Sets the deposit cap for a collateral asset
+     * @dev Cap is denominated in the asset's native decimals; a value of 0 removes the cap
+     * @param asset The collateral asset address
+     * @param cap The maximum allowable balance for this asset at the collateral vault
+     */
+    function setAssetDepositCap(address asset, uint256 cap) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!collateralVault.isCollateralSupported(asset)) {
+            revert CollateralVault.UnsupportedCollateral(asset);
+        }
+        assetDepositCap[asset] = cap;
+        emit AssetDepositCapUpdated(asset, cap);
     }
 
     /**
