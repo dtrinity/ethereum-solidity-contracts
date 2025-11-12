@@ -315,6 +315,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`          Granted DEFAULT_ADMIN_ROLE to ${deployer}`);
         }
       }
+
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
       if (adapterAddress === ethers.ZeroAddress) {
@@ -326,7 +327,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         try {
           await callerManager.setAuthorizedCaller(deployment.address, true);
           console.log(`          Authorized reward manager ${deployment.address} on adapter ${adapterAddress}`);
-        } catch (error) {
+        } catch (_error) {
           manualActions.push(`Adapter ${adapterAddress}.setAuthorizedCaller(${deployment.address}, true) (deployer lacks admin role).`);
         }
       }

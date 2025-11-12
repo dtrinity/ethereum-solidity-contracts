@@ -76,7 +76,13 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      * @param _router The router allowed to invoke conversion functions
      * @param _initialAdmin The initial admin address (will be transferred to governance later)
      */
-    constructor(address _dStable, address _metaMorphoVault, address _collateralVault, address _router, address _initialAdmin) {
+    constructor(
+        address _dStable,
+        address _metaMorphoVault,
+        address _collateralVault,
+        address _router,
+        address _initialAdmin
+    ) {
         if (
             _dStable == address(0) ||
             _metaMorphoVault == address(0) ||
@@ -117,7 +123,13 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override nonReentrant onlyRole(AUTHORIZED_CALLER_ROLE) returns (address _strategyShare, uint256 strategyShareAmount) {
+    )
+        external
+        override
+        nonReentrant
+        onlyRole(AUTHORIZED_CALLER_ROLE)
+        returns (address _strategyShare, uint256 strategyShareAmount)
+    {
         if (dStableAmount == 0) revert InvalidAmount();
 
         // 1. Pull dStable from caller (router)
@@ -160,13 +172,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function withdrawFromStrategy(
         uint256 strategyShareAmount
-    )
-        external
-        override
-        nonReentrant
-        onlyRole(AUTHORIZED_CALLER_ROLE)
-        returns (uint256 dStableAmount)
-    {
+    ) external override nonReentrant onlyRole(AUTHORIZED_CALLER_ROLE) returns (uint256 dStableAmount) {
         if (strategyShareAmount == 0) revert InvalidAmount();
 
         // 1. Pull vault shares from caller (router)

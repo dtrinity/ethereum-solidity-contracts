@@ -43,6 +43,7 @@ async function deployGenericAdapter(params: {
 
   const deploymentName = `${GENERIC_ADAPTER_CONTRACT}_${dStableSymbol}`;
   const existingAdapter = await deployments.getOrNull(deploymentName);
+
   if (existingAdapter) {
     console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
     return;

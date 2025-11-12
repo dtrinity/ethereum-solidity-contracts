@@ -42,9 +42,19 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
      * @param _router The router/governance module allowed to call conversion functions
      * @param _admin Address that can manage authorized callers
      */
-    constructor(address _dStable, address _wrappedDLendToken, address _collateralVault, address _router, address _admin) {
+    constructor(
+        address _dStable,
+        address _wrappedDLendToken,
+        address _collateralVault,
+        address _router,
+        address _admin
+    ) {
         if (
-            _dStable == address(0) || _wrappedDLendToken == address(0) || _collateralVault == address(0) || _router == address(0) || _admin == address(0)
+            _dStable == address(0) ||
+            _wrappedDLendToken == address(0) ||
+            _collateralVault == address(0) ||
+            _router == address(0) ||
+            _admin == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -105,12 +115,9 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
      * @dev Converts wrappedDLendToken -> dStable by withdrawing from StaticATokenLM.
      *      The StaticATokenLM contract sends the dStable directly to msg.sender.
      */
-    function withdrawFromStrategy(uint256 strategyShareAmount)
-        external
-        override
-        onlyRole(AUTHORIZED_CALLER_ROLE)
-        returns (uint256 dStableAmount)
-    {
+    function withdrawFromStrategy(
+        uint256 strategyShareAmount
+    ) external override onlyRole(AUTHORIZED_CALLER_ROLE) returns (uint256 dStableAmount) {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }

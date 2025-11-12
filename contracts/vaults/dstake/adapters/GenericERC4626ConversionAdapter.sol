@@ -33,7 +33,13 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2, AccessC
     address public immutable collateralVault;
 
     constructor(address _dStable, address _vault, address _collateralVault, address _router, address _admin) {
-        if (_dStable == address(0) || _vault == address(0) || _collateralVault == address(0) || _router == address(0) || _admin == address(0)) {
+        if (
+            _dStable == address(0) ||
+            _vault == address(0) ||
+            _collateralVault == address(0) ||
+            _router == address(0) ||
+            _admin == address(0)
+        ) {
             revert ZeroAddress();
         }
 
@@ -68,12 +74,9 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2, AccessC
         shareToken = address(vault);
     }
 
-    function withdrawFromStrategy(uint256 strategyShareAmount)
-        external
-        override
-        onlyRole(AUTHORIZED_CALLER_ROLE)
-        returns (uint256 stableAmount)
-    {
+    function withdrawFromStrategy(
+        uint256 strategyShareAmount
+    ) external override onlyRole(AUTHORIZED_CALLER_ROLE) returns (uint256 stableAmount) {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }
