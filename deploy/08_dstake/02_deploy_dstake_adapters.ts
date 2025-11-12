@@ -122,12 +122,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
 
         if (adapterContract === "GenericERC4626ConversionAdapter") {
-
+          // eslint-disable-next-line padding-line-between-statements
           const routerDeployment = await deployments.getOrNull(routerDeploymentName);
           if (!routerDeployment) {
             throw new Error(`Router ${routerDeploymentName} not found while deploying ${adapterContract}_${dStableSymbol}`);
           }
 
+          // eslint-disable-next-line padding-line-between-statements
           const deploymentName = `${adapterContract}_${dStableSymbol}`;
           const existingAdapter = await deployments.getOrNull(deploymentName);
           if (existingAdapter) {
