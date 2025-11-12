@@ -22,6 +22,17 @@ import {
 const CALLER_MANAGER_ABI = ["function setAuthorizedCaller(address caller, bool allowed) external"];
 const ROUTER_LOOKUP_ABI = ["function strategyShareToAdapter(address strategyShare) external view returns (address)"];
 
+function recordMissingAdapterManualAction(
+  manualActions: string[],
+  routerAddress: string,
+  strategyShare: string,
+  rewardManager: string,
+) {
+  manualActions.push(
+    `Router (${routerAddress}) has no adapter registered for strategy ${strategyShare}; grant authorized caller role to reward manager ${rewardManager} once configured.`,
+  );
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -319,13 +330,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       const routerLookup = await ethers.getContractAt(ROUTER_LOOKUP_ABI, dStakeRouterAddress, deployerSigner);
       const adapterAddress = await routerLookup.strategyShareToAdapter(targetStaticATokenWrapperAddress);
       if (adapterAddress === ethers.ZeroAddress) {
-        // eslint-disable-next-line padding-line-between-statements -- manual action log is the only statement required here
-        manualActions.push(
-          `Router (${dStakeRouterAddress}) has no adapter registered for strategy ${targetStaticATokenWrapperAddress}; grant authorized caller role to reward manager ${deployment.address} once configured.`,
+        recordMissingAdapterManualAction(
+          manualActions,
+          dStakeRouterAddress,
+          targetStaticATokenWrapperAddress,
+          deployment.address,
         );
       } else {
         const callerManager = await ethers.getContractAt(CALLER_MANAGER_ABI, adapterAddress, deployerSigner);
-
         try {
           await callerManager.setAuthorizedCaller(deployment.address, true);
           console.log(`          Authorized reward manager ${deployment.address} on adapter ${adapterAddress}`);
