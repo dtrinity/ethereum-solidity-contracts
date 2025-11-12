@@ -106,7 +106,8 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
 
         uint256 cap = assetDepositCap[collateralAsset];
         if (cap > 0) {
-            uint256 projectedBalance = IERC20Metadata(collateralAsset).balanceOf(address(collateralVault)) + collateralAmount;
+            uint256 projectedBalance = IERC20Metadata(collateralAsset).balanceOf(address(collateralVault)) +
+                collateralAmount;
             if (projectedBalance > cap) {
                 revert AssetDepositCapExceeded(collateralAsset, cap, projectedBalance);
             }

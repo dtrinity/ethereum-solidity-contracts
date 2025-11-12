@@ -297,9 +297,7 @@ dstableConfigs.forEach((config) => {
         await issuerV2_1.connect(user1Signer).issue(firstDeposit, collateralInfo.address, 0);
 
         await collateralContract.connect(user1Signer).approve(issuerAddress, secondDeposit);
-        await expect(
-          issuerV2_1.connect(user1Signer).issue(secondDeposit, collateralInfo.address, 0),
-        )
+        await expect(issuerV2_1.connect(user1Signer).issue(secondDeposit, collateralInfo.address, 0))
           .to.be.revertedWithCustomError(issuerV2_1, "AssetDepositCapExceeded")
           .withArgs(collateralInfo.address, cap, projectedBalance);
 

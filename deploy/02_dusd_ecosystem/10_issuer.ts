@@ -32,6 +32,14 @@ async function ensureMinterRole(hre: HardhatRuntimeEnvironment, stableAddress: s
   console.log(`    ➕ Granted MINTER_ROLE to ${grantee}`);
 }
 
+/**
+ * Applies governance-defined deposit caps to a freshly deployed issuer.
+ *
+ * @param hre Hardhat runtime environment.
+ * @param issuerAddress Issuer contract to configure.
+ * @param caps Mapping of collateral addresses to raw-asset caps (0 uncaps).
+ * @param signer Account with DEFAULT_ADMIN_ROLE on the issuer.
+ */
 async function configureDepositCaps(
   hre: HardhatRuntimeEnvironment,
   issuerAddress: string,
