@@ -597,8 +597,10 @@ describe("RewardClaimable", function () {
     });
 
     it("reverts for zero token list", async function () {
-      await expect(mockVault.connect(user).recoverClaimedRewards([], await user.getAddress()))
-        .to.be.revertedWithCustomError(mockVault, "ZeroRewardTokens");
+      await expect(mockVault.connect(user).recoverClaimedRewards([], await user.getAddress())).to.be.revertedWithCustomError(
+        mockVault,
+        "ZeroRewardTokens",
+      );
     });
   });
 });
