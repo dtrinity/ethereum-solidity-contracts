@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
 import { IStaticATokenLM } from "../../atoken_wrapper/interfaces/IStaticATokenLM.sol"; // Interface for StaticATokenLM
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -14,7 +15,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
  * @dev Implements the IDStableConversionAdapterV2 interface.
  *      Interacts with a specific StaticATokenLM contract provided at deployment.
  */
-contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
+contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessControl {
     using SafeERC20 for IERC20;
 
     // --- Errors ---
@@ -23,6 +24,9 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
     error StaticATokenUnderlyingMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
     error WrappedDepositFailed(bytes reason);
+
+    // --- Events ---
+    event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);
 
     // --- State ---
     address public immutable dStable; // The underlying dSTABLE asset (e.g., dUSD)
@@ -47,6 +51,9 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
         if (IERC4626(_wrappedDLendToken).asset() != _dStable) {
             revert StaticATokenUnderlyingMismatch(_dStable, IERC4626(_wrappedDLendToken).asset());
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _collateralVault);
     }
 
     // --- IDStableConversionAdapterV2 Implementation ---
@@ -161,5 +168,19 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2 {
         uint256 strategyShareAmount
     ) public view override returns (uint256 dStableAmount) {
         dStableAmount = IERC4626(address(wrappedDLendToken)).previewRedeem(strategyShareAmount);
+    }
+
+    /**
+     * @notice Emergency hook to sweep stranded tokens back to the collateral vault
+     * @param token Address of the ERC20 token to recover
+     * @param amount Amount of tokens to transfer
+     */
+    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (token == address(0)) {
+            revert ZeroAddress();
+        }
+
+        IERC20(token).safeTransfer(collateralVault, amount);
+        emit EmergencyWithdraw(token, amount, collateralVault);
     }
 }

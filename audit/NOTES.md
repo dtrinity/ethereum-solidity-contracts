@@ -109,7 +109,7 @@
 | M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | dz | Resolved (dz/hashlock-audit-findings) | ERC4626 invariant + migration sims |
 | L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | dz | Resolved (dz/hashlock-audit-findings) | Idle vault accrual tests |
 | L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Won't fix | Vault removal + NAV tests |
-| QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | TBD | Pending | Adapter unit tests |
+| QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | dz | Resolved | Adapter + reward emergency tests |
 | QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | TBD | Pending | Access tests |
 | QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | TBD | Pending | Rescue tests |
 | QA-04 | Missing allowance reset in GenericERC4626 adapter | QA | Zero approvals after deposit | TBD | Pending | Allowance hygiene tests |
@@ -142,11 +142,10 @@
 - **Implication prompts:** If future deployments demand on-chain gating, revisit absolute/relative dust thresholds once adapters can expose reliable value feeds without risking governance DoS.
 
 #### QA-01 – Adapter emergency withdrawal
-- **Scope reference:** `contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol`.
-- **Audit callout:** No admin recovery hook for stranded dStable.
-- **Validation tasks:** ☐ Implement + test `emergencyWithdraw`. ☐ Document usage + require pause? ☐ Compare with MetaMorpho adapter pattern for consistency.
-- **Implication prompts:** Should event include reason? How to prevent misuse while allowing timely recovery?
-- **Dec 2025 Update:** Added `emergencyWithdraw`, AccessControl wiring, and an ETH-capable receive hook to `GenericERC4626ConversionAdapter`; see PR [#17](https://github.com/dtrinity/ethereum-solidity-contracts/pull/17). Tests: `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.ts`.
+- **Scope reference:** `contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol`, `.../WrappedDLendConversionAdapter.sol`, and reward managers under `contracts/vaults/dstake/rewards`.
+- **Fix summary (Jan 2026):** Generic + Wrapped adapters now inherit OZ `AccessControl`, grant the deployer and collateral vault `DEFAULT_ADMIN_ROLE`, and expose `emergencyWithdraw(token, amount)` to push any ERC20 (dStable or ERC4626 shares) back to the collateral vault. `DStakeRewardManagerDLend` gained the same hook to forward stranded rewards to `treasury`, aligning it with the MetaMorpho reward manager. All hooks emit `EmergencyWithdraw` for ops visibility.
+- **Validation:** `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.test.ts`, `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts`, `yarn hardhat test test/dstake/DStakeRewardManagerDLend.ts`.
+- **Coverage & scoped exclusions:** `MetaMorphoConversionAdapter` and `DStakeRewardManagerMetaMorpho` already expose audited rescue hooks; `DStakeCollateralVaultV2` retains its `rescueToken/ETH` flow; router/token/governance modules (`DStakeRouterV2*`, `DStakeTokenV2`) never custody arbitrary ERC20s and therefore do not require an emergency sweep surface. Documented that adapters send rescues to the collateral vault only; reward managers route to treasury by design.
 
 #### QA-02 – Adapter caller restrictions
 - **Scope reference:** All dStake adapters.

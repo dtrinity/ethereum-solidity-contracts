@@ -46,6 +46,7 @@ contract DStakeRewardManagerDLend is RewardClaimable {
     // --- Events ---
     event DLendRewardsControllerUpdated(address oldController, address newController);
     event ExchangeAssetProcessed(address indexed vaultAsset, uint256 vaultAssetAmount, uint256 dStableCompoundedAmount);
+    event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);
 
     // --- Errors ---
     error InvalidRouter();
@@ -268,5 +269,19 @@ contract DStakeRewardManagerDLend is RewardClaimable {
         address oldController = address(dLendRewardsController);
         dLendRewardsController = IDLendRewardsController(_newDLendRewardsController);
         emit DLendRewardsControllerUpdated(oldController, _newDLendRewardsController);
+    }
+
+    /**
+     * @notice Emergency hook to sweep stranded tokens to the treasury
+     * @param token Address of the ERC20 token to recover
+     * @param amount Amount of tokens to transfer
+     */
+    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (treasury == address(0) || token == address(0)) {
+            revert ZeroAddress();
+        }
+
+        IERC20(token).safeTransfer(treasury, amount);
+        emit EmergencyWithdraw(token, amount, treasury);
     }
 }

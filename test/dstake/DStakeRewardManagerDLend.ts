@@ -501,5 +501,27 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         // what is still sitting inside the wrapper.
       });
     });
+
+    describe("emergencyWithdraw", function () {
+      it("allows admin to sweep stranded reward tokens to the treasury", async function () {
+        const treasury = await rewardManager.treasury();
+        const rewardDecimals = await rewardToken.decimals();
+        const emergencyAmount = ethers.parseUnits("5", rewardDecimals);
+        await rewardToken.connect(deployerSigner).transfer(rewardManager.target, emergencyAmount);
+        const before = await rewardToken.balanceOf(treasury);
+
+        await expect(rewardManager.connect(adminSigner).emergencyWithdraw(rewardToken.target, emergencyAmount))
+          .to.emit(rewardManager, "EmergencyWithdraw")
+          .withArgs(rewardToken.target, emergencyAmount, treasury);
+
+        expect(await rewardToken.balanceOf(treasury)).to.equal(before + emergencyAmount);
+      });
+
+      it("reverts when caller lacks the admin role", async function () {
+        await expect(
+          rewardManager.connect(user2Signer).emergencyWithdraw(rewardToken.target, 1),
+        ).to.be.revertedWithCustomError(rewardManager, "AccessControlUnauthorizedAccount");
+      });
+    });
   });
 });

@@ -223,5 +223,37 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         expect(await adapter.previewWithdrawFromStrategy(previewAmt)).to.equal(expected);
       });
     });
+
+    describe("emergencyWithdraw", function () {
+      it("allows admin to sweep stranded vault shares back to the collateral vault", async function () {
+        const depositAmt = parseUnits(100, dStableDecimals);
+        await stable.mint(user1.address, depositAmt);
+        await dStableToken.connect(user1).approve(adapterAddress, depositAmt);
+
+        const beforeDeposit = await wrapperToken.balanceOf(collateralVaultAddress);
+        await adapter.connect(user1).depositIntoStrategy(depositAmt);
+        const afterDeposit = await wrapperToken.balanceOf(collateralVaultAddress);
+        const mintedShares = afterDeposit - beforeDeposit;
+
+        const initialVaultBalance = afterDeposit;
+        await collateralVault.connect(deployer).sendAsset(vaultAssetAddress, mintedShares, adapterAddress);
+        const balanceAfterSend = await wrapperToken.balanceOf(collateralVaultAddress);
+        expect(balanceAfterSend).to.equal(initialVaultBalance - mintedShares);
+
+        await expect(adapter.connect(deployer).emergencyWithdraw(vaultAssetAddress, mintedShares))
+          .to.emit(adapter, "EmergencyWithdraw")
+          .withArgs(vaultAssetAddress, mintedShares, collateralVaultAddress);
+
+        expect(await wrapperToken.balanceOf(collateralVaultAddress)).to.equal(initialVaultBalance);
+        expect(await wrapperToken.balanceOf(adapterAddress)).to.equal(0);
+      });
+
+      it("reverts when caller does not have admin role", async function () {
+        await expect(adapter.connect(user2).emergencyWithdraw(vaultAssetAddress, 1)).to.be.revertedWithCustomError(
+          adapter,
+          "AccessControlUnauthorizedAccount",
+        );
+      });
+    });
   });
 });
