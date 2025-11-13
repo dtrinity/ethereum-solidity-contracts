@@ -53,6 +53,9 @@ export interface DStableConfig {
   readonly collateralRedemptionFees?: {
     [collateralAddress: string]: number;
   };
+  readonly depositCaps?: {
+    readonly [collateralAddress: string]: bigint;
+  };
 }
 
 export interface TokenAddresses {

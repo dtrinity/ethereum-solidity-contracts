@@ -266,6 +266,46 @@ dstableConfigs.forEach((config) => {
       });
     });
 
+    describe("Deposit caps", () => {
+      it("only admin can configure deposit caps", async function () {
+        const [collateralSymbol] = config.peggedCollaterals;
+        const collateralInfo = collateralInfos.get(collateralSymbol) as TokenInfo;
+        const adminRole = await issuerV2_1.DEFAULT_ADMIN_ROLE();
+
+        await expect(issuerV2_1.connect(await hre.ethers.getSigner(user1)).setAssetDepositCap(collateralInfo.address, 1n))
+          .to.be.revertedWithCustomError(issuerV2_1, "AccessControlUnauthorizedAccount")
+          .withArgs(user1, adminRole);
+
+        await issuerV2_1.setAssetDepositCap(collateralInfo.address, 0n);
+        expect(await issuerV2_1.assetDepositCap(collateralInfo.address)).to.equal(0n);
+      });
+
+      it("enforces per-asset caps and can be disabled", async function () {
+        const [collateralSymbol] = config.peggedCollaterals;
+        const collateralContract = collateralContracts.get(collateralSymbol) as TestERC20;
+        const collateralInfo = collateralInfos.get(collateralSymbol) as TokenInfo;
+        const user1Signer = await hre.ethers.getSigner(user1);
+        const issuerAddress = await issuerV2_1.getAddress();
+
+        const cap = hre.ethers.parseUnits("1500", collateralInfo.decimals);
+        const firstDeposit = hre.ethers.parseUnits("1000", collateralInfo.decimals);
+        const secondDeposit = hre.ethers.parseUnits("600", collateralInfo.decimals);
+        const projectedBalance = firstDeposit + secondDeposit;
+
+        await issuerV2_1.setAssetDepositCap(collateralInfo.address, cap);
+        await collateralContract.connect(user1Signer).approve(issuerAddress, firstDeposit);
+        await issuerV2_1.connect(user1Signer).issue(firstDeposit, collateralInfo.address, 0);
+
+        await collateralContract.connect(user1Signer).approve(issuerAddress, secondDeposit);
+        await expect(issuerV2_1.connect(user1Signer).issue(secondDeposit, collateralInfo.address, 0))
+          .to.be.revertedWithCustomError(issuerV2_1, "AssetDepositCapExceeded")
+          .withArgs(collateralInfo.address, cap, projectedBalance);
+
+        await issuerV2_1.setAssetDepositCap(collateralInfo.address, 0n);
+        await issuerV2_1.connect(user1Signer).issue(secondDeposit, collateralInfo.address, 0);
+      });
+    });
+
     describe("Excess collateral issuance", () => {
       it("mints against excess collateral and respects aggregate backing", async function () {
         const [collateralSymbol] = config.peggedCollaterals;
