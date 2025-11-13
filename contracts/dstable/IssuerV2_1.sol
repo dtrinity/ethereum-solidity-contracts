@@ -183,6 +183,9 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param _collateralVault The address of the collateral vault
      */
     function setCollateralVault(address _collateralVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_collateralVault == address(0)) {
+            revert CannotBeZeroAddress();
+        }
         collateralVault = CollateralVault(_collateralVault);
         emit CollateralVaultSet(_collateralVault);
     }

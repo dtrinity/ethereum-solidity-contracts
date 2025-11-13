@@ -44,23 +44,21 @@
 ### Tracking table
 | ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
 | --- | --- | --- | --- | --- | --- | --- |
-| L-01 | Missing role revocation protection | Low | Guard `DEFAULT_ADMIN_ROLE` in `contracts/dstable/IssuerV2_1.sol` & `contracts/dstable/RedeemerV2.sol` | TBD | Pending | Unit + access-control fuzz |
+| L-01 | Missing role revocation protection | Low | Guard `DEFAULT_ADMIN_ROLE` in `contracts/dstable/IssuerV2_1.sol` & `contracts/dstable/RedeemerV2.sol` | dz | Won't fix | Document SOP |
 | L-02 | Missing constructor input validation | Low | Zero-address guards for Issuer constructor wiring | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/IssuerV2_1.ts` |
 | L-03 | Permit front-running in admin function | Low | `AmoManagerV2.repayWithPermit` tolerant handling | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/AmoManagerV2.spec.ts` |
-| I-01 | Missing zero check in `setCollateralVault` | Info | Prevent accidental zeroing of `collateralVault` | TBD | Pending | Admin tx sim |
-| I-02 | Gas optimization in `setFeeReceiver` | Info | Skip redundant writes/events in `RedeemerV2` | TBD | Pending | Regression tests + event diff |
-| I-03 | Redundant AccessControl inheritance | Info | Remove double inheritance since `OracleAware` already extends AC | TBD | Pending | Compile + role regression |
-| I-04 | Missing bounds check in `setTolerance` | Info | Sanity-check AMO tolerance updates | TBD | Pending | AMO invariant harness |
+| I-01 | Missing zero check in `setCollateralVault` | Info | Prevent accidental zeroing of `collateralVault` | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/IssuerV2_1.ts` |
+| I-02 | Gas optimization in `setFeeReceiver` | Info | Skip redundant writes/events in `RedeemerV2` | dz | Won't fix | Document rationale |
+| I-03 | Redundant AccessControl inheritance | Info | Remove double inheritance since `OracleAware` already extends AC | dz | Won't fix | Document rationale |
+| I-04 | Missing bounds check in `setTolerance` | Info | Sanity-check AMO tolerance updates | dz | Won't fix | Document SOP |
 
 ### Validation templates
 
 #### L-01 – Missing role revocation protection
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol`.
 - **Audit callout:** Prevent loss of `DEFAULT_ADMIN_ROLE` via `revokeRole/renounceRole`.
-- **Proposed fix cues:** Count admins before removal; consider two-step admin transfers.
-- **Validation tasks:** ☐ Extend access-control tests to cover last-admin revoke/renounce. ☐ Fuzz grant/revoke flows via Foundry invariant harness. ☐ Confirm upgrade bytecode size + storage layout unaffected.
-- **Implication prompts:** Does introducing `getRoleMemberCount` require `AccessControlEnumerable`? Any governance processes relying on renouncing to freeze config?
-- **Recommendation slot:** ☐ Adopt Hashlock fix as-is ☐ Rework (notes:) ☐ Needs product decision.
+- **Decision:** Won’t fix. Governance relies on being able to fully disown contracts (post-deploy cleanups, emergency renounces) and frequently revokes roles from the incoming owner after handoffs. Enforcing a “last admin” guard would block those operational patterns and provide marginal benefit given multisig controls.
+- **Operational notes:** SOP already requires multisig confirmation before disowning; residual risk (accidental last-admin revoke) is accepted.
 
 #### L-02 – Missing constructor input validation
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.
@@ -81,28 +79,27 @@
 #### I-01 – Missing zero-address check in `setCollateralVault`
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.
 - **Audit callout:** Prevent admin from bricking issuance by pointing to `address(0)`.
-- **Proposed fix cues:** Add `CannotBeZeroAddress` revert; emit event once validated.
-- **Validation tasks:** ☐ Regression test for zero input revert. ☐ Scripted dry-run of vault rotation with new guard.
-- **Implication prompts:** Should other setters (`setRedeemer`, `setFeeReceiver`) share a base modifier? Do we need upgrade gating for multi-sig flows?
+- **Implementation:** `setCollateralVault` now reuses `CannotBeZeroAddress`, ensuring governance can’t misconfigure the pointer mid-flight.
+- **Validation:** ✅ Added regression test in `test/dstable/IssuerV2_1.ts` (`yarn hardhat test test/dstable/IssuerV2_1.ts`).
+- **Implication prompts:** None—existing runbooks already verify non-zero addresses before rotating vaults.
 
 #### I-02 – Gas optimization in `setFeeReceiver`
 - **Scope reference:** `contracts/dstable/RedeemerV2.sol`.
 - **Audit callout:** Short-circuit identical assignments to save SSTORE/event.
-- **Validation tasks:** ☐ Add require that new receiver differs. ☐ Verify event watchers expect update only on change. ☐ Re-run gas snapshots if available.
-- **Implication prompts:** Any downstream automation expecting redundant events (probably not)? Should we generalize to other setters?
+- **Decision:** Won’t fix. The fee-receiver setter is rarely touched, emits configurational events intentionally, and extra branching would complicate a critical admin flow for negligible gas savings.
+- **Operational notes:** Governance playbooks already batch this call, so redundant events/storage writes are acceptable.
 
 #### I-03 – Redundant AccessControl inheritance
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol`.
 - **Audit callout:** `OracleAware` already extends AccessControl; remove duplicate inheritance.
-- **Validation tasks:** ☐ Confirm compiler linearization unaffected. ☐ Run access-control regression/invariants. ☐ Ensure storage layout diff is nil.
-- **Implication prompts:** Are there contracts relying on `AccessControl` public methods order? Need doc update noting inheritance chain?
+- **Decision:** Won’t fix. Trimming the redundant inheritance is cosmetic but churns two large governance-critical contracts and would require re-running full access-control regression for negligible bytecode savings.
+- **Operational notes:** Leave as-is until a future major rev touches these files and naturally re-evaluates the hierarchy.
 
 #### I-04 – Missing bounds check in `setTolerance`
 - **Scope reference:** `contracts/dstable/AmoManagerV2.sol`.
 - **Audit callout:** Guard tolerance updates to avoid bricking AMO ops or overly loose invariants.
-- **Proposed fix cues:** Enforce `0 < tolerance ≤ baseCurrencyUnit / 10000` (or configurable), emit event.
-- **Validation tasks:** ☐ Extend AMO invariant tests for tolerance extremes. ☐ Document governance process for emergency override (if any). ☐ Evaluate need for two-step “unchecked” function.
-- **Implication prompts:** Does tolerance live in basis points or base units? Should future markets require higher ceilings? Consider configurability per asset?
+- **Decision:** Won’t fix. Governance occasionally zeroes tolerance during incident response, so enforcing hard bounds would block existing SOPs. Current monitoring already alerts when tolerance deviates from the default.
+- **Operational notes:** Documented expected ranges in runbooks; revisit if we see misuse on mainnet.
 
 ## dStake Finding Portfolio
 

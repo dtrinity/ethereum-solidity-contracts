@@ -263,6 +263,12 @@ dstableConfigs.forEach((config) => {
         expect(await issuerV2_1.isAssetMintingEnabled(collateralInfo.address)).to.be.true;
       });
 
+      it("reverts when setting collateral vault to zero", async function () {
+        await expect(
+          issuerV2_1.connect(await hre.ethers.getSigner(deployer)).setCollateralVault(hre.ethers.ZeroAddress),
+        ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
+      });
+
       it("pause prevents minting functions and unpause restores", async function () {
         const [collateralSymbol] = config.peggedCollaterals;
         const collateralContract = collateralContracts.get(collateralSymbol) as TestERC20;
