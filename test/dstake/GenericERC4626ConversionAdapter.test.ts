@@ -67,4 +67,58 @@ describe("GenericERC4626ConversionAdapter – emergency withdraw", function () {
       adapter.connect(stranger).emergencyWithdraw(await adapter.dStable(), 1),
     ).to.be.revertedWithCustomError(adapter, "AccessControlUnauthorizedAccount");
   });
+
+  describe("authorized caller gating", function () {
+    it("reverts when a non-authorized caller attempts to deposit", async function () {
+      const { adapter, dStable, deployer, stranger } = await loadFixture(deployAdapterFixture);
+      const amount = parseUnits("10");
+
+      await dStable.connect(deployer).transfer(stranger.address, amount);
+      await dStable.connect(stranger).approve(await adapter.getAddress(), amount);
+
+      await expect(adapter.connect(stranger).depositIntoStrategy(amount))
+        .to.be.revertedWithCustomError(adapter, "UnauthorizedCaller")
+        .withArgs(stranger.address);
+    });
+
+    it("allows admin to authorize router callers for deposit and withdraw flows", async function () {
+      const { adapter, dStable, vault, deployer, collateralVault, stranger } = await loadFixture(deployAdapterFixture);
+      const depositAmount = parseUnits("25");
+
+      await adapter.connect(deployer).setAuthorizedCaller(stranger.address, true);
+      await dStable.connect(deployer).transfer(stranger.address, depositAmount);
+      await dStable.connect(stranger).approve(await adapter.getAddress(), depositAmount);
+
+      const beforeVaultShares = await vault.balanceOf(collateralVault.address);
+      await adapter.connect(stranger).depositIntoStrategy(depositAmount);
+      const mintedShares = (await vault.balanceOf(collateralVault.address)) - beforeVaultShares;
+      expect(mintedShares).to.be.gt(0);
+
+      // Seed extra dStable so the mock vault can pay out the positive-slippage bonus on redeem
+      await dStable.connect(deployer).transfer(await vault.getAddress(), depositAmount);
+
+      await vault.connect(collateralVault).transfer(stranger.address, mintedShares);
+      await vault.connect(stranger).approve(await adapter.getAddress(), mintedShares);
+      const beforeStable = await dStable.balanceOf(stranger.address);
+      await expect(adapter.connect(stranger).withdrawFromStrategy(mintedShares)).to.not.be.reverted;
+      expect(await dStable.balanceOf(stranger.address)).to.be.gt(beforeStable);
+    });
+
+    it("revokes authorization when toggled off", async function () {
+      const { adapter, dStable, deployer, stranger } = await loadFixture(deployAdapterFixture);
+      const amount = parseUnits("5");
+
+      await adapter.connect(deployer).setAuthorizedCaller(stranger.address, true);
+      await dStable.connect(deployer).transfer(stranger.address, amount);
+      await dStable.connect(stranger).approve(await adapter.getAddress(), amount);
+      await adapter.connect(stranger).depositIntoStrategy(amount);
+
+      await adapter.connect(deployer).setAuthorizedCaller(stranger.address, false);
+      await dStable.connect(deployer).transfer(stranger.address, amount);
+      await dStable.connect(stranger).approve(await adapter.getAddress(), amount);
+      await expect(adapter.connect(stranger).depositIntoStrategy(amount))
+        .to.be.revertedWithCustomError(adapter, "UnauthorizedCaller")
+        .withArgs(stranger.address);
+    });
+  });
 });

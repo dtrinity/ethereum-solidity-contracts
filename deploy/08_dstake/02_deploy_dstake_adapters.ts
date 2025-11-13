@@ -12,10 +12,28 @@ import {
   POOL_ADDRESSES_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
 
+const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
+
+async function ensureAdapterAuthorizedCaller(adapterAddress: string, caller: string, signer: Awaited<ReturnType<typeof ethers.getSigner>>) {
+  if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
+    return;
+  }
+
+  const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
+  try {
+    await adapter.setAuthorizedCaller(caller, true);
+  } catch (error) {
+    console.warn(
+      `⚠️  Unable to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
+  const deployerSigner = await ethers.getSigner(deployer);
 
   const config = await getConfig(hre);
 
@@ -100,22 +118,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         // Avoid accidental redeployments on live networks by skipping if already deployed
         const existingAdapter = await deployments.getOrNull(deploymentName);
 
+        let adapterAddress: string;
         if (existingAdapter) {
           console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
-          continue;
+          adapterAddress = existingAdapter.address;
+        } else {
+          const newDeployment = await deploy(deploymentName, {
+            from: deployer,
+            contract: adapterContract,
+            args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
+            log: true,
+          });
+          adapterAddress = newDeployment.address;
         }
-        await deploy(deploymentName, {
-          from: deployer,
-          contract: adapterContract,
-          args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
-          log: true,
-        });
+
         // If router already exists, ensure adapter wiring is refreshed later (configure script handles mapping).
         const routerDeployment = await deployments.getOrNull(routerDeploymentName);
 
         if (!routerDeployment) {
           throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
         }
+
+        await ensureAdapterAuthorizedCaller(adapterAddress, routerDeployment.address, deployerSigner);
       } else {
         if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
           throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);

@@ -1,4 +1,4 @@
-import { BigNumberish, ethers } from "ethers";
+import { BigNumberish, Signer, ethers } from "ethers";
 import { deployments } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -24,6 +24,7 @@ import {
 import { getTokenContractForSymbol } from "../../typescript/token/utils";
 import { DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "../dstable/fixtures";
 
+const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
 const VAULT_STATUS = {
   Active: 0,
   Suspended: 1,
@@ -95,6 +96,26 @@ export interface DStakeFixtureOptions {
   multiVault?: boolean;
 }
 
+async function ensureAdapterAuthorizedCaller(
+  ethersLib: HardhatRuntimeEnvironment["ethers"],
+  adapterAddress: string,
+  caller: string,
+  adminSigner: Signer,
+) {
+  if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
+    return;
+  }
+
+  const adapter = new ethersLib.Contract(adapterAddress, ADAPTER_ACCESS_ABI, adminSigner);
+  try {
+    await adapter.setAuthorizedCaller(caller, true);
+  } catch (error) {
+    console.warn(
+      `⚠️ Failed to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
+
 // Core logic for fetching dStake components *after* deployments are done
 /**
  *
@@ -139,6 +160,9 @@ async function fetchDStakeComponents(
     throw new Error(`Adapter not configured for ${config.DStakeTokenSymbol}`);
   }
   const adapter = await ethers.getContractAt("IDStableConversionAdapterV2", adapterAddress);
+
+  // Ensure router is pre-authorized to interact with the adapter when tests use the real contracts
+  await ensureAdapterAuthorizedCaller(ethers, adapterAddress, router.target, deployerSigner);
 
   return {
     config,
@@ -203,6 +227,7 @@ export async function executeSetupDLendRewards(
   // Get DStakeRewardManagerDLend related contracts
   const rewardManagerDeployment = await deployments.get(`DStakeRewardManagerDLend_${config.DStakeTokenSymbol}`);
   const rewardManager = await ethers.getContractAt("DStakeRewardManagerDLend", rewardManagerDeployment.address);
+  await ensureAdapterAuthorizedCaller(ethers, dStakeBase.adapterAddress, rewardManager.target, signer);
 
   const targetStaticATokenWrapper = await rewardManager.targetStaticATokenWrapper();
   const dLendAssetToClaimFor = await rewardManager.dLendAssetToClaimFor();

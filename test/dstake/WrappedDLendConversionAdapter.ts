@@ -76,6 +76,42 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       expect(adapterAddress).to.not.equal(ZeroAddress);
       // Ensure deployer is registered as router on collateralVault
       await collateralVault.setRouter(deployer.address);
+
+      // Default authorized caller is user1 (acts as router in tests)
+      await adapter.connect(deployer).setAuthorizedCaller(user1.address, true);
+    });
+
+    describe("authorized caller gating", function () {
+      it("reverts deposits initiated by non-authorized callers", async function () {
+        const amt = parseUnits(5, dStableDecimals);
+        await stable.mint(user2.address, amt);
+        await dStableToken.connect(user2).approve(adapterAddress, amt);
+
+        await expect(adapter.connect(user2).depositIntoStrategy(amt))
+          .to.be.revertedWithCustomError(adapter, "UnauthorizedCaller")
+          .withArgs(user2.address);
+      });
+
+      it("allows admin to toggle authorized callers for deposit and withdraw flows", async function () {
+        const amt = parseUnits(20, dStableDecimals);
+        await stable.mint(user2.address, amt);
+        await dStableToken.connect(user2).approve(adapterAddress, amt);
+
+        await adapter.connect(deployer).setAuthorizedCaller(user2.address, true);
+        const beforeShares = await wrapperToken.balanceOf(collateralVaultAddress);
+        await adapter.connect(user2).depositIntoStrategy(amt);
+        const mintedShares = (await wrapperToken.balanceOf(collateralVaultAddress)) - beforeShares;
+
+        await collateralVault.connect(deployer).sendAsset(vaultAssetAddress, mintedShares, user2.address);
+        await wrapperToken.connect(user2).approve(adapterAddress, mintedShares);
+        await expect(adapter.connect(user2).withdrawFromStrategy(mintedShares)).to.not.be.reverted;
+
+        await adapter.connect(deployer).setAuthorizedCaller(user2.address, false);
+        await dStableToken.connect(user2).approve(adapterAddress, amt);
+        await expect(adapter.connect(user2).depositIntoStrategy(amt))
+          .to.be.revertedWithCustomError(adapter, "UnauthorizedCaller")
+          .withArgs(user2.address);
+      });
     });
 
     describe("Initialization & Deployment State", function () {

@@ -38,6 +38,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
 
     // --- Constants ---
     uint256 private constant MIN_SHARES = 1; // Minimum shares to prevent dust attacks (1 wei)
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
 
     // --- Mutable State ---
     uint256 private maxSlippageBps; // Current max slippage protection
@@ -52,18 +53,28 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
     error DustAmount();
     error SlippageTooHigh(uint256 slippage, uint256 maximum);
     error ValuationUnavailable();
+    error UnauthorizedCaller(address caller);
 
     // --- Events ---
     event ConversionToVault(address indexed from, uint256 dStableAmount, uint256 vaultShares);
     event ConversionFromVault(address indexed to, uint256 vaultShares, uint256 dStableAmount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
     event MaxSlippageUpdated(uint256 oldSlippage, uint256 newSlippage);
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized, address indexed admin);
 
     // --- Immutable State ---
     address public immutable dStable;
     IERC4626 public immutable metaMorphoVault;
     address public immutable collateralVault;
     // No cached decimals/units needed; avoid state bloat
+
+    // --- Modifiers ---
+    modifier onlyAuthorizedCaller() {
+        if (!hasRole(AUTHORIZED_CALLER_ROLE, msg.sender)) {
+            revert UnauthorizedCaller(msg.sender);
+        }
+        _;
+    }
 
     // --- Constructor ---
     /**
@@ -111,7 +122,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override nonReentrant returns (address _strategyShare, uint256 strategyShareAmount) {
+    ) external override nonReentrant onlyAuthorizedCaller returns (address _strategyShare, uint256 strategyShareAmount) {
         if (dStableAmount == 0) revert InvalidAmount();
 
         // 1. Pull dStable from caller (router)
@@ -154,7 +165,7 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function withdrawFromStrategy(
         uint256 strategyShareAmount
-    ) external override nonReentrant returns (uint256 dStableAmount) {
+    ) external override nonReentrant onlyAuthorizedCaller returns (uint256 dStableAmount) {
         if (strategyShareAmount == 0) revert InvalidAmount();
 
         // 1. Pull vault shares from caller (router)
@@ -292,6 +303,28 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
         }
 
         emit EmergencyWithdraw(token, amount);
+    }
+
+    /**
+     * @notice Adds or removes router/automation contracts that may trigger conversions
+     * @param caller Address being updated
+     * @param authorized True to grant the caller role, false to revoke
+     */
+    function setAuthorizedCaller(address caller, bool authorized) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        bool currentlyAuthorized = hasRole(AUTHORIZED_CALLER_ROLE, caller);
+        if (authorized) {
+            if (!currentlyAuthorized) {
+                _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+                emit AuthorizedCallerUpdated(caller, true, msg.sender);
+            }
+        } else if (currentlyAuthorized) {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+            emit AuthorizedCallerUpdated(caller, false, msg.sender);
+        }
     }
 
     // --- View Functions ---

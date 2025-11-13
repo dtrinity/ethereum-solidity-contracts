@@ -24,14 +24,25 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
     error StaticATokenUnderlyingMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
     error WrappedDepositFailed(bytes reason);
+    error UnauthorizedCaller(address caller);
 
     // --- Events ---
     event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized, address indexed admin);
 
     // --- State ---
     address public immutable dStable; // The underlying dSTABLE asset (e.g., dUSD)
     IStaticATokenLM public immutable wrappedDLendToken; // The wrapped dLEND aToken (StaticATokenLM instance, e.g., wddUSD)
     address public immutable collateralVault; // The DStakeCollateralVaultV2 to deposit wrappedDLendToken into
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
+
+    // --- Modifiers ---
+    modifier onlyAuthorizedCaller() {
+        if (!hasRole(AUTHORIZED_CALLER_ROLE, msg.sender)) {
+            revert UnauthorizedCaller(msg.sender);
+        }
+        _;
+    }
 
     // --- Constructor ---
     /**
@@ -66,7 +77,7 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override returns (address _strategyShare, uint256 strategyShareAmount) {
+    ) external override onlyAuthorizedCaller returns (address _strategyShare, uint256 strategyShareAmount) {
         if (dStableAmount == 0) {
             revert InvalidAmount();
         }
@@ -97,7 +108,9 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
      * @dev Converts wrappedDLendToken -> dStable by withdrawing from StaticATokenLM.
      *      The StaticATokenLM contract sends the dStable directly to msg.sender.
      */
-    function withdrawFromStrategy(uint256 strategyShareAmount) external override returns (uint256 dStableAmount) {
+    function withdrawFromStrategy(
+        uint256 strategyShareAmount
+    ) external override onlyAuthorizedCaller returns (uint256 dStableAmount) {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }
@@ -182,5 +195,27 @@ contract WrappedDLendConversionAdapter is IDStableConversionAdapterV2, AccessCon
 
         IERC20(token).safeTransfer(collateralVault, amount);
         emit EmergencyWithdraw(token, amount, collateralVault);
+    }
+
+    /**
+     * @notice Adds or removes router/automation callers that can trigger conversions
+     * @param caller Address to modify
+     * @param authorized Grant (`true`) or revoke (`false`) the caller role
+     */
+    function setAuthorizedCaller(address caller, bool authorized) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        bool currentlyAuthorized = hasRole(AUTHORIZED_CALLER_ROLE, caller);
+        if (authorized) {
+            if (!currentlyAuthorized) {
+                _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+                emit AuthorizedCallerUpdated(caller, true, msg.sender);
+            }
+        } else if (currentlyAuthorized) {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+            emit AuthorizedCallerUpdated(caller, false, msg.sender);
+        }
     }
 }

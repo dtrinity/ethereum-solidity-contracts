@@ -110,7 +110,7 @@
 | L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | dz | Resolved (dz/hashlock-audit-findings) | Idle vault accrual tests |
 | L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Won't fix | Vault removal + NAV tests |
 | QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | dz | Resolved | Adapter + reward emergency tests |
-| QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | TBD | Pending | Access tests |
+| QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | dz | Resolved | Access tests |
 | QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | TBD | Pending | Rescue tests |
 | QA-04 | Missing allowance reset in GenericERC4626 adapter | QA | Zero approvals after deposit | TBD | Pending | Allowance hygiene tests |
 | QA-05 | Reward compounding threshold required to recover omissions | QA | Add recovery flow in `RewardClaimable` | TBD | Pending | Reward manager tests |
@@ -148,11 +148,10 @@
 - **Coverage & scoped exclusions:** `MetaMorphoConversionAdapter` and `DStakeRewardManagerMetaMorpho` already expose audited rescue hooks; `DStakeCollateralVaultV2` retains its `rescueToken/ETH` flow; router/token/governance modules (`DStakeRouterV2*`, `DStakeTokenV2`) never custody arbitrary ERC20s and therefore do not require an emergency sweep surface. Documented that adapters send rescues to the collateral vault only; reward managers route to treasury by design.
 
 #### QA-02 – Adapter caller restrictions
-- **Scope reference:** All dStake adapters.
-- **Audit callout:** Public access creates footgun; only router should interact.
-- **Validation tasks:** ☐ Introduce immutable router param + modifier. ☐ Add tests ensuring non-router calls revert. ☐ Evaluate need for multi-router support (future upgrades).
-- **Implication prompts:** Any tooling (simulators) calling adapters directly? Document revert reason for UX clarity.
-- **Dec 2025 Update:** All dStake adapters now gate calls via `AUTHORIZED_CALLER_ROLE` and expose `setAuthorizedCaller`; reward manager deployment also auto-allow-lists itself. PR [#18](https://github.com/dtrinity/ethereum-solidity-contracts/pull/18). Tests: `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts` plus new access harnesses.
+- **Scope reference:** All dStake conversion adapters plus reward manager compounders.
+- **Fix summary (Jan 2026):** `GenericERC4626`, `WrappedDLend`, and `MetaMorpho` adapters now gate `depositIntoStrategy` / `withdrawFromStrategy` behind `AUTHORIZED_CALLER_ROLE`, expose a minimal `setAuthorizedCaller` toggle, and emit `UnauthorizedCaller` when unlisted accounts try to poke state. Adapter + dLend reward-manager deploy scripts (and Hardhat fixtures) auto-authorize the router and reward manager so no manual backfill is required.
+- **Validation:** `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.test.ts`, `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts`, `yarn hardhat test test/dstake/MetaMorphoConversionAdapter.access.test.ts`.
+- **Operational notes:** Deploy scripts must set the router (and any automation/reward managers) as authorized callers after adapter deployment; additional tooling can be granted case-by-case via the new helper.
 
 #### QA-03 – Collateral vault dStable rescue
 - **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`.
