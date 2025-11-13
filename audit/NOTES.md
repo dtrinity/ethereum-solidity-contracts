@@ -46,7 +46,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | L-01 | Missing role revocation protection | Low | Guard `DEFAULT_ADMIN_ROLE` in `contracts/dstable/IssuerV2_1.sol` & `contracts/dstable/RedeemerV2.sol` | TBD | Pending | Unit + access-control fuzz |
 | L-02 | Missing constructor input validation | Low | Zero-address guards for Issuer constructor wiring | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/IssuerV2_1.ts` |
-| L-03 | Permit front-running in admin function | Low | `AmoManagerV2.repayWithPermit` tolerant handling | TBD | Pending | E2E AMO decrease rehearsal |
+| L-03 | Permit front-running in admin function | Low | `AmoManagerV2.repayWithPermit` tolerant handling | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/AmoManagerV2.spec.ts` |
 | I-01 | Missing zero check in `setCollateralVault` | Info | Prevent accidental zeroing of `collateralVault` | TBD | Pending | Admin tx sim |
 | I-02 | Gas optimization in `setFeeReceiver` | Info | Skip redundant writes/events in `RedeemerV2` | TBD | Pending | Regression tests + event diff |
 | I-03 | Redundant AccessControl inheritance | Info | Remove double inheritance since `OracleAware` already extends AC | TBD | Pending | Compile + role regression |
@@ -72,11 +72,11 @@
 
 #### L-03 – Permit front-running in admin function
 - **Scope reference:** `contracts/dstable/AmoManagerV2.sol`.
-- **Audit callout:** `repayWithPermit` front-run yields benign failure; document or add graceful path.
-- **Proposed fix cues:** Try/catch permit, fall back to allowance check; update NatSpec.
-- **Validation tasks:** ☐ Build unit test covering consumed permit + fallback. ☐ Simulate AMO bot replay after permit already used. ☐ Update runbook for admins.
-- **Implication prompts:** Will try/catch bloat bytecode? Should we instead drop the helper and rely on `repayFrom` only?
-- **Recommendation slot:** ☐ Accept doc-only ☐ Harden code ☐ Defer.
+- **Audit callout:** `repayWithPermit` could be front-run, consuming the permit and reverting the original tx.
+- **Implementation:** Added `PermitFailed` error and allowance pre-check so we only invoke `permit` when needed and gracefully continue if approval was already granted (front-run) while bubbling a clear revert otherwise; NatSpec now documents the behavior.
+- **Validation:** ✅ `test/dstable/AmoManagerV2.spec.ts` exercises both the skip path (pre-existing allowance) and the revert path when permit fails without approval.
+- **Implication prompts:** None – admin runbooks already cover retrying with `repayFrom` if needed.
+- **Recommendation slot:** ✅ Harden code.
 
 #### I-01 – Missing zero-address check in `setCollateralVault`
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.

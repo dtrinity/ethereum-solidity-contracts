@@ -686,42 +686,56 @@ function runTestsForDStable(
               expect(loss).to.be.lte(tolerance);
             });
 
-            it(`should support repayWithPermit for ${symbol}`, async function () {
-              // Skip permit test for tokens that don't support it
-              const { collateralToken, collateralInfo, amount } = await setupCollateralTest(symbol);
+            describe(`repayWithPermit for ${symbol}`, () => {
+              it("skips permit when allowance is already sufficient", async function () {
+                const { collateralToken, amount } = await setupCollateralTest(symbol);
+                const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
+                const amoWalletSigner = await hre.ethers.getSigner(amoWallet);
 
-              // Check if token supports permit (has the permit function)
-              try {
-                await collateralToken.nonces(amoWallet);
-              } catch {
-                this.skip();
-                return;
-              }
+                // Borrow collateral first
+                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount);
 
-              const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
-              const vaultAddress = await collateralVaultContract.getAddress();
+                // Simulate front-run permit execution by pre-approving the manager
+                await collateralToken.connect(amoWalletSigner).approve(await amoManagerV2.getAddress(), amount);
 
-              // First borrow some collateral
-              await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount);
+                const preDebtSupply = await amoDebtToken.totalSupply();
 
-              // Create permit signature (simplified for testing)
-              const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+                const deadline = Math.floor(Date.now() / 1000) + 3600;
+                const v = 27;
+                const r = "0x" + "0".repeat(64);
+                const s = "0x" + "0".repeat(64);
 
-              // For testing, we'll use a simple signature (in real implementation, proper EIP-2612 signing would be used)
-              const v = 27;
-              const r = "0x" + "0".repeat(64);
-              const s = "0x" + "0".repeat(64);
-
-              // This should not revert due to signature validation in a real scenario,
-              // but for our mock tokens, we expect it to work
-              try {
                 await amoManagerV2
                   .connect(amoManagerSigner)
                   .repayWithPermit(amoWallet, await collateralToken.getAddress(), amount, hre.ethers.MaxUint256, deadline, v, r, s);
-              } catch (error) {
-                // Expected to fail with mock signature, but function should exist
-                expect(error).to.not.be.undefined;
-              }
+
+                const postDebtSupply = await amoDebtToken.totalSupply();
+                const assetValue = await collateralVaultContract.assetValueFromAmount(amount, await collateralToken.getAddress());
+                const expectedDebtAmount = await amoManagerV2.baseToDebtUnits(assetValue);
+                expect(preDebtSupply - postDebtSupply).to.equal(expectedDebtAmount);
+              });
+
+              it("reverts when permit fails and allowance is insufficient", async function () {
+                const { collateralToken, amount } = await setupCollateralTest(symbol);
+                const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
+                const amoWalletSigner = await hre.ethers.getSigner(amoWallet);
+
+                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount);
+
+                // Ensure allowance is zero so the contract attempts permit
+                await collateralToken.connect(amoWalletSigner).approve(await amoManagerV2.getAddress(), 0);
+
+                const deadline = Math.floor(Date.now() / 1000) + 3600;
+                const v = 27;
+                const r = "0x" + "0".repeat(64);
+                const s = "0x" + "0".repeat(64);
+
+                await expect(
+                  amoManagerV2
+                    .connect(amoManagerSigner)
+                    .repayWithPermit(amoWallet, await collateralToken.getAddress(), amount, hre.ethers.MaxUint256, deadline, v, r, s),
+                ).to.be.revertedWithCustomError(amoManagerV2, "PermitFailed");
+              });
             });
           });
         }
