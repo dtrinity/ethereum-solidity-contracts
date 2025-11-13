@@ -45,7 +45,7 @@
 | ID | Title | Severity | Audit cue / files | Owner | Status | Validation anchors |
 | --- | --- | --- | --- | --- | --- | --- |
 | L-01 | Missing role revocation protection | Low | Guard `DEFAULT_ADMIN_ROLE` in `contracts/dstable/IssuerV2_1.sol` & `contracts/dstable/RedeemerV2.sol` | TBD | Pending | Unit + access-control fuzz |
-| L-02 | Missing constructor input validation | Low | Zero-address guards for Issuer constructor wiring | TBD | Pending | Deployment script + ctor tests |
+| L-02 | Missing constructor input validation | Low | Zero-address guards for Issuer constructor wiring | dz | Resolved (dz/hashlock-audit-findings) | `yarn hardhat test test/dstable/IssuerV2_1.ts` |
 | L-03 | Permit front-running in admin function | Low | `AmoManagerV2.repayWithPermit` tolerant handling | TBD | Pending | E2E AMO decrease rehearsal |
 | I-01 | Missing zero check in `setCollateralVault` | Info | Prevent accidental zeroing of `collateralVault` | TBD | Pending | Admin tx sim |
 | I-02 | Gas optimization in `setFeeReceiver` | Info | Skip redundant writes/events in `RedeemerV2` | TBD | Pending | Regression tests + event diff |
@@ -65,10 +65,10 @@
 #### L-02 – Missing constructor input validation
 - **Scope reference:** `contracts/dstable/IssuerV2_1.sol`.
 - **Audit callout:** Guard `_collateralVault`, `_dstable`, `oracle` against zero.
-- **Proposed fix cues:** Mirror RedeemerV2’s `CannotBeZeroAddress` pattern.
-- **Validation tasks:** ☐ Add ctor revert tests. ☐ Diff deployment scripts/config to ensure parameters remain non-zero. ☐ Confirm no proxy initializer expectations change.
-- **Implication prompts:** Will factories or upgrades rely on deferred initialization? Do we need similar guard rails elsewhere (eg. AmoManager)?
-- **Recommendation slot:** ☐ Ship guard ☐ Document-only ☐ Needs architecture confirmation.
+- **Implementation:** Added `CannotBeZeroAddress` constructor guard mirroring RedeemerV2 so Issuer cannot deploy with zero vault/token/oracle references; no other wiring changes required.
+- **Validation:** ✅ Focused ctor revert tests in `test/dstable/IssuerV2_1.ts` cover zero inputs across all three args (command above). Deployment/config paths already enforce non-zero addresses, so no migration impact.
+- **Implication prompts:** Revisit other dStable constructors during future touch-ups, but no additional work scoped here.
+- **Recommendation slot:** ✅ Ship guard.
 
 #### L-03 – Permit front-running in admin function
 - **Scope reference:** `contracts/dstable/AmoManagerV2.sol`.
@@ -111,7 +111,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | M-01 | Router migration during shortfall inflates share price | Medium | Gate `DStakeTokenV2.migrateCore` while `router.currentShortfall() > 0` | dz | Resolved (dz/hashlock-audit-findings) | ERC4626 invariant + migration sims |
 | L-01 | Emission schedule lacks reserve check | Low | `DStakeIdleVault.setEmissionSchedule` funding validation | dz | Resolved (dz/hashlock-audit-findings) | Idle vault accrual tests |
-| L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Pending | Vault removal + NAV tests |
+| L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Won't fix | Vault removal + NAV tests |
 | QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | TBD | Pending | Adapter unit tests |
 | QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | TBD | Pending | Access tests |
 | QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | TBD | Pending | Rescue tests |
@@ -140,9 +140,9 @@
 #### L-02 – Vault removal dust thresholds
 - **Scope reference:** `contracts/vaults/dstake/DStakeCollateralVaultV2.sol`, router governance module.
 - **Audit callout:** Removing supported share with balance drops TVL instantly.
-- **Proposed fix cues:** Dual threshold (absolute + relative) plus suspend-first workflow.
-- **Validation tasks:** ☐ Add unit/integration tests for removal at/above thresholds. ☐ Cover griefing scenario with 1 wei donations. ☐ Update SOP for vault sunsets (suspend → withdraw → remove).
-- **Implication prompts:** Need adapter hook to report value? Should router enforce same check before governance removal call?
+- **Decision:** ❌ Won't fix. Reintroducing balance checks reopens the griefing vector where dust donations (or stuck rewards) permanently block delistings. Governance instead commits to the documented suspend → drain → remove SOP, with off-chain dashboards ensuring TVL is 0 before removal.
+- **Operational guardrails:** Update the vault sunset runbook to (1) `suspendVaultForRemoval`, (2) unwind via router automation, (3) verify `CollateralVault` balances off-chain, and (4) remove + prune adapter mappings. Monitoring will alert if removals occur with non-zero value so NAV discrepancies remain observable.
+- **Implication prompts:** If future deployments demand on-chain gating, revisit absolute/relative dust thresholds once adapters can expose reliable value feeds without risking governance DoS.
 
 #### QA-01 – Adapter emergency withdrawal
 - **Scope reference:** `contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol`.

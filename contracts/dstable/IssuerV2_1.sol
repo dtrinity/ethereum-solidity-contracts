@@ -57,6 +57,7 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     error SlippageTooHigh(uint256 minDStable, uint256 dstableAmount);
     error IssuanceSurpassesCollateral(uint256 collateralInDstable, uint256 totalDstable);
     error AssetMintingPaused(address asset);
+    error CannotBeZeroAddress();
 
     /* Overrides */
 
@@ -74,6 +75,10 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         address _dstable,
         IPriceOracleGetter oracle
     ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
+        if (_collateralVault == address(0) || _dstable == address(0) || address(oracle) == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
         collateralVault = CollateralVault(_collateralVault);
         dstable = IMintableERC20(_dstable);
         dstableDecimals = dstable.decimals();
@@ -208,4 +213,5 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     function unpauseMinting() external onlyRole(PAUSER_ROLE) {
         _unpause();
     }
+
 }

@@ -61,6 +61,8 @@ dstableConfigs.forEach((config) => {
     let issuerV2_1: IssuerV2_1;
     let collateralVaultContract: CollateralHolderVault;
     let oracleAggregatorContract: OracleAggregatorV1_1;
+    let collateralVaultAddress: Address;
+    let oracleAggregatorAddress: Address;
     const collateralContracts: Map<string, TestERC20> = new Map();
     const collateralInfos: Map<string, TokenInfo> = new Map();
     let dstableContract: TestMintableERC20;
@@ -77,7 +79,7 @@ dstableConfigs.forEach((config) => {
 
       ({ deployer, user1, user2 } = await getNamedAccounts());
 
-      const collateralVaultAddress = (await hre.deployments.get(config.collateralVaultContractId)).address;
+      collateralVaultAddress = (await hre.deployments.get(config.collateralVaultContractId)).address;
       collateralVaultContract = await hre.ethers.getContractAt(
         "CollateralHolderVault",
         collateralVaultAddress,
@@ -85,7 +87,7 @@ dstableConfigs.forEach((config) => {
       );
 
       // Get the oracle aggregator based on the dStable configuration
-      const oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
+      oracleAggregatorAddress = (await hre.deployments.get(config.oracleAggregatorId)).address;
       oracleAggregatorContract = await hre.ethers.getContractAt(
         "OracleAggregatorV1_1",
         oracleAggregatorAddress,
@@ -138,6 +140,29 @@ dstableConfigs.forEach((config) => {
         await (stableWithRoles as any).grantRole(MINTER_ROLE, deployer);
       }
       await (stableWithRoles as any).grantRole(MINTER_ROLE, await issuerV2_1.getAddress());
+    });
+
+    describe("constructor validation", () => {
+      it("reverts when collateral vault is zero", async function () {
+        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        await expect(
+          IssuerV2_1Factory.deploy(hre.ethers.ZeroAddress, dstableInfo.address, oracleAggregatorAddress),
+        ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
+      });
+
+      it("reverts when dstable token is zero", async function () {
+        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        await expect(
+          IssuerV2_1Factory.deploy(collateralVaultAddress, hre.ethers.ZeroAddress, oracleAggregatorAddress),
+        ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
+      });
+
+      it("reverts when oracle is zero", async function () {
+        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        await expect(
+          IssuerV2_1Factory.deploy(collateralVaultAddress, dstableInfo.address, hre.ethers.ZeroAddress),
+        ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
+      });
     });
 
     describe("Permissionless issuance", () => {
