@@ -52,6 +52,7 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
         IERC20(dStable).forceApprove(address(vault), stableAmount);
 
         strategyShareAmount = vault.deposit(stableAmount, collateralVault);
+        IERC20(dStable).forceApprove(address(vault), 0);
         shareToken = address(vault);
     }
 
