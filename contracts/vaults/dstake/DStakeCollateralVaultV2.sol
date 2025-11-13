@@ -213,11 +213,6 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
             revert CannotRescueRestrictedToken(token);
         }
 
-        // Check if token is the dStable token
-        if (token == dStable) {
-            revert CannotRescueRestrictedToken(token);
-        }
-
         // Rescue the token
         IERC20(token).safeTransfer(receiver, amount);
         emit TokenRescued(token, receiver, amount);
