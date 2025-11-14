@@ -77,10 +77,6 @@ contract DStakeTokenV2 is Initializable, ERC4626Upgradeable, AccessControlUpgrad
         return MAX_WITHDRAWAL_FEE_BPS;
     }
 
-    function getWithdrawalFeeBps() public view returns (uint256) {
-        return withdrawalFeeBps();
-    }
-
     function _calculateWithdrawalFee(uint256 grossAmount) internal view returns (uint256) {
         return WithdrawalFeeMath.calculateWithdrawalFee(grossAmount, withdrawalFeeBps());
     }

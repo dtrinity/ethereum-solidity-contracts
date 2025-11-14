@@ -111,12 +111,12 @@
 | L-02 | Vault removal without balance check desyncs TVL | Low | Reinstate dust-aware guard in `DStakeCollateralVaultV2` | TBD | Won't fix | Vault removal + NAV tests |
 | QA-01 | Missing emergency withdraw in GenericERC4626 adapter | QA | Add admin rescue hook | dz | Resolved | Adapter + reward emergency tests |
 | QA-02 | Adapters callable by arbitrary users | QA | Restrict deposit/withdraw to router | dz | Resolved | Access tests |
-| QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | TBD | Pending | Rescue tests |
-| QA-04 | Missing allowance reset in GenericERC4626 adapter | QA | Zero approvals after deposit | TBD | Pending | Allowance hygiene tests |
-| QA-05 | Reward compounding threshold required to recover omissions | QA | Add recovery flow in `RewardClaimable` | TBD | Pending | Reward manager tests |
-| Q-06 | Missing last-admin protection across dStake AC contracts | QA | Same pattern as dStable L-01 applied to router/token/vault/adapters | TBD | Pending | Access invariants |
-| TAG-01 | Redundant `getWithdrawalFeeBps` | Tag | Remove duplicate view | TBD | Pending | ABI diff |
-| TAG-02 | `reinvestFees` CEI deviation | Tag | Reshuffle CEI order | TBD | Pending | Fee reinvest tests |
+| QA-03 | Collateral vault blocks dStable rescue | QA | Allow rescuing dStable (never intentionally held) | dz | Resolved (PR #19) | Rescue tests |
+| QA-04 | Missing allowance reset in GenericERC4626 adapter | QA | Zero approvals after deposit | dz | Resolved (PR #20) | Allowance hygiene tests |
+| QA-05 | Reward compounding threshold required to recover omissions | QA | Add recovery flow in `RewardClaimable` | dz | Won't fix | Ops runbook |
+| Q-06 | Missing last-admin protection across dStake AC contracts | QA | Same pattern as dStable L-01 applied to router/token/vault/adapters | dz | Won't fix | Governance SOP |
+| TAG-01 | Redundant `getWithdrawalFeeBps` | Tag | Remove duplicate view | dz | Resolved | ABI diff |
+| TAG-02 | `reinvestFees` CEI deviation | Tag | Reshuffle CEI order | dz | Won't fix | Incentive rationale |
 
 ### Validation templates
 
@@ -170,27 +170,27 @@
 #### QA-05 – Reward compounding recovery path
 - **Scope reference:** `contracts/vaults/rewards_claimable/RewardClaimable.sol`.
 - **Audit callout:** Omitted reward tokens require paying threshold twice.
-- **Validation tasks:** ☐ Design `distributeClaimedRewards` (no exchange deposit). ☐ Add tests for omission -> recovery flow. ☐ Update automation runbooks to track expected token list.
-- **Implication prompts:** Should managers store canonical reward token set on-chain? Need guard to ensure recovery cannot be abused to bypass threshold entirely?
-- **Dec 2025 Update:** Added `recoverClaimedRewards` (emits `RewardsRecovered`) so stuck tokens can be redistributed without another threshold payment. PR [#21](https://github.com/dtrinity/ethereum-solidity-contracts/pull/21). Tests extended in `test/reward_claimable/RewardClaimable.ts`.
+- **Decision:** ❌ Won't fix. Product and ops prefer to keep the exchange-threshold requirement invariant so compounders always front the same amount of exchange asset, even when replaying omitted tokens.
+- **Operational notes:** Runbooks document the mitigation: (1) rerun `compoundRewards` with the required threshold amount once the omission is detected, or (2) temporarily lower the threshold via governance before calling `compoundRewards`, then restore it afterward. Both preserve accounting and the expectation that threshold changes are explicit governance actions.
+- **Implication prompts:** Revisit if omission alerts become frequent enough to justify a specialized recovery hook or if automation costs become prohibitive on certain networks.
 
 #### Q-06 – Last-admin protection across dStake
 - **Scope reference:** `DStakeRouterV2`, `DStakeTokenV2`, `DStakeCollateralVaultV2`, adapters, rewards managers.
 - **Audit callout:** Mirror dStable L-01 fix across all AccessControl surfaces.
-- **Validation tasks:** ☐ Inventory contracts inheriting AccessControl. ☐ Apply shared mixin or base contract for last-admin guard. ☐ Expand invariants ensuring at least one admin persists.
-- **Implication prompts:** Will module delegatecalls inherit guard automatically? Need to coordinate with upgradeable proxies for token?
+- **Decision:** ❌ Won't fix. Governance already relies on multisig enforcement + off-chain runbooks to prevent stripping the final admin, matching the stance we took on the dStable portfolio. Adding on-chain guards across every AccessControl surface would bloat bytecode and complicate upgrades without materially improving safety given our operational SOPs.
+- **Operational notes:** Runbooks require confirming at least one admin remains before revoking roles; monitoring alerts on role-change events so deviations are caught quickly. Any future module that needs immutable guardrails should adopt the dStable mixin explicitly rather than blanket everything.
+- **Implication prompts:** Re-evaluate if governance ever moves to EOAs or if external integrators require on-chain assurances; otherwise no further action.
 
 #### TAG-01 – Redundant `getWithdrawalFeeBps`
 - **Scope reference:** `contracts/vaults/dstake/DStakeTokenV2.sol`.
-- **Audit callout:** Remove duplicate getter.
-- **Validation tasks:** ☐ Delete function, run ABI diff, update clients. ☐ Verify no TS helpers use it (`typescript/` search).
-- **Implication prompts:** If external integrators rely on it, plan deprecation? Provide alias in TypeScript SDK?
+- **Fix summary:** Removed the redundant `getWithdrawalFeeBps()` proxy so the ABI only exposes `withdrawalFeeBps()`. Verified no Solidity/TS callers used the alias and recompiled (`yarn hardhat compile`) to refresh artifacts.
+- **Operational notes:** Deploy notes call out the ABI drop; integrators should already rely on `withdrawalFeeBps()` so no SDK updates were necessary.
 
 #### TAG-02 – `reinvestFees` CEI alignment
 - **Scope reference:** `contracts/vaults/dstake/DStakeRouterV2.sol`.
-- **Audit callout:** Emit events before/after external calls? reorder for CEI clarity.
-- **Validation tasks:** ☐ Refactor to compute values, emit, then transfer/deposit. ☐ Confirm `nonReentrant` still guards critical paths. ☐ Update tests watching events/incentives.
-- **Implication prompts:** Should we split events (incentive vs reinvest) for better observability? Any risk of double emissions after reorder?
+- **Decision:** ❌ Won't fix. Paying the solver incentive via `safeTransfer` before redepositing the remainder is intentional so keepers are compensated immediately; reordering for strict CEI compliance would either delay incentives or add extra state, with no new security benefit given the path is already `nonReentrant`.
+- **Operational notes:** Documented in router runbooks that reinvest calls should be executed via trusted automation; monitoring ensures incentive payouts remain within configured bps.
+- **Implication prompts:** If future audits surface an exploit requiring stricter CEI ordering, revisit with a more holistic router refactor; for now the current flow is pragmatic.
 
 ## Recommendation Scratchpad
 - Prioritize `M-01`, `L-02 (dStake)`, and `L-01 (dStable)` before informational items; unresolved accounting breaks can impact users fastest.
@@ -213,4 +213,4 @@
   - **QA-02 (router-only callers):** Generic, WrappedDLend, and MetaMorpho adapters now gate `depositIntoStrategy` / `withdrawFromStrategy` behind an allowlist (router, optional automation) with `setAuthorizedCaller` helpers. Deployment + reward-manager scripts auto-authorize the router and DLend reward managers. (PR https://github.com/dtrinity/ethereum-solidity-contracts/pull/18 – branch `adapterops/hashlock-qa-02`)
   - **QA-03 (dStable rescue):** Removed the dStable restriction from `DStakeCollateralVaultV2.rescueToken` so governance can recover accidental transfers; added a focused rescue test. (PR https://github.com/dtrinity/ethereum-solidity-contracts/pull/19 – branch `adapterops/hashlock-qa-03`)
 - **Testing:** `yarn hardhat test test/dstake/GenericERC4626ConversionAdapter.ts`, `yarn hardhat test test/dstake/WrappedDLendConversionAdapter.ts`, `yarn hardhat test test/dstake/DStakeRewardManagerDLend.ts`, `yarn hardhat test test/dstake/DStakeRewardManagerMetaMorpho.test.ts`, `yarn hardhat test test/dstake/DStakeCollateralVaultV2.rescue.test.ts`, plus shared pre-push guardrails (lint, solhint, Hardhat suite).
-- **Open items (QA-05):** Still evaluating options for a “distribute claimed rewards without fresh exchange asset” helper in `RewardClaimable`. Needs product alignment on whether threshold bypass is acceptable, how to authenticate the reward-token list, and if automation should remain permissioned. Documented requirements for a follow-up design session before writing code.
+- **Open items (QA-05):** None—decision logged as Won't fix; any future change requires reopening the audit item with a new product mandate.
