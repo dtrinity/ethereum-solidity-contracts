@@ -19,6 +19,7 @@ describe("GenericERC4626ConversionAdapter allowance hygiene", () => {
       await vault.getAddress(),
       collateralVault.address,
     )) as GenericERC4626ConversionAdapter;
+    await adapter.connect(admin).setAuthorizedCaller(router.address, true);
 
     const depositAmount = ethers.parseEther("10");
     await dStable.transfer(router.address, depositAmount);
