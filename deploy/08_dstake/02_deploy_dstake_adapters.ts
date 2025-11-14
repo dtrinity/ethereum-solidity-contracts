@@ -14,12 +14,24 @@ import {
 
 const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
 
-async function ensureAdapterAuthorizedCaller(adapterAddress: string, caller: string, signer: Awaited<ReturnType<typeof ethers.getSigner>>) {
+/**
+ * Grants router permissions to call adapter methods if both addresses are configured.
+ *
+ * @param adapterAddress Address of adapter contract that exposes `setAuthorizedCaller`.
+ * @param caller Router or reward manager address we need to authorize.
+ * @param signer Signer that has access to update the adapter's ACL.
+ */
+async function ensureAdapterAuthorizedCaller(
+  adapterAddress: string,
+  caller: string,
+  signer: Awaited<ReturnType<typeof ethers.getSigner>>,
+): Promise<void> {
   if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
     return;
   }
 
   const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
+
   try {
     await adapter.setAuthorizedCaller(caller, true);
   } catch (error) {
@@ -119,6 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         const existingAdapter = await deployments.getOrNull(deploymentName);
 
         let adapterAddress: string;
+
         if (existingAdapter) {
           console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
           adapterAddress = existingAdapter.address;

@@ -110,9 +110,7 @@ async function ensureAdapterAuthorizedCaller(
   try {
     await adapter.setAuthorizedCaller(caller, true);
   } catch (error) {
-    console.warn(
-      `⚠️ Failed to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
-    );
+    console.warn(`⚠️ Failed to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`);
   }
 }
 

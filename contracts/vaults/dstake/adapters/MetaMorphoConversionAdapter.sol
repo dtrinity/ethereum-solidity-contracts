@@ -122,7 +122,13 @@ contract MetaMorphoConversionAdapter is IDStableConversionAdapterV2, ReentrancyG
      */
     function depositIntoStrategy(
         uint256 dStableAmount
-    ) external override nonReentrant onlyAuthorizedCaller returns (address _strategyShare, uint256 strategyShareAmount) {
+    )
+        external
+        override
+        nonReentrant
+        onlyAuthorizedCaller
+        returns (address _strategyShare, uint256 strategyShareAmount)
+    {
         if (dStableAmount == 0) revert InvalidAmount();
 
         // 1. Pull dStable from caller (router)

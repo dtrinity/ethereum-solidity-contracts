@@ -21,12 +21,24 @@ import {
 
 const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
 
-async function ensureAdapterAuthorizedCaller(adapterAddress: string, caller: string, signer: Awaited<ReturnType<typeof ethers.getSigner>>) {
+/**
+ * Authorizes reward managers to pull rewards from adapters when both addresses are valid.
+ *
+ * @param adapterAddress Address of adapter contract managing authorized callers.
+ * @param caller Reward manager or router address that should be granted access.
+ * @param signer Signer capable of executing the authorization transaction.
+ */
+async function ensureAdapterAuthorizedCaller(
+  adapterAddress: string,
+  caller: string,
+  signer: Awaited<ReturnType<typeof ethers.getSigner>>,
+): Promise<void> {
   if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
     return;
   }
 
   const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
+
   try {
     await adapter.setAuthorizedCaller(caller, true);
   } catch (error) {

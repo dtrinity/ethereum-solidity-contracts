@@ -74,8 +74,8 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         address _collateralVault,
         address _dstable,
         IPriceOracleGetter oracle
-    ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
-        if (_collateralVault == address(0) || _dstable == address(0) || address(oracle) == address(0)) {
+    ) OracleAware(_requireOracle(oracle), _requireOracleBaseCurrencyUnit(oracle)) {
+        if (_collateralVault == address(0) || _dstable == address(0)) {
             revert CannotBeZeroAddress();
         }
 
@@ -217,4 +217,19 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         _unpause();
     }
 
+    function _requireOracle(IPriceOracleGetter oracle) private pure returns (IPriceOracleGetter) {
+        if (address(oracle) == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
+        return oracle;
+    }
+
+    function _requireOracleBaseCurrencyUnit(IPriceOracleGetter oracle) private view returns (uint256) {
+        if (address(oracle) == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
+        return oracle.BASE_CURRENCY_UNIT();
+    }
 }

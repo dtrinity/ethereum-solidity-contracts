@@ -63,9 +63,10 @@ describe("GenericERC4626ConversionAdapter – emergency withdraw", function () {
   it("reverts when a caller without admin role attempts an emergency sweep", async function () {
     const { adapter, stranger } = await loadFixture(deployAdapterFixture);
 
-    await expect(
-      adapter.connect(stranger).emergencyWithdraw(await adapter.dStable(), 1),
-    ).to.be.revertedWithCustomError(adapter, "AccessControlUnauthorizedAccount");
+    await expect(adapter.connect(stranger).emergencyWithdraw(await adapter.dStable(), 1)).to.be.revertedWithCustomError(
+      adapter,
+      "AccessControlUnauthorizedAccount",
+    );
   });
 
   describe("authorized caller gating", function () {

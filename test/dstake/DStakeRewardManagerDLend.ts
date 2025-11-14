@@ -518,9 +518,10 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
       });
 
       it("reverts when caller lacks the admin role", async function () {
-        await expect(
-          rewardManager.connect(user2Signer).emergencyWithdraw(rewardToken.target, 1),
-        ).to.be.revertedWithCustomError(rewardManager, "AccessControlUnauthorizedAccount");
+        await expect(rewardManager.connect(user2Signer).emergencyWithdraw(rewardToken.target, 1)).to.be.revertedWithCustomError(
+          rewardManager,
+          "AccessControlUnauthorizedAccount",
+        );
       });
     });
   });
