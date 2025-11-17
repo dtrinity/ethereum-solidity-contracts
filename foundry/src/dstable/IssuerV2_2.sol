@@ -1,4 +1,4 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../../../contracts/dstable/IssuerV2_1.sol";
+import "../../../contracts/dstable/IssuerV2_2.sol";

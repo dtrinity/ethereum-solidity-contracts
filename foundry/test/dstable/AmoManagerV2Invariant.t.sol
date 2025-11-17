@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import { IssuerV2_1 } from "dstable/IssuerV2_1.sol";
+import { IssuerV2_2 } from "dstable/IssuerV2_2.sol";
 import { RedeemerV2 } from "dstable/RedeemerV2.sol";
 import { CollateralHolderVault } from "dstable/CollateralHolderVault.sol";
 import { AmoManagerV2 } from "dstable/AmoManagerV2.sol";
@@ -25,7 +25,7 @@ contract AmoManagerV2Invariant is Test {
     CollateralHolderVault internal collateralVault;
     AmoDebtToken internal debtToken;
     AmoManagerV2 internal amoManager;
-    IssuerV2_1 internal issuer;
+    IssuerV2_2 internal issuer;
     RedeemerV2 internal redeemer;
     MockAmoVault[2] internal amoVaults;
 
@@ -51,7 +51,7 @@ contract AmoManagerV2Invariant is Test {
 
         amoManager = new AmoManagerV2(oracle, debtToken, dstable, address(collateralVault));
 
-        issuer = new IssuerV2_1(address(collateralVault), address(dstable), oracle);
+        issuer = new IssuerV2_2(address(collateralVault), address(dstable), oracle);
         redeemer = new RedeemerV2(address(collateralVault), address(dstable), oracle, address(this), 0);
 
         for (uint256 i = 0; i < amoVaults.length; i++) {
