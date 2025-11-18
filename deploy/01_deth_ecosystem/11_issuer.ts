@@ -51,7 +51,7 @@ async function configureDepositCaps(
     return;
   }
 
-  const issuer = await hre.ethers.getContractAt("IssuerV2_1", issuerAddress, signer);
+  const issuer = await hre.ethers.getContractAt("IssuerV2_2", issuerAddress, signer);
 
   for (const [asset, cap] of Object.entries(caps)) {
     if (!asset || asset === ZeroAddress) {
@@ -75,7 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { address: collateralVaultAddress } = await deployments.get(DETH_COLLATERAL_VAULT_CONTRACT_ID);
   const deployResult = await deployments.deploy(DETH_ISSUER_V2_CONTRACT_ID, {
     from: deployer,
-    contract: "IssuerV2_1",
+    contract: "IssuerV2_2",
     args: [collateralVaultAddress, tokenAddresses.dETH, oracleAggregatorAddress],
     log: true,
     autoMine: true,

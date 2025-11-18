@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import hre, { getNamedAccounts } from "hardhat";
 import { Address } from "hardhat-deploy/types";
 
-import { CollateralHolderVault, IssuerV2_1, OracleAggregatorV1_1, TestERC20, TestMintableERC20 } from "../../typechain-types";
+import { CollateralHolderVault, IssuerV2_2, OracleAggregatorV1_1, TestERC20, TestMintableERC20 } from "../../typechain-types";
 import { ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { getTokenContractForSymbol, TokenInfo } from "../../typescript/token/utils";
 import { createDStableFixture, DETH_CONFIG, DStableFixtureConfig, DUSD_CONFIG } from "./fixtures";
@@ -57,8 +57,8 @@ async function calculateExpectedDstableFromBase(
 const dstableConfigs: DStableFixtureConfig[] = [DUSD_CONFIG, DETH_CONFIG];
 
 dstableConfigs.forEach((config) => {
-  describe(`IssuerV2_1 for ${config.symbol}`, () => {
-    let issuerV2_1: IssuerV2_1;
+  describe(`IssuerV2_2 for ${config.symbol}`, () => {
+    let issuerV2_1: IssuerV2_2;
     let collateralVaultContract: CollateralHolderVault;
     let oracleAggregatorContract: OracleAggregatorV1_1;
     let collateralVaultAddress: Address;
@@ -120,16 +120,16 @@ dstableConfigs.forEach((config) => {
         await result.contract.transfer(user2, amount);
       }
 
-      // Deploy IssuerV2_1 pointing at existing ecosystem contracts
-      const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
-      issuerV2_1 = (await IssuerV2_1Factory.deploy(
+      // Deploy IssuerV2_2 pointing at existing ecosystem contracts
+      const IssuerV2_2Factory = await hre.ethers.getContractFactory("IssuerV2_2", await hre.ethers.getSigner(deployer));
+      issuerV2_1 = (await IssuerV2_2Factory.deploy(
         collateralVaultAddress,
         dstableInfo.address,
         oracleAggregatorAddress,
-      )) as unknown as IssuerV2_1;
+      )) as unknown as IssuerV2_2;
       await issuerV2_1.waitForDeployment();
 
-      // Grant MINTER_ROLE to IssuerV2_1 on the real stablecoin (upgradeable impl)
+      // Grant MINTER_ROLE to IssuerV2_2 on the real stablecoin (upgradeable impl)
       const stableWithRoles = await hre.ethers.getContractAt(
         "ERC20StablecoinUpgradeable",
         dstableInfo.address,

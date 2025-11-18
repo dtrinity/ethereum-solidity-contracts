@@ -30,10 +30,10 @@ import "./CollateralVault.sol";
 import "./OracleAware.sol";
 
 /**
- * @title IssuerV2_1
+ * @title IssuerV2_2
  * @notice Issuer responsible for minting dStable tokens with asset-level controls and collateral backing checks
  */
-contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
+contract IssuerV2_2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20Metadata;
 
     /* Core state */
@@ -69,7 +69,7 @@ contract IssuerV2_1 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     mapping(address => uint256) public assetDepositCap;
 
     /**
-     * @notice Initializes the IssuerV2_1 contract with core dependencies
+     * @notice Initializes the IssuerV2_2 contract with core dependencies
      * @param _collateralVault The address of the collateral vault
      * @param _dstable The address of the dStable stablecoin
      * @param oracle The address of the price oracle
