@@ -51,7 +51,7 @@ async function configureDepositCaps(
     return;
   }
 
-  const issuer = await hre.ethers.getContractAt("IssuerV2_1", issuerAddress, signer);
+  const issuer = await hre.ethers.getContractAt("IssuerV2_2", issuerAddress, signer);
 
   for (const [asset, cap] of Object.entries(caps)) {
     if (!asset || asset === ZeroAddress) {
@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployResult = await deployments.deploy(DUSD_ISSUER_V2_CONTRACT_ID, {
     from: deployer,
     args: [collateralVaultAddress, tokenAddresses.dUSD, oracleAggregatorAddress],
-    contract: "IssuerV2_1",
+    contract: "IssuerV2_2",
     autoMine: true,
     log: true,
   });

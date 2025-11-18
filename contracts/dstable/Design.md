@@ -19,9 +19,9 @@ and mint/redemption quotes are computed in a common base currency.
   (`contracts/dstable/CollateralVault.sol:33`). `CollateralHolderVault`
   implements a passive custody vault with collateral-to-collateral swaps for
   rebalancing (`contracts/dstable/CollateralHolderVault.sol:21`).
-- **Issuer** – `IssuerV2_1` accepts supported collateral, mints dStable, and
+- **Issuer** – `IssuerV2_2` accepts supported collateral, mints dStable, and
   enforces that aggregate collateral value remains greater than or equal to the
-  global dStable supply (`contracts/dstable/IssuerV2_1.sol`). It supports
+  global dStable supply (`contracts/dstable/IssuerV2_2.sol`). It supports
   asset-level mint pauses and “excess collateral” issuance for incentive
   programs without special-casing AMO balances.
 - **Redeemer** – `RedeemerV2` burns dStable in exchange for collateral pulled
@@ -37,15 +37,15 @@ and mint/redemption quotes are computed in a common base currency.
 
 ## Minting Workflow
 
-1. Caller approves collateral and invokes `IssuerV2_1.issue`
-   (`contracts/dstable/IssuerV2_1.sol`).
+1. Caller approves collateral and invokes `IssuerV2_2.issue`
+   (`contracts/dstable/IssuerV2_2.sol`).
 2. The contract checks the asset is supported and not paused, values it through
    the oracle, and computes the dStable to mint using `baseValueToDstableAmount`
-   (`contracts/dstable/IssuerV2_1.sol`).
+   (`contracts/dstable/IssuerV2_2.sol`).
 3. Collateral moves directly into the `CollateralVault`, while newly minted
-   dStable is sent to the caller (`contracts/dstable/IssuerV2_1.sol`).
+   dStable is sent to the caller (`contracts/dstable/IssuerV2_2.sol`).
 4. The issuer enforces a system-wide invariant: total dStable supply must never
-   exceed the collateral’s base value (`contracts/dstable/IssuerV2_1.sol`).
+   exceed the collateral’s base value (`contracts/dstable/IssuerV2_2.sol`).
 
 ## Redemption Workflow
 
@@ -83,7 +83,7 @@ conversions use the oracle directly:
   (`contracts/dstable/CollateralVault.sol:150`).
 - Issuer and redeemer translate between base value and dStable via
   `baseValueToDstableAmount`/`dstableAmountToBaseValue`
-  (`contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol:188`).
+  (`contracts/dstable/IssuerV2_2.sol`, `contracts/dstable/RedeemerV2.sol:188`).
 
 Swapping or disabling collateral requires oracle support; attempts to allow a
 token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
@@ -93,7 +93,7 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
 - **Token** – `DEFAULT_ADMIN_ROLE`, `PAUSER_ROLE`, `MINTER_ROLE`
   (`contracts/dstable/ERC20StablecoinUpgradeable.sol:20`).
 - **Issuer** – `DEFAULT_ADMIN_ROLE`, `INCENTIVES_MANAGER_ROLE`,
-  `PAUSER_ROLE` (`contracts/dstable/IssuerV2_1.sol`).
+  `PAUSER_ROLE` (`contracts/dstable/IssuerV2_2.sol`).
 - **Redeemer** – `DEFAULT_ADMIN_ROLE`, `REDEMPTION_MANAGER_ROLE`, `PAUSER_ROLE`
   (`contracts/dstable/RedeemerV2.sol:57`).
 - **Vaults** – `COLLATERAL_MANAGER_ROLE`, `COLLATERAL_WITHDRAWER_ROLE`,
@@ -105,12 +105,12 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
 
 ## Invariants & Risk Controls
 
-- Total dStable supply must remain ≤ collateral value; `IssuerV2_1` compares the
+- Total dStable supply must remain ≤ collateral value; `IssuerV2_2` compares the
   vault’s base valuation against the global supply to enforce the invariant on
-  each issuance (`contracts/dstable/IssuerV2_1.sol`).
+  each issuance (`contracts/dstable/IssuerV2_2.sol`).
 - Asset-level minting and redemption pauses allow surgical responses to collateral
   incidents without halting the entire system
-  (`contracts/dstable/IssuerV2_1.sol`, `contracts/dstable/RedeemerV2.sol:210`).
+  (`contracts/dstable/IssuerV2_2.sol`, `contracts/dstable/RedeemerV2.sol:210`).
 - AMO mint/burn operations enforce symmetric debt adjustments bounded by a
   tolerance to absorb rounding (`contracts/dstable/AmoManagerV2.sol:84`).
 - Foundry invariant coverage (`foundry/test/dstable/AmoManagerV2Invariant.t.sol`)
@@ -125,7 +125,7 @@ token without a live price revert (`contracts/dstable/CollateralVault.sol:176`).
 - Adding new collateral: configure the oracle feed, call `allowCollateral`, then
   enable minting/redemption as needed (`contracts/dstable/CollateralVault.sol:167`).
 - Incentive programs mint dStable using `issueUsingExcessCollateral`, which caps
-  issuance by current excess collateral (`contracts/dstable/IssuerV2_1.sol`).
+  issuance by current excess collateral (`contracts/dstable/IssuerV2_2.sol`).
 - AMO vault rotations: managed directly via `AmoManagerV2.borrowTo` and
   `AmoManagerV2.repayFrom` with invariant checks to preserve vault value
   (`contracts/dstable/AmoManagerV2.sol`).
