@@ -58,6 +58,7 @@ contract IssuerV2_2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
     error SlippageTooHigh(uint256 minDStable, uint256 dstableAmount);
     error IssuanceSurpassesCollateral(uint256 collateralInDstable, uint256 totalDstable);
     error AssetMintingPaused(address asset);
+    error CannotBeZeroAddress();
     error AssetDepositCapExceeded(address asset, uint256 cap, uint256 projectedBalance);
 
     /* Overrides */
@@ -77,7 +78,11 @@ contract IssuerV2_2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
         address _collateralVault,
         address _dstable,
         IPriceOracleGetter oracle
-    ) OracleAware(oracle, oracle.BASE_CURRENCY_UNIT()) {
+    ) OracleAware(_requireOracle(oracle), _requireOracleBaseCurrencyUnit(oracle)) {
+        if (_collateralVault == address(0) || _dstable == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
         collateralVault = CollateralVault(_collateralVault);
         dstable = IMintableERC20(_dstable);
         dstableDecimals = dstable.decimals();
@@ -191,6 +196,9 @@ contract IssuerV2_2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      * @param _collateralVault The address of the collateral vault
      */
     function setCollateralVault(address _collateralVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_collateralVault == address(0)) {
+            revert CannotBeZeroAddress();
+        }
         collateralVault = CollateralVault(_collateralVault);
         emit CollateralVaultSet(_collateralVault);
     }
@@ -234,5 +242,21 @@ contract IssuerV2_2 is AccessControl, OracleAware, ReentrancyGuard, Pausable {
      */
     function unpauseMinting() external onlyRole(PAUSER_ROLE) {
         _unpause();
+    }
+
+    function _requireOracle(IPriceOracleGetter oracle) private pure returns (IPriceOracleGetter) {
+        if (address(oracle) == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
+        return oracle;
+    }
+
+    function _requireOracleBaseCurrencyUnit(IPriceOracleGetter oracle) private view returns (uint256) {
+        if (address(oracle) == address(0)) {
+            revert CannotBeZeroAddress();
+        }
+
+        return oracle.BASE_CURRENCY_UNIT();
     }
 }

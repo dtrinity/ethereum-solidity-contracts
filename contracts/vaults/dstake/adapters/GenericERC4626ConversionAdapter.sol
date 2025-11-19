@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
 
 /**
@@ -11,7 +12,7 @@ import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAda
  * @notice Conversion adapter that bridges a dSTABLE asset directly into an ERC4626 vault where the
  *         share token is used as a dSTAKE strategy. Useful for idle vaults that simply hold dUSD.
  */
-contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
+contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2, AccessControl {
     using SafeERC20 for IERC20;
 
     // --- Errors ---
@@ -19,11 +20,25 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
     error InvalidAmount();
     error VaultAssetMismatch(address expected, address actual);
     error IncorrectStrategyShare(address expected, address actual);
+    error UnauthorizedCaller(address caller);
 
     // --- State ---
     address public immutable dStable;
     IERC4626 public immutable vault;
     address public immutable collateralVault;
+    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256("AUTHORIZED_CALLER_ROLE");
+
+    // --- Events ---
+    event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);
+    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized, address indexed admin);
+
+    // --- Modifiers ---
+    modifier onlyAuthorizedCaller() {
+        if (!hasRole(AUTHORIZED_CALLER_ROLE, msg.sender)) {
+            revert UnauthorizedCaller(msg.sender);
+        }
+        _;
+    }
 
     constructor(address _dStable, address _vault, address _collateralVault) {
         if (_dStable == address(0) || _vault == address(0) || _collateralVault == address(0)) {
@@ -37,13 +52,16 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
         dStable = _dStable;
         vault = IERC4626(_vault);
         collateralVault = _collateralVault;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _collateralVault);
     }
 
     // --- IDStableConversionAdapterV2 ---
 
     function depositIntoStrategy(
         uint256 stableAmount
-    ) external override returns (address shareToken, uint256 strategyShareAmount) {
+    ) external override onlyAuthorizedCaller returns (address shareToken, uint256 strategyShareAmount) {
         if (stableAmount == 0) {
             revert InvalidAmount();
         }
@@ -52,10 +70,13 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
         IERC20(dStable).forceApprove(address(vault), stableAmount);
 
         strategyShareAmount = vault.deposit(stableAmount, collateralVault);
+        IERC20(dStable).forceApprove(address(vault), 0);
         shareToken = address(vault);
     }
 
-    function withdrawFromStrategy(uint256 strategyShareAmount) external override returns (uint256 stableAmount) {
+    function withdrawFromStrategy(
+        uint256 strategyShareAmount
+    ) external override onlyAuthorizedCaller returns (uint256 stableAmount) {
         if (strategyShareAmount == 0) {
             revert InvalidAmount();
         }
@@ -98,5 +119,41 @@ contract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2 {
 
     function vaultAsset() external view override returns (address) {
         return address(vault);
+    }
+
+    /**
+     * @notice Emergency hook to sweep stranded tokens back to the collateral vault
+     * @param token Address of the ERC20 token to recover
+     * @param amount Amount of tokens to transfer
+     */
+    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (token == address(0)) {
+            revert ZeroAddress();
+        }
+
+        IERC20(token).safeTransfer(collateralVault, amount);
+        emit EmergencyWithdraw(token, amount, collateralVault);
+    }
+
+    /**
+     * @notice Adds or removes an authorized caller that can invoke conversion flows
+     * @param caller Address to update
+     * @param authorized True to grant access, false to revoke
+     */
+    function setAuthorizedCaller(address caller, bool authorized) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (caller == address(0)) {
+            revert ZeroAddress();
+        }
+
+        bool currentlyAuthorized = hasRole(AUTHORIZED_CALLER_ROLE, caller);
+        if (authorized) {
+            if (!currentlyAuthorized) {
+                _grantRole(AUTHORIZED_CALLER_ROLE, caller);
+                emit AuthorizedCallerUpdated(caller, true, msg.sender);
+            }
+        } else if (currentlyAuthorized) {
+            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);
+            emit AuthorizedCallerUpdated(caller, false, msg.sender);
+        }
     }
 }

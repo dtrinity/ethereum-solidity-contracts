@@ -63,6 +63,9 @@ To keep the router deployable after the V2 feature growth, the contract now spli
 3. Router walks the overweight strategies in deterministic order until it finds one that can satisfy the full request, exits it with strict slippage checks, and reverts if no vault has enough available liquidity or if the adapter fails.
 4. Router transfers the net amount directly to the receiver, reverting if the actual net falls below the token’s previewed `expectedNet`. Fee balances remain on the router so all shareholders benefit until reinvested.
 
+#### Withdrawal fee intuition
+- `DStakeTokenV2` never touches underlying strategy assets. To make the fee “real,” the router must actually unwind the **gross** amount, keep the fee tokens in its custody, and only then forward the **net** amount to the user. Burning extra shares while withdrawing only the net would simply inflate share price without producing spendable fee tokens or keeping `totalAssets()` (router view) aligned with `totalSupply()` (token view). Putting it another way, because dSTAKE strategy assets are not fungible, we cannot indiscriminately inflate share pro-rata ownership.
+
 ### Solver flows
 - `solverDepositAssets` / `solverDepositShares` and their withdraw counterparts live on the router. They sum assets, enforce ERC4626 previews via the token helpers, and mint/burn shares through router-only hooks that emit ERC4626 `Deposit`/`Withdraw` events (`mintForRouter(msg.sender, receiver, assets, shares)` and `burnFromRouter(msg.sender, receiver, owner, netAssets, shares)`).
 - Multi-vault deposits/withdrawals rely on the solver's off-chain calculations for vault ordering and dust handling; the router executes the provided arrays verbatim and the transaction reverts on any adapter failure.
@@ -95,7 +98,6 @@ To keep the router deployable after the V2 feature growth, the contract now spli
 - **Withdrawal fee plumbing** – Token implements the net/gross helpers inline and sources the active fee rate from the router, while the router performs the actual fee calculation and retention during `handleWithdraw`. Previews in the token continue to expose net values consistent with ERC4626 expectations.
 - **ERC4626 conversions** – `convertToAssets` maps shares to gross assets without applying withdrawal fees, while `previewRedeem` continues to expose the net user-facing amount. Round-tripping through `convertToShares(convertToAssets(x))` therefore remains lossless even when a fee is configured.
 - **ERC4626 hooks** – Token overrides `_deposit`/`_withdraw` to approve the router and delegate side effects once ERC4626 accounting is finished. OZ internals still handle ERC20 transfers and share mint/burn; router executes all downstream effects.
-- **Solver access** – Token no longer exposes solver entry points. Router invokes restricted `mintForRouter`/`burnFromRouter` helpers when servicing solver flows.
 - **Maintenance helpers** – Token includes `reinvestFees()` (passes router incentive to the caller) and `setSettlementShortfall()` (governance shim around router `recordShortfall`/`clearShortfall`).
 - **Upgrade & governance** – Token stays upgradeable, but most new functionality now lands in the router. Token upgrades should be rare and focused on accounting changes.
 

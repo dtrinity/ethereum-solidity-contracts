@@ -103,6 +103,9 @@ describe("DStakeRewardManagerMetaMorpho", function () {
     REWARDS_MANAGER_ROLE = await rewardManager.REWARDS_MANAGER_ROLE();
     await rewardManager.grantRole(REWARDS_MANAGER_ROLE, manager.address);
 
+    // Allow the reward manager to interact with the adapter just like the deploy flow does.
+    await adapter.connect(owner).setAuthorizedCaller(rewardManager.target, true);
+
     // Setup: Mint tokens and set up initial state
     await dStable.mint(user.address, ethers.parseEther("10000"));
     await dStable.mint(owner.address, ethers.parseEther("10000"));

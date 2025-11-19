@@ -19,6 +19,35 @@ import {
   POOL_DATA_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
 
+const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
+
+/**
+ * Authorizes reward managers to pull rewards from adapters when both addresses are valid.
+ *
+ * @param adapterAddress Address of adapter contract managing authorized callers.
+ * @param caller Reward manager or router address that should be granted access.
+ * @param signer Signer capable of executing the authorization transaction.
+ */
+async function ensureAdapterAuthorizedCaller(
+  adapterAddress: string,
+  caller: string,
+  signer: Awaited<ReturnType<typeof ethers.getSigner>>,
+): Promise<void> {
+  if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
+    return;
+  }
+
+  const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
+
+  try {
+    await adapter.setAuthorizedCaller(caller, true);
+  } catch (error) {
+    console.warn(
+      `⚠️  Unable to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -312,6 +341,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`          Granted DEFAULT_ADMIN_ROLE to ${deployer}`);
         }
       }
+      const routerContract = await ethers.getContractAt("DStakeRouterV2", dStakeRouterAddress);
+      const adapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
+      await ensureAdapterAuthorizedCaller(adapterAddress, deployment.address, deployerSigner);
+
       console.log(`    Set up DStakeRewardManagerDLend for ${instanceKey}.`);
     }
   }

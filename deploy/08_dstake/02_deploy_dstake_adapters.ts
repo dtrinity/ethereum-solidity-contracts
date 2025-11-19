@@ -9,27 +9,48 @@ import {
   DSTAKE_COLLATERAL_VAULT_ID_PREFIX,
   DSTAKE_ROUTER_ID_PREFIX,
   DUSD_A_TOKEN_WRAPPER_ID,
-  POOL_ADDRESSES_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
+
+const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
+
+/**
+ * Grants router permissions to call adapter methods if both addresses are configured.
+ *
+ * @param adapterAddress Address of adapter contract that exposes `setAuthorizedCaller`.
+ * @param caller Router or reward manager address we need to authorize.
+ * @param signer Signer that has access to update the adapter's ACL.
+ */
+async function ensureAdapterAuthorizedCaller(
+  adapterAddress: string,
+  caller: string,
+  signer: Awaited<ReturnType<typeof ethers.getSigner>>,
+): Promise<void> {
+  if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
+    return;
+  }
+
+  const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
+
+  try {
+    await adapter.setAuthorizedCaller(caller, true);
+  } catch (error) {
+    console.warn(
+      `⚠️  Unable to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
+  const deployerSigner = await ethers.getSigner(deployer);
 
   const config = await getConfig(hre);
 
   if (!config.dStake) {
     console.log("No dStake configuration found for this network. Skipping adapters.");
     return;
-  }
-
-  // Fetch dLend PoolAddressesProvider address if needed by any adapter
-  let dLendAddressesProviderAddress = "";
-  const dLendProvider = await deployments.getOrNull(POOL_ADDRESSES_PROVIDER_ID);
-
-  if (dLendProvider) {
-    dLendAddressesProviderAddress = dLendProvider.address;
   }
 
   // All configs are valid, proceed with adapter deployment
@@ -60,66 +81,79 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     for (const adapterConfig of instanceConfig.adapters) {
       const { adapterContract } = adapterConfig;
       let { strategyShare } = adapterConfig;
-      let { vaultAsset } = adapterConfig;
 
       if (!adapterContract) {
         console.warn(`    Skipping adapter for ${dStableSymbol}: missing adapterContract field.`);
         continue;
       }
 
+      // Resolve strategy share (wrapper/vault address) if not explicitly provided
       if (adapterContract === "WrappedDLendConversionAdapter") {
-        if (!dLendAddressesProviderAddress) {
-          throw new Error(`dLend PoolAddressesProvider not deployed before ${adapterContract}_${dStableSymbol}`);
-        }
-
-        const inferredWrapperId =
-          dStableSymbol === "sdUSD" ? DUSD_A_TOKEN_WRAPPER_ID : dStableSymbol === "sdETH" ? DETH_A_TOKEN_WRAPPER_ID : undefined;
-
-        if ((!strategyShare || strategyShare === "" || strategyShare === ethers.ZeroAddress) && inferredWrapperId) {
-          const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
-
-          if (!wrapperDeployment) {
-            throw new Error(`Wrapper ${inferredWrapperId} not deployed prior to ${adapterContract}_${dStableSymbol}`);
-          }
-          strategyShare = wrapperDeployment.address;
-        }
-
-        if ((!vaultAsset || vaultAsset === "" || vaultAsset === ethers.ZeroAddress) && strategyShare) {
-          vaultAsset = strategyShare;
-        }
-
+        // If no explicit strategyShare is provided, try to infer from known dLend wrappers
         if (!strategyShare || strategyShare === ethers.ZeroAddress) {
-          throw new Error(`strategyShare not configured for ${adapterContract}_${dStableSymbol}`);
-        }
+          const inferredWrapperId =
+            dStableSymbol === "sdUSD" ? DUSD_A_TOKEN_WRAPPER_ID : dStableSymbol === "sdETH" ? DETH_A_TOKEN_WRAPPER_ID : undefined;
 
-        if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
-          throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
-        }
+          if (inferredWrapperId) {
+            const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
 
-        const deploymentName = `${adapterContract}_${dStableSymbol}`;
-        // Avoid accidental redeployments on live networks by skipping if already deployed
-        const existingAdapter = await deployments.getOrNull(deploymentName);
-
-        if (existingAdapter) {
-          console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
-          continue;
+            if (wrapperDeployment) {
+              strategyShare = wrapperDeployment.address;
+            }
+          }
         }
-        await deploy(deploymentName, {
+      }
+
+      // Validate that we have a target address for the adapter
+      if (!strategyShare || strategyShare === ethers.ZeroAddress) {
+        console.warn(`    Skipping ${adapterContract} for ${dStableSymbol}: strategyShare (vault/wrapper) not configured or found.`);
+        continue;
+      }
+
+      // Prepare constructor arguments based on adapter type
+      let deployArgs: any[] = [];
+
+      if (adapterContract === "WrappedDLendConversionAdapter") {
+        // constructor(dStable, wrappedDLendToken, collateralVault)
+        deployArgs = [instanceConfig.dStable, strategyShare, collateralVault.address];
+      } else if (adapterContract === "GenericERC4626ConversionAdapter") {
+        // constructor(dStable, vault, collateralVault)
+        deployArgs = [instanceConfig.dStable, strategyShare, collateralVault.address];
+      } else if (adapterContract === "MetaMorphoConversionAdapter") {
+        // constructor(dStable, metaMorphoVault, collateralVault, initialAdmin)
+        deployArgs = [instanceConfig.dStable, strategyShare, collateralVault.address, deployer];
+      } else {
+        console.warn(`    Unknown adapter type ${adapterContract}, skipping deployment.`);
+        continue;
+      }
+
+      const deploymentName = `${adapterContract}_${dStableSymbol}`;
+      const existingAdapter = await deployments.getOrNull(deploymentName);
+
+      let adapterAddress: string;
+
+      if (existingAdapter) {
+        console.log(`    ${deploymentName} already exists at ${existingAdapter.address}. Skipping deployment.`);
+        adapterAddress = existingAdapter.address;
+      } else {
+        const newDeployment = await deploy(deploymentName, {
           from: deployer,
           contract: adapterContract,
-          args: [instanceConfig.dStable, vaultAsset, collateralVault.address],
+          args: deployArgs,
           log: true,
         });
-        // If router already exists, ensure adapter wiring is refreshed later (configure script handles mapping).
-        const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+        adapterAddress = newDeployment.address;
+      }
 
-        if (!routerDeployment) {
-          throw new Error(`Router ${routerDeploymentName} not found while deploying ${deploymentName}`);
-        }
+      // If router exists, ensure adapter authorizes it
+      const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+
+      if (routerDeployment) {
+        await ensureAdapterAuthorizedCaller(adapterAddress, routerDeployment.address, deployerSigner);
       } else {
-        if (!vaultAsset || vaultAsset === ethers.ZeroAddress) {
-          throw new Error(`vaultAsset not configured for ${adapterContract}_${dStableSymbol}`);
-        }
+        console.warn(
+          `    ⚠️  Router ${routerDeploymentName} not found. Remember to run this script again after deploying the router to set permissions.`,
+        );
       }
     }
   }

@@ -98,16 +98,6 @@ const config: HardhatUserConfig = {
         },
       },
       // DStake router with stack too deep errors
-      "contracts/vaults/dstake/DStakeRouterDLend.sol": {
-        version: "0.8.20",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-          viaIR: true,
-        },
-      },
       "contracts/vaults/dstake/DStakeRouterV2.sol": {
         version: "0.8.20",
         settings: {
@@ -138,7 +128,7 @@ const config: HardhatUserConfig = {
           viaIR: true,
         },
       },
-      // Contracts that import DStakeRouterDLend
+      // Contracts that import DStakeRouterV2
       "contracts/vaults/dstake/rewards/DStakeRewardManagerDLend.sol": {
         version: "0.8.20",
         settings: {

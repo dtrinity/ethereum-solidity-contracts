@@ -85,6 +85,7 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
     error SlippageDebtBurnTooHigh(uint256 actualDebtBurned, uint256 maxDebtBurned);
     error PegDeviationExceeded(address asset, uint256 price, uint256 baseUnit, uint256 maxDeviationBps);
     error PegDeviationOutOfRange(uint256 requested, uint256 maxAllowed);
+    error PermitFailed();
 
     /**
      * @notice Initializes the AmoManagerV2 contract
@@ -331,6 +332,7 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
 
     /**
      * @notice Repay using EIP-2612 permit for collateral tokens that support it
+     * @dev Skips the permit call if allowance already covers the amount (eg. permit pre-executed via front-run).
      */
     function repayWithPermit(
         address wallet,
@@ -342,7 +344,13 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
         bytes32 r,
         bytes32 s
     ) external onlyRole(AMO_DECREASE_ROLE) nonReentrant {
-        IERC20Permit(asset).permit(wallet, address(this), amount, deadline, v, r, s);
+        if (!_hasSufficientAllowance(wallet, asset, amount)) {
+            try IERC20Permit(asset).permit(wallet, address(this), amount, deadline, v, r, s) {} catch {
+                if (!_hasSufficientAllowance(wallet, asset, amount)) {
+                    revert PermitFailed();
+                }
+            }
+        }
         repayFrom(wallet, asset, amount, maxDebtBurned);
     }
 
@@ -422,6 +430,10 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
         uint256 oldPegDeviationBps = pegDeviationBps;
         pegDeviationBps = newPegDeviationBps;
         emit PegDeviationBpsSet(oldPegDeviationBps, newPegDeviationBps);
+    }
+
+    function _hasSufficientAllowance(address wallet, address asset, uint256 amount) private view returns (bool) {
+        return IERC20Metadata(asset).allowance(wallet, address(this)) >= amount;
     }
 
     /* View Functions */
