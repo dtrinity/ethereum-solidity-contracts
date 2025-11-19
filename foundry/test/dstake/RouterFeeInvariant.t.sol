@@ -8,6 +8,8 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { MockDStakeToken } from "../utils/MockDStakeToken.sol";
 import { DStakeRouterV2 } from "vaults/dstake/DStakeRouterV2.sol";
+import { DStakeRouterV2Storage } from "../../../../contracts/vaults/dstake/DStakeRouterV2Storage.sol";
+import { DStakeRouterV2GovernanceModule } from "../../../../contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol";
 import { WithdrawalFeeMath } from "common/WithdrawalFeeMath.sol";
 import { TestMintableERC20 } from "../utils/TestMintableERC20.sol";
 import { InvariantDStakeCollateralVault } from "../utils/InvariantDStakeCollateralVault.sol";
@@ -54,6 +56,9 @@ contract RouterFeeInvariant is Test {
         dStakeToken = new MockDStakeToken(address(dstable));
 
         router = new DStakeRouterV2(address(dStakeToken), address(collateralVault));
+
+        DStakeRouterV2GovernanceModule governanceModule = new DStakeRouterV2GovernanceModule(address(dStakeToken), address(collateralVault));
+        router.setGovernanceModule(address(governanceModule));
 
         collateralVault.setDStakeToken(address(dStakeToken));
         collateralVault.setRouter(address(router));
@@ -394,7 +399,7 @@ contract RouterFeeInvariant is Test {
             address(share),
             address(adapter),
             targetBps,
-            DStakeRouterV2.VaultStatus.Active
+            DStakeRouterV2Storage.VaultStatus.Active
         );
 
         vaultStates.push(VaultState({ adapter: adapter, share: share, exists: true }));
@@ -432,7 +437,7 @@ contract RouterFeeInvariant is Test {
         address[] memory temp = new address[](vaultCount);
         uint256 count;
         for (uint256 i = 0; i < vaultCount; i++) {
-            DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+            DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
             if (_isEligible(cfg, deposits)) {
                 temp[count++] = cfg.strategyVault;
             }
@@ -448,12 +453,12 @@ contract RouterFeeInvariant is Test {
         return selected;
     }
 
-    function _isEligible(DStakeRouterV2.VaultConfig memory cfg, bool deposits) internal pure returns (bool) {
+    function _isEligible(DStakeRouterV2Storage.VaultConfig memory cfg, bool deposits) internal pure returns (bool) {
         if (cfg.adapter == address(0)) return false;
         if (deposits) {
-            return cfg.status == DStakeRouterV2.VaultStatus.Active && cfg.targetBps > 0;
+            return cfg.status == DStakeRouterV2Storage.VaultStatus.Active && cfg.targetBps > 0;
         }
-        return cfg.status == DStakeRouterV2.VaultStatus.Active || cfg.status == DStakeRouterV2.VaultStatus.Impaired;
+        return cfg.status == DStakeRouterV2Storage.VaultStatus.Active || cfg.status == DStakeRouterV2Storage.VaultStatus.Impaired;
     }
 
     function _distributeAmounts(uint256 seed, uint256 amount, uint256 count) internal pure returns (uint256[] memory) {

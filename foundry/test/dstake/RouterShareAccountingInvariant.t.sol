@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { DStakeRouterV2 } from "vaults/dstake/DStakeRouterV2.sol";
+import { DStakeRouterV2Storage } from "../../../../contracts/vaults/dstake/DStakeRouterV2Storage.sol";
+import { DStakeRouterV2GovernanceModule } from "../../../../contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol";
 import { TestMintableERC20 } from "../utils/TestMintableERC20.sol";
 import { InvariantDStakeCollateralVault } from "../utils/InvariantDStakeCollateralVault.sol";
 import { MockDStakeToken } from "../utils/MockDStakeToken.sol";
@@ -31,6 +33,10 @@ contract RouterShareAccountingInvariant is Test {
         collateralVault = new InvariantDStakeCollateralVault(address(dstable));
         dStakeToken = new MockDStakeToken(address(dstable));
         router = new DStakeRouterV2(address(dStakeToken), address(collateralVault));
+
+        DStakeRouterV2GovernanceModule governanceModule = new DStakeRouterV2GovernanceModule(address(dStakeToken), address(collateralVault));
+        router.setGovernanceModule(address(governanceModule));
+
         adapter = new InvariantStableAdapter(address(dstable), address(collateralVault));
         strategyShare = StrategyShare(adapter.strategyShare());
 
@@ -43,7 +49,7 @@ contract RouterShareAccountingInvariant is Test {
             address(strategyShare),
             address(adapter),
             10_000,
-            DStakeRouterV2.VaultStatus.Active
+            DStakeRouterV2Storage.VaultStatus.Active
         );
 
         targetContract(address(this));

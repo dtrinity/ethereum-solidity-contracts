@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { DStakeRouterV2 } from "vaults/dstake/DStakeRouterV2.sol";
+import { DStakeRouterV2Storage } from "../../../../contracts/vaults/dstake/DStakeRouterV2Storage.sol";
+import { DStakeRouterV2GovernanceModule } from "../../../../contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol";
 
 import { TestMintableERC20 } from "../utils/TestMintableERC20.sol";
 import { InvariantDStakeCollateralVault } from "../utils/InvariantDStakeCollateralVault.sol";
@@ -48,6 +50,9 @@ contract RouterMultiVaultInvariant is Test {
         dStakeToken.setOwner(address(this));
 
         router = new DStakeRouterV2(address(dStakeToken), address(collateralVault));
+
+        DStakeRouterV2GovernanceModule governanceModule = new DStakeRouterV2GovernanceModule(address(dStakeToken), address(collateralVault));
+        router.setGovernanceModule(address(governanceModule));
 
         dStakeToken.setRouter(address(router));
         collateralVault.setRouter(address(router));
@@ -176,17 +181,17 @@ contract RouterMultiVaultInvariant is Test {
 
         uint256 remaining = 10_000;
         for (uint256 i = 0; i < vaultCount; i++) {
-            DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+            DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
 
             uint8 statusSelector = uint8(seed >> (i * 2)) % 3;
-            DStakeRouterV2.VaultStatus status = DStakeRouterV2.VaultStatus(statusSelector);
+            DStakeRouterV2Storage.VaultStatus status = DStakeRouterV2Storage.VaultStatus(statusSelector);
 
             uint256 maxTarget = remaining;
             uint256 raw = uint256(keccak256(abi.encode(seed, bias, i))) % (maxTarget + 1);
-            uint256 target = status == DStakeRouterV2.VaultStatus.Active ? raw : 0;
+            uint256 target = status == DStakeRouterV2Storage.VaultStatus.Active ? raw : 0;
             remaining -= target;
 
-            DStakeRouterV2.VaultConfig memory nextCfg = DStakeRouterV2.VaultConfig({
+            DStakeRouterV2Storage.VaultConfig memory nextCfg = DStakeRouterV2Storage.VaultConfig({
                 strategyVault: cfg.strategyVault,
                 adapter: cfg.adapter,
                 targetBps: target,
@@ -378,9 +383,9 @@ contract RouterMultiVaultInvariant is Test {
         uint256 vaultCount = router.getVaultCount();
         uint256 totalTargets;
         for (uint256 i = 0; i < vaultCount; i++) {
-            DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+            DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
             totalTargets += cfg.targetBps;
-            if (cfg.status != DStakeRouterV2.VaultStatus.Active) {
+            if (cfg.status != DStakeRouterV2Storage.VaultStatus.Active) {
                 assertEq(cfg.targetBps, 0, "Inactive vault must have zero target");
             }
         }
@@ -399,9 +404,9 @@ contract RouterMultiVaultInvariant is Test {
 
         uint256 vaultCount = router.getVaultCount();
         for (uint256 i = 0; i < vaultCount; i++) {
-            DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+            DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
             if (cfg.strategyVault == defaultVault) {
-                assertEq(uint8(cfg.status), uint8(DStakeRouterV2.VaultStatus.Active), "Default vault must remain active");
+                assertEq(uint8(cfg.status), uint8(DStakeRouterV2Storage.VaultStatus.Active), "Default vault must remain active");
                 break;
             }
         }
@@ -424,7 +429,7 @@ contract RouterMultiVaultInvariant is Test {
             address(share),
             address(adapter),
             initialTargetBps,
-            DStakeRouterV2.VaultStatus.Active
+            DStakeRouterV2Storage.VaultStatus.Active
         );
 
         vaults.push(VaultState({ adapter: adapter, share: share }));
@@ -436,8 +441,8 @@ contract RouterMultiVaultInvariant is Test {
         uint256 count;
 
         for (uint256 i = 0; i < vaultCount; i++) {
-            DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
-            if (deposits && cfg.status != DStakeRouterV2.VaultStatus.Active) {
+            DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+            if (deposits && cfg.status != DStakeRouterV2Storage.VaultStatus.Active) {
                 continue;
             }
 
@@ -448,8 +453,8 @@ contract RouterMultiVaultInvariant is Test {
 
         if (count == 0 && vaultCount > 0) {
             for (uint256 i = 0; i < vaultCount; i++) {
-                DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
-                if (deposits && cfg.status != DStakeRouterV2.VaultStatus.Active) {
+                DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfigByIndex(i);
+                if (deposits && cfg.status != DStakeRouterV2Storage.VaultStatus.Active) {
                     continue;
                 }
                 temp[count++] = cfg.strategyVault;
@@ -517,8 +522,8 @@ contract RouterMultiVaultInvariant is Test {
     function _ensureDefaultVaultHealthy() internal {
         address defaultVault = router.defaultDepositStrategyShare();
         if (defaultVault == address(0)) return;
-        DStakeRouterV2.VaultConfig memory cfg = router.getVaultConfig(defaultVault);
-        if (cfg.status != DStakeRouterV2.VaultStatus.Active) {
+        DStakeRouterV2Storage.VaultConfig memory cfg = router.getVaultConfig(defaultVault);
+        if (cfg.status != DStakeRouterV2Storage.VaultStatus.Active) {
             address[] memory eligible = router.getActiveVaultsForDeposits();
             if (eligible.length == 0) {
                 router.clearDefaultDepositStrategyShare();
