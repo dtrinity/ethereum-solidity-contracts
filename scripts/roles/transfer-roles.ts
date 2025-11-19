@@ -1,11 +1,16 @@
+import { network } from "hardhat";
 import { getConfig } from "../../config/config";
 import { scanRolesAndOwnership } from "./lib/scan";
 import * as readline from "readline";
 
 async function main() {
-  const hre = require("hardhat");
+  const hre = await network.connect();
   const { ethers, getNamedAccounts } = hre;
-  const { deployer } = await getNamedAccounts();
+  const fallbackSigner = (await ethers.getSigners())[0];
+  const deployer = typeof getNamedAccounts === "function" ? (await getNamedAccounts()).deployer : fallbackSigner?.address;
+  if (!deployer) {
+    throw new Error("Unable to resolve deployer account");
+  }
   const deployerSigner = await ethers.getSigner(deployer);
   const config = await getConfig(hre);
   const governance = config.walletAddresses.governanceMultisig;

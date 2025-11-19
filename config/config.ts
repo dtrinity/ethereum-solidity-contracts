@@ -12,7 +12,14 @@ import { Config } from "./types";
  * @returns The configuration for the network
  */
 export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config> {
-  switch (hre.network.name) {
+  const networkName = hre.network?.name ?? (hre as unknown as { networkName?: string }).networkName;
+
+  if (!networkName) {
+    throw new Error("Unable to determine current network name");
+  }
+  const normalizedNetworkName = networkName === "default" ? "hardhat" : networkName;
+
+  switch (normalizedNetworkName) {
     case "ethereum_testnet":
       return getEthereumTestNetConfig(hre);
     case "ethereum_mainnet":
@@ -21,6 +28,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     case "localhost":
       return getLocalhostConfig(hre);
     default:
-      throw new Error(`Unknown network: ${hre.network.name}`);
+      throw new Error(`Unknown network: ${networkName}`);
   }
 }

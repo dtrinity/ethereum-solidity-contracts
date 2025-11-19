@@ -1,5 +1,3 @@
-import "hardhat-deploy/dist/src/type-extensions";
-
 import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 

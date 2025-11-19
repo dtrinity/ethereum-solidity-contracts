@@ -1,60 +1,17 @@
-import "@nomicfoundation/hardhat-ethers";
-import "@nomicfoundation/hardhat-chai-matchers";
-import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
-import "hardhat-contract-sizer";
 import "dotenv/config";
-import "@typechain/hardhat";
 
-import type { Signer, TransactionRequest, TransactionResponse } from "ethers";
-import { extendEnvironment, HardhatUserConfig } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import hardhatEthers from "@nomicfoundation/hardhat-ethers";
+import hardhatEthersChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+import hardhatVerify from "@nomicfoundation/hardhat-verify";
+import { defineConfig } from "hardhat/config";
 
 import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Wrapper function to add a delay to transactions
-const wrapSigner = <TSigner extends Signer>(signer: TSigner, hre: HardhatRuntimeEnvironment): TSigner => {
-  const originalSendTransaction = signer.sendTransaction.bind(signer);
-
-  const wrappedSendTransaction: (tx: TransactionRequest) => Promise<TransactionResponse> = async (tx) => {
-    const result = await originalSendTransaction(tx);
-
-    if (hre.network.live) {
-      const sleepTime = 20000; // 20 seconds to reduce flakiness from eventual consistency
-      console.log(`\n>>> Waiting ${sleepTime}ms after transaction to ${result.to || "a new contract"}`);
-      await sleep(sleepTime);
-    }
-    return result;
-  };
-
-  (signer as TSigner & { sendTransaction: typeof wrappedSendTransaction }).sendTransaction = wrappedSendTransaction;
-
-  return signer;
-};
-
-extendEnvironment((hre: HardhatRuntimeEnvironment) => {
-  // Wrap hre.ethers.getSigner
-  const originalGetSigner = hre.ethers.getSigner;
-
-  hre.ethers.getSigner = (async (address) => {
-    const signer = await originalGetSigner(address);
-    return wrapSigner(signer, hre);
-  }) as typeof hre.ethers.getSigner;
-
-  // Wrap hre.ethers.getSigners
-  const originalGetSigners = hre.ethers.getSigners;
-
-  hre.ethers.getSigners = (async () => {
-    const signers = await originalGetSigners();
-    return signers.map((signer) => wrapSigner(signer, hre));
-  }) as typeof hre.ethers.getSigners;
-});
-
 /* eslint-disable camelcase -- Network names follow specific naming conventions that require snake_case */
-const config: HardhatUserConfig = {
+const config = defineConfig({
+  plugins: [hardhatEthers, hardhatEthersChaiMatchers, hardhatNetworkHelpers, hardhatVerify],
   //
   // Compile settings -------------------------------------------------------
   //  • Default: classic solc pipeline (fast) with optimizer.
@@ -174,15 +131,22 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
+      type: "edr-simulated",
+      chainType: "l1",
       deploy: ["deploy-mocks", "deploy"],
       allowUnlimitedContractSize: true,
       saveDeployments: false, // allow testing without needing to remove the previous deployments
     },
     localhost: {
+      type: "http",
+      chainType: "l1",
+      url: "http://127.0.0.1:8545",
       deploy: ["deploy-mocks", "deploy"],
       saveDeployments: true,
     },
     ethereum_testnet: {
+      type: "http",
+      chainType: "l1",
       // Sepolia testnet
       url: `https://sepolia.gateway.tenderly.co`,
       chainId: 11155111,
@@ -191,6 +155,8 @@ const config: HardhatUserConfig = {
       accounts: getEnvPrivateKeys("ethereum_testnet"),
     },
     ethereum_mainnet: {
+      type: "http",
+      chainType: "l1",
       url: `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "YOUR_API_KEY"}`,
       chainId: 1,
       deploy: ["deploy"], // NOTE: DO NOT DEPLOY mocks
@@ -238,13 +204,7 @@ const config: HardhatUserConfig = {
     // Just here to mute warning
     enabled: false,
   },
-  contractSizer: {
-    alphaSort: true,
-    disambiguatePaths: false,
-    runOnCompile: false,
-    only: ["DStakeRouterV2"],
-  },
-};
+});
 /* eslint-enable camelcase -- Re-enabling camelcase rule after network definitions */
 
 export default config;
