@@ -96,6 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
           if (inferredWrapperId) {
             const wrapperDeployment = await deployments.getOrNull(inferredWrapperId);
+
             if (wrapperDeployment) {
               strategyShare = wrapperDeployment.address;
             }
@@ -111,6 +112,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       // Prepare constructor arguments based on adapter type
       let deployArgs: any[] = [];
+
       if (adapterContract === "WrappedDLendConversionAdapter") {
         // constructor(dStable, wrappedDLendToken, collateralVault)
         deployArgs = [instanceConfig.dStable, strategyShare, collateralVault.address];
@@ -145,6 +147,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       // If router exists, ensure adapter authorizes it
       const routerDeployment = await deployments.getOrNull(routerDeploymentName);
+
       if (routerDeployment) {
         await ensureAdapterAuthorizedCaller(adapterAddress, routerDeployment.address, deployerSigner);
       } else {

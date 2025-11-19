@@ -144,23 +144,23 @@ dstableConfigs.forEach((config) => {
 
     describe("constructor validation", () => {
       it("reverts when collateral vault is zero", async function () {
-        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        const IssuerV2_2Factory = await hre.ethers.getContractFactory("IssuerV2_2", await hre.ethers.getSigner(deployer));
         await expect(
-          IssuerV2_1Factory.deploy(hre.ethers.ZeroAddress, dstableInfo.address, oracleAggregatorAddress),
+          IssuerV2_2Factory.deploy(hre.ethers.ZeroAddress, dstableInfo.address, oracleAggregatorAddress),
         ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
       });
 
       it("reverts when dstable token is zero", async function () {
-        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        const IssuerV2_2Factory = await hre.ethers.getContractFactory("IssuerV2_2", await hre.ethers.getSigner(deployer));
         await expect(
-          IssuerV2_1Factory.deploy(collateralVaultAddress, hre.ethers.ZeroAddress, oracleAggregatorAddress),
+          IssuerV2_2Factory.deploy(collateralVaultAddress, hre.ethers.ZeroAddress, oracleAggregatorAddress),
         ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
       });
 
       it("reverts when oracle is zero", async function () {
-        const IssuerV2_1Factory = await hre.ethers.getContractFactory("IssuerV2_1", await hre.ethers.getSigner(deployer));
+        const IssuerV2_2Factory = await hre.ethers.getContractFactory("IssuerV2_2", await hre.ethers.getSigner(deployer));
         await expect(
-          IssuerV2_1Factory.deploy(collateralVaultAddress, dstableInfo.address, hre.ethers.ZeroAddress),
+          IssuerV2_2Factory.deploy(collateralVaultAddress, dstableInfo.address, hre.ethers.ZeroAddress),
         ).to.be.revertedWithCustomError(issuerV2_1, "CannotBeZeroAddress");
       });
     });
