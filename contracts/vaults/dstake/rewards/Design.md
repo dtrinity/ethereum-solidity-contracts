@@ -14,7 +14,7 @@ can service positions without holding privileged roles.
 - **DStakeCollateralVaultV2 (`IDStakeCollateralVaultV2`)** – Custodies strategy
   shares and exposes the canonical `dStable` address. Adapters mint strategy
   shares directly to this vault.
-- **DStakeRouterDLend** – Discovers the default deposit strategy share and its
+- **DStakeRouterV2** – Discovers the default deposit strategy share and its
   registered `IDStableConversionAdapterV2`.
 - **IDLendRewardsController** – Aave/dLEND controller from which emissions are
   claimed via `claimRewardsOnBehalf`; requires wrapper-level `setClaimer`

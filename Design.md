@@ -12,7 +12,7 @@ The repo hosts the Solidity contracts, deploy scripts, and TypeScript helpers th
 
 **How issuance works**
 1. Users or programmatic agents deposit approved collateral into `CollateralVault` instances (e.g., `CollateralHolderVault`).
-2. `IssuerV2_1` values that collateral via the shared `OracleAggregator` and mints dStable up to the system-wide cap that supply ≤ collateral value.
+2. `IssuerV2_2` values that collateral via the shared `OracleAggregator` and mints dStable up to the system-wide cap that supply ≤ collateral value.
 3. Minted dStable is delivered directly to the caller; collateral stays in the vault.
 
 **How redemption works**
@@ -26,7 +26,7 @@ The repo hosts the Solidity contracts, deploy scripts, and TypeScript helpers th
 - Collateral can be interest-bearing (e.g., sfrxUSD, static aUSDC). Instead of letting dStable holders capture that embedded yield, dTRINITY reroutes it to where liquidity is most productive: subsidising dLEND borrowers so lending rates stay attractive, or seeding Curve-style LP programmes so secondary markets for dStable remain deep. This keeps dStable itself credibly neutral while still monetising the backing assets for the ecosystem.
 
 **Risk controls & accounting**
-- `IssuerV2_1` enforces the invariant `totalSupply(dStable) ≤ vaultValue` on every mint, blocking issuance the moment collateral ratios degrade.
+- `IssuerV2_2` enforces the invariant `totalSupply(dStable) ≤ vaultValue` on every mint, blocking issuance the moment collateral ratios degrade.
 - Asset-level mint/redeem pauses allow surgical incident response.
 - Fees, receiver addresses, and collateral lists are role-gated so governance changes can be scheduled and audited.
 - Automated Monetary Operations (AMOs) give governance a controlled way to route freshly minted supply into external venues using transfer-restricted `AmoDebtToken` receipts so vault accounting always knows where collateral sits.
@@ -83,7 +83,7 @@ The repo hosts the Solidity contracts, deploy scripts, and TypeScript helpers th
 - dStake relies on these wrappers as strategy shares, letting sdUSD or sdETH sit on top of dLend positions without inheriting the raw aToken interface.
 
 ## Putting It Together: Typical User Journeys
-1. **Mint dStable** – A treasury deposits USDC into the dUSD vault. `IssuerV2_1` mints dUSD one-for-one (subject to valuation). If the treasury instead deposits a yield-bearing wrapper such as sfrxUSD, that upstream yield can later be redirected toward incentives for dLEND borrowers or Curve LPs.
+1. **Mint dStable** – A treasury deposits USDC into the dUSD vault. `IssuerV2_2` mints dUSD one-for-one (subject to valuation). If the treasury instead deposits a yield-bearing wrapper such as sfrxUSD, that upstream yield can later be redirected toward incentives for dLEND borrowers or Curve LPs.
 2. **Deploy into dStake** – The treasury deposits freshly minted dUSD into sdUSD. Router allocates funds into the default strategy (today, static aTokens referencing dLend). Shares accrue yield from dLEND borrowers plus any incentive programs streamed via idle vaults while the sdUSD token remains composable collateral elsewhere.
 3. **Borrow in dLend** – Other ecosystem actors deposit sfrxETH as collateral inside dLend and borrow dUSD for working capital. Because sfrxETH has conservative LTVs and dUSD has zero LTV, a single liquidation scenario cannot cascade back into the issuer.
 4. **Provide liquidity** – The same sdUSD minted in step 2 can be paired with dUSD on Curve or other DEXs. Yield from the sd leg keeps accruing because the router still manages allocations, while the LP position earns trading fees.
@@ -96,10 +96,10 @@ The repo hosts the Solidity contracts, deploy scripts, and TypeScript helpers th
 - Tests live under `foundry/` and `test/` with invariant suites for dStable AMOs, dStake routers, reward managers, and vesting contracts to continually enforce supply, fee, and slippage invariants.
 
 ## Summary Table
-| Product | Users interact via | Backed by | Key controls |
-| --- | --- | --- | --- |
-| **dUSD / dETH (dStable)** | Issuer + Redeemer contracts, governance/operator AMO hooks | Whitelisted collateral in CollateralVault (mix of stablecoins and yield-bearing assets) | System-wide supply ≤ collateral, asset-level pauses, AMO peg guards |
-| **sdUSD / sdETH (dStake)** | ERC4626 deposits/withdrawals routed by DStakeRouterV2 | Strategy shares held in DStakeCollateralVault (dLend, MetaMorpho, etc.) | Router fee knobs, adapter allowlists, rebalance modules, shortfall accounting |
-| **dLend money market** | Standard Aave v3 interfaces (pool, rewards, debt tokens, static wrappers) | Curated reserves: dStable assets, ETH LSDs, yield stables | Reserve caps/LTVs, ACL-managed onboarding, oracle validation |
+| Product                    | Users interact via                                                        | Backed by                                                                               | Key controls                                                                  |
+| -------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **dUSD / dETH (dStable)**  | Issuer + Redeemer contracts, governance/operator AMO hooks                | Whitelisted collateral in CollateralVault (mix of stablecoins and yield-bearing assets) | System-wide supply ≤ collateral, asset-level pauses, AMO peg guards           |
+| **sdUSD / sdETH (dStake)** | ERC4626 deposits/withdrawals routed by DStakeRouterV2                     | Strategy shares held in DStakeCollateralVault (dLend, MetaMorpho, etc.)                 | Router fee knobs, adapter allowlists, rebalance modules, shortfall accounting |
+| **dLend money market**     | Standard Aave v3 interfaces (pool, rewards, debt tokens, static wrappers) | Curated reserves: dStable assets, ETH LSDs, yield stables                               | Reserve caps/LTVs, ACL-managed onboarding, oracle validation                  |
 
 Together these pieces let dTRINITY run a vertically integrated stable-asset, yield, and credit platform with transparent risk knobs and operational tooling owned inside the DAO’s repositories while keeping user-facing flows simple and composable.

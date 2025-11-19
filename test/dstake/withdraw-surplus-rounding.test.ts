@@ -2,20 +2,20 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers, getNamedAccounts } from "hardhat";
 
-import { DStakeCollateralVault, DStakeRouterDLend, DStakeToken, ERC20 } from "../../typechain-types";
+import { DStakeCollateralVault, DStakeRouterV2, DStakeToken, ERC20 } from "../../typechain-types";
 import { ERC20StablecoinUpgradeable } from "../../typechain-types/contracts/dstable/ERC20StablecoinUpgradeable";
 import { createDStakeFixture, SDUSD_CONFIG as CONFIG } from "./fixture";
 
 // Helper to parse units with given decimals
 const parseUnits = (value: string, decimals: number | bigint) => ethers.parseUnits(value, decimals);
 
-describe("DStakeRouterDLend – surplus < 1 share withdraw DoS", function () {
+describe("DStakeRouterV2 – surplus < 1 share withdraw DoS", function () {
   const fixture = createDStakeFixture(CONFIG);
 
   let deployer: SignerWithAddress;
   let user1: SignerWithAddress;
   let DStakeTokenInst: DStakeToken;
-  let router: DStakeRouterDLend;
+  let router: DStakeRouterV2;
   let collateralVault: DStakeCollateralVault;
   let dStable: ERC20;
   let dStableDecimals: bigint;
