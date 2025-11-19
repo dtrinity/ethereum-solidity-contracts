@@ -16,6 +16,8 @@ library OdosSwapUtils {
     error SwapFailed();
     /// @notice Custom error when actual output amount is less than expected
     error InsufficientOutput(uint256 expected, uint256 actual);
+    /// @notice Custom error when attempting same-token swap
+    error SameTokenSwapNotSupported();
 
     /**
      * @notice Performs a swap operation using Odos router with swap data
@@ -56,12 +58,15 @@ library OdosSwapUtils {
 
         uint256 outputBalanceAfter = IERC20(outputToken).balanceOf(address(this));
 
+        // Prevent same-token swap exploitation
+        // After fixing Issue #1, same-token swaps would allow stealing contract balance
+        // by claiming large exactOut amounts without actually performing a swap
+        if (inputToken == outputToken) {
+            revert SameTokenSwapNotSupported();
+        }
+
         if (outputBalanceAfter >= outputBalanceBefore) {
             actualAmountReceived = outputBalanceAfter - outputBalanceBefore;
-        } else if (inputToken == outputToken) {
-            // Same-asset flows (e.g., exploit reproduction) intentionally net more tokens out than in
-            // while returning minimal dust. Treat the caller-provided exactOut as the credited amount.
-            actualAmountReceived = exactOut;
         } else {
             revert InsufficientOutput(exactOut, 0);
         }
