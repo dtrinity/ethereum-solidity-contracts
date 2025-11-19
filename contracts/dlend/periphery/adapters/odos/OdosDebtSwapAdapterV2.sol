@@ -205,18 +205,19 @@ contract OdosDebtSwapAdapterV2 is
         require(msg.sender == address(POOL), "Callback only from POOL");
         require(initiator == address(this), "Initiator only this contract");
 
-        uint256 amount = amounts[0];
-        address asset = assets[0];
-        uint256 amountToReturn = amount + premiums[0];
+        uint256 collateralAmount = amounts[0];
+        address collateralAsset = assets[0];
+        uint256 amountToReturn = collateralAmount + premiums[0];
 
         FlashParamsV2 memory flashParams = abi.decode(params, (FlashParamsV2));
 
         // nested flashloan when using extra collateral
         if (flashParams.nestedFlashloanDebtAsset != address(0)) {
-            (, , address aToken) = _getReserveData(asset);
-            // pull collateral from the user after flashloan because of potential reentrancy
-            IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), flashParams.debtRepayAmount);
-            POOL.withdraw(asset, flashParams.debtRepayAmount, address(this));
+            (, , address aToken) = _getReserveData(collateralAsset);
+            // pull extra collateral from the user after flashloan because of potential reentrancy
+            // IMPORTANT: 'collateralAmount' here is the flash-loaned extraCollateralAmount, NOT debtRepayAmount
+            IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), collateralAmount);
+            POOL.withdraw(collateralAsset, collateralAmount, address(this));
 
             FlashParamsV2 memory innerFlashParams = FlashParamsV2({
                 debtAsset: flashParams.debtAsset,
@@ -232,11 +233,11 @@ contract OdosDebtSwapAdapterV2 is
 
             // revert if returned amount is not enough to repay the flashloan
             require(
-                IERC20WithPermit(asset).balanceOf(address(this)) >= amountToReturn,
+                IERC20WithPermit(collateralAsset).balanceOf(address(this)) >= amountToReturn,
                 "Insufficient amount to repay flashloan"
             );
 
-            _conditionalRenewAllowance(asset, amountToReturn);
+            _conditionalRenewAllowance(collateralAsset, amountToReturn);
             return true;
         }
 
@@ -244,9 +245,9 @@ contract OdosDebtSwapAdapterV2 is
         {
             // Use adaptive buy which handles both regular and PT token swaps intelligently
             _executeAdaptiveBuy(
-                IERC20Detailed(asset),
+                IERC20Detailed(collateralAsset),
                 IERC20Detailed(flashParams.debtAsset),
-                amount,
+                collateralAmount,
                 flashParams.debtRepayAmount,
                 flashParams.swapData
             );
@@ -257,7 +258,7 @@ contract OdosDebtSwapAdapterV2 is
 
             // Borrow new debt to repay flashloan
             POOL.borrow(
-                asset,
+                collateralAsset,
                 amountToReturn,
                 2, // variable rate mode
                 REFERRER,
@@ -266,11 +267,11 @@ contract OdosDebtSwapAdapterV2 is
 
             // revert if returned amount is not enough to repay the flashloan
             require(
-                IERC20WithPermit(asset).balanceOf(address(this)) >= amountToReturn,
+                IERC20WithPermit(collateralAsset).balanceOf(address(this)) >= amountToReturn,
                 "Insufficient amount to repay flashloan"
             );
 
-            _conditionalRenewAllowance(asset, amountToReturn);
+            _conditionalRenewAllowance(collateralAsset, amountToReturn);
             return true;
         }
     }
