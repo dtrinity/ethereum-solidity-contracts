@@ -33,6 +33,15 @@ describe("OdosSwapUtils", function () {
     const swapData = router.interface.encodeFunctionData("performSwap");
 
     // Act
+    const result = await (harness as any).callExecuteSwap.staticCall(
+      await router.getAddress(),
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      parseUnits("1500", 18),
+      amountReceived,
+      swapData,
+    );
+
     await (harness as any).callExecuteSwap(
       await router.getAddress(),
       await tokenIn.getAddress(),
@@ -42,6 +51,9 @@ describe("OdosSwapUtils", function () {
       swapData,
     );
 
+    // Assert: function should return the output amount received
+    expect(result).to.equal(amountReceived);
+    
     // Assert output balance & allowance checks
     expect(await tokenOut.balanceOf(harnessAddr)).to.equal(amountReceived);
     expect(await tokenIn.allowance(harnessAddr, await router.getAddress())).to.equal(0);

@@ -161,7 +161,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @param maxInputAmount The maximum amount of input tokens to spend
      * @param exactOutputAmount The exact amount of output tokens required
      * @param swapData The raw Odos swap calldata
-     * @return actualOutputAmount The actual amount of output tokens received
+     * @return actualInputAmount The actual amount of input tokens spent
      */
     function _executeDirectOdosExactOutput(
         address inputToken,
@@ -169,9 +169,13 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         uint256 maxInputAmount,
         uint256 exactOutputAmount,
         bytes memory swapData
-    ) internal returns (uint256 actualOutputAmount) {
+    ) internal returns (uint256 actualInputAmount) {
+        // Record balance before swap to calculate actual amount spent
+        uint256 balanceBeforeInput = IERC20Detailed(inputToken).balanceOf(address(this));
+        
         // Execute Odos swap using OdosSwapUtils (handles approvals internally)
-        actualOutputAmount = OdosSwapUtils.executeSwapOperation(
+        // Note: After the fix, this returns actualAmountReceived (output amount)
+        OdosSwapUtils.executeSwapOperation(
             odosRouter,
             inputToken,
             outputToken,
@@ -180,6 +184,16 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             swapData
         );
 
-        return actualOutputAmount;
+        // Calculate actual input amount spent using balance difference
+        uint256 balanceAfterInput = IERC20Detailed(inputToken).balanceOf(address(this));
+        
+        // Protect against underflow: ensure balance before >= balance after
+        if (balanceBeforeInput < balanceAfterInput) {
+            revert InsufficientBalanceBeforeSwap(balanceBeforeInput, balanceAfterInput);
+        }
+        
+        actualInputAmount = balanceBeforeInput - balanceAfterInput;
+
+        return actualInputAmount;
     }
 }

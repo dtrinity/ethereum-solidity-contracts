@@ -25,7 +25,7 @@ library OdosSwapUtils {
      * @param maxIn Maximum input amount
      * @param exactOut Exact output amount expected
      * @param swapData Encoded swap path data
-     * @return actualAmountSpent The actual amount of input tokens spent
+     * @return actualAmountReceived The actual amount of output tokens received
      */
     function executeSwapOperation(
         IOdosRouterV2 router,
@@ -34,7 +34,7 @@ library OdosSwapUtils {
         uint256 maxIn,
         uint256 exactOut,
         bytes memory swapData
-    ) internal returns (uint256 actualAmountSpent) {
+    ) internal returns (uint256 actualAmountReceived) {
         uint256 outputBalanceBefore = IERC20(outputToken).balanceOf(address(this));
 
         // Use SafeERC20.forceApprove for external DEX router integration
@@ -51,12 +51,10 @@ library OdosSwapUtils {
             revert SwapFailed();
         }
 
-        assembly {
-            actualAmountSpent := mload(add(result, 32))
-        }
+        // Note: Odos router returns actualAmountSpent, but we calculate and return actualAmountReceived
+        // The amount spent information is discarded as callers need the output amount
 
         uint256 outputBalanceAfter = IERC20(outputToken).balanceOf(address(this));
-        uint256 actualAmountReceived;
 
         if (outputBalanceAfter >= outputBalanceBefore) {
             actualAmountReceived = outputBalanceAfter - outputBalanceBefore;
@@ -75,6 +73,6 @@ library OdosSwapUtils {
         // Reset approval to 0 after swap
         IERC20(inputToken).approve(address(router), 0);
 
-        return actualAmountSpent;
+        return actualAmountReceived;
     }
 }

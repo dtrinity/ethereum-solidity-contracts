@@ -17,6 +17,7 @@
 
 pragma solidity ^0.8.20;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { PendleSwapLogic } from "./PendleSwapLogic.sol";
 import { OdosSwapUtils } from "contracts/odos/OdosSwapUtils.sol";
 import { IOdosRouterV2 } from "contracts/odos/interface/IOdosRouterV2.sol";
@@ -155,15 +156,24 @@ library SwapExecutor {
 
         if (swapType == ISwapTypes.SwapType.REGULAR_SWAP) {
             // Regular Odos swap - swapData should be raw Odos calldata
-            return
-                OdosSwapUtils.executeSwapOperation(
-                    params.odosRouter,
-                    params.inputToken,
-                    params.outputToken,
-                    params.maxInputAmount,
-                    params.exactOutputAmount,
-                    params.swapData
-                );
+            // Record balance before swap to calculate actual amount spent
+            uint256 balanceBeforeInput = IERC20(params.inputToken).balanceOf(address(this));
+            
+            // Execute swap (returns output amount after fix, but we need input amount)
+            OdosSwapUtils.executeSwapOperation(
+                params.odosRouter,
+                params.inputToken,
+                params.outputToken,
+                params.maxInputAmount,
+                params.exactOutputAmount,
+                params.swapData
+            );
+            
+            // Calculate actual input amount spent using balance difference
+            uint256 balanceAfterInput = IERC20(params.inputToken).balanceOf(address(this));
+            actualInputAmount = balanceBeforeInput - balanceAfterInput;
+            
+            return actualInputAmount;
         }
 
         // PT token involved - decode PTSwapDataV2 and use PendleSwapLogic
