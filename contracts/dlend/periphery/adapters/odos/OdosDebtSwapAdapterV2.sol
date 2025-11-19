@@ -110,17 +110,46 @@ contract OdosDebtSwapAdapterV2 is
     ) external nonReentrant whenNotPaused {
         uint256 excessBefore = IERC20Detailed(debtSwapParams.newDebtAsset).balanceOf(address(this));
 
+        // Handle credit delegation front-running by checking allowance and using try-catch
         // delegate credit
         if (creditDelegationPermit.deadline != 0) {
-            ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+            // Check current borrow allowance before attempting delegation
+            uint256 currentAllowance = ICreditDelegationToken(creditDelegationPermit.debtToken).borrowAllowance(
                 msg.sender,
-                address(this),
-                creditDelegationPermit.value,
-                creditDelegationPermit.deadline,
-                creditDelegationPermit.v,
-                creditDelegationPermit.r,
-                creditDelegationPermit.s
+                address(this)
             );
+            
+            // Determine the minimum required allowance (flash loan amount)
+            uint256 requiredAllowance = debtSwapParams.maxNewDebtAmount;
+            
+            // Only call delegationWithSig if allowance is insufficient
+            if (currentAllowance < requiredAllowance) {
+                // Wrap delegationWithSig in try-catch to handle front-running gracefully
+                try ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+                    msg.sender,
+                    address(this),
+                    creditDelegationPermit.value,
+                    creditDelegationPermit.deadline,
+                    creditDelegationPermit.v,
+                    creditDelegationPermit.r,
+                    creditDelegationPermit.s
+                ) {
+                    // Delegation succeeded
+                } catch {
+                    // Delegation failed (likely front-run). Re-check allowance.
+                    // If front-runner's delegation succeeded, allowance should now be sufficient
+                    currentAllowance = ICreditDelegationToken(creditDelegationPermit.debtToken).borrowAllowance(
+                        msg.sender,
+                        address(this)
+                    );
+                    if (currentAllowance < requiredAllowance) {
+                        // Allowance still insufficient after delegation failure
+                        revert("Credit delegation failed and allowance insufficient");
+                    }
+                    // Otherwise, front-runner's delegation succeeded, proceed with flash loan
+                }
+            }
+            // If currentAllowance >= requiredAllowance, skip delegation and proceed
         }
 
         // Default to the entire debt if an amount greater than it is passed.
