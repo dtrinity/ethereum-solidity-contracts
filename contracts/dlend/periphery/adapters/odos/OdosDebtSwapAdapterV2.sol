@@ -41,6 +41,13 @@ contract OdosDebtSwapAdapterV2 is
     IOdosDebtSwapAdapterV2
 {
     using SafeERC20 for IERC20WithPermit;
+    using SafeERC20 for IERC20Detailed;
+
+    /// @notice Emitted when excess debt tokens from PT swaps are returned to user
+    /// @param token The debt token that had excess
+    /// @param amount The amount of excess returned
+    /// @param user The user who received the excess
+    event ExcessDebtTokensReturned(address indexed token, uint256 amount, address indexed user);
 
     // unique identifier to track usage via flashloan events - different from V1
     uint16 public constant REFERRER = 5937; // Incremented from V1 to distinguish V2 usage
@@ -252,9 +259,31 @@ contract OdosDebtSwapAdapterV2 is
                 flashParams.swapData
             );
 
-            // Repay old debt
-            _conditionalRenewAllowance(flashParams.debtAsset, flashParams.debtRepayAmount);
-            POOL.repay(flashParams.debtAsset, flashParams.debtRepayAmount, flashParams.debtRateMode, flashParams.user);
+            // Measure actual debt tokens received from swap
+            // PT swaps may produce more output than the exact amount requested
+            uint256 actualDebtTokensReceived = IERC20Detailed(flashParams.debtAsset).balanceOf(address(this));
+            
+            // Use ALL received debt tokens for repayment (up to what's owed)
+            // This ensures no excess debt tokens are trapped on the adapter
+            uint256 amountToRepay = actualDebtTokensReceived;
+            
+            // Repay old debt with actual amount received
+            _conditionalRenewAllowance(flashParams.debtAsset, amountToRepay);
+            uint256 actualRepaid = POOL.repay(
+                flashParams.debtAsset, 
+                amountToRepay, 
+                flashParams.debtRateMode, 
+                flashParams.user
+            );
+            
+            // Handle any excess that couldn't be repaid (edge case: user debt < swap output)
+            // Return excess to user rather than leaving it trapped on adapter
+            uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid ? 
+                actualDebtTokensReceived - actualRepaid : 0;
+            if (excessDebtTokens > 0) {
+                IERC20Detailed(flashParams.debtAsset).safeTransfer(flashParams.user, excessDebtTokens);
+                emit ExcessDebtTokensReturned(flashParams.debtAsset, excessDebtTokens, flashParams.user);
+            }
 
             // Borrow new debt to repay flashloan
             POOL.borrow(
