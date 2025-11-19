@@ -90,7 +90,7 @@ contract CurveDebtSwapAdapter is BaseCurveBuyAdapter, ReentrancyGuard, IAaveFlas
         PermitInput memory collateralATokenPermit
     ) external {
         uint256 excessBefore = IERC20Detailed(debtSwapParams.newDebtAsset).balanceOf(address(this));
-        
+
         // Handle credit delegation front-running by checking allowance and using try-catch
         // delegate credit
         if (creditDelegationPermit.deadline != 0) {
@@ -99,22 +99,24 @@ contract CurveDebtSwapAdapter is BaseCurveBuyAdapter, ReentrancyGuard, IAaveFlas
                 msg.sender,
                 address(this)
             );
-            
+
             // Determine the minimum required allowance (flash loan amount)
             uint256 requiredAllowance = debtSwapParams.maxNewDebtAmount;
-            
+
             // Only call delegationWithSig if allowance is insufficient
             if (currentAllowance < requiredAllowance) {
                 // Wrap delegationWithSig in try-catch to handle front-running gracefully
-                try ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
-                    msg.sender,
-                    address(this),
-                    creditDelegationPermit.value,
-                    creditDelegationPermit.deadline,
-                    creditDelegationPermit.v,
-                    creditDelegationPermit.r,
-                    creditDelegationPermit.s
-                ) {
+                try
+                    ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+                        msg.sender,
+                        address(this),
+                        creditDelegationPermit.value,
+                        creditDelegationPermit.deadline,
+                        creditDelegationPermit.v,
+                        creditDelegationPermit.r,
+                        creditDelegationPermit.s
+                    )
+                {
                     // Delegation succeeded
                 } catch {
                     // Delegation failed (likely front-run). Re-check allowance.

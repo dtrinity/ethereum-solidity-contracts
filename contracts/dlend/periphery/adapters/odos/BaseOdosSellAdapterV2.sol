@@ -59,7 +59,7 @@ abstract contract BaseOdosSellAdapterV2 is BaseOdosSwapAdapter, OracleValidation
         // Note: addressesProvider and pool validated in parent constructor
         require(address(_odosRouter) != address(0), "OdosRouter cannot be zero");
         require(_pendleRouter != address(0), "PendleRouter cannot be zero");
-        
+
         odosRouter = _odosRouter;
         pendleRouter = _pendleRouter;
     }

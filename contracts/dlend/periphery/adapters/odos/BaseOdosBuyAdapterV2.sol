@@ -52,7 +52,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         // Note: addressesProvider and pool validated in parent constructor
         require(address(_odosRouter) != address(0), "OdosRouter cannot be zero");
         require(_pendleRouter != address(0), "PendleRouter cannot be zero");
-        
+
         odosRouter = _odosRouter;
         pendleRouter = _pendleRouter;
     }
@@ -177,7 +177,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
     ) internal returns (uint256 actualInputAmount) {
         // Record balance before swap to calculate actual amount spent
         uint256 balanceBeforeInput = IERC20Detailed(inputToken).balanceOf(address(this));
-        
+
         // Execute Odos swap using OdosSwapUtils (handles approvals internally)
         // Note: After the fix, this returns actualAmountReceived (output amount)
         OdosSwapUtils.executeSwapOperation(
@@ -191,12 +191,12 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
 
         // Calculate actual input amount spent using balance difference
         uint256 balanceAfterInput = IERC20Detailed(inputToken).balanceOf(address(this));
-        
+
         // Protect against underflow: ensure balance before >= balance after
         if (balanceBeforeInput < balanceAfterInput) {
             revert InsufficientBalanceBeforeSwap(balanceBeforeInput, balanceAfterInput);
         }
-        
+
         actualInputAmount = balanceBeforeInput - balanceAfterInput;
 
         return actualInputAmount;

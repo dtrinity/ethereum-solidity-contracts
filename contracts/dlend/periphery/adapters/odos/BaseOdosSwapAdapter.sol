@@ -51,7 +51,7 @@ abstract contract BaseOdosSwapAdapter is Rescuable, Ownable, Pausable, IBaseOdos
         // Validate critical addresses are non-zero
         require(address(addressesProvider) != address(0), "AddressesProvider cannot be zero");
         require(pool != address(0), "Pool cannot be zero");
-        
+
         ADDRESSES_PROVIDER = addressesProvider;
         POOL = IPool(pool);
     }
@@ -94,19 +94,21 @@ abstract contract BaseOdosSwapAdapter is Rescuable, Ownable, Pausable, IBaseOdos
         if (permitInput.deadline != 0) {
             // Check current allowance before attempting permit
             uint256 currentAllowance = IERC20(aToken).allowance(user, address(this));
-            
+
             // Only call permit if allowance is insufficient
             if (currentAllowance < amount) {
                 // Wrap permit in try-catch to handle front-running gracefully
-                try permitInput.aToken.permit(
-                    user,
-                    address(this),
-                    permitInput.value,
-                    permitInput.deadline,
-                    permitInput.v,
-                    permitInput.r,
-                    permitInput.s
-                ) {
+                try
+                    permitInput.aToken.permit(
+                        user,
+                        address(this),
+                        permitInput.value,
+                        permitInput.deadline,
+                        permitInput.v,
+                        permitInput.r,
+                        permitInput.s
+                    )
+                {
                     // Permit succeeded
                 } catch {
                     // Permit failed (likely front-run). Re-check allowance.

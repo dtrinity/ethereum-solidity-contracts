@@ -118,22 +118,24 @@ contract OdosDebtSwapAdapterV2 is
                 msg.sender,
                 address(this)
             );
-            
+
             // Determine the minimum required allowance (flash loan amount)
             uint256 requiredAllowance = debtSwapParams.maxNewDebtAmount;
-            
+
             // Only call delegationWithSig if allowance is insufficient
             if (currentAllowance < requiredAllowance) {
                 // Wrap delegationWithSig in try-catch to handle front-running gracefully
-                try ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
-                    msg.sender,
-                    address(this),
-                    creditDelegationPermit.value,
-                    creditDelegationPermit.deadline,
-                    creditDelegationPermit.v,
-                    creditDelegationPermit.r,
-                    creditDelegationPermit.s
-                ) {
+                try
+                    ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+                        msg.sender,
+                        address(this),
+                        creditDelegationPermit.value,
+                        creditDelegationPermit.deadline,
+                        creditDelegationPermit.v,
+                        creditDelegationPermit.r,
+                        creditDelegationPermit.s
+                    )
+                {
                     // Delegation succeeded
                 } catch {
                     // Delegation failed (likely front-run). Re-check allowance.
@@ -291,24 +293,25 @@ contract OdosDebtSwapAdapterV2 is
             // Measure actual debt tokens received from swap
             // PT swaps may produce more output than the exact amount requested
             uint256 actualDebtTokensReceived = IERC20Detailed(flashParams.debtAsset).balanceOf(address(this));
-            
+
             // Use ALL received debt tokens for repayment (up to what's owed)
             // This ensures no excess debt tokens are trapped on the adapter
             uint256 amountToRepay = actualDebtTokensReceived;
-            
+
             // Repay old debt with actual amount received
             _conditionalRenewAllowance(flashParams.debtAsset, amountToRepay);
             uint256 actualRepaid = POOL.repay(
-                flashParams.debtAsset, 
-                amountToRepay, 
-                flashParams.debtRateMode, 
+                flashParams.debtAsset,
+                amountToRepay,
+                flashParams.debtRateMode,
                 flashParams.user
             );
-            
+
             // Handle any excess that couldn't be repaid (edge case: user debt < swap output)
             // Return excess to user rather than leaving it trapped on adapter
-            uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid ? 
-                actualDebtTokensReceived - actualRepaid : 0;
+            uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid
+                ? actualDebtTokensReceived - actualRepaid
+                : 0;
             if (excessDebtTokens > 0) {
                 IERC20Detailed(flashParams.debtAsset).safeTransfer(flashParams.user, excessDebtTokens);
                 emit ExcessDebtTokensReturned(flashParams.debtAsset, excessDebtTokens, flashParams.user);

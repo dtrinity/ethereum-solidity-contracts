@@ -53,7 +53,7 @@ describe("OdosSwapUtils", function () {
 
     // Assert: function should return the output amount received
     expect(result).to.equal(amountReceived);
-    
+
     // Assert output balance & allowance checks
     expect(await tokenOut.balanceOf(harnessAddr)).to.equal(amountReceived);
     expect(await tokenIn.allowance(harnessAddr, await router.getAddress())).to.equal(0);

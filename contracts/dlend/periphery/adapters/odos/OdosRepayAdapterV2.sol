@@ -177,24 +177,20 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
         // Measure actual debt tokens received from swap
         // PT swaps may produce more output than the exact amount requested
         uint256 actualDebtTokensReceived = IERC20Detailed(repayParams.debtAsset).balanceOf(address(this));
-        
+
         // Use ALL received debt tokens for repayment (up to what's owed)
         // This ensures no excess debt tokens are trapped on the adapter
         uint256 amountToRepay = actualDebtTokensReceived;
-        
+
         // Repay the debt with actual amount received
         _conditionalRenewAllowance(repayParams.debtAsset, amountToRepay);
-        uint256 actualRepaid = POOL.repay(
-            repayParams.debtAsset, 
-            amountToRepay, 
-            repayParams.rateMode, 
-            user
-        );
-        
+        uint256 actualRepaid = POOL.repay(repayParams.debtAsset, amountToRepay, repayParams.rateMode, user);
+
         // Handle any excess that couldn't be repaid (edge case: user debt < swap output)
         // Return excess to user rather than leaving it trapped on adapter
-        uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid ? 
-            actualDebtTokensReceived - actualRepaid : 0;
+        uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid
+            ? actualDebtTokensReceived - actualRepaid
+            : 0;
         if (excessDebtTokens > 0) {
             IERC20(repayParams.debtAsset).safeTransfer(user, excessDebtTokens);
             emit ExcessDebtTokensReturned(repayParams.debtAsset, excessDebtTokens, user);

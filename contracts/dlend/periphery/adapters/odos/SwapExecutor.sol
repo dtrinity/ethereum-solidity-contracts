@@ -158,7 +158,7 @@ library SwapExecutor {
             // Regular Odos swap - swapData should be raw Odos calldata
             // Record balance before swap to calculate actual amount spent
             uint256 balanceBeforeInput = IERC20(params.inputToken).balanceOf(address(this));
-            
+
             // Execute swap (returns output amount after fix, but we need input amount)
             OdosSwapUtils.executeSwapOperation(
                 params.odosRouter,
@@ -168,11 +168,11 @@ library SwapExecutor {
                 params.exactOutputAmount,
                 params.swapData
             );
-            
+
             // Calculate actual input amount spent using balance difference
             uint256 balanceAfterInput = IERC20(params.inputToken).balanceOf(address(this));
             actualInputAmount = balanceBeforeInput - balanceAfterInput;
-            
+
             return actualInputAmount;
         }
 
