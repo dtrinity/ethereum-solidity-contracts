@@ -48,6 +48,10 @@ abstract contract BaseOdosSwapAdapter is Rescuable, Ownable, Pausable, IBaseOdos
      * @param pool The address of the Aave Pool contract
      */
     constructor(IPoolAddressesProvider addressesProvider, address pool) Ownable(msg.sender) {
+        // Validate critical addresses are non-zero
+        require(address(addressesProvider) != address(0), "AddressesProvider cannot be zero");
+        require(pool != address(0), "Pool cannot be zero");
+        
         ADDRESSES_PROVIDER = addressesProvider;
         POOL = IPool(pool);
     }

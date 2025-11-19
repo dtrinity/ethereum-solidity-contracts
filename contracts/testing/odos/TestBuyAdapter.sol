@@ -11,7 +11,12 @@ contract TestBuyAdapter is BaseOdosBuyAdapterV2 {
     constructor(
         IOdosRouterV2 router,
         address pendleRouter
-    ) BaseOdosBuyAdapterV2(IPoolAddressesProvider(address(0)), address(0), router, pendleRouter) {}
+    ) BaseOdosBuyAdapterV2(
+        IPoolAddressesProvider(address(0x1111111111111111111111111111111111111111)), // Dummy non-zero address for testing
+        address(0x2222222222222222222222222222222222222222), // Dummy non-zero pool address for testing
+        router, 
+        pendleRouter
+    ) {}
 
     // ----------------- Required abstract stubs -------------------
     function _getReserveData(address /*asset*/) internal pure override returns (address, address, address) {
