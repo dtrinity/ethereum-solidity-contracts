@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import "dotenv/config";
 
 import hardhatEthers from "@nomicfoundation/hardhat-ethers";
@@ -6,12 +5,13 @@ import hardhatEthersChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matc
 import hardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import hardhatVerify from "@nomicfoundation/hardhat-verify";
 import { defineConfig } from "hardhat/config";
+import hardhatDeploy from "hardhat-deploy";
 
 import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 
 /* eslint-disable camelcase -- Network names follow specific naming conventions that require snake_case */
 const config = defineConfig({
-  plugins: [hardhatEthers, hardhatEthersChaiMatchers, hardhatNetworkHelpers, hardhatVerify],
+  plugins: [hardhatDeploy, hardhatEthers, hardhatEthersChaiMatchers, hardhatNetworkHelpers, hardhatVerify],
   //
   // Compile settings -------------------------------------------------------
   //  • Default: classic solc pipeline (fast) with optimizer.

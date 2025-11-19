@@ -44,3 +44,5 @@ foundry/cache
 foundry/lib
 
 yarn-error.log
+
+generated/
