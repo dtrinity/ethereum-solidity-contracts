@@ -57,13 +57,7 @@ describe("OdosDebtSwapAdapterV2 nested flashloan extra collateral", function () 
     await mint(vToken, user.address, debtRepayAmount);
     await aToken.connect(user).approve(await adapter.getAddress(), MaxUint256);
 
-    await router.setSwapBehaviour(
-      await newDebt.getAddress(),
-      await debt.getAddress(),
-      nestedFlashAmount,
-      debtRepayAmount,
-      false,
-    );
+    await router.setSwapBehaviour(await newDebt.getAddress(), await debt.getAddress(), nestedFlashAmount, debtRepayAmount, false);
 
     const swapData = router.interface.encodeFunctionData("performSwap");
 

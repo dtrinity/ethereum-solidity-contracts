@@ -26,7 +26,7 @@ contract MockAavePool {
     }
 
     function setReserveData(address asset, address aToken, address stableDebt, address variableDebt) external {
-        reserves[asset] = ReserveAddresses({aToken: aToken, stableDebt: stableDebt, variableDebt: variableDebt});
+        reserves[asset] = ReserveAddresses({ aToken: aToken, stableDebt: stableDebt, variableDebt: variableDebt });
 
         bool exists;
         for (uint256 i = 0; i < reserveList.length; i++) {
@@ -87,12 +87,23 @@ contract MockAavePool {
         return amount;
     }
 
-    function repay(address asset, uint256 amount, uint256 /*rateMode*/, address /*onBehalfOf*/) external returns (uint256) {
+    function repay(
+        address asset,
+        uint256 amount,
+        uint256 /*rateMode*/,
+        address /*onBehalfOf*/
+    ) external returns (uint256) {
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
         return amount;
     }
 
-    function borrow(address asset, uint256 amount, uint256 /*rateMode*/, uint16 /*referralCode*/, address /*onBehalfOf*/) external {
+    function borrow(
+        address asset,
+        uint256 amount,
+        uint256 /*rateMode*/,
+        uint16 /*referralCode*/,
+        address /*onBehalfOf*/
+    ) external {
         IERC20(asset).safeTransfer(msg.sender, amount);
     }
 }

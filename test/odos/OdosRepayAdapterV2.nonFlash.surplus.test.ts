@@ -54,13 +54,7 @@ describe("OdosRepayAdapterV2 - non-flash excess debt handling", function () {
 
     await aToken.connect(user).approve(await adapter.getAddress(), MaxUint256);
 
-    await router.setSwapBehaviour(
-      await collateral.getAddress(),
-      await debt.getAddress(),
-      collateralAmount,
-      debtTokensFromSwap,
-      false,
-    );
+    await router.setSwapBehaviour(await collateral.getAddress(), await debt.getAddress(), collateralAmount, debtTokensFromSwap, false);
 
     const swapData = router.interface.encodeFunctionData("performSwap");
 
