@@ -60,6 +60,7 @@ library SwapExecutor {
      * @param maxInputAmount The maximum amount of input tokens to spend
      * @param exactOutputAmount The exact amount of output tokens required
      * @param swapData Either regular Odos swap data or encoded PTSwapDataV2
+     *        For PT exact-output flows, swapData.exactInputAmount is required and must be <= maxInputAmount
      * @param pendleRouter The Pendle router address (for PT swaps)
      * @param odosRouter The Odos router address
      */
@@ -179,9 +180,11 @@ library SwapExecutor {
         // PT token involved - decode PTSwapDataV2 and use PendleSwapLogic
         PendleSwapLogic.PTSwapDataV2 memory ptSwapData = abi.decode(params.swapData, (PendleSwapLogic.PTSwapDataV2));
 
-        if (!PendleSwapLogic.validatePTSwapData(ptSwapData)) {
+        if (!PendleSwapLogic.validatePTSwapDataExactOutput(ptSwapData, params.maxInputAmount)) {
             revert InvalidSwapData();
         }
+
+        uint256 exactInputAmount = ptSwapData.exactInputAmount;
 
         if (swapType == ISwapTypes.SwapType.PT_TO_REGULAR) {
             // PT -> regular token
@@ -189,7 +192,7 @@ library SwapExecutor {
                 PendleSwapLogic.executePTToTargetSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    exactInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -201,7 +204,7 @@ library SwapExecutor {
                 PendleSwapLogic.executeSourceToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    exactInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -213,7 +216,7 @@ library SwapExecutor {
                 PendleSwapLogic.executePTToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    exactInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,

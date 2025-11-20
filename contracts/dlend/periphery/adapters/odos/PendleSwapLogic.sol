@@ -61,12 +61,14 @@ library PendleSwapLogic {
      * @param underlyingAsset The underlying asset from PT swap (for composed swaps)
      * @param pendleCalldata The Pendle swap calldata (for composed swaps)
      * @param odosCalldata The Odos swap calldata (can be empty for direct swaps)
+     * @param exactInputAmount Precomputed input amount to spend (required for exact-output flows)
      */
     struct PTSwapDataV2 {
         bool isComposed;
         address underlyingAsset;
         bytes pendleCalldata;
         bytes odosCalldata;
+        uint256 exactInputAmount;
     }
 
     /**
@@ -383,6 +385,29 @@ library PendleSwapLogic {
         // For other composed swaps, we need valid underlying asset
         // Odos calldata can be empty (for direct underlying → target cases)
         return true; // If we have Pendle calldata, it's valid (underlying asset check done in specific functions)
+    }
+
+    /**
+     * @notice Validate PTSwapDataV2 for exact-output execution
+     * @dev Requires a precomputed exactInputAmount and enforces it against caller max
+     * @param swapData The PTSwapDataV2 struct to validate
+     * @param maxInputAmount The caller-provided maximum input
+     * @return isValid True if the swap data is valid for exact-output flows
+     */
+    function validatePTSwapDataExactOutput(
+        PTSwapDataV2 memory swapData,
+        uint256 maxInputAmount
+    ) internal pure returns (bool isValid) {
+        if (!validatePTSwapData(swapData)) {
+            return false;
+        }
+
+        // exactInputAmount must be set by the caller (frontend/SDK) after off-chain quoting
+        if (swapData.exactInputAmount == 0 || swapData.exactInputAmount > maxInputAmount) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
