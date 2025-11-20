@@ -251,6 +251,7 @@ contract OdosDebtSwapAdapterV2 is
 
         // nested flashloan when using extra collateral
         if (flashParams.nestedFlashloanDebtAsset != address(0)) {
+            (, , address aToken) = _getReserveData(collateralAsset);
             FlashParamsV2 memory innerFlashParams = FlashParamsV2({
                 debtAsset: flashParams.debtAsset,
                 debtRepayAmount: flashParams.debtRepayAmount,
@@ -263,8 +264,16 @@ contract OdosDebtSwapAdapterV2 is
             });
             _nestedFlash(flashParams.nestedFlashloanDebtAsset, flashParams.nestedFlashloanDebtAmount, innerFlashParams);
 
-            // revert if returned amount is not enough to repay the flashloan
+            // cover flashloan premium when the initial collateral borrow was principal-only
             uint256 collateralBalance = IERC20WithPermit(collateralAsset).balanceOf(address(this));
+            if (collateralBalance < amountToReturn) {
+                uint256 shortfall = amountToReturn - collateralBalance;
+                IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), shortfall);
+                POOL.withdraw(collateralAsset, shortfall, address(this));
+                collateralBalance = IERC20WithPermit(collateralAsset).balanceOf(address(this));
+            }
+
+            // revert if returned amount is not enough to repay the flashloan
             require(collateralBalance >= amountToReturn, "Insufficient amount to repay flashloan");
 
             uint256 surplusCollateral = collateralBalance - amountToReturn;
