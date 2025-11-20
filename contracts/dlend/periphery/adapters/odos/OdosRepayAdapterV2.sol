@@ -110,6 +110,13 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
             _conditionalRenewAllowance(repayParams.debtAsset, repayParams.repayAmount);
             POOL.repay(repayParams.debtAsset, repayParams.repayAmount, repayParams.rateMode, user);
 
+            // Return any excess debt tokens produced by positive slippage on the swap
+            uint256 balanceAfterRepay = IERC20(repayParams.debtAsset).balanceOf(address(this));
+            if (balanceAfterRepay > 0) {
+                IERC20(repayParams.debtAsset).safeTransfer(user, balanceAfterRepay);
+                emit ExcessDebtTokensReturned(repayParams.debtAsset, balanceAfterRepay, user);
+            }
+
             // Supply on behalf of the user in case of excess of collateral asset after the swap
             uint256 collateralBalanceAfter = IERC20(repayParams.collateralAsset).balanceOf(address(this));
             uint256 collateralExcess = collateralBalanceAfter > collateralBalanceBefore
