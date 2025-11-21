@@ -171,6 +171,7 @@ contract OdosDebtSwapAdapterV2 is
             nestedFlashloanDebtAsset: address(0),
             nestedFlashloanDebtAmount: 0,
             user: msg.sender,
+            quotedPTInputAmount: debtSwapParams.quotedPTInputAmount,
             swapData: debtSwapParams.swapData,
             allBalanceOffset: debtSwapParams.allBalanceOffset
         });
@@ -259,6 +260,7 @@ contract OdosDebtSwapAdapterV2 is
                 nestedFlashloanDebtAsset: address(0),
                 nestedFlashloanDebtAmount: 0,
                 user: flashParams.user,
+                quotedPTInputAmount: flashParams.quotedPTInputAmount,
                 swapData: flashParams.swapData,
                 allBalanceOffset: flashParams.allBalanceOffset
             });
@@ -293,6 +295,7 @@ contract OdosDebtSwapAdapterV2 is
                 IERC20Detailed(flashParams.debtAsset),
                 collateralAmount,
                 flashParams.debtRepayAmount,
+                flashParams.quotedPTInputAmount,
                 flashParams.swapData
             );
 

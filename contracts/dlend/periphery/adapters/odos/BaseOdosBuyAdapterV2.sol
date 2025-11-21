@@ -74,6 +74,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @param assetToSwapTo The asset to swap to
      * @param maxAmountToSwap Maximum amount of input tokens to spend
      * @param amountToReceive Exact amount of output tokens required
+     * @param quotedPTInputAmount The PLANNED PT SPEND - optimal input for PT swaps (0 for regular)
      * @param swapData Either regular Odos calldata or encoded PTSwapDataV2
      * @return amountSold The actual amount of input tokens spent
      */
@@ -82,6 +83,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         IERC20Detailed assetToSwapTo,
         uint256 maxAmountToSwap,
         uint256 amountToReceive,
+        uint256 quotedPTInputAmount,
         bytes memory swapData
     ) internal returns (uint256 amountSold) {
         address tokenIn = address(assetToSwapFrom);
@@ -110,6 +112,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             tokenOut,
             maxAmountToSwap,
             amountToReceive,
+            quotedPTInputAmount,
             swapData
         );
 
@@ -132,8 +135,11 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @dev Can handle: Regular↔Regular, PT↔Regular, Regular↔PT, PT↔PT swaps
      * @param inputToken The input token address
      * @param outputToken The output token address
-     * @param maxInputAmount The maximum amount of input tokens to spend
-     * @param exactOutputAmount The exact amount of output tokens required
+     * @param maxInputAmount The MAXIMUM BUDGET - absolute ceiling on input (safety limit)
+     * @param exactOutputAmount The TARGET OUTPUT - required output amount
+     * @param quotedPTInputAmount The PLANNED PT SPEND - optimal input for PT swaps (0 for regular)
+     *                            Analogies: maxInputAmount = "wallet", quotedPTInputAmount = "shopping list"
+     *                            Or: maxInputAmount = "budget ceiling", quotedPTInputAmount = "planned spend"
      * @param swapData The swap data (either regular Odos or PTSwapDataV2)
      * @return actualOutputAmount The actual amount of output tokens received
      */
@@ -142,6 +148,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         address outputToken,
         uint256 maxInputAmount,
         uint256 exactOutputAmount,
+        uint256 quotedPTInputAmount,
         bytes memory swapData
     ) internal returns (uint256 actualOutputAmount) {
         return
@@ -151,6 +158,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
                     outputToken: outputToken,
                     maxInputAmount: maxInputAmount,
                     exactOutputAmount: exactOutputAmount,
+                    quotedPTInputAmount: quotedPTInputAmount,
                     swapData: swapData,
                     pendleRouter: pendleRouter,
                     odosRouter: odosRouter

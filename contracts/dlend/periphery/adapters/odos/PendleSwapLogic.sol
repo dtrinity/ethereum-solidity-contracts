@@ -61,14 +61,12 @@ library PendleSwapLogic {
      * @param underlyingAsset The underlying asset from PT swap (for composed swaps)
      * @param pendleCalldata The Pendle swap calldata (for composed swaps)
      * @param odosCalldata The Odos swap calldata (can be empty for direct swaps)
-     * @param exactInputAmount Precomputed input amount to spend (required for exact-output flows)
      */
     struct PTSwapDataV2 {
         bool isComposed;
         address underlyingAsset;
         bytes pendleCalldata;
         bytes odosCalldata;
-        uint256 exactInputAmount;
     }
 
     /**
@@ -388,22 +386,20 @@ library PendleSwapLogic {
     }
 
     /**
-     * @notice Validate PTSwapDataV2 for exact-output execution
-     * @dev Requires a precomputed exactInputAmount and enforces it against caller max
-     * @param swapData The PTSwapDataV2 struct to validate
-     * @param maxInputAmount The caller-provided maximum input
-     * @return isValid True if the swap data is valid for exact-output flows
+     * @notice Validate quoted PT input amount for exact-output execution
+     * @dev Validates the frontend-calculated PT input quote against bounds
+     * @dev Only used for PT swaps - regular swaps should pass 0
+     * @param quotedPTInputAmount The PLANNED PT input (frontend-calculated via Pendle quotes)
+     * @param maxInputAmount The MAXIMUM budget (absolute limit from collateral/flash loan)
+     * @return isValid True if the quoted PT input is valid
      */
-    function validatePTSwapDataExactOutput(
-        PTSwapDataV2 memory swapData,
+    function validateQuotedPTInputAmount(
+        uint256 quotedPTInputAmount,
         uint256 maxInputAmount
     ) internal pure returns (bool isValid) {
-        if (!validatePTSwapData(swapData)) {
-            return false;
-        }
-
-        // exactInputAmount must be set by the caller (frontend/SDK) after off-chain quoting
-        if (swapData.exactInputAmount == 0 || swapData.exactInputAmount > maxInputAmount) {
+        // quotedPTInputAmount must be set by the caller (frontend/SDK) after off-chain Pendle quoting
+        // For regular (non-PT) swaps, this should be 0 and validation is skipped at SwapExecutor level
+        if (quotedPTInputAmount == 0 || quotedPTInputAmount > maxInputAmount) {
             return false;
         }
 

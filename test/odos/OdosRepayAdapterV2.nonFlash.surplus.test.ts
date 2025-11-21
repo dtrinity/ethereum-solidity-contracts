@@ -66,6 +66,7 @@ describe("OdosRepayAdapterV2 - non-flash excess debt handling", function () {
       rateMode: 2,
       withFlashLoan: false,
       minAmountToReceive: repayAmount,
+      quotedPTInputAmount: 0, // 0 for regular (non-PT) swaps
       swapData,
       allBalanceOffset: 0,
     };

@@ -40,7 +40,14 @@ describe("BaseOdosBuyAdapter", function () {
     const balanceOutBefore = await tokenOut.balanceOf(adapterAddr);
 
     // Act
-    await (adapter as any).buy(await tokenIn.getAddress(), await tokenOut.getAddress(), maxAmountToSwap, amountReceived, swapData);
+    await (adapter as any).buy(
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      maxAmountToSwap,
+      amountReceived,
+      0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
+      swapData,
+    );
 
     // Assert
     const balanceInAfter = await tokenIn.balanceOf(adapterAddr);
@@ -63,7 +70,16 @@ describe("BaseOdosBuyAdapter", function () {
     await router.setSwapBehaviour(await tokenIn.getAddress(), await tokenOut.getAddress(), amountSpent, amountReceived, false);
     const swapData = router.interface.encodeFunctionData("performSwap");
 
-    await expect((adapter as any).buy(await tokenIn.getAddress(), await tokenOut.getAddress(), maxAmountToSwap, amountReceived, swapData))
+    await expect(
+      (adapter as any).buy(
+        await tokenIn.getAddress(),
+        await tokenOut.getAddress(),
+        maxAmountToSwap,
+        amountReceived,
+        0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
+        swapData,
+      ),
+    )
       .to.be.revertedWithCustomError(tokenIn, "ERC20InsufficientBalance")
       .withArgs(await adapter.getAddress(), parseUnits("500", 18), parseUnits("1000", 18));
   });
@@ -86,6 +102,7 @@ describe("BaseOdosBuyAdapter", function () {
         await tokenOut.getAddress(),
         maxAmountToSwap,
         parseUnits("2000", 18), // Requesting more than router will deliver
+        0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
         swapData,
       ),
     ).to.be.revertedWithCustomError(adapter, "InsufficientOutput");

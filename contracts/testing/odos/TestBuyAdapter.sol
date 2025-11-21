@@ -41,8 +41,9 @@ contract TestBuyAdapter is BaseOdosBuyAdapterV2 {
         IERC20Detailed assetTo,
         uint256 maxAmountToSwap,
         uint256 amountToReceive,
+        uint256 quotedPTInputAmount,
         bytes calldata swapData
     ) external returns (uint256) {
-        return _executeAdaptiveBuy(assetFrom, assetTo, maxAmountToSwap, amountToReceive, swapData);
+        return _executeAdaptiveBuy(assetFrom, assetTo, maxAmountToSwap, amountToReceive, quotedPTInputAmount, swapData);
     }
 }

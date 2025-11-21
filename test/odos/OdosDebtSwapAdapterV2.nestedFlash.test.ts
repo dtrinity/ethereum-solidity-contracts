@@ -70,6 +70,7 @@ describe("OdosDebtSwapAdapterV2 nested flashloan extra collateral", function () 
       maxNewDebtAmount: nestedFlashAmount,
       extraCollateralAsset: await collateral.getAddress(),
       extraCollateralAmount,
+      quotedPTInputAmount: 0, // 0 for regular (non-PT) swaps
       swapData,
       allBalanceOffset: 0,
     };
@@ -174,6 +175,7 @@ describe("OdosDebtSwapAdapterV2 nested flashloan extra collateral", function () 
       maxNewDebtAmount: nestedFlashAmount,
       extraCollateralAsset: await collateral.getAddress(),
       extraCollateralAmount,
+      quotedPTInputAmount: 0, // 0 for regular (non-PT) swaps
       swapData,
       allBalanceOffset: 0,
     };

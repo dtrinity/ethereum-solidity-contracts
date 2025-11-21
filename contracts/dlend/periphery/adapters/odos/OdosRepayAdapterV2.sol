@@ -103,6 +103,7 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
                 IERC20Detailed(repayParams.debtAsset),
                 collateralAmountReceived,
                 repayParams.repayAmount,
+                repayParams.quotedPTInputAmount,
                 repayParams.swapData
             );
 
@@ -178,6 +179,7 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
             IERC20Detailed(repayParams.debtAsset),
             flashLoanAmount,
             repayParams.repayAmount,
+            repayParams.quotedPTInputAmount,
             repayParams.swapData
         );
 

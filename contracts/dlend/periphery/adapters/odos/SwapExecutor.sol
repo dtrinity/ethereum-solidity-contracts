@@ -57,10 +57,10 @@ library SwapExecutor {
      * @notice Parameters for exact output swaps
      * @param inputToken The input token address
      * @param outputToken The output token address
-     * @param maxInputAmount The maximum amount of input tokens to spend
+     * @param maxInputAmount The MAXIMUM budget - absolute limit on input tokens to spend
      * @param exactOutputAmount The exact amount of output tokens required
+     * @param quotedPTInputAmount The PLANNED spend for PT swaps - frontend-calculated via Pendle quotes (0 for regular swaps)
      * @param swapData Either regular Odos swap data or encoded PTSwapDataV2
-     *        For PT exact-output flows, swapData.exactInputAmount is required and must be <= maxInputAmount
      * @param pendleRouter The Pendle router address (for PT swaps)
      * @param odosRouter The Odos router address
      */
@@ -69,6 +69,7 @@ library SwapExecutor {
         address outputToken;
         uint256 maxInputAmount;
         uint256 exactOutputAmount;
+        uint256 quotedPTInputAmount;
         bytes swapData;
         address pendleRouter;
         IOdosRouterV2 odosRouter;
@@ -180,11 +181,16 @@ library SwapExecutor {
         // PT token involved - decode PTSwapDataV2 and use PendleSwapLogic
         PendleSwapLogic.PTSwapDataV2 memory ptSwapData = abi.decode(params.swapData, (PendleSwapLogic.PTSwapDataV2));
 
-        if (!PendleSwapLogic.validatePTSwapDataExactOutput(ptSwapData, params.maxInputAmount)) {
+        if (!PendleSwapLogic.validatePTSwapData(ptSwapData)) {
             revert InvalidSwapData();
         }
 
-        uint256 exactInputAmount = ptSwapData.exactInputAmount;
+        // Validate quoted PT input amount from params
+        if (!PendleSwapLogic.validateQuotedPTInputAmount(params.quotedPTInputAmount, params.maxInputAmount)) {
+            revert InvalidSwapData();
+        }
+
+        uint256 quotedPTInputAmount = params.quotedPTInputAmount;
 
         if (swapType == ISwapTypes.SwapType.PT_TO_REGULAR) {
             // PT -> regular token
@@ -192,7 +198,7 @@ library SwapExecutor {
                 PendleSwapLogic.executePTToTargetSwap(
                     params.inputToken,
                     params.outputToken,
-                    exactInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -204,7 +210,7 @@ library SwapExecutor {
                 PendleSwapLogic.executeSourceToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    exactInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -216,7 +222,7 @@ library SwapExecutor {
                 PendleSwapLogic.executePTToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    exactInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
