@@ -35,12 +35,15 @@ The V2 adapters automatically detect when PT tokens are involved in swaps and ex
 
 ```solidity
 struct PTSwapDataV2 {
-    bool isComposed;           // True for PT swaps, false for regular swaps
-    address underlyingAsset;   // Underlying asset for PT tokens
-    bytes pendleCalldata;      // Pendle SDK-generated transaction data
-    bytes odosCalldata;        // Odos API-generated transaction data
+    bool isComposed;            // True for PT swaps, false for regular swaps
+    address underlyingAsset;    // Underlying asset for PT tokens
+    bytes pendleCalldata;       // Pendle SDK-generated transaction data
+    bytes odosCalldata;         // Odos API-generated transaction data
+    uint256 exactInputAmount;   // Precomputed input to spend (required for PT exact-output flows)
 }
 ```
+
+> For PT exact-output swaps, the frontend **must** derive `exactInputAmount` off-chain (using Pendle preview + binary search) and set `exactInputAmount <= maxInputAmount`. The adapter will spend only that amount and revert if the quoted output is not met.
 
 ## Usage Examples
 

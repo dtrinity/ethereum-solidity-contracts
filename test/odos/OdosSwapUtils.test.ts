@@ -33,6 +33,15 @@ describe("OdosSwapUtils", function () {
     const swapData = router.interface.encodeFunctionData("performSwap");
 
     // Act
+    const result = await (harness as any).callExecuteSwap.staticCall(
+      await router.getAddress(),
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      parseUnits("1500", 18),
+      amountReceived,
+      swapData,
+    );
+
     await (harness as any).callExecuteSwap(
       await router.getAddress(),
       await tokenIn.getAddress(),
@@ -41,6 +50,9 @@ describe("OdosSwapUtils", function () {
       amountReceived,
       swapData,
     );
+
+    // Assert: function should return the output amount received
+    expect(result).to.equal(amountReceived);
 
     // Assert output balance & allowance checks
     expect(await tokenOut.balanceOf(harnessAddr)).to.equal(amountReceived);
@@ -68,5 +80,25 @@ describe("OdosSwapUtils", function () {
         swapData,
       ),
     ).to.be.revertedWithCustomError(harness, "InsufficientOutput");
+  });
+
+  it("reverts on same-token swap attempt", async function () {
+    const { tokenIn, router, harness } = await fixture();
+
+    const harnessAddr = await harness.getAddress();
+    await mint(tokenIn, harnessAddr, parseUnits("10000", 18));
+    const swapData = router.interface.encodeFunctionData("performSwap");
+
+    // Attempt to swap tokenIn for tokenIn (same token)
+    await expect(
+      (harness as any).callExecuteSwap(
+        await router.getAddress(),
+        await tokenIn.getAddress(),
+        await tokenIn.getAddress(), // Same token!
+        parseUnits("1000", 18),
+        parseUnits("1000", 18),
+        swapData,
+      ),
+    ).to.be.revertedWithCustomError(harness, "SameTokenSwapNotSupported");
   });
 });

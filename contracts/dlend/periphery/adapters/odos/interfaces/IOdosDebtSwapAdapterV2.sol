@@ -50,9 +50,12 @@ interface IOdosDebtSwapAdapterV2 is IBaseOdosAdapterV2 {
      * @param debtRepayAmount The amount of debt to repay
      * @param debtRateMode The rate mode of the debt
      * @param newDebtAsset The address of the new debt asset (can be PT token)
-     * @param maxNewDebtAmount The maximum amount of new debt
+     * @param maxNewDebtAmount The MAXIMUM BUDGET - absolute limit on new debt to borrow (safety ceiling)
      * @param extraCollateralAsset The address of the extra collateral asset
      * @param extraCollateralAmount The amount of extra collateral
+     * @param quotedPTInputAmount The PLANNED PT INPUT - frontend-calculated optimal amount for PT exact-output swaps
+     *                            (via Pendle quotes, binary search). Set to 0 for regular (non-PT) swaps.
+     *                            Must be <= maxNewDebtAmount. Enables efficient swaps without wasting PT tokens.
      * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
      * @param allBalanceOffset offset to all balance of the user
      */
@@ -61,9 +64,10 @@ interface IOdosDebtSwapAdapterV2 is IBaseOdosAdapterV2 {
         uint256 debtRepayAmount;
         uint256 debtRateMode;
         address newDebtAsset;
-        uint256 maxNewDebtAmount;
+        uint256 maxNewDebtAmount; // MAXIMUM: "Don't spend more than this"
         address extraCollateralAsset;
         uint256 extraCollateralAmount;
+        uint256 quotedPTInputAmount; // PLANNED: "Frontend calculated to use exactly this" (PT swaps only)
         bytes swapData;
         uint256 allBalanceOffset;
     }
@@ -76,6 +80,9 @@ interface IOdosDebtSwapAdapterV2 is IBaseOdosAdapterV2 {
      * @param nestedFlashloanDebtAsset The address of the nested flashloan debt asset
      * @param nestedFlashloanDebtAmount The amount of nested flashloan debt
      * @param user The address of the user
+     * @param quotedPTInputAmount The PLANNED PT INPUT - frontend-calculated optimal amount for PT exact-output swaps.
+     *                            Set to 0 for regular swaps. This is the "shopping list" amount while the flash
+     *                            loan amount is the "wallet" (maximum budget). Enables efficient PT swaps.
      * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
      * @param allBalanceOffset offset to all balance of the user
      */
@@ -86,6 +93,7 @@ interface IOdosDebtSwapAdapterV2 is IBaseOdosAdapterV2 {
         address nestedFlashloanDebtAsset;
         uint256 nestedFlashloanDebtAmount;
         address user;
+        uint256 quotedPTInputAmount; // PLANNED: Frontend-calculated PT amount (PT swaps only)
         bytes swapData;
         uint256 allBalanceOffset;
     }

@@ -42,3 +42,9 @@ reports/roles/
 foundry/out
 foundry/cache
 foundry/lib
+
+# AI toolkits
+.ai-devkit.json
+.cursor/
+docs/ai/
+md_notes/

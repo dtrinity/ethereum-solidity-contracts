@@ -386,6 +386,27 @@ library PendleSwapLogic {
     }
 
     /**
+     * @notice Validate quoted PT input amount for exact-output execution
+     * @dev Validates the frontend-calculated PT input quote against bounds
+     * @dev Only used for PT swaps - regular swaps should pass 0
+     * @param quotedPTInputAmount The PLANNED PT input (frontend-calculated via Pendle quotes)
+     * @param maxInputAmount The MAXIMUM budget (absolute limit from collateral/flash loan)
+     * @return isValid True if the quoted PT input is valid
+     */
+    function validateQuotedPTInputAmount(
+        uint256 quotedPTInputAmount,
+        uint256 maxInputAmount
+    ) internal pure returns (bool isValid) {
+        // quotedPTInputAmount must be set by the caller (frontend/SDK) after off-chain Pendle quoting
+        // For regular (non-PT) swaps, this should be 0 and validation is skipped at SwapExecutor level
+        if (quotedPTInputAmount == 0 || quotedPTInputAmount > maxInputAmount) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * @notice Determine swap strategy based on input/output tokens
      * @param inputToken The input token address
      * @param outputToken The output token address

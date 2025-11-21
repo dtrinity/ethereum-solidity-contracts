@@ -33,24 +33,28 @@ interface IOdosRepayAdapterV2 is IBaseOdosAdapterV2 {
 
     /**
      * @dev Struct for repay parameters with PT token support
-     * @param collateralAsset The address of the collateral asset
-     * @param collateralAmount The amount of collateral to swap
-     * @param debtAsset The address of the debt asset
+     * @param collateralAsset The collateral asset to swap
+     * @param collateralAmount The MAXIMUM BUDGET - maximum collateral to use (safety ceiling)
+     * @param debtAsset The debt asset to repay
      * @param repayAmount The amount of debt to repay
-     * @param rateMode The rate mode of the debt (1 = stable, 2 = variable)
-     * @param withFlashLoan true if flashloan is needed to repay the debt, otherwise false
-     * @param minAmountToReceive The minimum amount to receive from the swap
-     * @param swapData The encoded swap data (either regular Odos data or PTSwapDataV2)
+     * @param rateMode The rate mode of the debt
+     * @param withFlashLoan Whether to use flash loan
+     * @param minAmountToReceive Minimum amount to receive (for exact-input swaps)
+     * @param quotedPTInputAmount The PLANNED PT INPUT - frontend-calculated optimal amount for PT exact-output swaps
+     *                            (via Pendle quotes). Set to 0 for regular swaps. Must be <= collateralAmount.
+     *                            This is the "shopping list" while collateralAmount is the "wallet".
+     * @param swapData The swap data (either regular Odos calldata or encoded PTSwapDataV2)
      * @param allBalanceOffset offset to all balance of the user
      */
     struct RepayParamsV2 {
         address collateralAsset;
-        uint256 collateralAmount;
+        uint256 collateralAmount; // MAXIMUM: "Don't spend more than this"
         address debtAsset;
         uint256 repayAmount;
         uint256 rateMode;
         bool withFlashLoan;
         uint256 minAmountToReceive;
+        uint256 quotedPTInputAmount; // PLANNED: "Frontend calculated to use exactly this" (PT swaps only)
         bytes swapData;
         uint256 allBalanceOffset;
     }
