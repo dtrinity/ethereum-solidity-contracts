@@ -100,7 +100,10 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             return _executeDirectOdosExactOutput(tokenIn, tokenOut, maxAmountToSwap, amountToReceive, swapData);
         }
 
-        // PT token involved - use composed swap logic
+        // PT token involved - use composed swap logic.
+        // Note: callers fund the full maxAmountToSwap upfront (flash loan / withdrawal).
+        // For PT routes the actual spend is quotedPTInputAmount, but failing this guard
+        // means the funding step itself failed, so we fail fast.
         uint256 balanceBeforeAssetFrom = assetToSwapFrom.balanceOf(address(this));
         if (balanceBeforeAssetFrom < maxAmountToSwap) {
             revert InsufficientBalanceBeforeSwap(balanceBeforeAssetFrom, maxAmountToSwap);
