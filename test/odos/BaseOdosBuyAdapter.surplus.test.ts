@@ -47,7 +47,14 @@ describe("BaseOdosBuyAdapter - Surplus Handling", function () {
 
     // Act - call buy function
     const swapData = router.interface.encodeFunctionData("performSwap");
-    const result = await adapter.buy(await tokenIn.getAddress(), await tokenOut.getAddress(), maxAmountToSwap, amountToReceive, swapData);
+    const result = await adapter.buy(
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      maxAmountToSwap,
+      amountToReceive,
+      0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
+      swapData,
+    );
 
     // Assert
     const adapterBalanceAfter = await tokenOut.balanceOf(adapterAddr);
@@ -90,7 +97,14 @@ describe("BaseOdosBuyAdapter - Surplus Handling", function () {
 
     // Act
     const swapData = router.interface.encodeFunctionData("performSwap");
-    await adapter.buy(await tokenIn.getAddress(), await tokenOut.getAddress(), maxAmountToSwap, amountToReceive, swapData);
+    await adapter.buy(
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      maxAmountToSwap,
+      amountToReceive,
+      0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
+      swapData,
+    );
 
     // Assert
     const adapterBalanceAfter = await tokenOut.balanceOf(adapterAddr);
@@ -126,7 +140,14 @@ describe("BaseOdosBuyAdapter - Surplus Handling", function () {
 
     // Act
     const swapData = router.interface.encodeFunctionData("performSwap");
-    await adapter.buy(await tokenIn.getAddress(), await tokenOut.getAddress(), maxAmountToSwap, amountToReceive, swapData);
+    await adapter.buy(
+      await tokenIn.getAddress(),
+      await tokenOut.getAddress(),
+      maxAmountToSwap,
+      amountToReceive,
+      0, // quotedPTInputAmount: 0 for regular (non-PT) swaps
+      swapData,
+    );
 
     // Assert
     const adapterBalanceAfter = await tokenOut.balanceOf(adapterAddr);

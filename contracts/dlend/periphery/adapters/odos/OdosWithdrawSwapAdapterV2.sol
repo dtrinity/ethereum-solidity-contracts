@@ -35,6 +35,9 @@ import { IERC20 } from "contracts/dlend/core/dependencies/openzeppelin/contracts
 contract OdosWithdrawSwapAdapterV2 is BaseOdosSellAdapterV2, ReentrancyGuard, IOdosWithdrawSwapAdapterV2 {
     using SafeERC20 for IERC20;
 
+    /// @notice Custom error when attempting same-token swap
+    error SameTokenSwapNotSupported();
+
     // unique identifier to track usage via events
     uint16 public constant REFERRER = 43983; // Different from other V2 adapters
 
@@ -84,6 +87,12 @@ contract OdosWithdrawSwapAdapterV2 is BaseOdosSellAdapterV2, ReentrancyGuard, IO
         PermitInput memory permitInput
     ) external nonReentrant whenNotPaused {
         address user = msg.sender; // Capture the actual caller
+
+        // Prevent same-token swap exploitation
+        // Reject same-token swaps to prevent stealing contract balance
+        if (withdrawSwapParams.oldAsset == withdrawSwapParams.newAsset) {
+            revert SameTokenSwapNotSupported();
+        }
 
         (, , address aToken) = _getReserveData(withdrawSwapParams.oldAsset);
         if (withdrawSwapParams.allBalanceOffset != 0) {

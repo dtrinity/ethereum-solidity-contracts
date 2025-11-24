@@ -41,6 +41,13 @@ contract OdosDebtSwapAdapterV2 is
     IOdosDebtSwapAdapterV2
 {
     using SafeERC20 for IERC20WithPermit;
+    using SafeERC20 for IERC20Detailed;
+
+    /// @notice Emitted when excess debt tokens from PT swaps are returned to user
+    /// @param token The debt token that had excess
+    /// @param amount The amount of excess returned
+    /// @param user The user who received the excess
+    event ExcessDebtTokensReturned(address indexed token, uint256 amount, address indexed user);
 
     // unique identifier to track usage via flashloan events - different from V1
     uint16 public constant REFERRER = 5937; // Incremented from V1 to distinguish V2 usage
@@ -103,17 +110,48 @@ contract OdosDebtSwapAdapterV2 is
     ) external nonReentrant whenNotPaused {
         uint256 excessBefore = IERC20Detailed(debtSwapParams.newDebtAsset).balanceOf(address(this));
 
+        // Handle credit delegation front-running by checking allowance and using try-catch
         // delegate credit
         if (creditDelegationPermit.deadline != 0) {
-            ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+            // Check current borrow allowance before attempting delegation
+            uint256 currentAllowance = ICreditDelegationToken(creditDelegationPermit.debtToken).borrowAllowance(
                 msg.sender,
-                address(this),
-                creditDelegationPermit.value,
-                creditDelegationPermit.deadline,
-                creditDelegationPermit.v,
-                creditDelegationPermit.r,
-                creditDelegationPermit.s
+                address(this)
             );
+
+            // Determine the minimum required allowance (flash loan amount)
+            uint256 requiredAllowance = debtSwapParams.maxNewDebtAmount;
+
+            // Only call delegationWithSig if allowance is insufficient
+            if (currentAllowance < requiredAllowance) {
+                // Wrap delegationWithSig in try-catch to handle front-running gracefully
+                try
+                    ICreditDelegationToken(creditDelegationPermit.debtToken).delegationWithSig(
+                        msg.sender,
+                        address(this),
+                        creditDelegationPermit.value,
+                        creditDelegationPermit.deadline,
+                        creditDelegationPermit.v,
+                        creditDelegationPermit.r,
+                        creditDelegationPermit.s
+                    )
+                {
+                    // Delegation succeeded
+                } catch {
+                    // Delegation failed (likely front-run). Re-check allowance.
+                    // If front-runner's delegation succeeded, allowance should now be sufficient
+                    currentAllowance = ICreditDelegationToken(creditDelegationPermit.debtToken).borrowAllowance(
+                        msg.sender,
+                        address(this)
+                    );
+                    if (currentAllowance < requiredAllowance) {
+                        // Allowance still insufficient after delegation failure
+                        revert("Credit delegation failed and allowance insufficient");
+                    }
+                    // Otherwise, front-runner's delegation succeeded, proceed with flash loan
+                }
+            }
+            // If currentAllowance >= requiredAllowance, skip delegation and proceed
         }
 
         // Default to the entire debt if an amount greater than it is passed.
@@ -133,6 +171,7 @@ contract OdosDebtSwapAdapterV2 is
             nestedFlashloanDebtAsset: address(0),
             nestedFlashloanDebtAmount: 0,
             user: msg.sender,
+            quotedPTInputAmount: debtSwapParams.quotedPTInputAmount,
             swapData: debtSwapParams.swapData,
             allBalanceOffset: debtSwapParams.allBalanceOffset
         });
@@ -205,19 +244,15 @@ contract OdosDebtSwapAdapterV2 is
         require(msg.sender == address(POOL), "Callback only from POOL");
         require(initiator == address(this), "Initiator only this contract");
 
-        uint256 amount = amounts[0];
-        address asset = assets[0];
-        uint256 amountToReturn = amount + premiums[0];
+        uint256 collateralAmount = amounts[0];
+        address collateralAsset = assets[0];
+        uint256 amountToReturn = collateralAmount + premiums[0];
 
         FlashParamsV2 memory flashParams = abi.decode(params, (FlashParamsV2));
 
         // nested flashloan when using extra collateral
         if (flashParams.nestedFlashloanDebtAsset != address(0)) {
-            (, , address aToken) = _getReserveData(asset);
-            // pull collateral from the user after flashloan because of potential reentrancy
-            IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), flashParams.debtRepayAmount);
-            POOL.withdraw(asset, flashParams.debtRepayAmount, address(this));
-
+            (, , address aToken) = _getReserveData(collateralAsset);
             FlashParamsV2 memory innerFlashParams = FlashParamsV2({
                 debtAsset: flashParams.debtAsset,
                 debtRepayAmount: flashParams.debtRepayAmount,
@@ -225,18 +260,30 @@ contract OdosDebtSwapAdapterV2 is
                 nestedFlashloanDebtAsset: address(0),
                 nestedFlashloanDebtAmount: 0,
                 user: flashParams.user,
+                quotedPTInputAmount: flashParams.quotedPTInputAmount,
                 swapData: flashParams.swapData,
                 allBalanceOffset: flashParams.allBalanceOffset
             });
             _nestedFlash(flashParams.nestedFlashloanDebtAsset, flashParams.nestedFlashloanDebtAmount, innerFlashParams);
 
-            // revert if returned amount is not enough to repay the flashloan
-            require(
-                IERC20WithPermit(asset).balanceOf(address(this)) >= amountToReturn,
-                "Insufficient amount to repay flashloan"
-            );
+            // cover flashloan premium when the initial collateral borrow was principal-only
+            uint256 collateralBalance = IERC20WithPermit(collateralAsset).balanceOf(address(this));
+            if (collateralBalance < amountToReturn) {
+                uint256 shortfall = amountToReturn - collateralBalance;
+                IERC20WithPermit(aToken).safeTransferFrom(flashParams.user, address(this), shortfall);
+                POOL.withdraw(collateralAsset, shortfall, address(this));
+                collateralBalance = IERC20WithPermit(collateralAsset).balanceOf(address(this));
+            }
 
-            _conditionalRenewAllowance(asset, amountToReturn);
+            // revert if returned amount is not enough to repay the flashloan
+            require(collateralBalance >= amountToReturn, "Insufficient amount to repay flashloan");
+
+            uint256 surplusCollateral = collateralBalance - amountToReturn;
+            if (surplusCollateral > 0) {
+                IERC20WithPermit(collateralAsset).safeTransfer(flashParams.user, surplusCollateral);
+            }
+
+            _conditionalRenewAllowance(collateralAsset, amountToReturn);
             return true;
         }
 
@@ -244,20 +291,44 @@ contract OdosDebtSwapAdapterV2 is
         {
             // Use adaptive buy which handles both regular and PT token swaps intelligently
             _executeAdaptiveBuy(
-                IERC20Detailed(asset),
+                IERC20Detailed(collateralAsset),
                 IERC20Detailed(flashParams.debtAsset),
-                amount,
+                collateralAmount,
                 flashParams.debtRepayAmount,
+                flashParams.quotedPTInputAmount,
                 flashParams.swapData
             );
 
-            // Repay old debt
-            _conditionalRenewAllowance(flashParams.debtAsset, flashParams.debtRepayAmount);
-            POOL.repay(flashParams.debtAsset, flashParams.debtRepayAmount, flashParams.debtRateMode, flashParams.user);
+            // Measure actual debt tokens received from swap
+            // PT swaps may produce more output than the exact amount requested
+            uint256 actualDebtTokensReceived = IERC20Detailed(flashParams.debtAsset).balanceOf(address(this));
+
+            // Use ALL received debt tokens for repayment (up to what's owed)
+            // This ensures no excess debt tokens are trapped on the adapter
+            uint256 amountToRepay = actualDebtTokensReceived;
+
+            // Repay old debt with actual amount received
+            _conditionalRenewAllowance(flashParams.debtAsset, amountToRepay);
+            uint256 actualRepaid = POOL.repay(
+                flashParams.debtAsset,
+                amountToRepay,
+                flashParams.debtRateMode,
+                flashParams.user
+            );
+
+            // Handle any excess that couldn't be repaid (edge case: user debt < swap output)
+            // Return excess to user rather than leaving it trapped on adapter
+            uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid
+                ? actualDebtTokensReceived - actualRepaid
+                : 0;
+            if (excessDebtTokens > 0) {
+                IERC20Detailed(flashParams.debtAsset).safeTransfer(flashParams.user, excessDebtTokens);
+                emit ExcessDebtTokensReturned(flashParams.debtAsset, excessDebtTokens, flashParams.user);
+            }
 
             // Borrow new debt to repay flashloan
             POOL.borrow(
-                asset,
+                collateralAsset,
                 amountToReturn,
                 2, // variable rate mode
                 REFERRER,
@@ -266,11 +337,11 @@ contract OdosDebtSwapAdapterV2 is
 
             // revert if returned amount is not enough to repay the flashloan
             require(
-                IERC20WithPermit(asset).balanceOf(address(this)) >= amountToReturn,
+                IERC20WithPermit(collateralAsset).balanceOf(address(this)) >= amountToReturn,
                 "Insufficient amount to repay flashloan"
             );
 
-            _conditionalRenewAllowance(asset, amountToReturn);
+            _conditionalRenewAllowance(collateralAsset, amountToReturn);
             return true;
         }
     }

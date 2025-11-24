@@ -38,6 +38,12 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20WithPermit;
 
+    /// @notice Emitted when excess debt tokens from PT swaps are returned to user
+    /// @param token The debt token that had excess
+    /// @param amount The amount of excess returned
+    /// @param user The user who received the excess
+    event ExcessDebtTokensReturned(address indexed token, uint256 amount, address indexed user);
+
     // unique identifier to track usage via flashloan events
     uint16 public constant REFERRER = 43982; // Different from V1 and other adapters
 
@@ -97,12 +103,20 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
                 IERC20Detailed(repayParams.debtAsset),
                 collateralAmountReceived,
                 repayParams.repayAmount,
+                repayParams.quotedPTInputAmount,
                 repayParams.swapData
             );
 
             // Repay the debt
             _conditionalRenewAllowance(repayParams.debtAsset, repayParams.repayAmount);
             POOL.repay(repayParams.debtAsset, repayParams.repayAmount, repayParams.rateMode, user);
+
+            // Return any excess debt tokens produced by positive slippage on the swap
+            uint256 balanceAfterRepay = IERC20(repayParams.debtAsset).balanceOf(address(this));
+            if (balanceAfterRepay > 0) {
+                IERC20(repayParams.debtAsset).safeTransfer(user, balanceAfterRepay);
+                emit ExcessDebtTokensReturned(repayParams.debtAsset, balanceAfterRepay, user);
+            }
 
             // Supply on behalf of the user in case of excess of collateral asset after the swap
             uint256 collateralBalanceAfter = IERC20(repayParams.collateralAsset).balanceOf(address(this));
@@ -165,12 +179,31 @@ contract OdosRepayAdapterV2 is BaseOdosBuyAdapterV2, ReentrancyGuard, IAaveFlash
             IERC20Detailed(repayParams.debtAsset),
             flashLoanAmount,
             repayParams.repayAmount,
+            repayParams.quotedPTInputAmount,
             repayParams.swapData
         );
 
-        // Repay the debt
-        _conditionalRenewAllowance(repayParams.debtAsset, repayParams.repayAmount);
-        POOL.repay(repayParams.debtAsset, repayParams.repayAmount, repayParams.rateMode, user);
+        // Measure actual debt tokens received from swap
+        // PT swaps may produce more output than the exact amount requested
+        uint256 actualDebtTokensReceived = IERC20Detailed(repayParams.debtAsset).balanceOf(address(this));
+
+        // Use ALL received debt tokens for repayment (up to what's owed)
+        // This ensures no excess debt tokens are trapped on the adapter
+        uint256 amountToRepay = actualDebtTokensReceived;
+
+        // Repay the debt with actual amount received
+        _conditionalRenewAllowance(repayParams.debtAsset, amountToRepay);
+        uint256 actualRepaid = POOL.repay(repayParams.debtAsset, amountToRepay, repayParams.rateMode, user);
+
+        // Handle any excess that couldn't be repaid (edge case: user debt < swap output)
+        // Return excess to user rather than leaving it trapped on adapter
+        uint256 excessDebtTokens = actualDebtTokensReceived > actualRepaid
+            ? actualDebtTokensReceived - actualRepaid
+            : 0;
+        if (excessDebtTokens > 0) {
+            IERC20(repayParams.debtAsset).safeTransfer(user, excessDebtTokens);
+            emit ExcessDebtTokensReturned(repayParams.debtAsset, excessDebtTokens, user);
+        }
 
         // Determine amount of flashloan asset sold in the swap
         uint256 balanceAfter = IERC20(flashLoanAsset).balanceOf(address(this));

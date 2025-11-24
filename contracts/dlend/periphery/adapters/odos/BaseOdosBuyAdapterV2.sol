@@ -48,6 +48,11 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         IOdosRouterV2 _odosRouter,
         address _pendleRouter
     ) BaseOdosSwapAdapter(addressesProvider, pool) {
+        // Validate adapter-specific addresses are non-zero
+        // Note: addressesProvider and pool validated in parent constructor
+        require(address(_odosRouter) != address(0), "OdosRouter cannot be zero");
+        require(_pendleRouter != address(0), "PendleRouter cannot be zero");
+
         odosRouter = _odosRouter;
         pendleRouter = _pendleRouter;
     }
@@ -69,6 +74,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @param assetToSwapTo The asset to swap to
      * @param maxAmountToSwap Maximum amount of input tokens to spend
      * @param amountToReceive Exact amount of output tokens required
+     * @param quotedPTInputAmount The PLANNED PT SPEND - optimal input for PT swaps (0 for regular)
      * @param swapData Either regular Odos calldata or encoded PTSwapDataV2
      * @return amountSold The actual amount of input tokens spent
      */
@@ -77,6 +83,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         IERC20Detailed assetToSwapTo,
         uint256 maxAmountToSwap,
         uint256 amountToReceive,
+        uint256 quotedPTInputAmount,
         bytes memory swapData
     ) internal returns (uint256 amountSold) {
         address tokenIn = address(assetToSwapFrom);
@@ -93,7 +100,10 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             return _executeDirectOdosExactOutput(tokenIn, tokenOut, maxAmountToSwap, amountToReceive, swapData);
         }
 
-        // PT token involved - use composed swap logic
+        // PT token involved - use composed swap logic.
+        // Note: callers fund the full maxAmountToSwap upfront (flash loan / withdrawal).
+        // For PT routes the actual spend is quotedPTInputAmount, but failing this guard
+        // means the funding step itself failed, so we fail fast.
         uint256 balanceBeforeAssetFrom = assetToSwapFrom.balanceOf(address(this));
         if (balanceBeforeAssetFrom < maxAmountToSwap) {
             revert InsufficientBalanceBeforeSwap(balanceBeforeAssetFrom, maxAmountToSwap);
@@ -105,6 +115,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             tokenOut,
             maxAmountToSwap,
             amountToReceive,
+            quotedPTInputAmount,
             swapData
         );
 
@@ -127,8 +138,11 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @dev Can handle: Regular↔Regular, PT↔Regular, Regular↔PT, PT↔PT swaps
      * @param inputToken The input token address
      * @param outputToken The output token address
-     * @param maxInputAmount The maximum amount of input tokens to spend
-     * @param exactOutputAmount The exact amount of output tokens required
+     * @param maxInputAmount The MAXIMUM BUDGET - absolute ceiling on input (safety limit)
+     * @param exactOutputAmount The TARGET OUTPUT - required output amount
+     * @param quotedPTInputAmount The PLANNED PT SPEND - optimal input for PT swaps (0 for regular)
+     *                            Analogies: maxInputAmount = "wallet", quotedPTInputAmount = "shopping list"
+     *                            Or: maxInputAmount = "budget ceiling", quotedPTInputAmount = "planned spend"
      * @param swapData The swap data (either regular Odos or PTSwapDataV2)
      * @return actualOutputAmount The actual amount of output tokens received
      */
@@ -137,6 +151,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         address outputToken,
         uint256 maxInputAmount,
         uint256 exactOutputAmount,
+        uint256 quotedPTInputAmount,
         bytes memory swapData
     ) internal returns (uint256 actualOutputAmount) {
         return
@@ -146,6 +161,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
                     outputToken: outputToken,
                     maxInputAmount: maxInputAmount,
                     exactOutputAmount: exactOutputAmount,
+                    quotedPTInputAmount: quotedPTInputAmount,
                     swapData: swapData,
                     pendleRouter: pendleRouter,
                     odosRouter: odosRouter
@@ -161,7 +177,7 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
      * @param maxInputAmount The maximum amount of input tokens to spend
      * @param exactOutputAmount The exact amount of output tokens required
      * @param swapData The raw Odos swap calldata
-     * @return actualOutputAmount The actual amount of output tokens received
+     * @return actualInputAmount The actual amount of input tokens spent
      */
     function _executeDirectOdosExactOutput(
         address inputToken,
@@ -169,9 +185,13 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
         uint256 maxInputAmount,
         uint256 exactOutputAmount,
         bytes memory swapData
-    ) internal returns (uint256 actualOutputAmount) {
+    ) internal returns (uint256 actualInputAmount) {
+        // Record balance before swap to calculate actual amount spent
+        uint256 balanceBeforeInput = IERC20Detailed(inputToken).balanceOf(address(this));
+
         // Execute Odos swap using OdosSwapUtils (handles approvals internally)
-        actualOutputAmount = OdosSwapUtils.executeSwapOperation(
+        // Note: After the fix, this returns actualAmountReceived (output amount)
+        OdosSwapUtils.executeSwapOperation(
             odosRouter,
             inputToken,
             outputToken,
@@ -180,6 +200,16 @@ abstract contract BaseOdosBuyAdapterV2 is BaseOdosSwapAdapter, OracleValidation,
             swapData
         );
 
-        return actualOutputAmount;
+        // Calculate actual input amount spent using balance difference
+        uint256 balanceAfterInput = IERC20Detailed(inputToken).balanceOf(address(this));
+
+        // Protect against underflow: ensure balance before >= balance after
+        if (balanceBeforeInput < balanceAfterInput) {
+            revert InsufficientBalanceBeforeSwap(balanceBeforeInput, balanceAfterInput);
+        }
+
+        actualInputAmount = balanceBeforeInput - balanceAfterInput;
+
+        return actualInputAmount;
     }
 }

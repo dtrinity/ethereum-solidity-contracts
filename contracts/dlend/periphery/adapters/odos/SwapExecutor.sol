@@ -17,6 +17,7 @@
 
 pragma solidity ^0.8.20;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { PendleSwapLogic } from "./PendleSwapLogic.sol";
 import { OdosSwapUtils } from "contracts/odos/OdosSwapUtils.sol";
 import { IOdosRouterV2 } from "contracts/odos/interface/IOdosRouterV2.sol";
@@ -56,8 +57,9 @@ library SwapExecutor {
      * @notice Parameters for exact output swaps
      * @param inputToken The input token address
      * @param outputToken The output token address
-     * @param maxInputAmount The maximum amount of input tokens to spend
+     * @param maxInputAmount The MAXIMUM budget - absolute limit on input tokens to spend
      * @param exactOutputAmount The exact amount of output tokens required
+     * @param quotedPTInputAmount The PLANNED spend for PT swaps - frontend-calculated via Pendle quotes (0 for regular swaps)
      * @param swapData Either regular Odos swap data or encoded PTSwapDataV2
      * @param pendleRouter The Pendle router address (for PT swaps)
      * @param odosRouter The Odos router address
@@ -67,6 +69,7 @@ library SwapExecutor {
         address outputToken;
         uint256 maxInputAmount;
         uint256 exactOutputAmount;
+        uint256 quotedPTInputAmount;
         bytes swapData;
         address pendleRouter;
         IOdosRouterV2 odosRouter;
@@ -155,15 +158,24 @@ library SwapExecutor {
 
         if (swapType == ISwapTypes.SwapType.REGULAR_SWAP) {
             // Regular Odos swap - swapData should be raw Odos calldata
-            return
-                OdosSwapUtils.executeSwapOperation(
-                    params.odosRouter,
-                    params.inputToken,
-                    params.outputToken,
-                    params.maxInputAmount,
-                    params.exactOutputAmount,
-                    params.swapData
-                );
+            // Record balance before swap to calculate actual amount spent
+            uint256 balanceBeforeInput = IERC20(params.inputToken).balanceOf(address(this));
+
+            // Execute swap (returns output amount after fix, but we need input amount)
+            OdosSwapUtils.executeSwapOperation(
+                params.odosRouter,
+                params.inputToken,
+                params.outputToken,
+                params.maxInputAmount,
+                params.exactOutputAmount,
+                params.swapData
+            );
+
+            // Calculate actual input amount spent using balance difference
+            uint256 balanceAfterInput = IERC20(params.inputToken).balanceOf(address(this));
+            actualInputAmount = balanceBeforeInput - balanceAfterInput;
+
+            return actualInputAmount;
         }
 
         // PT token involved - decode PTSwapDataV2 and use PendleSwapLogic
@@ -173,13 +185,20 @@ library SwapExecutor {
             revert InvalidSwapData();
         }
 
+        // Validate quoted PT input amount from params
+        if (!PendleSwapLogic.validateQuotedPTInputAmount(params.quotedPTInputAmount, params.maxInputAmount)) {
+            revert InvalidSwapData();
+        }
+
+        uint256 quotedPTInputAmount = params.quotedPTInputAmount;
+
         if (swapType == ISwapTypes.SwapType.PT_TO_REGULAR) {
             // PT -> regular token
             return
                 PendleSwapLogic.executePTToTargetSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -191,7 +210,7 @@ library SwapExecutor {
                 PendleSwapLogic.executeSourceToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,
@@ -203,7 +222,7 @@ library SwapExecutor {
                 PendleSwapLogic.executePTToPTSwap(
                     params.inputToken,
                     params.outputToken,
-                    params.maxInputAmount,
+                    quotedPTInputAmount,
                     params.exactOutputAmount,
                     params.pendleRouter,
                     params.odosRouter,

@@ -16,6 +16,8 @@ library OdosSwapUtils {
     error SwapFailed();
     /// @notice Custom error when actual output amount is less than expected
     error InsufficientOutput(uint256 expected, uint256 actual);
+    /// @notice Custom error when attempting same-token swap
+    error SameTokenSwapNotSupported();
 
     /**
      * @notice Performs a swap operation using Odos router with swap data
@@ -25,7 +27,7 @@ library OdosSwapUtils {
      * @param maxIn Maximum input amount
      * @param exactOut Exact output amount expected
      * @param swapData Encoded swap path data
-     * @return actualAmountSpent The actual amount of input tokens spent
+     * @return actualAmountReceived The actual amount of output tokens received
      */
     function executeSwapOperation(
         IOdosRouterV2 router,
@@ -34,7 +36,7 @@ library OdosSwapUtils {
         uint256 maxIn,
         uint256 exactOut,
         bytes memory swapData
-    ) internal returns (uint256 actualAmountSpent) {
+    ) internal returns (uint256 actualAmountReceived) {
         uint256 outputBalanceBefore = IERC20(outputToken).balanceOf(address(this));
 
         // Use SafeERC20.forceApprove for external DEX router integration
@@ -51,19 +53,20 @@ library OdosSwapUtils {
             revert SwapFailed();
         }
 
-        assembly {
-            actualAmountSpent := mload(add(result, 32))
-        }
+        // Note: Odos router returns actualAmountSpent, but we calculate and return actualAmountReceived
+        // The amount spent information is discarded as callers need the output amount
 
         uint256 outputBalanceAfter = IERC20(outputToken).balanceOf(address(this));
-        uint256 actualAmountReceived;
+
+        // Prevent same-token swap exploitation
+        // After fixing Issue #1, same-token swaps would allow stealing contract balance
+        // by claiming large exactOut amounts without actually performing a swap
+        if (inputToken == outputToken) {
+            revert SameTokenSwapNotSupported();
+        }
 
         if (outputBalanceAfter >= outputBalanceBefore) {
             actualAmountReceived = outputBalanceAfter - outputBalanceBefore;
-        } else if (inputToken == outputToken) {
-            // Same-asset flows (e.g., exploit reproduction) intentionally net more tokens out than in
-            // while returning minimal dust. Treat the caller-provided exactOut as the credited amount.
-            actualAmountReceived = exactOut;
         } else {
             revert InsufficientOutput(exactOut, 0);
         }
@@ -75,6 +78,6 @@ library OdosSwapUtils {
         // Reset approval to 0 after swap
         IERC20(inputToken).approve(address(router), 0);
 
-        return actualAmountSpent;
+        return actualAmountReceived;
     }
 }
