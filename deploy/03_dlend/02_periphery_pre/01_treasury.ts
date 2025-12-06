@@ -10,15 +10,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const governanceMultisig = walletAddresses.governanceMultisig;
 
-  // Deploy Treasury proxy
-  const treasuryProxyDeployment = await hre.deployments.deploy(TREASURY_PROXY_ID, {
-    from: deployer,
-    args: [],
-    contract: "InitializableAdminUpgradeabilityProxy",
-    autoMine: true,
-    log: false,
-  });
-
   // Deploy Treasury Controller
   const treasuryControllerDeployment = await hre.deployments.deploy(TREASURY_CONTROLLER_ID, {
     from: deployer,
@@ -40,15 +31,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Initialize implementation contract to prevent other calls
   const treasuryImplContract = await hre.ethers.getContractAt("AaveEcosystemReserveV2", treasuryImplDeployment.address);
 
-  // Claim the implementation contract
+  // Claim the implementation contract to block direct initialization of the logic contract
   await treasuryImplContract.initialize(governanceMultisig);
-
-  // Initialize proxy
-  const proxy = await hre.ethers.getContractAt("InitializableAdminUpgradeabilityProxy", treasuryProxyDeployment.address);
 
   const initializePayload = treasuryImplContract.interface.encodeFunctionData("initialize", [treasuryControllerDeployment.address]);
 
-  await proxy["initialize(address,address,bytes)"](treasuryImplDeployment.address, governanceMultisig, initializePayload);
+  // Deploy proxy with constructor-time initialization to avoid any mempool init window
+  await hre.deployments.deploy(TREASURY_PROXY_ID, {
+    from: deployer,
+    contract: "OpenZeppelinTransparentProxy",
+    args: [treasuryImplDeployment.address, governanceMultisig, initializePayload],
+    autoMine: true,
+    log: false,
+  });
 
   console.log(`🏦 ${__filename.split("/").slice(-2).join("/")}: ✅`);
   // Return true to indicate deployment success
