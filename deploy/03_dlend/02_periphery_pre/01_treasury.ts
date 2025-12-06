@@ -39,7 +39,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Deploy proxy with constructor-time initialization to avoid any mempool init window
   await hre.deployments.deploy(TREASURY_PROXY_ID, {
     from: deployer,
-    contract: "OpenZeppelinTransparentProxy",
+    contract: "AdminUpgradeabilityProxy",
     args: [treasuryImplDeployment.address, governanceMultisig, initializePayload],
     autoMine: true,
     log: false,
