@@ -3,7 +3,7 @@ import "hardhat-deploy/dist/src/type-extensions";
 import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
+import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
 import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
@@ -80,10 +80,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   addPlainFeed(usdPlainRedstoneFeeds, WETH_ADDRESS, ETH_USD_FEED);
   addPlainFeed(usdPlainRedstoneFeeds, dETHDeployment?.address, ETH_USD_FEED);
 
-  const usdThresholdRedstoneFeeds: Record<
-    string,
-    { feed: string; lowerThreshold: bigint; fixedPrice: bigint }
-  > = {};
+  const usdThresholdRedstoneFeeds: Record<string, { feed: string; lowerThreshold: bigint; fixedPrice: bigint }> = {};
   addThresholdFeed(usdThresholdRedstoneFeeds, USDC_ADDRESS, USDC_USD_FEED, STABLE_THRESHOLD);
   addThresholdFeed(usdThresholdRedstoneFeeds, USDT_ADDRESS, USDT_USD_FEED, STABLE_THRESHOLD);
   addThresholdFeed(usdThresholdRedstoneFeeds, USDS_ADDRESS, USDS_USD_FEED, STABLE_THRESHOLD);
@@ -144,17 +141,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     }
   > = {};
 
-  addCompositeFeed(
-    ethCompositeRedstoneFeeds,
-    SFRXETH_ADDRESS,
-    SFRXETH_ADDRESS,
-    SFRXETH_FRXETH_FEED,
-    FRXETH_ETH_FEED,
-    0n,
-    0n,
-    0n,
-    0n,
-  );
+  addCompositeFeed(ethCompositeRedstoneFeeds, SFRXETH_ADDRESS, SFRXETH_ADDRESS, SFRXETH_FRXETH_FEED, FRXETH_ETH_FEED, 0n, 0n, 0n, 0n);
 
   return {
     tokenAddresses: {
