@@ -167,6 +167,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         hardDStablePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         baseCurrency: ZeroAddress,
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -182,6 +183,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         hardDStablePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         baseCurrency: WETH_ADDRESS,
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},

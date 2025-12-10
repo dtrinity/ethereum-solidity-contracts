@@ -74,6 +74,12 @@ export interface OracleAggregatorConfig {
   readonly priceDecimals: number;
   readonly hardDStablePeg: bigint;
   readonly baseCurrency: string;
+  readonly chainlinkErc4626OracleAssets?: {
+    [assetAddress: string]: {
+      vault: string;
+      feed: string;
+    };
+  };
   readonly api3OracleAssets: {
     plainApi3OracleWrappers: {
       [key: string]: string;
