@@ -10,6 +10,7 @@ import {
   ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_API3_ORACLE_WRAPPER_ID,
   ETH_API3_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_ERC4626_ORACLE_WRAPPER_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_ORACLE_WRAPPER_ID,
@@ -18,6 +19,7 @@ import {
 
 type Api3AssetsConfig = Config["oracleAggregators"][string]["api3OracleAssets"];
 type RedstoneAssetsConfig = Config["oracleAggregators"][string]["redstoneOracleAssets"];
+type Erc4626OracleAssetsConfig = Config["oracleAggregators"][string]["erc4626OracleAssets"];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const { deployer } = await hre.getNamedAccounts();
@@ -31,14 +33,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   const api3Assets = oracleConfig.api3OracleAssets;
   const redstoneAssets = oracleConfig.redstoneOracleAssets;
+  const erc4626OracleAssets = oracleConfig.erc4626OracleAssets;
 
-  if (!hasAnyConfiguredAsset(api3Assets, redstoneAssets)) {
+  if (!hasAnyConfiguredAsset(api3Assets, redstoneAssets, erc4626OracleAssets)) {
     console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: no ETH oracle assets configured – skipping`);
     return true;
   }
 
   await routeApi3Assets(hre, aggregator, api3Assets);
   await routeRedstoneAssets(hre, aggregator, redstoneAssets);
+  await routeErc4626OracleAssets(hre, aggregator, erc4626OracleAssets);
 
   console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: ✅`);
   return true;
@@ -188,12 +192,40 @@ function isUsableAddress(value: string | undefined): value is string {
 }
 
 /**
- * Checks whether any API3 or Redstone assets are configured for deployment.
+ * Routes every ERC4626 oracle asset to the appropriate wrapper address on the aggregator.
+ *
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param aggregator Oracle aggregator instance to configure.
+ * @param assets Configuration for all ERC4626 assets supported by the network.
+ */
+async function routeErc4626OracleAssets(
+  hre: HardhatRuntimeEnvironment,
+  aggregator: OracleAggregatorV11,
+  assets?: Erc4626OracleAssetsConfig,
+): Promise<void> {
+  if (!assets || Object.keys(assets).length === 0) {
+    return;
+  }
+
+  const wrapperAddress = await resolveDeploymentAddress(hre, ETH_ERC4626_ORACLE_WRAPPER_ID);
+
+  for (const assetAddress of Object.keys(assets)) {
+    await ensureOracleMapping(aggregator, assetAddress, wrapperAddress);
+  }
+}
+
+/**
+ * Checks whether any API3, Redstone, or ERC4626 assets are configured for deployment.
  *
  * @param api3Assets API3 asset configuration block.
  * @param redstoneAssets Redstone asset configuration block.
+ * @param erc4626OracleAssets ERC4626 oracle asset configuration block.
  */
-function hasAnyConfiguredAsset(api3Assets?: Api3AssetsConfig, redstoneAssets?: RedstoneAssetsConfig): boolean {
+function hasAnyConfiguredAsset(
+  api3Assets?: Api3AssetsConfig,
+  redstoneAssets?: RedstoneAssetsConfig,
+  erc4626OracleAssets?: Erc4626OracleAssetsConfig,
+): boolean {
   const counts = [
     Object.keys(api3Assets?.plainApi3OracleWrappers ?? {}).length,
     Object.keys(api3Assets?.api3OracleWrappersWithThresholding ?? {}).length,
@@ -201,6 +233,7 @@ function hasAnyConfiguredAsset(api3Assets?: Api3AssetsConfig, redstoneAssets?: R
     Object.keys(redstoneAssets?.plainRedstoneOracleWrappers ?? {}).length,
     Object.keys(redstoneAssets?.redstoneOracleWrappersWithThresholding ?? {}).length,
     Object.keys(redstoneAssets?.compositeRedstoneOracleWrappersWithThresholding ?? {}).length,
+    Object.keys(erc4626OracleAssets ?? {}).length,
   ];
   return counts.some((count) => count > 0);
 }
@@ -209,10 +242,12 @@ func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-routing"];
 func.dependencies = [
   ETH_ORACLE_AGGREGATOR_ID,
   "setup-eth-oracle-wrappers-v1_1",
+  "deploy-eth-erc4626-wrapper",
   DETH_TOKEN_ID,
   ETH_API3_ORACLE_WRAPPER_ID,
   ETH_API3_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_ERC4626_ORACLE_WRAPPER_ID,
   ETH_REDSTONE_ORACLE_WRAPPER_ID,
   ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,

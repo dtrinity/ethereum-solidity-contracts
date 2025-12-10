@@ -24,6 +24,7 @@ export const ETH_REDSTONE_ORACLE_WRAPPER_ID = "ETH_RedstoneWrapper";
 export const ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneWrapperWithThresholding";
 export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneCompositeWrapperWithThresholding";
 export const ETH_CHAINLINK_ERC4626_WRAPPER_ID = "ETH_ChainlinkERC4626Wrapper";
+export const ETH_ERC4626_ORACLE_WRAPPER_ID = "ETH_ERC4626OracleWrapper";
 
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";

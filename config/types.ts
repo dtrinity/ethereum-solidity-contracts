@@ -80,6 +80,10 @@ export interface OracleAggregatorConfig {
       feed: string;
     };
   };
+  // Simple ERC4626 oracle - assumes underlying is 1:1 with base currency (e.g., sfrxETH where frxETH ≈ ETH)
+  readonly erc4626OracleAssets?: {
+    [assetAddress: string]: string; // asset -> vault mapping
+  };
   readonly api3OracleAssets: {
     plainApi3OracleWrappers: {
       [key: string]: string;
