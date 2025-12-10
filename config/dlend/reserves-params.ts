@@ -3,7 +3,7 @@ import {
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
   rateStrategyMediumLiquidityStable,
-  rateStrategyMediumLiquidityVolatile,
+  rateStrategyBorrowDStable,
 } from "./interest-rate-strategies";
 
 const baseReserveConfig: Pick<
@@ -33,7 +33,7 @@ const baseDSTABLEConfig: IReserveParams = {
   baseLTVAsCollateral: "0",
   liquidationThreshold: "0",
   liquidationBonus: "0",
-  strategy: rateStrategyHighLiquidityStable,
+  strategy: rateStrategyBorrowDStable,
 };
 
 // dSTABLEs
@@ -45,7 +45,7 @@ export const strategyDUSD: IReserveParams = {
 export const strategyDETH: IReserveParams = {
   ...baseDSTABLEConfig,
   supplyCap: "500", // 500 dETH
-  strategy: rateStrategyHighLiquidityStable,
+  strategy: rateStrategyBorrowDStable,
 };
 
 // LSTs and ETH
@@ -80,7 +80,7 @@ export const strategySFRXETH: IReserveParams = {
 // Yield-bearing stables
 export const yieldBearingStablecoins: IReserveParams = {
   ...baseReserveConfig,
-  reserveFactor: "10", // 10%
+  reserveFactor: "1000", // 10%
   supplyCap: "500000", // 500K
   borrowingEnabled: false, // Non-dSTABLEs are collateral only
   stableBorrowRateEnabled: false,
