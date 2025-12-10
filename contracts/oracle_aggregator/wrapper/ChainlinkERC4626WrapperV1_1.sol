@@ -141,9 +141,7 @@ contract ChainlinkERC4626WrapperV1_1 is BaseChainlinkWrapperV1_1 {
         uint256 underlyingPriceInBase = _convertToBaseCurrencyUnit(uint256(answer));
 
         price = (underlyingPriceInBase * assetsPerShare) / _assetUnit(config.assetDecimals);
-        isAlive =
-            price > 0 &&
-            updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
+        isAlive = price > 0 && updatedAt + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit > block.timestamp;
     }
 
     function _shareUnit(uint8 shareDecimals) private pure returns (uint256) {

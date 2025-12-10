@@ -35,9 +35,7 @@ describe("ChainlinkERC4626WrapperV1_1", () => {
     feed = await feedFactory.deploy();
     await feed.setMock(ethers.parseUnits("1", 8));
 
-    const wrapperFactory = (await ethers.getContractFactory(
-      "ChainlinkERC4626WrapperV1_1",
-    )) as ChainlinkERC4626WrapperV1_1__factory;
+    const wrapperFactory = (await ethers.getContractFactory("ChainlinkERC4626WrapperV1_1")) as ChainlinkERC4626WrapperV1_1__factory;
     wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, BASE_UNIT);
 
     await wrapper.setERC4626Feed(await vault.getAddress(), await vault.getAddress(), await feed.getAddress());

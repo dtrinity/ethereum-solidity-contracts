@@ -94,6 +94,13 @@ async function routeApi3Assets(hre: HardhatRuntimeEnvironment, aggregator: Oracl
   }
 }
 
+/**
+ * Routes every Chainlink ERC4626-backed asset to the appropriate wrapper address on the aggregator.
+ *
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param aggregator Oracle aggregator instance to configure.
+ * @param assets Configuration for all Chainlink ERC4626 feeds supported by the network.
+ */
 async function routeChainlinkErc4626Assets(
   hre: HardhatRuntimeEnvironment,
   aggregator: OracleAggregatorV11,
@@ -213,6 +220,7 @@ function isUsableAddress(value: string | undefined): value is string {
  *
  * @param api3Assets API3 asset configuration block.
  * @param redstoneAssets Redstone asset configuration block.
+ * @param chainlinkErc4626Assets Chainlink ERC4626 asset configuration block.
  */
 function hasAnyConfiguredAsset(
   api3Assets?: Api3AssetsConfig,
