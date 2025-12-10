@@ -12,7 +12,11 @@ import {
   INCENTIVES_PROXY_ID,
 } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
-import { rateStrategyBorrowDStable, rateStrategyHighLiquidityStable, rateStrategyHighLiquidityVolatile } from "../dlend/interest-rate-strategies";
+import {
+  rateStrategyBorrowDStable,
+  rateStrategyHighLiquidityStable,
+  rateStrategyHighLiquidityVolatile,
+} from "../dlend/interest-rate-strategies";
 import { strategyDETH, strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 

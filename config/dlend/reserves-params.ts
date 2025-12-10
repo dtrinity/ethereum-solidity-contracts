@@ -1,19 +1,13 @@
 import { IReserveParams } from "../types";
 import {
-  rateStrategyHighLiquidityStable,
+  rateStrategyBorrowDStable,
   rateStrategyHighLiquidityVolatile,
   rateStrategyMediumLiquidityStable,
-  rateStrategyBorrowDStable,
 } from "./interest-rate-strategies";
 
 const baseReserveConfig: Pick<
   IReserveParams,
-  | "aTokenImpl"
-  | "reserveDecimals"
-  | "debtCeiling"
-  | "borrowableIsolation"
-  | "flashLoanEnabled"
-  | "liquidationProtocolFee"
+  "aTokenImpl" | "reserveDecimals" | "debtCeiling" | "borrowableIsolation" | "flashLoanEnabled" | "liquidationProtocolFee"
 > = {
   aTokenImpl: "ATokenImpl",
   reserveDecimals: "18",
