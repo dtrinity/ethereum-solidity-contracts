@@ -64,14 +64,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   const dUSDCollateralFees: Record<string, number> = {};
   const dETHCollateralFees: Record<string, number> = {};
 
-  addCollateralFee(dUSDCollateralFees, USDC_ADDRESS, 0.4 * ONE_PERCENT_BPS);
-  addCollateralFee(dUSDCollateralFees, USDT_ADDRESS, 0.4 * ONE_PERCENT_BPS);
-  addCollateralFee(dUSDCollateralFees, USDS_ADDRESS, 0.4 * ONE_PERCENT_BPS);
-  addCollateralFee(dUSDCollateralFees, FRXUSD_ADDRESS, 0.4 * ONE_PERCENT_BPS);
   addCollateralFee(dUSDCollateralFees, SUSDS_ADDRESS, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dUSDCollateralFees, SFRXUSD_ADDRESS, 0.5 * ONE_PERCENT_BPS);
 
-  addCollateralFee(dETHCollateralFees, WETH_ADDRESS, 0.4 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, WSTETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, SFRXETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
 
