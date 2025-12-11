@@ -147,6 +147,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   console.log(`\n≻ ${__filename.split("/").slice(-2).join("/")}: ✅`);
+
+  return true;
 };
 
 export default func;

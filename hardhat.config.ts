@@ -191,7 +191,7 @@ const config: HardhatUserConfig = {
       accounts: getEnvPrivateKeys("ethereum_testnet"),
     },
     ethereum_mainnet: {
-      url: `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "YOUR_API_KEY"}`,
+      url: "https://mainnet.infura.io/v3/b26481279d3a46afab21c568f94ce9d1",
       chainId: 1,
       deploy: ["deploy"], // NOTE: DO NOT DEPLOY mocks
       saveDeployments: true,

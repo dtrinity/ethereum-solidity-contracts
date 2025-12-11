@@ -6,6 +6,7 @@ export const USD_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "USD_API3Composit
 export const USD_REDSTONE_ORACLE_WRAPPER_ID = "USD_RedstoneChainlinkWrapper";
 export const USD_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkWrapperWithThresholding";
 export const USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "USD_RedstoneChainlinkCompositeWrapperWithThresholding";
+export const USD_CHAINLINK_ERC4626_WRAPPER_ID = "USD_ChainlinkERC4626Wrapper";
 
 // Pendle PT Oracles
 export const PENDLE_CHAINLINK_ORACLE_FACTORY_ID = "PendleChainlinkOracleFactory";
@@ -22,6 +23,8 @@ export const ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_API3Composit
 export const ETH_REDSTONE_ORACLE_WRAPPER_ID = "ETH_RedstoneWrapper";
 export const ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneWrapperWithThresholding";
 export const ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID = "ETH_RedstoneCompositeWrapperWithThresholding";
+export const ETH_CHAINLINK_ERC4626_WRAPPER_ID = "ETH_ChainlinkERC4626Wrapper";
+export const ETH_ERC4626_ORACLE_WRAPPER_ID = "ETH_ERC4626OracleWrapper";
 
 // dUSD
 export const DUSD_TOKEN_ID = "dUSD";

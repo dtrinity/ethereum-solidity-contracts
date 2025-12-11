@@ -7,6 +7,7 @@ import { ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/commo
 import { DETH_TOKEN_ID, DUSD_TOKEN_ID, INCENTIVES_PROXY_ID, SDUSD_DSTAKE_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import {
+  rateStrategyBorrowDStable,
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
   rateStrategyMediumLiquidityStable,
@@ -175,6 +176,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: ZeroAddress,
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -270,6 +272,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         hardDStablePeg: 1n * ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         baseCurrency: WETHDeployment?.address || ZeroAddress, // Base currency is WETH
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -295,6 +298,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         protocol: 0.0004e4,
       },
       rateStrategies: [
+        rateStrategyBorrowDStable,
         rateStrategyHighLiquidityVolatile,
         rateStrategyMediumLiquidityVolatile,
         rateStrategyHighLiquidityStable,

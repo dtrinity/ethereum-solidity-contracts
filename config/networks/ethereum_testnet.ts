@@ -12,7 +12,11 @@ import {
   INCENTIVES_PROXY_ID,
 } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
-import { rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile } from "../dlend/interest-rate-strategies";
+import {
+  rateStrategyBorrowDStable,
+  rateStrategyHighLiquidityStable,
+  rateStrategyHighLiquidityVolatile,
+} from "../dlend/interest-rate-strategies";
 import { strategyDETH, strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
@@ -356,6 +360,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         hardDStablePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         baseCurrency: ZeroAddress,
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -371,6 +376,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,
         hardDStablePeg: ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT,
         baseCurrency: addressOrZero(WETHDeployment?.address),
+        chainlinkErc4626OracleAssets: {},
         api3OracleAssets: {
           plainApi3OracleWrappers: {},
           api3OracleWrappersWithThresholding: {},
@@ -500,7 +506,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         total: 0.0005e4,
         protocol: 0.0004e4,
       },
-      rateStrategies: [rateStrategyHighLiquidityStable, rateStrategyMediumLiquidityVolatile],
+      rateStrategies: [rateStrategyBorrowDStable, rateStrategyHighLiquidityVolatile, rateStrategyHighLiquidityStable],
       reservesConfig: {
         dUSD: strategyDUSD,
         dETH: strategyDETH,
