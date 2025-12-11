@@ -29,9 +29,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: false,
   });
 
-  // Initialize implementation
+  // Initialize implementation (only if not already initialized)
   const poolConfig = await hre.ethers.getContractAt("PoolConfigurator", poolConfiguratorDeployment.address);
-  await poolConfig.initialize(addressesProviderAddress);
+
+  // Try to initialize - will fail if already initialized
+  try {
+    await poolConfig.initialize(addressesProviderAddress);
+    console.log(`  - PoolConfigurator initialized`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("already been initialized")) {
+      console.log(`  - PoolConfigurator already initialized, skipping`);
+    } else {
+      throw error;
+    }
+  }
 
   // Deploy reserves setup helper
   await hre.deployments.deploy(RESERVES_SETUP_HELPER_ID, {

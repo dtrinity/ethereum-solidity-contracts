@@ -24,5 +24,12 @@
   "dLend:PoolAddressesProviderRegistry": 1765386375,
   "dLend:LogicLibraries": 1765386532,
   "dLend:Treasury": 1765386627,
-  "PoolAddressesProvider": 1765386748
+  "PoolAddressesProvider": 1765386748,
+  "dLend:L2PoolImplementations": 1765391134,
+  "dLend:PoolConfigurator": 1765393169,
+  "dLend:init_acl": 1765394071,
+  "dLend:deploy_oracles": 1765394082,
+  "dLend:init_oracles": 1765394126,
+  "dLend:init_pool": 1765394269,
+  "dLend:tokens_implementations": 1765394333
 }
