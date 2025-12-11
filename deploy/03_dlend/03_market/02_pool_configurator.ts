@@ -38,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`  - PoolConfigurator initialized`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
     if (errorMessage.includes("already been initialized")) {
       console.log(`  - PoolConfigurator already initialized, skipping`);
     } else {

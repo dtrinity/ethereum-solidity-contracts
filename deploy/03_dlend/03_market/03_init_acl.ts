@@ -18,6 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // 1. Set ACL admin on AddressesProvider (only if not already set)
   const currentACLAdmin = await addressesProviderContract.getACLAdmin();
+
   if (currentACLAdmin === ZeroAddress) {
     await addressesProviderContract.setACLAdmin(deployer.address);
     console.log(`  - ACL Admin set to deployer: ${deployer.address}`);
@@ -37,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // 3. Setup ACLManager for AddressProvider (only if not already set)
   const currentACLManager = await addressesProviderContract.getACLManager();
+
   if (currentACLManager === ZeroAddress || currentACLManager !== aclManagerDeployment.address) {
     try {
       await addressesProviderContract.setACLManager(aclManagerDeployment.address);
@@ -51,6 +53,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // 4. Add PoolAdmin to ACLManager (only if not already set)
   const isAlreadyPoolAdmin = await aclManagerContract.isPoolAdmin(deployer.address);
+
   if (!isAlreadyPoolAdmin) {
     try {
       await aclManagerContract.addPoolAdmin(deployer.address);
@@ -65,6 +68,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // 5. Add EmergencyAdmin to ACLManager (only if not already set)
   const isAlreadyEmergencyAdmin = await aclManagerContract.isEmergencyAdmin(deployer.address);
+
   if (!isAlreadyEmergencyAdmin) {
     try {
       await aclManagerContract.addEmergencyAdmin(deployer.address);
