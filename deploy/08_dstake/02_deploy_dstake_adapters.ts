@@ -164,7 +164,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["dStakeAdapters", "dStake"];
-func.dependencies = ["dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
+func.dependencies = ["dStakeIdleVaults", "dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
 
 // Ensure one-shot execution.
 func.id = "deploy_dstake_adapters";

@@ -1,0 +1,849 @@
+{
+  "address": "0xA51FA58c76D92F1b0D4D6E3b88d2ba0afF2C2b56",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_dStable",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_vault",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_collateralVault",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AccessControlBadConfirmation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "neededRole",
+          "type": "bytes32"
+        }
+      ],
+      "name": "AccessControlUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "expected",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "actual",
+          "type": "address"
+        }
+      ],
+      "name": "IncorrectStrategyShare",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAmount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "UnauthorizedCaller",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "expected",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "actual",
+          "type": "address"
+        }
+      ],
+      "name": "VaultAssetMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isAuthorized",
+          "type": "bool"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "admin",
+          "type": "address"
+        }
+      ],
+      "name": "AuthorizedCallerUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "name": "EmergencyWithdraw",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "previousAdminRole",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "newAdminRole",
+          "type": "bytes32"
+        }
+      ],
+      "name": "RoleAdminChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleGranted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleRevoked",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "AUTHORIZED_CALLER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEFAULT_ADMIN_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "collateralVault",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dStable",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "stableAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "depositIntoStrategy",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "shareToken",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "strategyShareAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "emergencyWithdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getRoleAdmin",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "grantRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "hasRole",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "stableAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "previewDepositIntoStrategy",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "shareToken",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "strategyShareAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "strategyShareAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "previewWithdrawFromStrategy",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "stableAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "callerConfirmation",
+          "type": "address"
+        }
+      ],
+      "name": "renounceRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "revokeRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "authorized",
+          "type": "bool"
+        }
+      ],
+      "name": "setAuthorizedCaller",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "strategyShare",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_strategyShare",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "strategyShareAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "strategyShareValueInDStable",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "stableValue",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "vault",
+      "outputs": [
+        {
+          "internalType": "contract IERC4626",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "vaultAsset",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "strategyShareAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawFromStrategy",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "stableAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xe60cd8b93e7a6ac0eaf11e7d678167e066e0f983ced7d898ac6dff3450d3d9bc",
+  "receipt": {
+    "to": null,
+    "from": "0x0f5e3D9AEe7Ab5fDa909Af1ef147D98a7f4B3022",
+    "contractAddress": "0xA51FA58c76D92F1b0D4D6E3b88d2ba0afF2C2b56",
+    "transactionIndex": 139,
+    "gasUsed": "1017427",
+    "logsBloom": "0x00000004000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000400000200000000000000000000000000000000000000000000000000000000000000020000000000000000000800000000000040000100000000001000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000100000000000020000001000000000000001000000000000000000000000000000000000000000000",
+    "blockHash": "0xfce8e377a73e024b55c0001842a049ef4e879fe2d7d05b34dc602afaab914f6c",
+    "transactionHash": "0xe60cd8b93e7a6ac0eaf11e7d678167e066e0f983ced7d898ac6dff3450d3d9bc",
+    "logs": [
+      {
+        "transactionIndex": 139,
+        "blockNumber": 23995465,
+        "transactionHash": "0xe60cd8b93e7a6ac0eaf11e7d678167e066e0f983ced7d898ac6dff3450d3d9bc",
+        "address": "0xA51FA58c76D92F1b0D4D6E3b88d2ba0afF2C2b56",
+        "topics": [
+          "0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000000f5e3d9aee7ab5fda909af1ef147d98a7f4b3022",
+          "0x0000000000000000000000000f5e3d9aee7ab5fda909af1ef147d98a7f4b3022"
+        ],
+        "data": "0x",
+        "logIndex": 408,
+        "blockHash": "0xfce8e377a73e024b55c0001842a049ef4e879fe2d7d05b34dc602afaab914f6c"
+      },
+      {
+        "transactionIndex": 139,
+        "blockNumber": 23995465,
+        "transactionHash": "0xe60cd8b93e7a6ac0eaf11e7d678167e066e0f983ced7d898ac6dff3450d3d9bc",
+        "address": "0xA51FA58c76D92F1b0D4D6E3b88d2ba0afF2C2b56",
+        "topics": [
+          "0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x000000000000000000000000f93fb0add57133aecd56fa48350684b5a7a1a5b9",
+          "0x0000000000000000000000000f5e3d9aee7ab5fda909af1ef147d98a7f4b3022"
+        ],
+        "data": "0x",
+        "logIndex": 409,
+        "blockHash": "0xfce8e377a73e024b55c0001842a049ef4e879fe2d7d05b34dc602afaab914f6c"
+      }
+    ],
+    "blockNumber": 23995465,
+    "cumulativeGasUsed": "14802382",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xb419ecdd222981e7e54cec316797ecb799c6afdc",
+    "0x501CE63871F9Bb20620233D22D0D4F539fe8A9a1",
+    "0xf93Fb0aDd57133AecD56fA48350684B5A7A1A5b9"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "6a00e9aaba010a341218c5f7ed2041bf",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.22+commit.4fc1097e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_dStable\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_vault\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_collateralVault\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AccessControlBadConfirmation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"neededRole\",\"type\":\"bytes32\"}],\"name\":\"AccessControlUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"IncorrectStrategyShare\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAmount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"SafeERC20FailedOperation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"}],\"name\":\"UnauthorizedCaller\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"VaultAssetMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isAuthorized\",\"type\":\"bool\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"admin\",\"type\":\"address\"}],\"name\":\"AuthorizedCallerUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"}],\"name\":\"EmergencyWithdraw\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"AUTHORIZED_CALLER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"collateralVault\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"dStable\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"stableAmount\",\"type\":\"uint256\"}],\"name\":\"depositIntoStrategy\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"shareToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"strategyShareAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"emergencyWithdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"stableAmount\",\"type\":\"uint256\"}],\"name\":\"previewDepositIntoStrategy\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"shareToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"strategyShareAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"strategyShareAmount\",\"type\":\"uint256\"}],\"name\":\"previewWithdrawFromStrategy\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"stableAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"callerConfirmation\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"authorized\",\"type\":\"bool\"}],\"name\":\"setAuthorizedCaller\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"strategyShare\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_strategyShare\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"strategyShareAmount\",\"type\":\"uint256\"}],\"name\":\"strategyShareValueInDStable\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"stableValue\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"vault\",\"outputs\":[{\"internalType\":\"contract IERC4626\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"vaultAsset\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"strategyShareAmount\",\"type\":\"uint256\"}],\"name\":\"withdrawFromStrategy\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"stableAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"errors\":{\"AccessControlBadConfirmation()\":[{\"details\":\"The caller of a function is not the expected one. NOTE: Don't confuse with {AccessControlUnauthorizedAccount}.\"}],\"AccessControlUnauthorizedAccount(address,bytes32)\":[{\"details\":\"The `account` is missing a role.\"}],\"SafeERC20FailedOperation(address)\":[{\"details\":\"An operation with an ERC-20 token failed.\"}]},\"events\":{\"RoleAdminChanged(bytes32,bytes32,bytes32)\":{\"details\":\"Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole` `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite {RoleAdminChanged} not being emitted to signal this.\"},\"RoleGranted(bytes32,address,address)\":{\"details\":\"Emitted when `account` is granted `role`. `sender` is the account that originated the contract call. This account bears the admin role (for the granted role). Expected in cases where the role was granted using the internal {AccessControl-_grantRole}.\"},\"RoleRevoked(bytes32,address,address)\":{\"details\":\"Emitted when `account` is revoked `role`. `sender` is the account that originated the contract call:   - if using `revokeRole`, it is the admin role bearer   - if using `renounceRole`, it is the role bearer (i.e. `account`)\"}},\"kind\":\"dev\",\"methods\":{\"depositIntoStrategy(uint256)\":{\"details\":\"The adapter MUST pull `stableAmount` of the stable asset from the caller (expected to be the Router).The resulting `strategyShare` MUST be sent/deposited/minted directly to the `collateralVault` address provided during adapter setup or retrieved.\",\"params\":{\"stableAmount\":\"The amount of stable asset to convert.\"},\"returns\":{\"shareToken\":\"The address of the specific `strategy share` token managed by this adapter.\",\"strategyShareAmount\":\"The amount of `strategyShare` generated from the conversion.\"}},\"emergencyWithdraw(address,uint256)\":{\"params\":{\"amount\":\"Amount of tokens to transfer\",\"token\":\"Address of the ERC20 token to recover\"}},\"getRoleAdmin(bytes32)\":{\"details\":\"Returns the admin role that controls `role`. See {grantRole} and {revokeRole}. To change a role's admin, use {_setRoleAdmin}.\"},\"grantRole(bytes32,address)\":{\"details\":\"Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleGranted} event.\"},\"hasRole(bytes32,address)\":{\"details\":\"Returns `true` if `account` has been granted `role`.\"},\"previewDepositIntoStrategy(uint256)\":{\"params\":{\"stableAmount\":\"The amount of stable asset to preview conversion for.\"},\"returns\":{\"shareToken\":\"The address of the specific `strategy share` token managed by this adapter.\",\"strategyShareAmount\":\"The amount of `strategyShare` that would be received.\"}},\"previewWithdrawFromStrategy(uint256)\":{\"params\":{\"strategyShareAmount\":\"The amount of `strategyShare` to preview conversion for.\"},\"returns\":{\"stableAmount\":\"The amount of stable asset that would be received.\"}},\"renounceRole(bytes32,address)\":{\"details\":\"Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function's purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `callerConfirmation`. May emit a {RoleRevoked} event.\"},\"revokeRole(bytes32,address)\":{\"details\":\"Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleRevoked} event.\"},\"setAuthorizedCaller(address,bool)\":{\"params\":{\"authorized\":\"True to grant access, false to revoke\",\"caller\":\"Address to update\"}},\"strategyShare()\":{\"returns\":{\"_0\":\"The address of the `strategy share`.\"}},\"supportsInterface(bytes4)\":{\"details\":\"Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section] to learn more about how these ids are created. This function call must use less than 30 000 gas.\"},\"withdrawFromStrategy(uint256)\":{\"details\":\"The adapter MUST pull the required amount of `strategyShare` from the caller (expected to be the Router).The resulting stable asset MUST be sent to the caller.\",\"params\":{\"strategyShareAmount\":\"The amount of `strategyShare` to convert.\"},\"returns\":{\"stableAmount\":\"The amount of stable asset sent to the caller.\"}}},\"title\":\"GenericERC4626ConversionAdapter\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"depositIntoStrategy(uint256)\":{\"notice\":\"Converts a specified amount of the stable asset into the specific `strategyShare`         managed by this adapter.\"},\"emergencyWithdraw(address,uint256)\":{\"notice\":\"Emergency hook to sweep stranded tokens back to the collateral vault\"},\"previewDepositIntoStrategy(uint256)\":{\"notice\":\"Preview the result of converting a given stable amount to strategyShare (without state change).\"},\"previewWithdrawFromStrategy(uint256)\":{\"notice\":\"Preview the result of converting a given strategyShare amount to stable asset (without state change).\"},\"setAuthorizedCaller(address,bool)\":{\"notice\":\"Adds or removes an authorized caller that can invoke conversion flows\"},\"strategyShare()\":{\"notice\":\"Returns the address of the specific `strategy share` token managed by this adapter.\"},\"vaultAsset()\":{\"notice\":\"Returns the underlying vault asset associated with this adapter (legacy compatibility helper).\"},\"withdrawFromStrategy(uint256)\":{\"notice\":\"Converts a specific amount of `strategyShare` back into the stable asset.\"}},\"notice\":\"Conversion adapter that bridges a dSTABLE asset directly into an ERC4626 vault where the         share token is used as a dSTAKE strategy. Useful for idle vaults that simply hold dUSD.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol\":\"GenericERC4626ConversionAdapter\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/access/AccessControl.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (access/AccessControl.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IAccessControl} from \\\"./IAccessControl.sol\\\";\\nimport {Context} from \\\"../utils/Context.sol\\\";\\nimport {IERC165, ERC165} from \\\"../utils/introspection/ERC165.sol\\\";\\n\\n/**\\n * @dev Contract module that allows children to implement role-based access\\n * control mechanisms. This is a lightweight version that doesn't allow enumerating role\\n * members except through off-chain means by accessing the contract event logs. Some\\n * applications may benefit from on-chain enumerability, for those cases see\\n * {AccessControlEnumerable}.\\n *\\n * Roles are referred to by their `bytes32` identifier. These should be exposed\\n * in the external API and be unique. The best way to achieve this is by\\n * using `public constant` hash digests:\\n *\\n * ```solidity\\n * bytes32 public constant MY_ROLE = keccak256(\\\"MY_ROLE\\\");\\n * ```\\n *\\n * Roles can be used to represent a set of permissions. To restrict access to a\\n * function call, use {hasRole}:\\n *\\n * ```solidity\\n * function foo() public {\\n *     require(hasRole(MY_ROLE, msg.sender));\\n *     ...\\n * }\\n * ```\\n *\\n * Roles can be granted and revoked dynamically via the {grantRole} and\\n * {revokeRole} functions. Each role has an associated admin role, and only\\n * accounts that have a role's admin role can call {grantRole} and {revokeRole}.\\n *\\n * By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means\\n * that only accounts with this role will be able to grant or revoke other\\n * roles. More complex role relationships can be created by using\\n * {_setRoleAdmin}.\\n *\\n * WARNING: The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to\\n * grant and revoke this role. Extra precautions should be taken to secure\\n * accounts that have been granted it. We recommend using {AccessControlDefaultAdminRules}\\n * to enforce additional security measures for this role.\\n */\\nabstract contract AccessControl is Context, IAccessControl, ERC165 {\\n    struct RoleData {\\n        mapping(address account => bool) hasRole;\\n        bytes32 adminRole;\\n    }\\n\\n    mapping(bytes32 role => RoleData) private _roles;\\n\\n    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;\\n\\n    /**\\n     * @dev Modifier that checks that an account has a specific role. Reverts\\n     * with an {AccessControlUnauthorizedAccount} error including the required role.\\n     */\\n    modifier onlyRole(bytes32 role) {\\n        _checkRole(role);\\n        _;\\n    }\\n\\n    /// @inheritdoc IERC165\\n    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n        return interfaceId == type(IAccessControl).interfaceId || super.supportsInterface(interfaceId);\\n    }\\n\\n    /**\\n     * @dev Returns `true` if `account` has been granted `role`.\\n     */\\n    function hasRole(bytes32 role, address account) public view virtual returns (bool) {\\n        return _roles[role].hasRole[account];\\n    }\\n\\n    /**\\n     * @dev Reverts with an {AccessControlUnauthorizedAccount} error if `_msgSender()`\\n     * is missing `role`. Overriding this function changes the behavior of the {onlyRole} modifier.\\n     */\\n    function _checkRole(bytes32 role) internal view virtual {\\n        _checkRole(role, _msgSender());\\n    }\\n\\n    /**\\n     * @dev Reverts with an {AccessControlUnauthorizedAccount} error if `account`\\n     * is missing `role`.\\n     */\\n    function _checkRole(bytes32 role, address account) internal view virtual {\\n        if (!hasRole(role, account)) {\\n            revert AccessControlUnauthorizedAccount(account, role);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the admin role that controls `role`. See {grantRole} and\\n     * {revokeRole}.\\n     *\\n     * To change a role's admin, use {_setRoleAdmin}.\\n     */\\n    function getRoleAdmin(bytes32 role) public view virtual returns (bytes32) {\\n        return _roles[role].adminRole;\\n    }\\n\\n    /**\\n     * @dev Grants `role` to `account`.\\n     *\\n     * If `account` had not been already granted `role`, emits a {RoleGranted}\\n     * event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must have ``role``'s admin role.\\n     *\\n     * May emit a {RoleGranted} event.\\n     */\\n    function grantRole(bytes32 role, address account) public virtual onlyRole(getRoleAdmin(role)) {\\n        _grantRole(role, account);\\n    }\\n\\n    /**\\n     * @dev Revokes `role` from `account`.\\n     *\\n     * If `account` had been granted `role`, emits a {RoleRevoked} event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must have ``role``'s admin role.\\n     *\\n     * May emit a {RoleRevoked} event.\\n     */\\n    function revokeRole(bytes32 role, address account) public virtual onlyRole(getRoleAdmin(role)) {\\n        _revokeRole(role, account);\\n    }\\n\\n    /**\\n     * @dev Revokes `role` from the calling account.\\n     *\\n     * Roles are often managed via {grantRole} and {revokeRole}: this function's\\n     * purpose is to provide a mechanism for accounts to lose their privileges\\n     * if they are compromised (such as when a trusted device is misplaced).\\n     *\\n     * If the calling account had been revoked `role`, emits a {RoleRevoked}\\n     * event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must be `callerConfirmation`.\\n     *\\n     * May emit a {RoleRevoked} event.\\n     */\\n    function renounceRole(bytes32 role, address callerConfirmation) public virtual {\\n        if (callerConfirmation != _msgSender()) {\\n            revert AccessControlBadConfirmation();\\n        }\\n\\n        _revokeRole(role, callerConfirmation);\\n    }\\n\\n    /**\\n     * @dev Sets `adminRole` as ``role``'s admin role.\\n     *\\n     * Emits a {RoleAdminChanged} event.\\n     */\\n    function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal virtual {\\n        bytes32 previousAdminRole = getRoleAdmin(role);\\n        _roles[role].adminRole = adminRole;\\n        emit RoleAdminChanged(role, previousAdminRole, adminRole);\\n    }\\n\\n    /**\\n     * @dev Attempts to grant `role` to `account` and returns a boolean indicating if `role` was granted.\\n     *\\n     * Internal function without access restriction.\\n     *\\n     * May emit a {RoleGranted} event.\\n     */\\n    function _grantRole(bytes32 role, address account) internal virtual returns (bool) {\\n        if (!hasRole(role, account)) {\\n            _roles[role].hasRole[account] = true;\\n            emit RoleGranted(role, account, _msgSender());\\n            return true;\\n        } else {\\n            return false;\\n        }\\n    }\\n\\n    /**\\n     * @dev Attempts to revoke `role` from `account` and returns a boolean indicating if `role` was revoked.\\n     *\\n     * Internal function without access restriction.\\n     *\\n     * May emit a {RoleRevoked} event.\\n     */\\n    function _revokeRole(bytes32 role, address account) internal virtual returns (bool) {\\n        if (hasRole(role, account)) {\\n            _roles[role].hasRole[account] = false;\\n            emit RoleRevoked(role, account, _msgSender());\\n            return true;\\n        } else {\\n            return false;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x1a6b4f6b7798ab80929d491b89d5427a9b3338c0fd1acd0ba325f69c6f1646af\",\"license\":\"MIT\"},\"@openzeppelin/contracts/access/IAccessControl.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (access/IAccessControl.sol)\\n\\npragma solidity >=0.8.4;\\n\\n/**\\n * @dev External interface of AccessControl declared to support ERC-165 detection.\\n */\\ninterface IAccessControl {\\n    /**\\n     * @dev The `account` is missing a role.\\n     */\\n    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);\\n\\n    /**\\n     * @dev The caller of a function is not the expected one.\\n     *\\n     * NOTE: Don't confuse with {AccessControlUnauthorizedAccount}.\\n     */\\n    error AccessControlBadConfirmation();\\n\\n    /**\\n     * @dev Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole`\\n     *\\n     * `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite\\n     * {RoleAdminChanged} not being emitted to signal this.\\n     */\\n    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);\\n\\n    /**\\n     * @dev Emitted when `account` is granted `role`.\\n     *\\n     * `sender` is the account that originated the contract call. This account bears the admin role (for the granted role).\\n     * Expected in cases where the role was granted using the internal {AccessControl-_grantRole}.\\n     */\\n    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);\\n\\n    /**\\n     * @dev Emitted when `account` is revoked `role`.\\n     *\\n     * `sender` is the account that originated the contract call:\\n     *   - if using `revokeRole`, it is the admin role bearer\\n     *   - if using `renounceRole`, it is the role bearer (i.e. `account`)\\n     */\\n    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);\\n\\n    /**\\n     * @dev Returns `true` if `account` has been granted `role`.\\n     */\\n    function hasRole(bytes32 role, address account) external view returns (bool);\\n\\n    /**\\n     * @dev Returns the admin role that controls `role`. See {grantRole} and\\n     * {revokeRole}.\\n     *\\n     * To change a role's admin, use {AccessControl-_setRoleAdmin}.\\n     */\\n    function getRoleAdmin(bytes32 role) external view returns (bytes32);\\n\\n    /**\\n     * @dev Grants `role` to `account`.\\n     *\\n     * If `account` had not been already granted `role`, emits a {RoleGranted}\\n     * event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must have ``role``'s admin role.\\n     */\\n    function grantRole(bytes32 role, address account) external;\\n\\n    /**\\n     * @dev Revokes `role` from `account`.\\n     *\\n     * If `account` had been granted `role`, emits a {RoleRevoked} event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must have ``role``'s admin role.\\n     */\\n    function revokeRole(bytes32 role, address account) external;\\n\\n    /**\\n     * @dev Revokes `role` from the calling account.\\n     *\\n     * Roles are often managed via {grantRole} and {revokeRole}: this function's\\n     * purpose is to provide a mechanism for accounts to lose their privileges\\n     * if they are compromised (such as when a trusted device is misplaced).\\n     *\\n     * If the calling account had been granted `role`, emits a {RoleRevoked}\\n     * event.\\n     *\\n     * Requirements:\\n     *\\n     * - the caller must be `callerConfirmation`.\\n     */\\n    function renounceRole(bytes32 role, address callerConfirmation) external;\\n}\\n\",\"keccak256\":\"0xbff9f59c84e5337689161ce7641c0ef8e872d6a7536fbc1f5133f128887aba3c\",\"license\":\"MIT\"},\"@openzeppelin/contracts/interfaces/IERC1363.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (interfaces/IERC1363.sol)\\n\\npragma solidity >=0.6.2;\\n\\nimport {IERC20} from \\\"./IERC20.sol\\\";\\nimport {IERC165} from \\\"./IERC165.sol\\\";\\n\\n/**\\n * @title IERC1363\\n * @dev Interface of the ERC-1363 standard as defined in the https://eips.ethereum.org/EIPS/eip-1363[ERC-1363].\\n *\\n * Defines an extension interface for ERC-20 tokens that supports executing code on a recipient contract\\n * after `transfer` or `transferFrom`, or code on a spender contract after `approve`, in a single transaction.\\n */\\ninterface IERC1363 is IERC20, IERC165 {\\n    /*\\n     * Note: the ERC-165 identifier for this interface is 0xb0202a11.\\n     * 0xb0202a11 ===\\n     *   bytes4(keccak256('transferAndCall(address,uint256)')) ^\\n     *   bytes4(keccak256('transferAndCall(address,uint256,bytes)')) ^\\n     *   bytes4(keccak256('transferFromAndCall(address,address,uint256)')) ^\\n     *   bytes4(keccak256('transferFromAndCall(address,address,uint256,bytes)')) ^\\n     *   bytes4(keccak256('approveAndCall(address,uint256)')) ^\\n     *   bytes4(keccak256('approveAndCall(address,uint256,bytes)'))\\n     */\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from the caller's account to `to`\\n     * and then calls {IERC1363Receiver-onTransferReceived} on `to`.\\n     * @param to The address which you want to transfer to.\\n     * @param value The amount of tokens to be transferred.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function transferAndCall(address to, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from the caller's account to `to`\\n     * and then calls {IERC1363Receiver-onTransferReceived} on `to`.\\n     * @param to The address which you want to transfer to.\\n     * @param value The amount of tokens to be transferred.\\n     * @param data Additional data with no specified format, sent in call to `to`.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function transferAndCall(address to, uint256 value, bytes calldata data) external returns (bool);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism\\n     * and then calls {IERC1363Receiver-onTransferReceived} on `to`.\\n     * @param from The address which you want to send tokens from.\\n     * @param to The address which you want to transfer to.\\n     * @param value The amount of tokens to be transferred.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function transferFromAndCall(address from, address to, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism\\n     * and then calls {IERC1363Receiver-onTransferReceived} on `to`.\\n     * @param from The address which you want to send tokens from.\\n     * @param to The address which you want to transfer to.\\n     * @param value The amount of tokens to be transferred.\\n     * @param data Additional data with no specified format, sent in call to `to`.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function transferFromAndCall(address from, address to, uint256 value, bytes calldata data) external returns (bool);\\n\\n    /**\\n     * @dev Sets a `value` amount of tokens as the allowance of `spender` over the\\n     * caller's tokens and then calls {IERC1363Spender-onApprovalReceived} on `spender`.\\n     * @param spender The address which will spend the funds.\\n     * @param value The amount of tokens to be spent.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function approveAndCall(address spender, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Sets a `value` amount of tokens as the allowance of `spender` over the\\n     * caller's tokens and then calls {IERC1363Spender-onApprovalReceived} on `spender`.\\n     * @param spender The address which will spend the funds.\\n     * @param value The amount of tokens to be spent.\\n     * @param data Additional data with no specified format, sent in call to `spender`.\\n     * @return A boolean value indicating whether the operation succeeded unless throwing.\\n     */\\n    function approveAndCall(address spender, uint256 value, bytes calldata data) external returns (bool);\\n}\\n\",\"keccak256\":\"0xd5ea07362ab630a6a3dee4285a74cf2377044ca2e4be472755ad64d7c5d4b69d\",\"license\":\"MIT\"},\"@openzeppelin/contracts/interfaces/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (interfaces/IERC165.sol)\\n\\npragma solidity >=0.4.16;\\n\\nimport {IERC165} from \\\"../utils/introspection/IERC165.sol\\\";\\n\",\"keccak256\":\"0x0afcb7e740d1537b252cb2676f600465ce6938398569f09ba1b9ca240dde2dfc\",\"license\":\"MIT\"},\"@openzeppelin/contracts/interfaces/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (interfaces/IERC20.sol)\\n\\npragma solidity >=0.4.16;\\n\\nimport {IERC20} from \\\"../token/ERC20/IERC20.sol\\\";\\n\",\"keccak256\":\"0x1a6221315ce0307746c2c4827c125d821ee796c74a676787762f4778671d4f44\",\"license\":\"MIT\"},\"@openzeppelin/contracts/interfaces/IERC4626.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (interfaces/IERC4626.sol)\\n\\npragma solidity >=0.6.2;\\n\\nimport {IERC20} from \\\"../token/ERC20/IERC20.sol\\\";\\nimport {IERC20Metadata} from \\\"../token/ERC20/extensions/IERC20Metadata.sol\\\";\\n\\n/**\\n * @dev Interface of the ERC-4626 \\\"Tokenized Vault Standard\\\", as defined in\\n * https://eips.ethereum.org/EIPS/eip-4626[ERC-4626].\\n */\\ninterface IERC4626 is IERC20, IERC20Metadata {\\n    event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);\\n\\n    event Withdraw(\\n        address indexed sender,\\n        address indexed receiver,\\n        address indexed owner,\\n        uint256 assets,\\n        uint256 shares\\n    );\\n\\n    /**\\n     * @dev Returns the address of the underlying token used for the Vault for accounting, depositing, and withdrawing.\\n     *\\n     * - MUST be an ERC-20 token contract.\\n     * - MUST NOT revert.\\n     */\\n    function asset() external view returns (address assetTokenAddress);\\n\\n    /**\\n     * @dev Returns the total amount of the underlying asset that is \\u201cmanaged\\u201d by Vault.\\n     *\\n     * - SHOULD include any compounding that occurs from yield.\\n     * - MUST be inclusive of any fees that are charged against assets in the Vault.\\n     * - MUST NOT revert.\\n     */\\n    function totalAssets() external view returns (uint256 totalManagedAssets);\\n\\n    /**\\n     * @dev Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal\\n     * scenario where all the conditions are met.\\n     *\\n     * - MUST NOT be inclusive of any fees that are charged against assets in the Vault.\\n     * - MUST NOT show any variations depending on the caller.\\n     * - MUST NOT reflect slippage or other on-chain conditions, when performing the actual exchange.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: This calculation MAY NOT reflect the \\u201cper-user\\u201d price-per-share, and instead should reflect the\\n     * \\u201caverage-user\\u2019s\\u201d price-per-share, meaning what the average user should expect to see when exchanging to and\\n     * from.\\n     */\\n    function convertToShares(uint256 assets) external view returns (uint256 shares);\\n\\n    /**\\n     * @dev Returns the amount of assets that the Vault would exchange for the amount of shares provided, in an ideal\\n     * scenario where all the conditions are met.\\n     *\\n     * - MUST NOT be inclusive of any fees that are charged against assets in the Vault.\\n     * - MUST NOT show any variations depending on the caller.\\n     * - MUST NOT reflect slippage or other on-chain conditions, when performing the actual exchange.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: This calculation MAY NOT reflect the \\u201cper-user\\u201d price-per-share, and instead should reflect the\\n     * \\u201caverage-user\\u2019s\\u201d price-per-share, meaning what the average user should expect to see when exchanging to and\\n     * from.\\n     */\\n    function convertToAssets(uint256 shares) external view returns (uint256 assets);\\n\\n    /**\\n     * @dev Returns the maximum amount of the underlying asset that can be deposited into the Vault for the receiver,\\n     * through a deposit call.\\n     *\\n     * - MUST return a limited value if receiver is subject to some deposit limit.\\n     * - MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of assets that may be deposited.\\n     * - MUST NOT revert.\\n     */\\n    function maxDeposit(address receiver) external view returns (uint256 maxAssets);\\n\\n    /**\\n     * @dev Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given\\n     * current on-chain conditions.\\n     *\\n     * - MUST return as close to and no more than the exact amount of Vault shares that would be minted in a deposit\\n     *   call in the same transaction. I.e. deposit should return the same or more shares as previewDeposit if called\\n     *   in the same transaction.\\n     * - MUST NOT account for deposit limits like those returned from maxDeposit and should always act as though the\\n     *   deposit would be accepted, regardless if the user has enough tokens approved, etc.\\n     * - MUST be inclusive of deposit fees. Integrators should be aware of the existence of deposit fees.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: any unfavorable discrepancy between convertToShares and previewDeposit SHOULD be considered slippage in\\n     * share price or some other type of condition, meaning the depositor will lose assets by depositing.\\n     */\\n    function previewDeposit(uint256 assets) external view returns (uint256 shares);\\n\\n    /**\\n     * @dev Mints shares Vault shares to receiver by depositing exactly amount of underlying tokens.\\n     *\\n     * - MUST emit the Deposit event.\\n     * - MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the\\n     *   deposit execution, and are accounted for during deposit.\\n     * - MUST revert if all of assets cannot be deposited (due to deposit limit being reached, slippage, the user not\\n     *   approving enough underlying tokens to the Vault contract, etc).\\n     *\\n     * NOTE: most implementations will require pre-approval of the Vault with the Vault\\u2019s underlying asset token.\\n     */\\n    function deposit(uint256 assets, address receiver) external returns (uint256 shares);\\n\\n    /**\\n     * @dev Returns the maximum amount of the Vault shares that can be minted for the receiver, through a mint call.\\n     * - MUST return a limited value if receiver is subject to some mint limit.\\n     * - MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of shares that may be minted.\\n     * - MUST NOT revert.\\n     */\\n    function maxMint(address receiver) external view returns (uint256 maxShares);\\n\\n    /**\\n     * @dev Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given\\n     * current on-chain conditions.\\n     *\\n     * - MUST return as close to and no fewer than the exact amount of assets that would be deposited in a mint call\\n     *   in the same transaction. I.e. mint should return the same or fewer assets as previewMint if called in the\\n     *   same transaction.\\n     * - MUST NOT account for mint limits like those returned from maxMint and should always act as though the mint\\n     *   would be accepted, regardless if the user has enough tokens approved, etc.\\n     * - MUST be inclusive of deposit fees. Integrators should be aware of the existence of deposit fees.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: any unfavorable discrepancy between convertToAssets and previewMint SHOULD be considered slippage in\\n     * share price or some other type of condition, meaning the depositor will lose assets by minting.\\n     */\\n    function previewMint(uint256 shares) external view returns (uint256 assets);\\n\\n    /**\\n     * @dev Mints exactly shares Vault shares to receiver by depositing amount of underlying tokens.\\n     *\\n     * - MUST emit the Deposit event.\\n     * - MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the mint\\n     *   execution, and are accounted for during mint.\\n     * - MUST revert if all of shares cannot be minted (due to deposit limit being reached, slippage, the user not\\n     *   approving enough underlying tokens to the Vault contract, etc).\\n     *\\n     * NOTE: most implementations will require pre-approval of the Vault with the Vault\\u2019s underlying asset token.\\n     */\\n    function mint(uint256 shares, address receiver) external returns (uint256 assets);\\n\\n    /**\\n     * @dev Returns the maximum amount of the underlying asset that can be withdrawn from the owner balance in the\\n     * Vault, through a withdraw call.\\n     *\\n     * - MUST return a limited value if owner is subject to some withdrawal limit or timelock.\\n     * - MUST NOT revert.\\n     */\\n    function maxWithdraw(address owner) external view returns (uint256 maxAssets);\\n\\n    /**\\n     * @dev Allows an on-chain or off-chain user to simulate the effects of their withdrawal at the current block,\\n     * given current on-chain conditions.\\n     *\\n     * - MUST return as close to and no fewer than the exact amount of Vault shares that would be burned in a withdraw\\n     *   call in the same transaction. I.e. withdraw should return the same or fewer shares as previewWithdraw if\\n     *   called\\n     *   in the same transaction.\\n     * - MUST NOT account for withdrawal limits like those returned from maxWithdraw and should always act as though\\n     *   the withdrawal would be accepted, regardless if the user has enough shares, etc.\\n     * - MUST be inclusive of withdrawal fees. Integrators should be aware of the existence of withdrawal fees.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: any unfavorable discrepancy between convertToShares and previewWithdraw SHOULD be considered slippage in\\n     * share price or some other type of condition, meaning the depositor will lose assets by depositing.\\n     */\\n    function previewWithdraw(uint256 assets) external view returns (uint256 shares);\\n\\n    /**\\n     * @dev Burns shares from owner and sends exactly assets of underlying tokens to receiver.\\n     *\\n     * - MUST emit the Withdraw event.\\n     * - MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the\\n     *   withdraw execution, and are accounted for during withdraw.\\n     * - MUST revert if all of assets cannot be withdrawn (due to withdrawal limit being reached, slippage, the owner\\n     *   not having enough shares, etc).\\n     *\\n     * Note that some implementations will require pre-requesting to the Vault before a withdrawal may be performed.\\n     * Those methods should be performed separately.\\n     */\\n    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);\\n\\n    /**\\n     * @dev Returns the maximum amount of Vault shares that can be redeemed from the owner balance in the Vault,\\n     * through a redeem call.\\n     *\\n     * - MUST return a limited value if owner is subject to some withdrawal limit or timelock.\\n     * - MUST return balanceOf(owner) if owner is not subject to any withdrawal limit or timelock.\\n     * - MUST NOT revert.\\n     */\\n    function maxRedeem(address owner) external view returns (uint256 maxShares);\\n\\n    /**\\n     * @dev Allows an on-chain or off-chain user to simulate the effects of their redemption at the current block,\\n     * given current on-chain conditions.\\n     *\\n     * - MUST return as close to and no more than the exact amount of assets that would be withdrawn in a redeem call\\n     *   in the same transaction. I.e. redeem should return the same or more assets as previewRedeem if called in the\\n     *   same transaction.\\n     * - MUST NOT account for redemption limits like those returned from maxRedeem and should always act as though the\\n     *   redemption would be accepted, regardless if the user has enough shares, etc.\\n     * - MUST be inclusive of withdrawal fees. Integrators should be aware of the existence of withdrawal fees.\\n     * - MUST NOT revert.\\n     *\\n     * NOTE: any unfavorable discrepancy between convertToAssets and previewRedeem SHOULD be considered slippage in\\n     * share price or some other type of condition, meaning the depositor will lose assets by redeeming.\\n     */\\n    function previewRedeem(uint256 shares) external view returns (uint256 assets);\\n\\n    /**\\n     * @dev Burns exactly shares from owner and sends assets of underlying tokens to receiver.\\n     *\\n     * - MUST emit the Withdraw event.\\n     * - MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the\\n     *   redeem execution, and are accounted for during redeem.\\n     * - MUST revert if all of shares cannot be redeemed (due to withdrawal limit being reached, slippage, the owner\\n     *   not having enough shares, etc).\\n     *\\n     * NOTE: some implementations will require pre-requesting to the Vault before a withdrawal may be performed.\\n     * Those methods should be performed separately.\\n     */\\n    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);\\n}\\n\",\"keccak256\":\"0x23460d4a98e568bde8b7ecaa2316853778032106b489c03be29db1abb0e712c4\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (token/ERC20/IERC20.sol)\\n\\npragma solidity >=0.4.16;\\n\\n/**\\n * @dev Interface of the ERC-20 standard as defined in the ERC.\\n */\\ninterface IERC20 {\\n    /**\\n     * @dev Emitted when `value` tokens are moved from one account (`from`) to\\n     * another (`to`).\\n     *\\n     * Note that `value` may be zero.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    /**\\n     * @dev Emitted when the allowance of a `spender` for an `owner` is set by\\n     * a call to {approve}. `value` is the new allowance.\\n     */\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n\\n    /**\\n     * @dev Returns the value of tokens in existence.\\n     */\\n    function totalSupply() external view returns (uint256);\\n\\n    /**\\n     * @dev Returns the value of tokens owned by `account`.\\n     */\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from the caller's account to `to`.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transfer(address to, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Returns the remaining number of tokens that `spender` will be\\n     * allowed to spend on behalf of `owner` through {transferFrom}. This is\\n     * zero by default.\\n     *\\n     * This value changes when {approve} or {transferFrom} are called.\\n     */\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    /**\\n     * @dev Sets a `value` amount of tokens as the allowance of `spender` over the\\n     * caller's tokens.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * IMPORTANT: Beware that changing an allowance with this method brings the risk\\n     * that someone may use both the old and the new allowance by unfortunate\\n     * transaction ordering. One possible solution to mitigate this race\\n     * condition is to first reduce the spender's allowance to 0 and set the\\n     * desired value afterwards:\\n     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address spender, uint256 value) external returns (bool);\\n\\n    /**\\n     * @dev Moves a `value` amount of tokens from `from` to `to` using the\\n     * allowance mechanism. `value` is then deducted from the caller's\\n     * allowance.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(address from, address to, uint256 value) external returns (bool);\\n}\\n\",\"keccak256\":\"0x74ed01eb66b923d0d0cfe3be84604ac04b76482a55f9dd655e1ef4d367f95bc2\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (token/ERC20/extensions/IERC20Metadata.sol)\\n\\npragma solidity >=0.6.2;\\n\\nimport {IERC20} from \\\"../IERC20.sol\\\";\\n\\n/**\\n * @dev Interface for the optional metadata functions from the ERC-20 standard.\\n */\\ninterface IERC20Metadata is IERC20 {\\n    /**\\n     * @dev Returns the name of the token.\\n     */\\n    function name() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the symbol of the token.\\n     */\\n    function symbol() external view returns (string memory);\\n\\n    /**\\n     * @dev Returns the decimals places of the token.\\n     */\\n    function decimals() external view returns (uint8);\\n}\\n\",\"keccak256\":\"0xd6fa4088198f04eef10c5bce8a2f4d60554b7ec4b987f684393c01bf79b94d9f\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.3.0) (token/ERC20/utils/SafeERC20.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC20} from \\\"../IERC20.sol\\\";\\nimport {IERC1363} from \\\"../../../interfaces/IERC1363.sol\\\";\\n\\n/**\\n * @title SafeERC20\\n * @dev Wrappers around ERC-20 operations that throw on failure (when the token\\n * contract returns false). Tokens that return no value (and instead revert or\\n * throw on failure) are also supported, non-reverting calls are assumed to be\\n * successful.\\n * To use this library you can add a `using SafeERC20 for IERC20;` statement to your contract,\\n * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.\\n */\\nlibrary SafeERC20 {\\n    /**\\n     * @dev An operation with an ERC-20 token failed.\\n     */\\n    error SafeERC20FailedOperation(address token);\\n\\n    /**\\n     * @dev Indicates a failed `decreaseAllowance` request.\\n     */\\n    error SafeERC20FailedDecreaseAllowance(address spender, uint256 currentAllowance, uint256 requestedDecrease);\\n\\n    /**\\n     * @dev Transfer `value` amount of `token` from the calling contract to `to`. If `token` returns no value,\\n     * non-reverting calls are assumed to be successful.\\n     */\\n    function safeTransfer(IERC20 token, address to, uint256 value) internal {\\n        _callOptionalReturn(token, abi.encodeCall(token.transfer, (to, value)));\\n    }\\n\\n    /**\\n     * @dev Transfer `value` amount of `token` from `from` to `to`, spending the approval given by `from` to the\\n     * calling contract. If `token` returns no value, non-reverting calls are assumed to be successful.\\n     */\\n    function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {\\n        _callOptionalReturn(token, abi.encodeCall(token.transferFrom, (from, to, value)));\\n    }\\n\\n    /**\\n     * @dev Variant of {safeTransfer} that returns a bool instead of reverting if the operation is not successful.\\n     */\\n    function trySafeTransfer(IERC20 token, address to, uint256 value) internal returns (bool) {\\n        return _callOptionalReturnBool(token, abi.encodeCall(token.transfer, (to, value)));\\n    }\\n\\n    /**\\n     * @dev Variant of {safeTransferFrom} that returns a bool instead of reverting if the operation is not successful.\\n     */\\n    function trySafeTransferFrom(IERC20 token, address from, address to, uint256 value) internal returns (bool) {\\n        return _callOptionalReturnBool(token, abi.encodeCall(token.transferFrom, (from, to, value)));\\n    }\\n\\n    /**\\n     * @dev Increase the calling contract's allowance toward `spender` by `value`. If `token` returns no value,\\n     * non-reverting calls are assumed to be successful.\\n     *\\n     * IMPORTANT: If the token implements ERC-7674 (ERC-20 with temporary allowance), and if the \\\"client\\\"\\n     * smart contract uses ERC-7674 to set temporary allowances, then the \\\"client\\\" smart contract should avoid using\\n     * this function. Performing a {safeIncreaseAllowance} or {safeDecreaseAllowance} operation on a token contract\\n     * that has a non-zero temporary allowance (for that particular owner-spender) will result in unexpected behavior.\\n     */\\n    function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {\\n        uint256 oldAllowance = token.allowance(address(this), spender);\\n        forceApprove(token, spender, oldAllowance + value);\\n    }\\n\\n    /**\\n     * @dev Decrease the calling contract's allowance toward `spender` by `requestedDecrease`. If `token` returns no\\n     * value, non-reverting calls are assumed to be successful.\\n     *\\n     * IMPORTANT: If the token implements ERC-7674 (ERC-20 with temporary allowance), and if the \\\"client\\\"\\n     * smart contract uses ERC-7674 to set temporary allowances, then the \\\"client\\\" smart contract should avoid using\\n     * this function. Performing a {safeIncreaseAllowance} or {safeDecreaseAllowance} operation on a token contract\\n     * that has a non-zero temporary allowance (for that particular owner-spender) will result in unexpected behavior.\\n     */\\n    function safeDecreaseAllowance(IERC20 token, address spender, uint256 requestedDecrease) internal {\\n        unchecked {\\n            uint256 currentAllowance = token.allowance(address(this), spender);\\n            if (currentAllowance < requestedDecrease) {\\n                revert SafeERC20FailedDecreaseAllowance(spender, currentAllowance, requestedDecrease);\\n            }\\n            forceApprove(token, spender, currentAllowance - requestedDecrease);\\n        }\\n    }\\n\\n    /**\\n     * @dev Set the calling contract's allowance toward `spender` to `value`. If `token` returns no value,\\n     * non-reverting calls are assumed to be successful. Meant to be used with tokens that require the approval\\n     * to be set to zero before setting it to a non-zero value, such as USDT.\\n     *\\n     * NOTE: If the token implements ERC-7674, this function will not modify any temporary allowance. This function\\n     * only sets the \\\"standard\\\" allowance. Any temporary allowance will remain active, in addition to the value being\\n     * set here.\\n     */\\n    function forceApprove(IERC20 token, address spender, uint256 value) internal {\\n        bytes memory approvalCall = abi.encodeCall(token.approve, (spender, value));\\n\\n        if (!_callOptionalReturnBool(token, approvalCall)) {\\n            _callOptionalReturn(token, abi.encodeCall(token.approve, (spender, 0)));\\n            _callOptionalReturn(token, approvalCall);\\n        }\\n    }\\n\\n    /**\\n     * @dev Performs an {ERC1363} transferAndCall, with a fallback to the simple {ERC20} transfer if the target has no\\n     * code. This can be used to implement an {ERC721}-like safe transfer that rely on {ERC1363} checks when\\n     * targeting contracts.\\n     *\\n     * Reverts if the returned value is other than `true`.\\n     */\\n    function transferAndCallRelaxed(IERC1363 token, address to, uint256 value, bytes memory data) internal {\\n        if (to.code.length == 0) {\\n            safeTransfer(token, to, value);\\n        } else if (!token.transferAndCall(to, value, data)) {\\n            revert SafeERC20FailedOperation(address(token));\\n        }\\n    }\\n\\n    /**\\n     * @dev Performs an {ERC1363} transferFromAndCall, with a fallback to the simple {ERC20} transferFrom if the target\\n     * has no code. This can be used to implement an {ERC721}-like safe transfer that rely on {ERC1363} checks when\\n     * targeting contracts.\\n     *\\n     * Reverts if the returned value is other than `true`.\\n     */\\n    function transferFromAndCallRelaxed(\\n        IERC1363 token,\\n        address from,\\n        address to,\\n        uint256 value,\\n        bytes memory data\\n    ) internal {\\n        if (to.code.length == 0) {\\n            safeTransferFrom(token, from, to, value);\\n        } else if (!token.transferFromAndCall(from, to, value, data)) {\\n            revert SafeERC20FailedOperation(address(token));\\n        }\\n    }\\n\\n    /**\\n     * @dev Performs an {ERC1363} approveAndCall, with a fallback to the simple {ERC20} approve if the target has no\\n     * code. This can be used to implement an {ERC721}-like safe transfer that rely on {ERC1363} checks when\\n     * targeting contracts.\\n     *\\n     * NOTE: When the recipient address (`to`) has no code (i.e. is an EOA), this function behaves as {forceApprove}.\\n     * Opposedly, when the recipient address (`to`) has code, this function only attempts to call {ERC1363-approveAndCall}\\n     * once without retrying, and relies on the returned value to be true.\\n     *\\n     * Reverts if the returned value is other than `true`.\\n     */\\n    function approveAndCallRelaxed(IERC1363 token, address to, uint256 value, bytes memory data) internal {\\n        if (to.code.length == 0) {\\n            forceApprove(token, to, value);\\n        } else if (!token.approveAndCall(to, value, data)) {\\n            revert SafeERC20FailedOperation(address(token));\\n        }\\n    }\\n\\n    /**\\n     * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement\\n     * on the return value: the return value is optional (but if data is returned, it must not be false).\\n     * @param token The token targeted by the call.\\n     * @param data The call data (encoded using abi.encode or one of its variants).\\n     *\\n     * This is a variant of {_callOptionalReturnBool} that reverts if call fails to meet the requirements.\\n     */\\n    function _callOptionalReturn(IERC20 token, bytes memory data) private {\\n        uint256 returnSize;\\n        uint256 returnValue;\\n        assembly (\\\"memory-safe\\\") {\\n            let success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)\\n            // bubble errors\\n            if iszero(success) {\\n                let ptr := mload(0x40)\\n                returndatacopy(ptr, 0, returndatasize())\\n                revert(ptr, returndatasize())\\n            }\\n            returnSize := returndatasize()\\n            returnValue := mload(0)\\n        }\\n\\n        if (returnSize == 0 ? address(token).code.length == 0 : returnValue != 1) {\\n            revert SafeERC20FailedOperation(address(token));\\n        }\\n    }\\n\\n    /**\\n     * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement\\n     * on the return value: the return value is optional (but if data is returned, it must not be false).\\n     * @param token The token targeted by the call.\\n     * @param data The call data (encoded using abi.encode or one of its variants).\\n     *\\n     * This is a variant of {_callOptionalReturn} that silently catches all reverts and returns a bool instead.\\n     */\\n    function _callOptionalReturnBool(IERC20 token, bytes memory data) private returns (bool) {\\n        bool success;\\n        uint256 returnSize;\\n        uint256 returnValue;\\n        assembly (\\\"memory-safe\\\") {\\n            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)\\n            returnSize := returndatasize()\\n            returnValue := mload(0)\\n        }\\n        return success && (returnSize == 0 ? address(token).code.length > 0 : returnValue == 1);\\n    }\\n}\\n\",\"keccak256\":\"0x982c5cb790ab941d1e04f807120a71709d4c313ba0bfc16006447ffbd27fbbd5\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    function _contextSuffixLength() internal view virtual returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/ERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (utils/introspection/ERC165.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {IERC165} from \\\"./IERC165.sol\\\";\\n\\n/**\\n * @dev Implementation of the {IERC165} interface.\\n *\\n * Contracts that want to implement ERC-165 should inherit from this contract and override {supportsInterface} to check\\n * for the additional interface id that will be supported. For example:\\n *\\n * ```solidity\\n * function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n *     return interfaceId == type(MyInterface).interfaceId || super.supportsInterface(interfaceId);\\n * }\\n * ```\\n */\\nabstract contract ERC165 is IERC165 {\\n    /// @inheritdoc IERC165\\n    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {\\n        return interfaceId == type(IERC165).interfaceId;\\n    }\\n}\\n\",\"keccak256\":\"0x2d9dc2fe26180f74c11c13663647d38e259e45f95eb88f57b61d2160b0109d3e\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.4.0) (utils/introspection/IERC165.sol)\\n\\npragma solidity >=0.4.16;\\n\\n/**\\n * @dev Interface of the ERC-165 standard, as defined in the\\n * https://eips.ethereum.org/EIPS/eip-165[ERC].\\n *\\n * Implementers can declare support of contract interfaces, which can then be\\n * queried by others ({ERC165Checker}).\\n *\\n * For an implementation, see {ERC165}.\\n */\\ninterface IERC165 {\\n    /**\\n     * @dev Returns true if this contract implements the interface defined by\\n     * `interfaceId`. See the corresponding\\n     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section]\\n     * to learn more about how these ids are created.\\n     *\\n     * This function call must use less than 30 000 gas.\\n     */\\n    function supportsInterface(bytes4 interfaceId) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x8891738ffe910f0cf2da09566928589bf5d63f4524dd734fd9cedbac3274dd5c\",\"license\":\"MIT\"},\"contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.20;\\n\\nimport { IERC20 } from \\\"@openzeppelin/contracts/token/ERC20/IERC20.sol\\\";\\nimport { IERC4626 } from \\\"@openzeppelin/contracts/interfaces/IERC4626.sol\\\";\\nimport { SafeERC20 } from \\\"@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol\\\";\\nimport { AccessControl } from \\\"@openzeppelin/contracts/access/AccessControl.sol\\\";\\nimport { IDStableConversionAdapterV2 } from \\\"../interfaces/IDStableConversionAdapterV2.sol\\\";\\n\\n/**\\n * @title GenericERC4626ConversionAdapter\\n * @notice Conversion adapter that bridges a dSTABLE asset directly into an ERC4626 vault where the\\n *         share token is used as a dSTAKE strategy. Useful for idle vaults that simply hold dUSD.\\n */\\ncontract GenericERC4626ConversionAdapter is IDStableConversionAdapterV2, AccessControl {\\n    using SafeERC20 for IERC20;\\n\\n    // --- Errors ---\\n    error ZeroAddress();\\n    error InvalidAmount();\\n    error VaultAssetMismatch(address expected, address actual);\\n    error IncorrectStrategyShare(address expected, address actual);\\n    error UnauthorizedCaller(address caller);\\n\\n    // --- State ---\\n    address public immutable dStable;\\n    IERC4626 public immutable vault;\\n    address public immutable collateralVault;\\n    bytes32 public constant AUTHORIZED_CALLER_ROLE = keccak256(\\\"AUTHORIZED_CALLER_ROLE\\\");\\n\\n    // --- Events ---\\n    event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);\\n    event AuthorizedCallerUpdated(address indexed caller, bool isAuthorized, address indexed admin);\\n\\n    // --- Modifiers ---\\n    modifier onlyAuthorizedCaller() {\\n        if (!hasRole(AUTHORIZED_CALLER_ROLE, msg.sender)) {\\n            revert UnauthorizedCaller(msg.sender);\\n        }\\n        _;\\n    }\\n\\n    constructor(address _dStable, address _vault, address _collateralVault) {\\n        if (_dStable == address(0) || _vault == address(0) || _collateralVault == address(0)) {\\n            revert ZeroAddress();\\n        }\\n\\n        if (IERC4626(_vault).asset() != _dStable) {\\n            revert VaultAssetMismatch(_dStable, IERC4626(_vault).asset());\\n        }\\n\\n        dStable = _dStable;\\n        vault = IERC4626(_vault);\\n        collateralVault = _collateralVault;\\n\\n        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);\\n        _grantRole(DEFAULT_ADMIN_ROLE, _collateralVault);\\n    }\\n\\n    // --- IDStableConversionAdapterV2 ---\\n\\n    function depositIntoStrategy(\\n        uint256 stableAmount\\n    ) external override onlyAuthorizedCaller returns (address shareToken, uint256 strategyShareAmount) {\\n        if (stableAmount == 0) {\\n            revert InvalidAmount();\\n        }\\n\\n        IERC20(dStable).safeTransferFrom(msg.sender, address(this), stableAmount);\\n        IERC20(dStable).forceApprove(address(vault), stableAmount);\\n\\n        strategyShareAmount = vault.deposit(stableAmount, collateralVault);\\n        IERC20(dStable).forceApprove(address(vault), 0);\\n        shareToken = address(vault);\\n    }\\n\\n    function withdrawFromStrategy(\\n        uint256 strategyShareAmount\\n    ) external override onlyAuthorizedCaller returns (uint256 stableAmount) {\\n        if (strategyShareAmount == 0) {\\n            revert InvalidAmount();\\n        }\\n\\n        IERC20(address(vault)).safeTransferFrom(msg.sender, address(this), strategyShareAmount);\\n        stableAmount = vault.redeem(strategyShareAmount, msg.sender, address(this));\\n\\n        if (stableAmount == 0) {\\n            revert InvalidAmount();\\n        }\\n    }\\n\\n    function previewDepositIntoStrategy(\\n        uint256 stableAmount\\n    ) external view override returns (address shareToken, uint256 strategyShareAmount) {\\n        shareToken = address(vault);\\n        strategyShareAmount = vault.previewDeposit(stableAmount);\\n    }\\n\\n    function previewWithdrawFromStrategy(\\n        uint256 strategyShareAmount\\n    ) external view override returns (uint256 stableAmount) {\\n        stableAmount = vault.previewRedeem(strategyShareAmount);\\n    }\\n\\n    function strategyShareValueInDStable(\\n        address _strategyShare,\\n        uint256 strategyShareAmount\\n    ) external view override returns (uint256 stableValue) {\\n        if (_strategyShare != address(vault)) {\\n            revert IncorrectStrategyShare(address(vault), _strategyShare);\\n        }\\n\\n        stableValue = vault.previewRedeem(strategyShareAmount);\\n    }\\n\\n    function strategyShare() external view override returns (address) {\\n        return address(vault);\\n    }\\n\\n    function vaultAsset() external view override returns (address) {\\n        return address(vault);\\n    }\\n\\n    /**\\n     * @notice Emergency hook to sweep stranded tokens back to the collateral vault\\n     * @param token Address of the ERC20 token to recover\\n     * @param amount Amount of tokens to transfer\\n     */\\n    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {\\n        if (token == address(0)) {\\n            revert ZeroAddress();\\n        }\\n\\n        IERC20(token).safeTransfer(collateralVault, amount);\\n        emit EmergencyWithdraw(token, amount, collateralVault);\\n    }\\n\\n    /**\\n     * @notice Adds or removes an authorized caller that can invoke conversion flows\\n     * @param caller Address to update\\n     * @param authorized True to grant access, false to revoke\\n     */\\n    function setAuthorizedCaller(address caller, bool authorized) external onlyRole(DEFAULT_ADMIN_ROLE) {\\n        if (caller == address(0)) {\\n            revert ZeroAddress();\\n        }\\n\\n        bool currentlyAuthorized = hasRole(AUTHORIZED_CALLER_ROLE, caller);\\n        if (authorized) {\\n            if (!currentlyAuthorized) {\\n                _grantRole(AUTHORIZED_CALLER_ROLE, caller);\\n                emit AuthorizedCallerUpdated(caller, true, msg.sender);\\n            }\\n        } else if (currentlyAuthorized) {\\n            _revokeRole(AUTHORIZED_CALLER_ROLE, caller);\\n            emit AuthorizedCallerUpdated(caller, false, msg.sender);\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x0b153eb23efc5aa375d82e351c5cd08da215d577769c65d87046314afc0c81a6\",\"license\":\"MIT\"},\"contracts/vaults/dstake/interfaces/IDStableConversionAdapterV2.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.20;\\n\\n/**\\n * @title IDStableConversionAdapterV2 Interface\\n * @notice Interface for contracts that handle the conversion between the core stable asset (dUSD/dETH)\\n *         and a specific yield-bearing or convertible ERC20 token (`strategy share`), as well as\\n *         valuing that `strategy share` in terms of the stable asset.\\n * @dev Implementations interact with specific protocols (lending pools, DEX LPs, wrappers, etc.).\\n * @dev SECURITY: adapters must mint strategy shares straight to the collateral vault, burn (or transfer out) those\\n *      shares before calling upstream withdraws, and rely on preview/rate helpers so wrapper supply cannot diverge from\\n *      the underlying balance. See `WrappedDLendInvariant.test.ts` for the regression harness new adapters should copy.\\n */\\ninterface IDStableConversionAdapterV2 {\\n    /**\\n     * @notice Converts a specified amount of the stable asset into the specific `strategyShare`\\n     *         managed by this adapter.\\n     * @dev The adapter MUST pull `stableAmount` of the stable asset from the caller (expected to be the Router).\\n     * @dev The resulting `strategyShare` MUST be sent/deposited/minted directly to the `collateralVault` address provided during adapter setup or retrieved.\\n     * @param stableAmount The amount of stable asset to convert.\\n     * @return strategyShare The address of the specific `strategy share` token managed by this adapter.\\n     * @return strategyShareAmount The amount of `strategyShare` generated from the conversion.\\n     */\\n    function depositIntoStrategy(\\n        uint256 stableAmount\\n    ) external returns (address strategyShare, uint256 strategyShareAmount);\\n\\n    /**\\n     * @notice Converts a specific amount of `strategyShare` back into the stable asset.\\n     * @dev The adapter MUST pull the required amount of `strategyShare` from the caller (expected to be the Router).\\n     * @dev The resulting stable asset MUST be sent to the caller.\\n     * @param strategyShareAmount The amount of `strategyShare` to convert.\\n     * @return stableAmount The amount of stable asset sent to the caller.\\n     */\\n    function withdrawFromStrategy(uint256 strategyShareAmount) external returns (uint256 stableAmount);\\n\\n    /**\\n     * @notice Preview the result of converting a given stable amount to strategyShare (without state change).\\n     * @param stableAmount The amount of stable asset to preview conversion for.\\n     * @return strategyShare The address of the specific `strategy share` token managed by this adapter.\\n     * @return strategyShareAmount The amount of `strategyShare` that would be received.\\n     */\\n    function previewDepositIntoStrategy(\\n        uint256 stableAmount\\n    ) external view returns (address strategyShare, uint256 strategyShareAmount);\\n\\n    /**\\n     * @notice Preview the result of converting a given strategyShare amount to stable asset (without state change).\\n     * @param strategyShareAmount The amount of `strategyShare` to preview conversion for.\\n     * @return stableAmount The amount of stable asset that would be received.\\n     */\\n    function previewWithdrawFromStrategy(uint256 strategyShareAmount) external view returns (uint256 stableAmount);\\n\\n    /**\\n     * @notice Calculates the value of a given amount of the specific `strategyShare` managed by this adapter\\n     *         in terms of the stable asset.\\n     * @param strategyShare The address of the strategy share token (should match strategyShare()). Included for explicitness.\\n     * @param strategyShareAmount The amount of the `strategyShare` to value.\\n     * @return stableValue The equivalent value in the stable asset.\\n     */\\n    function strategyShareValueInDStable(\\n        address strategyShare,\\n        uint256 strategyShareAmount\\n    ) external view returns (uint256 stableValue);\\n\\n    /**\\n     * @notice Returns the address of the specific `strategy share` token managed by this adapter.\\n     * @return The address of the `strategy share`.\\n     */\\n    function strategyShare() external view returns (address);\\n\\n    /**\\n     * @notice Returns the underlying vault asset associated with this adapter (legacy compatibility helper).\\n     */\\n    function vaultAsset() external view returns (address);\\n}\\n\",\"keccak256\":\"0xd98442e19119300779dc8f093c639ea0dab3d3dfb67580bfb84efb2a21ff888d\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60e06040523480156200001157600080fd5b5060405162001415380380620014158339810160408190526200003491620002a2565b6001600160a01b03831615806200005257506001600160a01b038216155b806200006557506001600160a01b038116155b15620000845760405163d92e233d60e01b815260040160405180910390fd5b826001600160a01b0316826001600160a01b03166338d52e0f6040518163ffffffff1660e01b8152600401602060405180830381865afa158015620000cd573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190620000f39190620002ec565b6001600160a01b031614620001985782826001600160a01b03166338d52e0f6040518163ffffffff1660e01b8152600401602060405180830381865afa15801562000142573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190620001689190620002ec565b60405163dd72360360e01b81526001600160a01b0392831660048201529116602482015260440160405180910390fd5b6001600160a01b0380841660805282811660a052811660c052620001be600033620001d6565b50620001cc600082620001d6565b5050505062000311565b6000828152602081815260408083206001600160a01b038516845290915281205460ff166200027b576000838152602081815260408083206001600160a01b03861684529091529020805460ff19166001179055620002323390565b6001600160a01b0316826001600160a01b0316847f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d60405160405180910390a45060016200027f565b5060005b92915050565b80516001600160a01b03811681146200029d57600080fd5b919050565b600080600060608486031215620002b857600080fd5b620002c38462000285565b9250620002d36020850162000285565b9150620002e36040850162000285565b90509250925092565b600060208284031215620002ff57600080fd5b6200030a8262000285565b9392505050565b60805160a05160c051611056620003bf6000396000818161017f01528181610871015281816109ef0152610a160152600081816102530152818161032a01528181610387015281816103d50152818161042501528181610688015281816106d20152818161082e01528181610899015281816109370152818161095f01528181610a9f0152610b280152600081816101be015281816107d70152818161080c015261091501526110566000f3fe608060405234801561001057600080fd5b506004361061012c5760003560e01c80636f81a6b0116100ad578063a412fa2811610071578063a412fa28146102ea578063d547741f146102fd578063dd5ead8f14610251578063f573388e14610310578063fbfa77cf1461032557600080fd5b80636f81a6b01461027757806391d14854146102a957806395ccea67146102bc5780639c544e9f146102cf578063a217fddf146102e257600080fd5b80632f2ff15d116100f45780632f2ff15d1461020357806336568abe14610218578063454bbd291461022b57806348b193351461023e5780634ab9e16b1461025157600080fd5b806301ffc9a7146101315780630a3a0a18146101595780630bece79c1461017a5780630cc2f8d2146101b9578063248a9ca3146101e0575b600080fd5b61014461013f366004610efb565b61034c565b60405190151581526020015b60405180910390f35b61016c610167366004610f3c565b610383565b604051908152602001610150565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160a01b039091168152602001610150565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b61016c6101ee366004610f66565b60009081526020819052604090206001015490565b610216610211366004610f7f565b61049f565b005b610216610226366004610f7f565b6104ca565b610216610239366004610fab565b610502565b61016c61024c366004610f66565b610621565b7f00000000000000000000000000000000000000000000000000000000000000006101a1565b61028a610285366004610f66565b61076f565b604080516001600160a01b039093168352602083019190915201610150565b6101446102b7366004610f7f565b610985565b6102166102ca366004610f3c565b6109ae565b61016c6102dd366004610f66565b610a86565b61016c600081565b61028a6102f8366004610f66565b610b12565b61021661030b366004610f7f565b610ba7565b61016c60008051602061100183398151915281565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b60006001600160e01b03198216637965db0b60e01b148061037d57506301ffc9a760e01b6001600160e01b03198316145b92915050565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316836001600160a01b03161461040f5760405163995b537d60e01b81526001600160a01b037f000000000000000000000000000000000000000000000000000000000000000081166004830152841660248201526044015b60405180910390fd5b60405163266d6a8360e11b8152600481018390527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690634cdad50690602401602060405180830381865afa158015610474573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906104989190610fe7565b9392505050565b6000828152602081905260409020600101546104ba81610bcc565b6104c48383610bd9565b50505050565b6001600160a01b03811633146104f35760405163334bd91960e11b815260040160405180910390fd5b6104fd8282610c6b565b505050565b600061050d81610bcc565b6001600160a01b0383166105345760405163d92e233d60e01b815260040160405180910390fd5b600061054e60008051602061100183398151915285610985565b905082156105bb57806105b65761057360008051602061100183398151915285610bd9565b506040516001815233906001600160a01b038616907f3cd22b2b2ff7e7215b04b0249860992ba1db48eaaaafac4f5638e520b01ab60a9060200160405180910390a35b6104c4565b80156104c4576105d960008051602061100183398151915285610c6b565b506040516000815233906001600160a01b038616907f3cd22b2b2ff7e7215b04b0249860992ba1db48eaaaafac4f5638e520b01ab60a9060200160405180910390a350505050565b600061063b60008051602061100183398151915233610985565b61065a5760405163d86ad9cf60e01b8152336004820152602401610406565b8160000361067b5760405163162908e360e11b815260040160405180910390fd5b6106b06001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016333085610cd6565b604051635d043b2960e11b8152600481018390523360248201523060448201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03169063ba087652906064016020604051808303816000875af1158015610723573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107479190610fe7565b90508060000361076a5760405163162908e360e11b815260040160405180910390fd5b919050565b60008061078a60008051602061100183398151915233610985565b6107a95760405163d86ad9cf60e01b8152336004820152602401610406565b826000036107ca5760405163162908e360e11b815260040160405180910390fd5b6107ff6001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016333086610cd6565b6108536001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000167f000000000000000000000000000000000000000000000000000000000000000085610d3d565b604051636e553f6560e01b8152600481018490526001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000811660248301527f00000000000000000000000000000000000000000000000000000000000000001690636e553f65906044016020604051808303816000875af11580156108e2573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906109069190610fe7565b905061095d6001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000167f00000000000000000000000000000000000000000000000000000000000000006000610d3d565b7f00000000000000000000000000000000000000000000000000000000000000009150915091565b6000918252602082815260408084206001600160a01b0393909316845291905290205460ff1690565b60006109b981610bcc565b6001600160a01b0383166109e05760405163d92e233d60e01b815260040160405180910390fd5b610a146001600160a01b0384167f000000000000000000000000000000000000000000000000000000000000000084610dcd565b7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316836001600160a01b03167faaeda929aa102e867049528ec7cd2499e3a2f8846e736ae7935f234dfbf500d984604051610a7991815260200190565b60405180910390a3505050565b60405163266d6a8360e11b8152600481018290526000907f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690634cdad50690602401602060405180830381865afa158015610aee573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061037d9190610fe7565b60405163ef8b30f760e01b8152600481018290527f0000000000000000000000000000000000000000000000000000000000000000906000906001600160a01b0383169063ef8b30f790602401602060405180830381865afa158015610b7c573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610ba09190610fe7565b9050915091565b600082815260208190526040902060010154610bc281610bcc565b6104c48383610c6b565b610bd68133610dfe565b50565b6000610be58383610985565b610c63576000838152602081815260408083206001600160a01b03861684529091529020805460ff19166001179055610c1b3390565b6001600160a01b0316826001600160a01b0316847f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d60405160405180910390a450600161037d565b50600061037d565b6000610c778383610985565b15610c63576000838152602081815260408083206001600160a01b0386168085529252808320805460ff1916905551339286917ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b9190a450600161037d565b6040516001600160a01b0384811660248301528381166044830152606482018390526104c49186918216906323b872dd906084015b604051602081830303815290604052915060e01b6020820180516001600160e01b038381831617835250505050610e3b565b604080516001600160a01b038416602482015260448082018490528251808303909101815260649091019091526020810180516001600160e01b031663095ea7b360e01b179052610d8e8482610eac565b6104c4576040516001600160a01b03848116602483015260006044830152610dc391869182169063095ea7b390606401610d0b565b6104c48482610e3b565b6040516001600160a01b038381166024830152604482018390526104fd91859182169063a9059cbb90606401610d0b565b610e088282610985565b610e375760405163e2517d3f60e01b81526001600160a01b038216600482015260248101839052604401610406565b5050565b600080602060008451602086016000885af180610e5e576040513d6000823e3d81fd5b50506000513d91508115610e76578060011415610e83565b6001600160a01b0384163b155b156104c457604051635274afe760e01b81526001600160a01b0385166004820152602401610406565b6000806000806020600086516020880160008a5af192503d91506000519050828015610ef157508115610ee25780600114610ef1565b6000866001600160a01b03163b115b9695505050505050565b600060208284031215610f0d57600080fd5b81356001600160e01b03198116811461049857600080fd5b80356001600160a01b038116811461076a57600080fd5b60008060408385031215610f4f57600080fd5b610f5883610f25565b946020939093013593505050565b600060208284031215610f7857600080fd5b5035919050565b60008060408385031215610f9257600080fd5b82359150610fa260208401610f25565b90509250929050565b60008060408385031215610fbe57600080fd5b610fc783610f25565b915060208301358015158114610fdc57600080fd5b809150509250929050565b600060208284031215610ff957600080fd5b505191905056fef12fb6eaf1f045883c82d7d192627f7a36a50ce00c45e305919895908135a8a8a26469706673582212201503b52b0950851cea6f957e43ef469de42b16c2f6203f5190935b005301addc64736f6c63430008160033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061012c5760003560e01c80636f81a6b0116100ad578063a412fa2811610071578063a412fa28146102ea578063d547741f146102fd578063dd5ead8f14610251578063f573388e14610310578063fbfa77cf1461032557600080fd5b80636f81a6b01461027757806391d14854146102a957806395ccea67146102bc5780639c544e9f146102cf578063a217fddf146102e257600080fd5b80632f2ff15d116100f45780632f2ff15d1461020357806336568abe14610218578063454bbd291461022b57806348b193351461023e5780634ab9e16b1461025157600080fd5b806301ffc9a7146101315780630a3a0a18146101595780630bece79c1461017a5780630cc2f8d2146101b9578063248a9ca3146101e0575b600080fd5b61014461013f366004610efb565b61034c565b60405190151581526020015b60405180910390f35b61016c610167366004610f3c565b610383565b604051908152602001610150565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160a01b039091168152602001610150565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b61016c6101ee366004610f66565b60009081526020819052604090206001015490565b610216610211366004610f7f565b61049f565b005b610216610226366004610f7f565b6104ca565b610216610239366004610fab565b610502565b61016c61024c366004610f66565b610621565b7f00000000000000000000000000000000000000000000000000000000000000006101a1565b61028a610285366004610f66565b61076f565b604080516001600160a01b039093168352602083019190915201610150565b6101446102b7366004610f7f565b610985565b6102166102ca366004610f3c565b6109ae565b61016c6102dd366004610f66565b610a86565b61016c600081565b61028a6102f8366004610f66565b610b12565b61021661030b366004610f7f565b610ba7565b61016c60008051602061100183398151915281565b6101a17f000000000000000000000000000000000000000000000000000000000000000081565b60006001600160e01b03198216637965db0b60e01b148061037d57506301ffc9a760e01b6001600160e01b03198316145b92915050565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316836001600160a01b03161461040f5760405163995b537d60e01b81526001600160a01b037f000000000000000000000000000000000000000000000000000000000000000081166004830152841660248201526044015b60405180910390fd5b60405163266d6a8360e11b8152600481018390527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690634cdad50690602401602060405180830381865afa158015610474573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906104989190610fe7565b9392505050565b6000828152602081905260409020600101546104ba81610bcc565b6104c48383610bd9565b50505050565b6001600160a01b03811633146104f35760405163334bd91960e11b815260040160405180910390fd5b6104fd8282610c6b565b505050565b600061050d81610bcc565b6001600160a01b0383166105345760405163d92e233d60e01b815260040160405180910390fd5b600061054e60008051602061100183398151915285610985565b905082156105bb57806105b65761057360008051602061100183398151915285610bd9565b506040516001815233906001600160a01b038616907f3cd22b2b2ff7e7215b04b0249860992ba1db48eaaaafac4f5638e520b01ab60a9060200160405180910390a35b6104c4565b80156104c4576105d960008051602061100183398151915285610c6b565b506040516000815233906001600160a01b038616907f3cd22b2b2ff7e7215b04b0249860992ba1db48eaaaafac4f5638e520b01ab60a9060200160405180910390a350505050565b600061063b60008051602061100183398151915233610985565b61065a5760405163d86ad9cf60e01b8152336004820152602401610406565b8160000361067b5760405163162908e360e11b815260040160405180910390fd5b6106b06001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016333085610cd6565b604051635d043b2960e11b8152600481018390523360248201523060448201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03169063ba087652906064016020604051808303816000875af1158015610723573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107479190610fe7565b90508060000361076a5760405163162908e360e11b815260040160405180910390fd5b919050565b60008061078a60008051602061100183398151915233610985565b6107a95760405163d86ad9cf60e01b8152336004820152602401610406565b826000036107ca5760405163162908e360e11b815260040160405180910390fd5b6107ff6001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016333086610cd6565b6108536001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000167f000000000000000000000000000000000000000000000000000000000000000085610d3d565b604051636e553f6560e01b8152600481018490526001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000811660248301527f00000000000000000000000000000000000000000000000000000000000000001690636e553f65906044016020604051808303816000875af11580156108e2573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906109069190610fe7565b905061095d6001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000167f00000000000000000000000000000000000000000000000000000000000000006000610d3d565b7f00000000000000000000000000000000000000000000000000000000000000009150915091565b6000918252602082815260408084206001600160a01b0393909316845291905290205460ff1690565b60006109b981610bcc565b6001600160a01b0383166109e05760405163d92e233d60e01b815260040160405180910390fd5b610a146001600160a01b0384167f000000000000000000000000000000000000000000000000000000000000000084610dcd565b7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316836001600160a01b03167faaeda929aa102e867049528ec7cd2499e3a2f8846e736ae7935f234dfbf500d984604051610a7991815260200190565b60405180910390a3505050565b60405163266d6a8360e11b8152600481018290526000907f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690634cdad50690602401602060405180830381865afa158015610aee573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061037d9190610fe7565b60405163ef8b30f760e01b8152600481018290527f0000000000000000000000000000000000000000000000000000000000000000906000906001600160a01b0383169063ef8b30f790602401602060405180830381865afa158015610b7c573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610ba09190610fe7565b9050915091565b600082815260208190526040902060010154610bc281610bcc565b6104c48383610c6b565b610bd68133610dfe565b50565b6000610be58383610985565b610c63576000838152602081815260408083206001600160a01b03861684529091529020805460ff19166001179055610c1b3390565b6001600160a01b0316826001600160a01b0316847f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d60405160405180910390a450600161037d565b50600061037d565b6000610c778383610985565b15610c63576000838152602081815260408083206001600160a01b0386168085529252808320805460ff1916905551339286917ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b9190a450600161037d565b6040516001600160a01b0384811660248301528381166044830152606482018390526104c49186918216906323b872dd906084015b604051602081830303815290604052915060e01b6020820180516001600160e01b038381831617835250505050610e3b565b604080516001600160a01b038416602482015260448082018490528251808303909101815260649091019091526020810180516001600160e01b031663095ea7b360e01b179052610d8e8482610eac565b6104c4576040516001600160a01b03848116602483015260006044830152610dc391869182169063095ea7b390606401610d0b565b6104c48482610e3b565b6040516001600160a01b038381166024830152604482018390526104fd91859182169063a9059cbb90606401610d0b565b610e088282610985565b610e375760405163e2517d3f60e01b81526001600160a01b038216600482015260248101839052604401610406565b5050565b600080602060008451602086016000885af180610e5e576040513d6000823e3d81fd5b50506000513d91508115610e76578060011415610e83565b6001600160a01b0384163b155b156104c457604051635274afe760e01b81526001600160a01b0385166004820152602401610406565b6000806000806020600086516020880160008a5af192503d91506000519050828015610ef157508115610ee25780600114610ef1565b6000866001600160a01b03163b115b9695505050505050565b600060208284031215610f0d57600080fd5b81356001600160e01b03198116811461049857600080fd5b80356001600160a01b038116811461076a57600080fd5b60008060408385031215610f4f57600080fd5b610f5883610f25565b946020939093013593505050565b600060208284031215610f7857600080fd5b5035919050565b60008060408385031215610f9257600080fd5b82359150610fa260208401610f25565b90509250929050565b60008060408385031215610fbe57600080fd5b610fc783610f25565b915060208301358015158114610fdc57600080fd5b809150509250929050565b600060208284031215610ff957600080fd5b505191905056fef12fb6eaf1f045883c82d7d192627f7a36a50ce00c45e305919895908135a8a8a26469706673582212201503b52b0950851cea6f957e43ef469de42b16c2f6203f5190935b005301addc64736f6c63430008160033",
+  "devdoc": {
+    "errors": {
+      "AccessControlBadConfirmation()": [
+        {
+          "details": "The caller of a function is not the expected one. NOTE: Don't confuse with {AccessControlUnauthorizedAccount}."
+        }
+      ],
+      "AccessControlUnauthorizedAccount(address,bytes32)": [
+        {
+          "details": "The `account` is missing a role."
+        }
+      ],
+      "SafeERC20FailedOperation(address)": [
+        {
+          "details": "An operation with an ERC-20 token failed."
+        }
+      ]
+    },
+    "events": {
+      "RoleAdminChanged(bytes32,bytes32,bytes32)": {
+        "details": "Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole` `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite {RoleAdminChanged} not being emitted to signal this."
+      },
+      "RoleGranted(bytes32,address,address)": {
+        "details": "Emitted when `account` is granted `role`. `sender` is the account that originated the contract call. This account bears the admin role (for the granted role). Expected in cases where the role was granted using the internal {AccessControl-_grantRole}."
+      },
+      "RoleRevoked(bytes32,address,address)": {
+        "details": "Emitted when `account` is revoked `role`. `sender` is the account that originated the contract call:   - if using `revokeRole`, it is the admin role bearer   - if using `renounceRole`, it is the role bearer (i.e. `account`)"
+      }
+    },
+    "kind": "dev",
+    "methods": {
+      "depositIntoStrategy(uint256)": {
+        "details": "The adapter MUST pull `stableAmount` of the stable asset from the caller (expected to be the Router).The resulting `strategyShare` MUST be sent/deposited/minted directly to the `collateralVault` address provided during adapter setup or retrieved.",
+        "params": {
+          "stableAmount": "The amount of stable asset to convert."
+        },
+        "returns": {
+          "shareToken": "The address of the specific `strategy share` token managed by this adapter.",
+          "strategyShareAmount": "The amount of `strategyShare` generated from the conversion."
+        }
+      },
+      "emergencyWithdraw(address,uint256)": {
+        "params": {
+          "amount": "Amount of tokens to transfer",
+          "token": "Address of the ERC20 token to recover"
+        }
+      },
+      "getRoleAdmin(bytes32)": {
+        "details": "Returns the admin role that controls `role`. See {grantRole} and {revokeRole}. To change a role's admin, use {_setRoleAdmin}."
+      },
+      "grantRole(bytes32,address)": {
+        "details": "Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleGranted} event."
+      },
+      "hasRole(bytes32,address)": {
+        "details": "Returns `true` if `account` has been granted `role`."
+      },
+      "previewDepositIntoStrategy(uint256)": {
+        "params": {
+          "stableAmount": "The amount of stable asset to preview conversion for."
+        },
+        "returns": {
+          "shareToken": "The address of the specific `strategy share` token managed by this adapter.",
+          "strategyShareAmount": "The amount of `strategyShare` that would be received."
+        }
+      },
+      "previewWithdrawFromStrategy(uint256)": {
+        "params": {
+          "strategyShareAmount": "The amount of `strategyShare` to preview conversion for."
+        },
+        "returns": {
+          "stableAmount": "The amount of stable asset that would be received."
+        }
+      },
+      "renounceRole(bytes32,address)": {
+        "details": "Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function's purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `callerConfirmation`. May emit a {RoleRevoked} event."
+      },
+      "revokeRole(bytes32,address)": {
+        "details": "Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleRevoked} event."
+      },
+      "setAuthorizedCaller(address,bool)": {
+        "params": {
+          "authorized": "True to grant access, false to revoke",
+          "caller": "Address to update"
+        }
+      },
+      "strategyShare()": {
+        "returns": {
+          "_0": "The address of the `strategy share`."
+        }
+      },
+      "supportsInterface(bytes4)": {
+        "details": "Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section] to learn more about how these ids are created. This function call must use less than 30 000 gas."
+      },
+      "withdrawFromStrategy(uint256)": {
+        "details": "The adapter MUST pull the required amount of `strategyShare` from the caller (expected to be the Router).The resulting stable asset MUST be sent to the caller.",
+        "params": {
+          "strategyShareAmount": "The amount of `strategyShare` to convert."
+        },
+        "returns": {
+          "stableAmount": "The amount of stable asset sent to the caller."
+        }
+      }
+    },
+    "title": "GenericERC4626ConversionAdapter",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "depositIntoStrategy(uint256)": {
+        "notice": "Converts a specified amount of the stable asset into the specific `strategyShare`         managed by this adapter."
+      },
+      "emergencyWithdraw(address,uint256)": {
+        "notice": "Emergency hook to sweep stranded tokens back to the collateral vault"
+      },
+      "previewDepositIntoStrategy(uint256)": {
+        "notice": "Preview the result of converting a given stable amount to strategyShare (without state change)."
+      },
+      "previewWithdrawFromStrategy(uint256)": {
+        "notice": "Preview the result of converting a given strategyShare amount to stable asset (without state change)."
+      },
+      "setAuthorizedCaller(address,bool)": {
+        "notice": "Adds or removes an authorized caller that can invoke conversion flows"
+      },
+      "strategyShare()": {
+        "notice": "Returns the address of the specific `strategy share` token managed by this adapter."
+      },
+      "vaultAsset()": {
+        "notice": "Returns the underlying vault asset associated with this adapter (legacy compatibility helper)."
+      },
+      "withdrawFromStrategy(uint256)": {
+        "notice": "Converts a specific amount of `strategyShare` back into the stable asset."
+      }
+    },
+    "notice": "Conversion adapter that bridges a dSTABLE asset directly into an ERC4626 vault where the         share token is used as a dSTAKE strategy. Useful for idle vaults that simply hold dUSD.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 3317,
+        "contract": "contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol:GenericERC4626ConversionAdapter",
+        "label": "_roles",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_bytes32,t_struct(RoleData)3312_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_bytes32,t_struct(RoleData)3312_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct AccessControl.RoleData)",
+        "numberOfBytes": "32",
+        "value": "t_struct(RoleData)3312_storage"
+      },
+      "t_struct(RoleData)3312_storage": {
+        "encoding": "inplace",
+        "label": "struct AccessControl.RoleData",
+        "members": [
+          {
+            "astId": 3309,
+            "contract": "contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol:GenericERC4626ConversionAdapter",
+            "label": "hasRole",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_address,t_bool)"
+          },
+          {
+            "astId": 3311,
+            "contract": "contracts/vaults/dstake/adapters/GenericERC4626ConversionAdapter.sol:GenericERC4626ConversionAdapter",
+            "label": "adminRole",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_bytes32"
+          }
+        ],
+        "numberOfBytes": "64"
+      }
+    }
+  }
+}

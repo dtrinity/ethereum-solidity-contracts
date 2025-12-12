@@ -114,6 +114,21 @@ async function ensureAdapterAuthorizedCaller(
   }
 }
 
+/**
+ * Helper to grant a role on a contract if the account doesn't already have it.
+ *
+ * @param contract Contract instance with AccessControl
+ * @param role Role bytes32 identifier
+ * @param account Account to grant the role to
+ * @param adminSigner Signer with admin role to grant
+ */
+async function ensureRole(contract: any, role: string, account: string, adminSigner: Signer): Promise<void> {
+  const hasRole = await contract.hasRole(role, account);
+  if (!hasRole) {
+    await contract.connect(adminSigner).grantRole(role, account);
+  }
+}
+
 // Core logic for fetching dStake components *after* deployments are done
 /**
  *
@@ -134,7 +149,9 @@ async function fetchDStakeComponents(
   config: DStakeFixtureConfig,
 ) {
   const { deployments, getNamedAccounts, ethers, globalHre } = hreElements;
-  const { deployer } = await getNamedAccounts();
+  const namedAccounts = await getNamedAccounts();
+  const { deployer } = namedAccounts;
+  const adminAddr = namedAccounts.user1 || deployer;
   const deployerSigner = await ethers.getSigner(deployer);
 
   const { contract: dStableToken, tokenInfo: dStableInfo } = await getTokenContractForSymbol(globalHre, deployer, config.dStableSymbol);
@@ -161,6 +178,30 @@ async function fetchDStakeComponents(
 
   // Ensure router is pre-authorized to interact with the adapter when tests use the real contracts
   await ensureAdapterAuthorizedCaller(ethers, adapterAddress, router.target, deployerSigner);
+
+  // Grant test admin (user1) the necessary roles on router and token for test operations
+  // This allows tests to use adminAddr for config changes, role grants, etc.
+  const defaultAdminRole = await router.DEFAULT_ADMIN_ROLE();
+  const configManagerRole = await router.CONFIG_MANAGER_ROLE();
+  const adapterManagerRole = await router.ADAPTER_MANAGER_ROLE();
+  const vaultManagerRole = await router.VAULT_MANAGER_ROLE();
+
+  await ensureRole(router, defaultAdminRole, adminAddr, deployerSigner);
+  await ensureRole(router, configManagerRole, adminAddr, deployerSigner);
+  await ensureRole(router, adapterManagerRole, adminAddr, deployerSigner);
+  await ensureRole(router, vaultManagerRole, adminAddr, deployerSigner);
+
+  // Grant roles on DStakeToken as well
+  const tokenDefaultAdminRole = await DStakeToken.DEFAULT_ADMIN_ROLE();
+  await ensureRole(DStakeToken, tokenDefaultAdminRole, adminAddr, deployerSigner);
+
+  // Ensure defaultDepositStrategyShare is set to a valid adapter's strategy share
+  // This fixes tests that require sweepSurplus or reinvestFees to work
+  const currentDefault = await router.defaultDepositStrategyShare();
+  if (currentDefault === ethers.ZeroAddress) {
+    // Set the default to the vaultAssetAddress (wrapped aToken) since we know it has an adapter
+    await router.connect(deployerSigner).setDefaultDepositStrategyShare(vaultAssetAddress);
+  }
 
   return {
     config,
@@ -222,10 +263,20 @@ export async function executeSetupDLendRewards(
   const dStakeBase = await fetchDStakeComponents(hreElements, config);
   const { deployer: signer } = dStakeBase; // deployer is an Ethers Signer
 
+  // Get named accounts for granting roles to test admin
+  const namedAccounts = await getNamedAccounts();
+  const adminAddr = namedAccounts.user1 || namedAccounts.deployer;
+
   // Get DStakeRewardManagerDLend related contracts
   const rewardManagerDeployment = await deployments.get(`DStakeRewardManagerDLend_${config.DStakeTokenSymbol}`);
   const rewardManager = await ethers.getContractAt("DStakeRewardManagerDLend", rewardManagerDeployment.address);
   await ensureAdapterAuthorizedCaller(ethers, dStakeBase.adapterAddress, rewardManager.target, signer);
+
+  // Grant test admin (user1) the necessary roles on rewardManager for test operations
+  const defaultAdminRole = await rewardManager.DEFAULT_ADMIN_ROLE();
+  const rewardsManagerRole = await rewardManager.REWARDS_MANAGER_ROLE();
+  await ensureRole(rewardManager, defaultAdminRole, adminAddr, signer);
+  await ensureRole(rewardManager, rewardsManagerRole, adminAddr, signer);
 
   const targetStaticATokenWrapper = await rewardManager.targetStaticATokenWrapper();
   const dLendAssetToClaimFor = await rewardManager.dLendAssetToClaimFor();

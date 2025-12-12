@@ -5,7 +5,6 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import { DLendRewardManagerConfig, DStakeInstanceConfig } from "../../config/types";
 import {
-  DStakeRewardManagerDLend__factory as DStakeRewardManagerDLendFactory,
   EmissionManager__factory as EmissionManagerFactory,
   RewardsController__factory as RewardsControllerFactory,
 } from "../../typechain-types";
@@ -71,7 +70,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig | undefined;
 
     if (!rewardManagerConfig) {
-      throw new Error(`dLendRewardManager not configured for dSTAKE instance ${instanceKey}.`);
+      // dLend rewards are optional; skip instances that don't configure a rewards manager.
+      console.log(`No dLendRewardManager configuration for ${instanceKey}. Skipping dLend rewards deployment for this instance.`);
+      continue;
     }
 
     if (!instanceConfig.dStable || instanceConfig.dStable === "" || instanceConfig.dStable === ethers.ZeroAddress) {
@@ -162,7 +163,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Actual deployment logic using fetched addresses
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
-    const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig;
+    const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig | undefined;
 
     if (!rewardManagerConfig) {
       console.log(`No dLendRewardManager configuration for dSTAKE instance ${instanceKey}. Skipping.`);
@@ -282,70 +283,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       }
     }
 
-    // --- Configure Roles ---
+    // Authorize the rewards manager contract as an adapter caller (contract-to-contract auth).
     if (deployment.address) {
-      const rewardManager = DStakeRewardManagerDLendFactory.connect(deployment.address, deployerSigner);
-      const DEFAULT_ADMIN_ROLE = await rewardManager.DEFAULT_ADMIN_ROLE();
-      const REWARDS_MANAGER_ROLE = await rewardManager.REWARDS_MANAGER_ROLE();
-
-      const targetAdmin =
-        rewardManagerConfig.initialAdmin && rewardManagerConfig.initialAdmin !== ethers.ZeroAddress
-          ? rewardManagerConfig.initialAdmin
-          : deployer;
-
-      const targetRewardsManager =
-        rewardManagerConfig.initialRewardsManager && rewardManagerConfig.initialRewardsManager !== ethers.ZeroAddress
-          ? rewardManagerConfig.initialRewardsManager
-          : deployer;
-
-      // The deployer needs DEFAULT_ADMIN_ROLE to change roles. If not, just log what needs to be done.
-      const deployerIsAdmin = await rewardManager.hasRole(DEFAULT_ADMIN_ROLE, deployer);
-
-      if (!deployerIsAdmin) {
-        manualActions.push(
-          `RewardManager (${deployment.address}) role setup: grantRole(DEFAULT_ADMIN_ROLE, ${targetAdmin}); grantRole(REWARDS_MANAGER_ROLE, ${targetRewardsManager}); optionally revoke roles from ${deployer}`,
-        );
-      } else {
-        // Grant and revoke roles as necessary
-        if (targetRewardsManager !== deployer) {
-          if (!(await rewardManager.hasRole(REWARDS_MANAGER_ROLE, targetRewardsManager))) {
-            await rewardManager.grantRole(REWARDS_MANAGER_ROLE, targetRewardsManager);
-            console.log(`          Granted REWARDS_MANAGER_ROLE to ${targetRewardsManager}`);
-          }
-
-          if (await rewardManager.hasRole(REWARDS_MANAGER_ROLE, deployer)) {
-            await rewardManager.revokeRole(REWARDS_MANAGER_ROLE, deployer);
-            console.log(`          Revoked REWARDS_MANAGER_ROLE from ${deployer}`);
-          }
-        } else {
-          if (!(await rewardManager.hasRole(REWARDS_MANAGER_ROLE, deployer))) {
-            await rewardManager.grantRole(REWARDS_MANAGER_ROLE, deployer);
-            console.log(`          Granted REWARDS_MANAGER_ROLE to ${deployer}`);
-          }
-        }
-      }
-
-      if (targetAdmin !== deployer) {
-        if (!(await rewardManager.hasRole(DEFAULT_ADMIN_ROLE, targetAdmin))) {
-          await rewardManager.grantRole(DEFAULT_ADMIN_ROLE, targetAdmin);
-          console.log(`          Granted DEFAULT_ADMIN_ROLE to ${targetAdmin}`);
-        }
-
-        if (await rewardManager.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-          await rewardManager.revokeRole(DEFAULT_ADMIN_ROLE, deployer);
-          console.log(`          Revoked DEFAULT_ADMIN_ROLE from ${deployer}`);
-        }
-      } else {
-        if (!(await rewardManager.hasRole(DEFAULT_ADMIN_ROLE, deployer))) {
-          await rewardManager.grantRole(DEFAULT_ADMIN_ROLE, deployer);
-          console.log(`          Granted DEFAULT_ADMIN_ROLE to ${deployer}`);
-        }
-      }
       const routerContract = await ethers.getContractAt("DStakeRouterV2", dStakeRouterAddress);
-      const adapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
-      await ensureAdapterAuthorizedCaller(adapterAddress, deployment.address, deployerSigner);
 
-      console.log(`    Set up DStakeRewardManagerDLend for ${instanceKey}.`);
+      // Authorize for the managed strategy share adapter
+      const managedAdapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
+      await ensureAdapterAuthorizedCaller(managedAdapterAddress, deployment.address, deployerSigner);
+
+      // Also authorize for the default deposit strategy adapter if different (e.g., Idle Vault)
+      // This is required because the manager compounds by depositing into the default strategy.
+      const defaultStrategyShare = await routerContract.defaultDepositStrategyShare();
+
+      if (defaultStrategyShare !== ethers.ZeroAddress && defaultStrategyShare !== targetStaticATokenWrapperAddress) {
+        const defaultAdapterAddress = await routerContract.strategyShareToAdapter(defaultStrategyShare);
+        await ensureAdapterAuthorizedCaller(defaultAdapterAddress, deployment.address, deployerSigner);
+      }
+
+      console.log(`    Deployed DStakeRewardManagerDLend for ${instanceKey}.`);
     }
   }
 

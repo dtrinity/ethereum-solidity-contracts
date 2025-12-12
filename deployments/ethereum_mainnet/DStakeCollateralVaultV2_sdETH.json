@@ -1,0 +1,689 @@
+{
+  "address": "0xf93Fb0aDd57133AecD56fA48350684B5A7A1A5b9",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_dStakeVaultShare",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_dStableAsset",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AccessControlBadConfirmation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "neededRole",
+          "type": "bytes32"
+        }
+      ],
+      "name": "AccessControlUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "AdapterValuationUnavailable",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "CannotRescueRestrictedToken",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ETHTransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "asset",
+          "type": "address"
+        }
+      ],
+      "name": "NonZeroBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ReentrancyGuardReentrantCall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "StrategyShareAlreadySupported",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "StrategyShareNotSupported",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ETHRescued",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "previousAdminRole",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "newAdminRole",
+          "type": "bytes32"
+        }
+      ],
+      "name": "RoleAdminChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleGranted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleRevoked",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "router",
+          "type": "address"
+        }
+      ],
+      "name": "RouterSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "StrategyShareRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "StrategyShareSupported",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokenRescued",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DEFAULT_ADMIN_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "ROUTER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "addSupportedStrategyShare",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dStable",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "dStakeToken",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getRoleAdmin",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getSupportedStrategyShares",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "grantRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "hasRole",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        }
+      ],
+      "name": "removeSupportedStrategyShare",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "callerConfirmation",
+          "type": "address"
+        }
+      ],
+      "name": "renounceRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "rescueETH",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "rescueToken",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "revokeRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "router",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "name": "sendAsset",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newRouter",
+          "type": "address"
+        }
+      ],
+      "name": "setRouter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "name": "supportedStrategyShares",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalValueInDStable",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "dStableValue",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "strategyShare",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        }
+      ],
+      "name": "transferStrategyShares",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "transactionHash": "0x6f11b91abbc5e00a0c82b1a558c0a0c1f7a90805800f74a360b05876f47d5bb9",
+  "receipt": {
+    "to": null,
+    "from": "0x0f5e3D9AEe7Ab5fDa909Af1ef147D98a7f4B3022",
+    "contractAddress": "0xf93Fb0aDd57133AecD56fA48350684B5A7A1A5b9",
+    "transactionIndex": 135,
+    "gasUsed": "1050205",
+    "logsBloom": "0x00000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000020000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000040400000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000100000000000120000001000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x5bf8c9fcf666e4245cda7bcb9c6d60d250f521a3580d885ff19e94eb5633fb79",
+    "transactionHash": "0x6f11b91abbc5e00a0c82b1a558c0a0c1f7a90805800f74a360b05876f47d5bb9",
+    "logs": [
+      {
+        "transactionIndex": 135,
+        "blockNumber": 23995444,
+        "transactionHash": "0x6f11b91abbc5e00a0c82b1a558c0a0c1f7a90805800f74a360b05876f47d5bb9",
+        "address": "0xf93Fb0aDd57133AecD56fA48350684B5A7A1A5b9",
+        "topics": [
+          "0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000000f5e3d9aee7ab5fda909af1ef147d98a7f4b3022",
+          "0x0000000000000000000000000f5e3d9aee7ab5fda909af1ef147d98a7f4b3022"
+        ],
+        "data": "0x",
+        "logIndex": 1449,
+        "blockHash": "0x5bf8c9fcf666e4245cda7bcb9c6d60d250f521a3580d885ff19e94eb5633fb79"
+      }
+    ],
+    "blockNumber": 23995444,
+    "cumulativeGasUsed": "19156729",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x20b1884c9347BEBC13E9aca1965c5Ae56b0a8590",
+    "0xb419ecdd222981e7e54cec316797ecb799c6afdc"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "2e04e1a71cddde72473dc64e157e9618",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.20+commit.a1b79de6\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_dStakeVaultShare\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_dStableAsset\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AccessControlBadConfirmation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"neededRole\",\"type\":\"bytes32\"}],\"name\":\"AccessControlUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"AdapterValuationUnavailable\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"CannotRescueRestrictedToken\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"ETHTransferFailed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"asset\",\"type\":\"address\"}],\"name\":\"NonZeroBalance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ReentrancyGuardReentrantCall\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"SafeERC20FailedOperation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"StrategyShareAlreadySupported\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"StrategyShareNotSupported\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"ETHRescued\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"router\",\"type\":\"address\"}],\"name\":\"RouterSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"StrategyShareRemoved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"StrategyShareSupported\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"TokenRescued\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ROUTER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"addSupportedStrategyShare\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"dStable\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"dStakeToken\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getSupportedStrategyShares\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"}],\"name\":\"removeSupportedStrategyShare\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"callerConfirmation\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"rescueETH\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"rescueToken\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"router\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"}],\"name\":\"sendAsset\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_newRouter\",\"type\":\"address\"}],\"name\":\"setRouter\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"supportedStrategyShares\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"totalValueInDStable\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"dStableValue\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"strategyShare\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"}],\"name\":\"transferStrategyShares\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}],\"devdoc\":{\"details\":\"Calculates the total value of these assets in terms of the underlying dStable asset      using registered adapters. This contract is non-upgradeable but replaceable via      DStakeTokenV2 governance.      Uses AccessControl for role-based access control.\",\"errors\":{\"AccessControlBadConfirmation()\":[{\"details\":\"The caller of a function is not the expected one. NOTE: Don't confuse with {AccessControlUnauthorizedAccount}.\"}],\"AccessControlUnauthorizedAccount(address,bytes32)\":[{\"details\":\"The `account` is missing a role.\"}],\"ReentrancyGuardReentrantCall()\":[{\"details\":\"Unauthorized reentrant call.\"}],\"SafeERC20FailedOperation(address)\":[{\"details\":\"An operation with an ERC-20 token failed.\"}]},\"events\":{\"RoleAdminChanged(bytes32,bytes32,bytes32)\":{\"details\":\"Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole` `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite {RoleAdminChanged} not being emitted to signal this.\"},\"RoleGranted(bytes32,address,address)\":{\"details\":\"Emitted when `account` is granted `role`. `sender` is the account that originated the contract call. This account bears the admin role (for the granted role). Expected in cases where the role was granted using the internal {AccessControl-_grantRole}.\"},\"RoleRevoked(bytes32,address,address)\":{\"details\":\"Emitted when `account` is revoked `role`. `sender` is the account that originated the contract call:   - if using `revokeRole`, it is the admin role bearer   - if using `renounceRole`, it is the role bearer (i.e. `account`)\"},\"RouterSet(address)\":{\"params\":{\"router\":\"The address of the new router.\"}}},\"kind\":\"dev\",\"methods\":{\"addSupportedStrategyShare(address)\":{\"details\":\"Only callable by the registered router (ROUTER_ROLE).\",\"params\":{\"strategyShare\":\"Address of the strategy share to add\"}},\"getRoleAdmin(bytes32)\":{\"details\":\"Returns the admin role that controls `role`. See {grantRole} and {revokeRole}. To change a role's admin, use {_setRoleAdmin}.\"},\"grantRole(bytes32,address)\":{\"details\":\"Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleGranted} event.\"},\"hasRole(bytes32,address)\":{\"details\":\"Returns `true` if `account` has been granted `role`.\"},\"removeSupportedStrategyShare(address)\":{\"details\":\"Only callable by the registered router (ROUTER_ROLE).\",\"params\":{\"strategyShare\":\"Address of the strategy share to remove\"}},\"renounceRole(bytes32,address)\":{\"details\":\"Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function's purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `callerConfirmation`. May emit a {RoleRevoked} event.\"},\"rescueETH(address,uint256)\":{\"params\":{\"amount\":\"Amount of ETH to rescue\",\"receiver\":\"Address to receive the rescued ETH\"}},\"rescueToken(address,address,uint256)\":{\"details\":\"Cannot rescue supported strategy shares or the dStable token\",\"params\":{\"amount\":\"Amount of tokens to rescue\",\"receiver\":\"Address to receive the rescued tokens\",\"token\":\"Address of the token to rescue\"}},\"revokeRole(bytes32,address)\":{\"details\":\"Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleRevoked} event.\"},\"setRouter(address)\":{\"details\":\"Only callable by DEFAULT_ADMIN_ROLE.\",\"params\":{\"_newRouter\":\"Address of the new router\"}},\"supportsInterface(bytes4)\":{\"details\":\"Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section] to learn more about how these ids are created. This function call must use less than 30 000 gas.\"},\"totalValueInDStable()\":{\"details\":\"This is typically called by the DStakeTokenV2's `totalAssets()` function.\",\"returns\":{\"dStableValue\":\"The total value of managed assets in terms of the dStable asset.\"}},\"transferStrategyShares(address,uint256,address)\":{\"details\":\"Only callable by the registered router (ROUTER_ROLE).\",\"params\":{\"amount\":\"Amount of tokens to transfer\",\"recipient\":\"Address to receive the tokens\",\"strategyShare\":\"The strategy share to transfer\"}}},\"stateVariables\":{\"dStable\":{\"return\":\"The address of the dStable asset.\",\"returns\":{\"_0\":\"The address of the dStable asset.\"}}},\"title\":\"DStakeCollateralVaultV2\",\"version\":1},\"userdoc\":{\"events\":{\"RouterSet(address)\":{\"notice\":\"Emitted when the router address is set.\"},\"StrategyShareRemoved(address)\":{\"notice\":\"Emitted when a strategy share is removed from the supported list.\"},\"StrategyShareSupported(address)\":{\"notice\":\"Emitted when a new strategy share is added to the supported list.\"}},\"kind\":\"user\",\"methods\":{\"addSupportedStrategyShare(address)\":{\"notice\":\"Adds a new supported strategy share. Can only be invoked by the router.\"},\"dStable()\":{\"notice\":\"Returns the address of the underlying dStable asset the vault operates with.\"},\"dStakeToken()\":{\"notice\":\"The DStakeTokenV2 contract address this vault serves.\"},\"getSupportedStrategyShares()\":{\"notice\":\"Returns the entire list of supported strategy shares. Useful for UIs & off-chain tooling.\"},\"removeSupportedStrategyShare(address)\":{\"notice\":\"Removes a supported strategy share. Can only be invoked by the router.\"},\"rescueETH(address,uint256)\":{\"notice\":\"Rescues ETH accidentally sent to the contract\"},\"rescueToken(address,address,uint256)\":{\"notice\":\"Rescues tokens accidentally sent to the contract\"},\"router()\":{\"notice\":\"The DStakeRouter contract address allowed to interact.\"},\"sendAsset(address,uint256,address)\":{\"notice\":\"Legacy alias maintained for backwards compatibility with existing integration tests.\"},\"setRouter(address)\":{\"notice\":\"Sets the router address. Grants ROUTER_ROLE to new router and         revokes it from the previous router.\"},\"supportedStrategyShares(uint256)\":{\"notice\":\"Returns the strategy share at `index` from the internal supported set.\"},\"totalValueInDStable()\":{\"notice\":\"Calculates the total value of all managed `strategy shares` held by the vault,         denominated in the underlying dStable asset.\"},\"transferStrategyShares(address,uint256,address)\":{\"notice\":\"Transfers `amount` of `strategyShare` from this vault to `recipient`.\"}},\"notice\":\"Holds various yield-bearing/convertible ERC20 tokens (`strategy shares`) managed by dSTAKE.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/vaults/dstake/DStakeCollateralVaultV2.sol\":\"DStakeCollateralVaultV2\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/access/AccessControl.sol\":{\"keccak256\":\"0x1a6b4f6b7798ab80929d491b89d5427a9b3338c0fd1acd0ba325f69c6f1646af\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://7bb7f346c12a14dc622bc105ce3c47202fbc89f4b153a28a63bb68193297330c\",\"dweb:/ipfs/QmagwF8P3bUBXwdo159ueEnY9dLSvEWwK24kk2op58egwG\"]},\"@openzeppelin/contracts/access/IAccessControl.sol\":{\"keccak256\":\"0xbff9f59c84e5337689161ce7641c0ef8e872d6a7536fbc1f5133f128887aba3c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://b308f882e796f7b79c9502deacb0a62983035c6f6f4e962b319ba6a1f4a77d3d\",\"dweb:/ipfs/QmaWCW7ahEQqFjwhSUhV7Ae7WhfNvzSpE7DQ58hvEooqPL\"]},\"@openzeppelin/contracts/interfaces/IERC1363.sol\":{\"keccak256\":\"0xd5ea07362ab630a6a3dee4285a74cf2377044ca2e4be472755ad64d7c5d4b69d\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://da5e832b40fc5c3145d3781e2e5fa60ac2052c9d08af7e300dc8ab80c4343100\",\"dweb:/ipfs/QmTzf7N5ZUdh5raqtzbM11yexiUoLC9z3Ws632MCuycq1d\"]},\"@openzeppelin/contracts/interfaces/IERC165.sol\":{\"keccak256\":\"0x0afcb7e740d1537b252cb2676f600465ce6938398569f09ba1b9ca240dde2dfc\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://1c299900ac4ec268d4570ecef0d697a3013cd11a6eb74e295ee3fbc945056037\",\"dweb:/ipfs/Qmab9owJoxcA7vJT5XNayCMaUR1qxqj1NDzzisduwaJMcZ\"]},\"@openzeppelin/contracts/interfaces/IERC20.sol\":{\"keccak256\":\"0x1a6221315ce0307746c2c4827c125d821ee796c74a676787762f4778671d4f44\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://1bb2332a7ee26dd0b0de9b7fe266749f54820c99ab6a3bcb6f7e6b751d47ee2d\",\"dweb:/ipfs/QmcRWpaBeCYkhy68PR3B4AgD7asuQk7PwkWxrvJbZcikLF\"]},\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"keccak256\":\"0x74ed01eb66b923d0d0cfe3be84604ac04b76482a55f9dd655e1ef4d367f95bc2\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://5282825a626cfe924e504274b864a652b0023591fa66f06a067b25b51ba9b303\",\"dweb:/ipfs/QmeCfPykghhMc81VJTrHTC7sF6CRvaA1FXVq2pJhwYp1dV\"]},\"@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol\":{\"keccak256\":\"0x982c5cb790ab941d1e04f807120a71709d4c313ba0bfc16006447ffbd27fbbd5\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://8150ceb4ac947e8a442b2a9c017e01e880b2be2dd958f1fa9bc405f4c5a86508\",\"dweb:/ipfs/QmbcBmFX66AY6Kbhnd5gx7zpkgqnUafo43XnmayAM7zVdB\"]},\"@openzeppelin/contracts/utils/Arrays.sol\":{\"keccak256\":\"0xa4b9958797e0e9cde82a090525e90f80d5745ba1c67ee72b488bd3087498a17e\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://c9344f7c2f80322c2e76d9d89bed03fd12f3e011e74fde7cf24ea21bdd2abe2d\",\"dweb:/ipfs/QmPMAjF5x2fHUAee2FKMZDBbFVrbZbPCr3a9KHLZaSn1zY\"]},\"@openzeppelin/contracts/utils/Comparators.sol\":{\"keccak256\":\"0x302eecd8cf323b4690e3494a7d960b3cbce077032ab8ef655b323cdd136cec58\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://49ba706f1bc476d68fe6c1fad75517acea4e9e275be0989b548e292eb3a3eacd\",\"dweb:/ipfs/QmeBpvcdGWzWMKTQESUCEhHgnEQYYATVwPxLMxa6vMT7jC\"]},\"@openzeppelin/contracts/utils/Context.sol\":{\"keccak256\":\"0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://6a708e8a5bdb1011c2c381c9a5cfd8a9a956d7d0a9dc1bd8bcdaf52f76ef2f12\",\"dweb:/ipfs/Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF\"]},\"@openzeppelin/contracts/utils/Panic.sol\":{\"keccak256\":\"0xf7fe324703a64fc51702311dc51562d5cb1497734f074e4f483bfb6717572d7a\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://c6a5ff4f9fd8649b7ee20800b7fa387d3465bd77cf20c2d1068cd5c98e1ed57a\",\"dweb:/ipfs/QmVSaVJf9FXFhdYEYeCEfjMVHrxDh5qL4CGkxdMWpQCrqG\"]},\"@openzeppelin/contracts/utils/ReentrancyGuard.sol\":{\"keccak256\":\"0x11a5a79827df29e915a12740caf62fe21ebe27c08c9ae3e09abe9ee3ba3866d3\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://3cf0c69ab827e3251db9ee6a50647d62c90ba580a4d7bbff21f2bea39e7b2f4a\",\"dweb:/ipfs/QmZiKwtKU1SBX4RGfQtY7PZfiapbbu6SZ9vizGQD9UHjRA\"]},\"@openzeppelin/contracts/utils/SlotDerivation.sol\":{\"keccak256\":\"0x67672e4ca1dafdcc661d4eba8475cfac631fa0933309258e3af7644b92e1fb26\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://30192451f05ea5ddb0c18bd0f9003f098505836ba19c08a9c365adf829454da2\",\"dweb:/ipfs/QmfCuZSCTyCdFoSKn7MSaN6hZksnQn9ZhrZDAdRTCbwGu2\"]},\"@openzeppelin/contracts/utils/StorageSlot.sol\":{\"keccak256\":\"0xcf74f855663ce2ae00ed8352666b7935f6cddea2932fdf2c3ecd30a9b1cd0e97\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://9f660b1f351b757dfe01438e59888f31f33ded3afcf5cb5b0d9bf9aa6f320a8b\",\"dweb:/ipfs/QmarDJ5hZEgBtCmmrVzEZWjub9769eD686jmzb2XpSU1cM\"]},\"@openzeppelin/contracts/utils/introspection/ERC165.sol\":{\"keccak256\":\"0x2d9dc2fe26180f74c11c13663647d38e259e45f95eb88f57b61d2160b0109d3e\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://81233d1f98060113d9922180bb0f14f8335856fe9f339134b09335e9f678c377\",\"dweb:/ipfs/QmWh6R35SarhAn4z2wH8SU456jJSYL2FgucfTFgbHJJN4E\"]},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"keccak256\":\"0x8891738ffe910f0cf2da09566928589bf5d63f4524dd734fd9cedbac3274dd5c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://971f954442df5c2ef5b5ebf1eb245d7105d9fbacc7386ee5c796df1d45b21617\",\"dweb:/ipfs/QmadRjHbkicwqwwh61raUEapaVEtaLMcYbQZWs9gUkgj3u\"]},\"@openzeppelin/contracts/utils/math/Math.sol\":{\"keccak256\":\"0x1225214420c83ebcca88f2ae2b50f053aaa7df7bd684c3e878d334627f2edfc6\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://6c5fab4970634f9ab9a620983dc1c8a30153981a0b1a521666e269d0a11399d3\",\"dweb:/ipfs/QmVRnBC575MESGkEHndjujtR7qub2FzU9RWy9eKLp4hPZB\"]},\"@openzeppelin/contracts/utils/math/SafeCast.sol\":{\"keccak256\":\"0x195533c86d0ef72bcc06456a4f66a9b941f38eb403739b00f21fd7c1abd1ae54\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://b1d578337048cad08c1c03041cca5978eff5428aa130c781b271ad9e5566e1f8\",\"dweb:/ipfs/QmPFKL2r9CBsMwmUqqdcFPfHZB2qcs9g1HDrPxzWSxomvy\"]},\"@openzeppelin/contracts/utils/structs/EnumerableSet.sol\":{\"keccak256\":\"0x1fc283df727585919c3db301b948a3e827aee16917457ad7f916db9da2228e77\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://a4f4b5e2cd0ebc3b74e41e4e94771a0417eedd9b11cec3ef9f90b2ac2989264b\",\"dweb:/ipfs/QmZmsEsvsXiwAyAe1YeoLSKezeFcvR1giUeEY6ex4zpsTS\"]},\"contracts/vaults/dstake/DStakeCollateralVaultV2.sol\":{\"keccak256\":\"0xb040003b02696d416870a0d6162e2c64878718d1b27e1aac23cda183722d5844\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://07d5b3caf4adfad06b4979c2a89ceb4d373ce94cdfe1b3456c0b48ccec2bd864\",\"dweb:/ipfs/QmSpybFKayjJrdpWKd2QkJEDa1cQG35LpYu9DVUuRD5LMY\"]},\"contracts/vaults/dstake/interfaces/IDStableConversionAdapterV2.sol\":{\"keccak256\":\"0xd98442e19119300779dc8f093c639ea0dab3d3dfb67580bfb84efb2a21ff888d\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://4b95f3cd6270180a5acb75e7c855ad4ed6594db7061fe45fbc9319792a5f3ecf\",\"dweb:/ipfs/Qmax91i4B6hCdNRVrnJzgqe8zkZdnFfoWnLk4xKAC5hAqy\"]},\"contracts/vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol\":{\"keccak256\":\"0x55c35fc025c34bbbc4e739f38d5abb72702f4d1ac1be91ae5b29d0270c281d1b\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://73b2a30b2857860b94d8d587497260eae94d084aa2f6cd3afa4d80bdf7ba6a90\",\"dweb:/ipfs/QmXT2t6cmUcstcKvmX8iAuvazDxevQgDdt8zG8rhHsHPmP\"]}},\"version\":1}",
+  "bytecode": "0x60c0346100c057601f6200129238819003918201601f19168301916001600160401b038311848410176100c55780849260409485528339810103126100c057610053602061004c836100db565b92016100db565b60018055906001600160a01b03808216159081156100b5575b506100a35760805260a052610080336100ef565b50604051611112908162000180823960805181610751015260a051816108e30152f35b60405163d92e233d60e01b8152600490fd5b90508216153861006c565b600080fd5b634e487b7160e01b600052604160045260246000fd5b51906001600160a01b03821682036100c057565b6001600160a01b031660008181527fad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5602052604081205490919060ff1661017b57818052816020526040822081835260205260408220600160ff1982541617905533917f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d8180a4600190565b509056fe6080604081815260049182361015610022575b505050361561002057600080fd5b005b600092833560e01c91826301ffc9a714610a1d57508163099a04e5146109125781630cc2f8d2146108ce57816316ddcae714610843578163248a9ca3146108195781632f2ff15d146107ef57816330d643b5146107c657816336568abe1461078057816338ff92e6146105815781635c47df421461073c57816376d4eb5814610680578163820a1187146105ea57816391d14854146105a4578163989a5e6714610581578163a217fddf14610566578163bbf553681461052d578163c0d7865514610486578163d547741f14610447578163e015e70614610214578163e5711e8b14610144575063f887ea40146101195780610012565b3461014057816003193601126101405760025490516001600160a01b039091168152602090f35b5080fd5b9050346102105760603660031901126102105761015f610a70565b91610168610a8b565b9060443591610175610ad5565b61017d611099565b6001600160a01b038181169586156102005716936101a8856000526004602052604060002054151590565b6101e95750916020916101dd827f4143f7b5cb6ea007914c32b8a3e64cebc051d7f493fa0755454da1e47701e1259587610e8f565b51908152a36001805580f35b82516341d6bb6960e01b8152908101859052602490fd5b835163d92e233d60e01b81528690fd5b8280fd5b9190503461021057826003193601126102105790826003548160018060a01b038060025416925b80831061024c576020888851908152f35b8161025a8498969798610dfc565b90549060031b1c16958551986370a0823160e01b8a5230898b0152602060249a81818d818d5afa90811561043d578491610410575b508015610400578851630b4da09f60e41b8152808c018b905282818e818c5afa9081156103f65790879186916103b8575b5016806102dd57895163d4fcdee560e01b8152808d018c90528d90fd5b8951630147414360e31b81526001600160a01b03909b168b8d019081526020810192909252979b969a9899959794969395929491929183918391908290819060400103915afa9182156103ae57859261037c575b5050820180921161036b5750955b600019811461035857600101919692909394959661023b565b634e487b7160e01b825260118552602482fd5b634e487b7160e01b83526011865282fd5b90809250813d83116103a7575b6103938183610dc4565b810103126103a357513880610331565b8380fd5b503d610389565b89513d87823e3d90fd5b809250848092503d83116103ef575b6103d18183610dc4565b810103126103eb575186811681036103eb578690386102c0565b8480fd5b503d6103c7565b8a513d87823e3d90fd5b505097959650919397509161033f565b90508181813d8311610436575b6104278183610dc4565b810103126103a357513861028f565b503d61041d565b89513d86823e3d90fd5b91905034610210578060031936011261021057610482913561047d600161046c610a8b565b938387528660205286200154610b77565b610d4f565b5080f35b905034610210576020366003190112610210576104a1610a70565b906104aa610ad5565b6001600160a01b03828116939091908415610520575050906104d6916002541680610510575b50610b9d565b50600280546001600160a01b031916821790557fc6b438e6a8a59579ce6a4406cbd203b740e0d47b458aae6596339bcd40c40d158280a280f35b61051990610cb6565b50386104d0565b5163d92e233d60e01b8152fd5b828434610563576020366003190112610563575061054d60209235610dfc565b905491519160018060a01b039160031b1c168152f35b80fd5b50503461014057816003193601126101405751908152602090f35b8334610563576105a161059336610aa1565b9161059c610b2d565b610e49565b80f35b9050346102105781600319360112610210578160209360ff926105c5610a8b565b903582528186528282206001600160a01b039091168252855220549151911615158152f35b90503461021057602036600319011261021057610605610a70565b61060d610b2d565b6001600160a01b031691821561052057610634836000526004602052604060002054151590565b61066b57505061064381610f2e565b507ffb1fc2923ce18ee4299e9b5148b4d36f2f75f80891e18fa33fcc72e0d215494c8280a280f35b9160249251916318a3cd8760e11b8352820152fd5b8284346105635780600319360112610563579080519182906003549182855260208095018093600384527fc2575a0e9e593c00f959f8c92f12db2869c3395a3b0502d05e2516446f71f85b90845b81811061072857505050816106e4910382610dc4565b83519485948186019282875251809352850193925b82811061070857505050500390f35b83516001600160a01b0316855286955093810193928101926001016106f9565b8254845292880192600192830192016106ce565b505034610140578160031936011261014057517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b83833461014057806003193601126101405761079a610a8b565b90336001600160a01b038316036107b75750610482919235610d4f565b5163334bd91960e11b81528390fd5b505034610140578160031936011261014057602090516000805160206110bd8339815191528152f35b919050346102105780600319360112610210576104829135610814600161046c610a8b565b610c3d565b90503461021057602036600319011261021057816020936001923581528085522001549051908152f35b9050346102105760203660031901126102105761085e610a70565b610866610b2d565b6001600160a01b0316600081815260046020526040902054909290156108b957505061089181610fb0565b507f33b42bdf6f0296af0be7bb6c0e2295b1822716a1b7a2de4a337b1e3d8962b5fc8280a280f35b9160249251916321db539f60e21b8352820152fd5b505034610140578160031936011261014057517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b9190503461021057806003193601126102105761092d610a70565b906024359161093a610ad5565b610942611099565b6001600160a01b038116938415610a0f578580808087865af13d15610a0a573d67ffffffffffffffff81116109f757845190610988601f8201601f191660200183610dc4565b81528760203d92013e5b156109ca5750507fb3579861130e4da8bb7b87c54d2d139937f23bcd6e4ebed9e75d0f78ab1cc1189160209151908152a26001805580f35b8251635e0a829b60e01b81526001600160a01b039092169082019081526020810184905281906040010390fd5b634e487b7160e01b885260418352602488fd5b610992565b825163d92e233d60e01b8152fd5b849134610210576020366003190112610210573563ffffffff60e01b81168091036102105760209250637965db0b60e01b8114908115610a5f575b5015158152f35b6301ffc9a760e01b14905083610a58565b600435906001600160a01b0382168203610a8657565b600080fd5b602435906001600160a01b0382168203610a8657565b6060906003190112610a86576001600160a01b036004358181168103610a865791602435916044359081168103610a865790565b3360009081527fad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5602052604081205460ff1615610b0f5750565b6044906040519063e2517d3f60e01b82523360048301526024820152fd5b3360009081527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260409020546000805160206110bd8339815191529060ff1615610b0f5750565b80600052600060205260406000203360005260205260ff6040600020541615610b0f5750565b6001600160a01b031660008181527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260408120549091906000805160206110bd8339815191529060ff16610c3857808352826020526040832082845260205260408320600160ff198254161790557f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d339380a4600190565b505090565b9060009180835282602052604083209160018060a01b03169182845260205260ff60408420541615600014610c3857808352826020526040832082845260205260408320600160ff198254161790557f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d339380a4600190565b6001600160a01b031660008181527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260408120549091906000805160206110bd8339815191529060ff1615610c385780835282602052604083208284526020526040832060ff1981541690557ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b339380a4600190565b9060009180835282602052604083209160018060a01b03169182845260205260ff604084205416600014610c385780835282602052604083208284526020526040832060ff1981541690557ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b339380a4600190565b90601f8019910116810190811067ffffffffffffffff821117610de657604052565b634e487b7160e01b600052604160045260246000fd5b600354811015610e335760036000527fc2575a0e9e593c00f959f8c92f12db2869c3395a3b0502d05e2516446f71f85b0190600090565b634e487b7160e01b600052603260045260246000fd5b6001600160a01b03166000818152600460205260409020549093929015610e7657610e749293610e8f565b565b6040516321db539f60e21b815260048101859052602490fd5b60405163a9059cbb60e01b60208083019182526001600160a01b039490941660248301526044808301959095529381529092600091610ecf606482610dc4565b519082855af115610f22576000513d610f1957506001600160a01b0381163b155b610ef75750565b604051635274afe760e01b81526001600160a01b039091166004820152602490fd5b60011415610ef0565b6040513d6000823e3d90fd5b600081815260046020526040812054610fab5760035468010000000000000000811015610f97579082610f83610f6c84600160409601600355610dfc565b819391549060031b91821b91600019901b19161790565b905560035492815260046020522055600190565b634e487b7160e01b82526041600452602482fd5b905090565b6000908082526004908160205260408320548015156000146110935760001990808201818111611080576003549083820191821161106d5781810361103a575b50505060035480156110275781019061100882610dfc565b909182549160031b1b1916905560035582526020526040812055600190565b634e487b7160e01b855260318452602485fd5b611058611049610f6c93610dfc565b90549060031b1c928392610dfc565b90558552836020526040852055388080610ff0565b634e487b7160e01b875260118652602487fd5b634e487b7160e01b865260118552602486fd5b50505090565b6002600154146110aa576002600155565b604051633ee5aeb560e01b8152600490fdfe7a05a596cb0ce7fdea8a1e1ec73be300bdb35097c944ce1897202f7a13122eb2a2646970667358221220f7645f00e5d53721af95498dc17fb21379045cd517f32e1675c78578d01fa27364736f6c63430008140033",
+  "deployedBytecode": "0x6080604081815260049182361015610022575b505050361561002057600080fd5b005b600092833560e01c91826301ffc9a714610a1d57508163099a04e5146109125781630cc2f8d2146108ce57816316ddcae714610843578163248a9ca3146108195781632f2ff15d146107ef57816330d643b5146107c657816336568abe1461078057816338ff92e6146105815781635c47df421461073c57816376d4eb5814610680578163820a1187146105ea57816391d14854146105a4578163989a5e6714610581578163a217fddf14610566578163bbf553681461052d578163c0d7865514610486578163d547741f14610447578163e015e70614610214578163e5711e8b14610144575063f887ea40146101195780610012565b3461014057816003193601126101405760025490516001600160a01b039091168152602090f35b5080fd5b9050346102105760603660031901126102105761015f610a70565b91610168610a8b565b9060443591610175610ad5565b61017d611099565b6001600160a01b038181169586156102005716936101a8856000526004602052604060002054151590565b6101e95750916020916101dd827f4143f7b5cb6ea007914c32b8a3e64cebc051d7f493fa0755454da1e47701e1259587610e8f565b51908152a36001805580f35b82516341d6bb6960e01b8152908101859052602490fd5b835163d92e233d60e01b81528690fd5b8280fd5b9190503461021057826003193601126102105790826003548160018060a01b038060025416925b80831061024c576020888851908152f35b8161025a8498969798610dfc565b90549060031b1c16958551986370a0823160e01b8a5230898b0152602060249a81818d818d5afa90811561043d578491610410575b508015610400578851630b4da09f60e41b8152808c018b905282818e818c5afa9081156103f65790879186916103b8575b5016806102dd57895163d4fcdee560e01b8152808d018c90528d90fd5b8951630147414360e31b81526001600160a01b03909b168b8d019081526020810192909252979b969a9899959794969395929491929183918391908290819060400103915afa9182156103ae57859261037c575b5050820180921161036b5750955b600019811461035857600101919692909394959661023b565b634e487b7160e01b825260118552602482fd5b634e487b7160e01b83526011865282fd5b90809250813d83116103a7575b6103938183610dc4565b810103126103a357513880610331565b8380fd5b503d610389565b89513d87823e3d90fd5b809250848092503d83116103ef575b6103d18183610dc4565b810103126103eb575186811681036103eb578690386102c0565b8480fd5b503d6103c7565b8a513d87823e3d90fd5b505097959650919397509161033f565b90508181813d8311610436575b6104278183610dc4565b810103126103a357513861028f565b503d61041d565b89513d86823e3d90fd5b91905034610210578060031936011261021057610482913561047d600161046c610a8b565b938387528660205286200154610b77565b610d4f565b5080f35b905034610210576020366003190112610210576104a1610a70565b906104aa610ad5565b6001600160a01b03828116939091908415610520575050906104d6916002541680610510575b50610b9d565b50600280546001600160a01b031916821790557fc6b438e6a8a59579ce6a4406cbd203b740e0d47b458aae6596339bcd40c40d158280a280f35b61051990610cb6565b50386104d0565b5163d92e233d60e01b8152fd5b828434610563576020366003190112610563575061054d60209235610dfc565b905491519160018060a01b039160031b1c168152f35b80fd5b50503461014057816003193601126101405751908152602090f35b8334610563576105a161059336610aa1565b9161059c610b2d565b610e49565b80f35b9050346102105781600319360112610210578160209360ff926105c5610a8b565b903582528186528282206001600160a01b039091168252855220549151911615158152f35b90503461021057602036600319011261021057610605610a70565b61060d610b2d565b6001600160a01b031691821561052057610634836000526004602052604060002054151590565b61066b57505061064381610f2e565b507ffb1fc2923ce18ee4299e9b5148b4d36f2f75f80891e18fa33fcc72e0d215494c8280a280f35b9160249251916318a3cd8760e11b8352820152fd5b8284346105635780600319360112610563579080519182906003549182855260208095018093600384527fc2575a0e9e593c00f959f8c92f12db2869c3395a3b0502d05e2516446f71f85b90845b81811061072857505050816106e4910382610dc4565b83519485948186019282875251809352850193925b82811061070857505050500390f35b83516001600160a01b0316855286955093810193928101926001016106f9565b8254845292880192600192830192016106ce565b505034610140578160031936011261014057517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b83833461014057806003193601126101405761079a610a8b565b90336001600160a01b038316036107b75750610482919235610d4f565b5163334bd91960e11b81528390fd5b505034610140578160031936011261014057602090516000805160206110bd8339815191528152f35b919050346102105780600319360112610210576104829135610814600161046c610a8b565b610c3d565b90503461021057602036600319011261021057816020936001923581528085522001549051908152f35b9050346102105760203660031901126102105761085e610a70565b610866610b2d565b6001600160a01b0316600081815260046020526040902054909290156108b957505061089181610fb0565b507f33b42bdf6f0296af0be7bb6c0e2295b1822716a1b7a2de4a337b1e3d8962b5fc8280a280f35b9160249251916321db539f60e21b8352820152fd5b505034610140578160031936011261014057517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b9190503461021057806003193601126102105761092d610a70565b906024359161093a610ad5565b610942611099565b6001600160a01b038116938415610a0f578580808087865af13d15610a0a573d67ffffffffffffffff81116109f757845190610988601f8201601f191660200183610dc4565b81528760203d92013e5b156109ca5750507fb3579861130e4da8bb7b87c54d2d139937f23bcd6e4ebed9e75d0f78ab1cc1189160209151908152a26001805580f35b8251635e0a829b60e01b81526001600160a01b039092169082019081526020810184905281906040010390fd5b634e487b7160e01b885260418352602488fd5b610992565b825163d92e233d60e01b8152fd5b849134610210576020366003190112610210573563ffffffff60e01b81168091036102105760209250637965db0b60e01b8114908115610a5f575b5015158152f35b6301ffc9a760e01b14905083610a58565b600435906001600160a01b0382168203610a8657565b600080fd5b602435906001600160a01b0382168203610a8657565b6060906003190112610a86576001600160a01b036004358181168103610a865791602435916044359081168103610a865790565b3360009081527fad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5602052604081205460ff1615610b0f5750565b6044906040519063e2517d3f60e01b82523360048301526024820152fd5b3360009081527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260409020546000805160206110bd8339815191529060ff1615610b0f5750565b80600052600060205260406000203360005260205260ff6040600020541615610b0f5750565b6001600160a01b031660008181527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260408120549091906000805160206110bd8339815191529060ff16610c3857808352826020526040832082845260205260408320600160ff198254161790557f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d339380a4600190565b505090565b9060009180835282602052604083209160018060a01b03169182845260205260ff60408420541615600014610c3857808352826020526040832082845260205260408320600160ff198254161790557f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d339380a4600190565b6001600160a01b031660008181527fb5816a4d525ce17c45785e5fbae4518f6f00ef4e9d31d4d7bb129b76152ed32f60205260408120549091906000805160206110bd8339815191529060ff1615610c385780835282602052604083208284526020526040832060ff1981541690557ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b339380a4600190565b9060009180835282602052604083209160018060a01b03169182845260205260ff604084205416600014610c385780835282602052604083208284526020526040832060ff1981541690557ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b339380a4600190565b90601f8019910116810190811067ffffffffffffffff821117610de657604052565b634e487b7160e01b600052604160045260246000fd5b600354811015610e335760036000527fc2575a0e9e593c00f959f8c92f12db2869c3395a3b0502d05e2516446f71f85b0190600090565b634e487b7160e01b600052603260045260246000fd5b6001600160a01b03166000818152600460205260409020549093929015610e7657610e749293610e8f565b565b6040516321db539f60e21b815260048101859052602490fd5b60405163a9059cbb60e01b60208083019182526001600160a01b039490941660248301526044808301959095529381529092600091610ecf606482610dc4565b519082855af115610f22576000513d610f1957506001600160a01b0381163b155b610ef75750565b604051635274afe760e01b81526001600160a01b039091166004820152602490fd5b60011415610ef0565b6040513d6000823e3d90fd5b600081815260046020526040812054610fab5760035468010000000000000000811015610f97579082610f83610f6c84600160409601600355610dfc565b819391549060031b91821b91600019901b19161790565b905560035492815260046020522055600190565b634e487b7160e01b82526041600452602482fd5b905090565b6000908082526004908160205260408320548015156000146110935760001990808201818111611080576003549083820191821161106d5781810361103a575b50505060035480156110275781019061100882610dfc565b909182549160031b1b1916905560035582526020526040812055600190565b634e487b7160e01b855260318452602485fd5b611058611049610f6c93610dfc565b90549060031b1c928392610dfc565b90558552836020526040852055388080610ff0565b634e487b7160e01b875260118652602487fd5b634e487b7160e01b865260118552602486fd5b50505090565b6002600154146110aa576002600155565b604051633ee5aeb560e01b8152600490fdfe7a05a596cb0ce7fdea8a1e1ec73be300bdb35097c944ce1897202f7a13122eb2a2646970667358221220f7645f00e5d53721af95498dc17fb21379045cd517f32e1675c78578d01fa27364736f6c63430008140033"
+}

@@ -45,5 +45,6 @@
   "configure_dstake": 1761826777,
   "dstake_dlend_rewards": 1761826958,
   "dETH_IssuerV2_1": 1761888868,
-  "dUSD_IssuerV2_1": 1761888903
+  "dUSD_IssuerV2_1": 1761888903,
+  "deploy-eth-erc4626-wrapper": 1765539944
 }

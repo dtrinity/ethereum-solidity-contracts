@@ -3,8 +3,8 @@ import "hardhat-deploy/dist/src/type-extensions";
 import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
-import { ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import { ONE_BPS_UNIT, ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
+import { DETH_A_TOKEN_WRAPPER_ID, DETH_TOKEN_ID, DUSD_A_TOKEN_WRAPPER_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import {
   rateStrategyBorrowDStable,
@@ -55,9 +55,17 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   const { deployer } = await hre.getNamedAccounts();
   const dUSDDeployment = await hre.deployments.getOrNull(DUSD_TOKEN_ID);
   const dETHDeployment = await hre.deployments.getOrNull(DETH_TOKEN_ID);
+  const [dLendATokenWrapperDUSDDeployment, dLendATokenWrapperDETHDeployment] = await Promise.all([
+    hre.deployments.getOrNull(DUSD_A_TOKEN_WRAPPER_ID),
+    hre.deployments.getOrNull(DETH_A_TOKEN_WRAPPER_ID),
+  ]);
+  const [idleVaultSdUSDDeployment, idleVaultSdETHDeployment] = await Promise.all([
+    hre.deployments.getOrNull("DStakeIdleVault_sdUSD"),
+    hre.deployments.getOrNull("DStakeIdleVault_sdETH"),
+  ]);
 
   // Governance defaults to the shared Safe; fall back to deployer to avoid undefined values during dry-runs
-  const governanceAddress = GOVERNANCE_SAFE ?? deployer ?? ZeroAddress;
+  const governanceAddress = GOVERNANCE_SAFE ?? deployer;
   const incentivesVault = INCENTIVES_SAFE ?? governanceAddress;
 
   // Collateral redemption fee overrides (fallback to defaults when not set)
@@ -118,6 +126,12 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   // Since frxETH is 1:1 redeemable with ETH, no external price feed is needed
   const ethErc4626OracleAssets: Record<string, string> = {};
   addSimpleErc4626Asset(ethErc4626OracleAssets, SFRXETH_ADDRESS, SFRXETH_ADDRESS);
+
+  // --- dSTAKE (mainnet placeholders) ---
+  // NOTE:
+  // - The deploy scripts will skip instances where addresses are missing/ZeroAddress.
+  // - Roles (admin, fee manager, collateral exchangers) are initialized to the deployer
+  //   and must be migrated to governance via separate Safe transactions after deployment.
 
   return {
     tokenAddresses: {
@@ -202,6 +216,69 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         WETH: strategyWETH,
         wstETH: strategySTETH,
         sfrxETH: strategySFRXETH,
+      },
+    },
+    dStake: {
+      // Staked dUSD (sdUSD)
+      sdUSD: {
+        dStable: stringOrEmpty(dUSDDeployment?.address),
+        name: "Staked dUSD",
+        symbol: "sdUSD",
+        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
+        adapters: [
+          {
+            // Default strategy: idle vault (ERC4626) holding dUSD.
+            strategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
+            adapterContract: "GenericERC4626ConversionAdapter",
+            vaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
+          },
+          {
+            // Whitelist dLEND wrapper at 0% initially; allocation can be raised later via setVaultConfigs().
+            // If not deployed yet, the deploy scripts will try to infer it from DUSD_A_TOKEN_WRAPPER_ID.
+            strategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+            adapterContract: "WrappedDLendConversionAdapter",
+            vaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+            targetBps: 0,
+          },
+        ],
+        defaultDepositStrategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
+        defaultDepositVaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
+        idleVault: {
+          name: "dSTAKE Idle dUSD Vault",
+          symbol: "idle-dUSD",
+          rewardManager: incentivesVault, // Shared with dLEND
+        },
+      },
+      // Staked dETH (sdETH)
+      sdETH: {
+        dStable: stringOrEmpty(dETHDeployment?.address),
+        name: "Staked dETH",
+        symbol: "sdETH",
+        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
+        adapters: [
+          {
+            // Default strategy: idle vault (ERC4626) holding dETH.
+            strategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
+            adapterContract: "GenericERC4626ConversionAdapter",
+            vaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
+          },
+          {
+            // Whitelist dLEND wrapper at 0% initially; allocation can be raised later via setVaultConfigs().
+            strategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+            adapterContract: "WrappedDLendConversionAdapter",
+            vaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+            targetBps: 0,
+          },
+        ],
+        defaultDepositStrategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
+        defaultDepositVaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
+        idleVault: {
+          name: "dSTAKE Idle dETH Vault",
+          symbol: "idle-dETH",
+          rewardManager: incentivesVault, // Shared vault with dLEND
+        },
       },
     },
   };

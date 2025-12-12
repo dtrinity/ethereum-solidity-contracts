@@ -73,7 +73,6 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     error NoLiquidityAvailable();
     error InvalidMaxVaultCount(uint256 count);
     error EmptyArrays();
-    error ArrayLengthMismatch();
     error IndexOutOfBounds();
     error WithdrawalShortfall(uint256 expectedNet, uint256 actualNet);
     error ReceiverZero();
@@ -516,7 +515,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     ) external override nonReentrant whenNotPaused returns (uint256 sharesMinted) {
         if (receiver == address(0)) revert ReceiverZero();
         if (vaults.length == 0) revert EmptyArrays();
-        if (vaults.length != assets.length) revert ArrayLengthMismatch();
+        if (vaults.length != assets.length) revert DeterministicVaultSelector.ArrayLengthMismatch();
 
         uint256 totalAssets = 0;
         uint256 assetCount = assets.length;
@@ -564,7 +563,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     ) external override nonReentrant whenNotPaused returns (uint256 sharesMinted) {
         if (receiver == address(0)) revert ReceiverZero();
         if (vaults.length == 0) revert EmptyArrays();
-        if (vaults.length != shares.length) revert ArrayLengthMismatch();
+        if (vaults.length != shares.length) revert DeterministicVaultSelector.ArrayLengthMismatch();
 
         uint256[] memory assetAmounts = new uint256[](vaults.length);
         uint256 totalAssets = 0;
@@ -627,7 +626,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     ) external override nonReentrant whenNotPaused returns (uint256 netAssets, uint256 fee, uint256 sharesBurned) {
         if (receiver == address(0)) revert ReceiverZero();
         if (vaults.length == 0) revert EmptyArrays();
-        if (vaults.length != assets.length) revert ArrayLengthMismatch();
+        if (vaults.length != assets.length) revert DeterministicVaultSelector.ArrayLengthMismatch();
 
         uint256 totalNetAssets = 0;
         uint256 totalGrossAssets = 0;
@@ -701,7 +700,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     ) external override nonReentrant whenNotPaused returns (uint256 netAssets, uint256 fee, uint256 sharesBurned) {
         if (receiver == address(0)) revert ReceiverZero();
         if (vaults.length == 0) revert EmptyArrays();
-        if (vaults.length != strategyShares.length) revert ArrayLengthMismatch();
+        if (vaults.length != strategyShares.length) revert DeterministicVaultSelector.ArrayLengthMismatch();
 
         uint256[] memory grossAssetAmounts = new uint256[](vaults.length);
         uint256 totalGrossAssets = 0;

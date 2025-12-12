@@ -42,7 +42,6 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
     error NoLiquidityAvailable();
     error InvalidMaxVaultCount(uint256 count);
     error EmptyArrays();
-    error ArrayLengthMismatch();
     error IndexOutOfBounds();
     error WithdrawalShortfall(uint256 expectedNet, uint256 actualNet);
     error ReceiverZero();

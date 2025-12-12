@@ -220,8 +220,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   const governanceAddress = deployer ?? ZeroAddress;
   const sdUSDDefaultStrategyShare = idleVaultSdUSDDeployment?.address ?? dLendATokenWrapperDUSDDeployment?.address ?? "";
   const sdETHDefaultStrategyShare = idleVaultSdETHDeployment?.address ?? dLendATokenWrapperDETHDeployment?.address ?? "";
+  // NOTE: dStake roles (admin, fee manager, collateral exchangers) are initialized to the deployer
+  // during deployment and must be migrated to governance via separate transactions after deployment.
   const dstakeAdmin = deployer ?? "";
-  const dstakeCollateralExchangers = dstakeAdmin ? [dstakeAdmin] : [];
 
   const dUSDCollateralFees: Record<string, number> = {};
   const dETHCollateralFees: Record<string, number> = {};
@@ -435,8 +436,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         dStable: stringOrEmpty(dUSDDeployment?.address),
         name: "Staked dUSD",
         symbol: "sdUSD",
-        initialAdmin: dstakeAdmin || governanceAddress,
-        initialFeeManager: dstakeAdmin || governanceAddress,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -449,7 +448,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         defaultDepositStrategyShare: stringOrEmpty(sdUSDDefaultStrategyShare),
         defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
         collateralVault: "DStakeCollateralVaultV2_sdUSD",
-        collateralExchangers: dstakeCollateralExchangers,
         idleVault: {
           rewardManager: dstakeAdmin || governanceAddress,
         },
@@ -469,8 +467,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         dStable: stringOrEmpty(dETHDeployment?.address),
         name: "Staked dETH",
         symbol: "sdETH",
-        initialAdmin: dstakeAdmin || governanceAddress,
-        initialFeeManager: dstakeAdmin || governanceAddress,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -483,7 +479,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         defaultDepositStrategyShare: stringOrEmpty(sdETHDefaultStrategyShare),
         defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
         collateralVault: "DStakeCollateralVaultV2_sdETH",
-        collateralExchangers: dstakeCollateralExchangers,
         idleVault: {
           rewardManager: dstakeAdmin || governanceAddress,
         },

@@ -4,6 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
+import { DStakeRouterV2__factory as DStakeRouterV2Factory } from "../../typechain-types/factories/contracts/vaults/dstake/DStakeRouterV2.sol";
 import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKEN_ID_PREFIX } from "../../typescript/deploy-ids";
 // Assuming these IDs exist
 
@@ -39,23 +40,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       continue;
     }
 
-    if (!instanceConfig.initialAdmin || instanceConfig.initialAdmin === ethers.ZeroAddress) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: missing initialAdmin.`);
-      continue;
-    }
-
-    if (!instanceConfig.initialFeeManager || instanceConfig.initialFeeManager === ethers.ZeroAddress) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: missing initialFeeManager.`);
-      continue;
-    }
-
     if (!Array.isArray(instanceConfig.adapters) || instanceConfig.adapters.length === 0) {
       console.warn(`Skipping dSTAKE instance ${instanceKey}: no adapters configured.`);
-      continue;
-    }
-
-    if (!Array.isArray(instanceConfig.collateralExchangers) || instanceConfig.collateralExchangers.length === 0) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: no collateral exchangers configured.`);
       continue;
     }
     const DStakeTokenDeploymentName = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
@@ -76,9 +62,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       contract: "DStakeTokenV2",
       proxy: {
-        // OZ v5 TransparentUpgradeableProxy mints a dedicated ProxyAdmin internally per proxy.
-        // We therefore avoid viaAdminContract and just set the initial owner for that ProxyAdmin here.
-        owner: deployer, // keep ownership with deployer for now; migrate later in role-migration script
+        // IMPORTANT:
+        // hardhat-deploy uses a shared ProxyAdmin deployment ("DefaultProxyAdmin") for transparent proxies.
+        // Setting `owner` here will make hardhat-deploy attempt to change DefaultProxyAdmin ownership,
+        // which fails unless you explicitly call `transferOwnership` on that contract.
+        //
+        // We intentionally DO NOT set `owner` here to avoid any admin/owner changes during deployment.
+        // AccessControl role handoff is handled later in 03_configure_dstake.ts.
         proxyContract: "OpenZeppelinTransparentProxy",
         execute: {
           init: {
@@ -87,8 +77,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
               instanceConfig.dStable,
               instanceConfig.name,
               instanceConfig.symbol,
-              deployer, // initialAdmin = deployer
-              deployer, // initialFeeManager = deployer
+              // Initialize AccessControl to the deployer so we can finish wiring (migrateCore, fees) in 03_configure_dstake.
+              // Role migration to governance addresses happens via separate Safe transactions after deployment.
+              deployer, // initialAdmin (remains with deployer until migrated)
+              deployer, // initialFeeManager (remains with deployer until migrated)
             ],
           },
         },
@@ -126,19 +118,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: false,
     });
 
-    await deployments.execute(
-      routerDeploymentName,
-      { from: deployer, log: false },
-      "setGovernanceModule",
-      governanceModuleDeployment.address,
-    );
-
-    await deployments.execute(
-      routerDeploymentName,
-      { from: deployer, log: false },
-      "setRebalanceModule",
-      rebalanceModuleDeployment.address,
-    );
+    // Wire modules via direct calls to avoid hardhat-deploy ABI dedupe warnings.
+    const deployerSigner = await ethers.getSigner(deployer);
+    const router = DStakeRouterV2Factory.connect((await deployments.get(routerDeploymentName)).address, deployerSigner);
+    await router.setGovernanceModule(governanceModuleDeployment.address);
+    await router.setRebalanceModule(rebalanceModuleDeployment.address);
 
     // NOTE: Governance permissions will be granted in the post-deployment
     // role-migration script. No additional role grants are necessary here.
