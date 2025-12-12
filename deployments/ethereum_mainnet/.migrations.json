@@ -41,5 +41,8 @@
   "dStableATokenWrappers": 1765427175,
   "deploy_redeemer_v2": 1765427175,
   "01_deploy_amo_manager_v2_and_debt": 1765428465,
-  "02_configure_amo_system": 1765428472
+  "02_configure_amo_system": 1765428472,
+  "deploy_dstake_adapters": 1765529447,
+  "configure_dstake": 1765531253,
+  "dstake_dlend_rewards": 1765531253
 }

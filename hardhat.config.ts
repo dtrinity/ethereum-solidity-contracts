@@ -191,7 +191,7 @@ const config: HardhatUserConfig = {
       accounts: getEnvPrivateKeys("ethereum_testnet"),
     },
     ethereum_mainnet: {
-      url: "https://mainnet.infura.io/v3/b26481279d3a46afab21c568f94ce9d1",
+      url: "https://ethereum-rpc.publicnode.com",
       chainId: 1,
       deploy: ["deploy"], // NOTE: DO NOT DEPLOY mocks
       saveDeployments: true,

@@ -23,8 +23,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const symbol = instanceConfig.symbol;
-    const proxyAdminOwner =
-      instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : deployer;
 
     if (!symbol) {
       console.warn(`Skipping dSTAKE instance ${instanceKey}: missing symbol configuration.`);
@@ -55,11 +53,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.warn(`Skipping dSTAKE instance ${instanceKey}: no adapters configured.`);
       continue;
     }
-
-    if (!Array.isArray(instanceConfig.collateralExchangers) || instanceConfig.collateralExchangers.length === 0) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: no collateral exchangers configured.`);
-      continue;
-    }
     const DStakeTokenDeploymentName = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
     const collateralVaultDeploymentName = `${DSTAKE_COLLATERAL_VAULT_ID_PREFIX}_${symbol}`;
     const routerDeploymentName = `${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`;
@@ -78,11 +71,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       contract: "DStakeTokenV2",
       proxy: {
-        // OZ v5 TransparentUpgradeableProxy mints a dedicated ProxyAdmin internally per proxy.
-        // We therefore avoid viaAdminContract and just set the initial owner for that ProxyAdmin here.
-        // For mainnet safety we set ProxyAdmin ownership to the configured governance/admin address (usually a Safe).
-        // Note: This does NOT affect on-chain AccessControl roles inside the token itself.
-        owner: proxyAdminOwner,
+        // IMPORTANT:
+        // hardhat-deploy uses a shared ProxyAdmin deployment ("DefaultProxyAdmin") for transparent proxies.
+        // Setting `owner` here will make hardhat-deploy attempt to change DefaultProxyAdmin ownership,
+        // which fails unless you explicitly call `transferOwnership` on that contract.
+        //
+        // We intentionally DO NOT set `owner` here to avoid any admin/owner changes during deployment.
+        // AccessControl role handoff is handled later in 03_configure_dstake.ts.
         proxyContract: "OpenZeppelinTransparentProxy",
         execute: {
           init: {

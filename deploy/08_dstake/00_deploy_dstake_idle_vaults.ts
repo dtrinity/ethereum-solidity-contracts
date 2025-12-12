@@ -15,7 +15,7 @@ import { DStakeInstanceConfig } from "../../config/types";
  * These are intended to be used as the initial/default dSTAKE strategy vault on mainnet
  * (100% allocation), with other strategies optionally whitelisted at 0%.
  *
- * @param hre
+ * @param hre - Hardhat runtime environment.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
