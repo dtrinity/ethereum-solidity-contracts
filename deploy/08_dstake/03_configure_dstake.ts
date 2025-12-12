@@ -319,6 +319,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       const currentDefault = await routerContract.defaultDepositStrategyShare();
 
       if (currentDefault !== instanceConfig.defaultDepositStrategyShare) {
+        // Guard: router requires an adapter to exist for the strategy share.
+        // On local networks we prefer skipping misconfig over hard-failing the entire deploy.
+        const expectedAdapter = await routerContract.strategyShareToAdapter(instanceConfig.defaultDepositStrategyShare);
+        if (expectedAdapter === ethers.ZeroAddress) {
+          const msg = `Default deposit strategy share ${instanceConfig.defaultDepositStrategyShare} has no adapter in ${routerDeploymentName}`;
+          if (hre.network.name === "hardhat" || hre.network.name === "localhost") {
+            console.warn(`    ⚠️  ${msg}; skipping setDefaultDepositStrategyShare on ${hre.network.name}`);
+            continue;
+          }
+          throw new Error(`${msg}. Ensure an adapter is added before setting defaultDepositStrategyShare.`);
+        }
+
         // setDefaultDepositStrategyShare is restricted to CONFIG_MANAGER_ROLE on the router
         await ensureRole({
           contract: routerContract,

@@ -70,13 +70,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       );
     }
 
-    const vault = await hre.ethers.getContractAt("CollateralVault", vaultDeployment.address, signer);
+    const vault = await hre.ethers.getContractAt("CollateralHolderVault", vaultDeployment.address, signer);
     const withdrawerRole = await vault.COLLATERAL_WITHDRAWER_ROLE();
 
-    const [legacyHasRole, v2HasRole, deployerIsAdmin] = await Promise.all([
+    const [legacyHasRole, v2HasRole, deployerCanRevoke] = await Promise.all([
       vault.hasRole(withdrawerRole, legacyRedeemerDeployment.address),
       vault.hasRole(withdrawerRole, redeemerV2Deployment.address),
-      vault.hasRole(await vault.DEFAULT_ADMIN_ROLE(), deployer),
+      // revokeRole requires role admin of withdrawerRole (by default DEFAULT_ADMIN_ROLE)
+      vault.hasRole(await vault.getRoleAdmin(withdrawerRole), deployer),
     ]);
 
     if (!v2HasRole) {
@@ -90,14 +91,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       continue;
     }
 
-    if (deployerIsAdmin) {
+    if (deployerCanRevoke) {
       console.log(`  🔐 Revoking COLLATERAL_WITHDRAWER_ROLE from legacy redeemer ${legacyRedeemerDeployment.address}...`);
       const tx = await vault.revokeRole(withdrawerRole, legacyRedeemerDeployment.address);
       await tx.wait();
       console.log("  ✅ Revoked.");
     } else {
       manualActions.push(
-        `CollateralVault (${vaultDeployment.address}).revokeRole(COLLATERAL_WITHDRAWER_ROLE, ${legacyRedeemerDeployment.address})`,
+        `CollateralHolderVault (${vaultDeployment.address}).revokeRole(COLLATERAL_WITHDRAWER_ROLE, ${legacyRedeemerDeployment.address})`,
       );
     }
   }
@@ -113,18 +114,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.id = "revoke_legacy_redeemers";
 // Intentionally only runnable via explicit tag to avoid accidental revocation during routine deploys.
-func.tags = ["redeemerV2:cleanup"];
-func.dependencies = [
-  DUSD_COLLATERAL_VAULT_CONTRACT_ID,
-  DETH_COLLATERAL_VAULT_CONTRACT_ID,
-  DUSD_REDEEMER_CONTRACT_ID,
-  DETH_REDEEMER_CONTRACT_ID,
-  // Ensure the RedeemerV2 deploy script has run (deploy-script id, not deployment name)
-  "deploy_redeemer_v2",
-  // Ensure both V2 redeemers exist before revoking legacy privileges
-  DUSD_REDEEMER_V2_CONTRACT_ID,
-  DETH_REDEEMER_V2_CONTRACT_ID,
-];
+func.tags = ["redeemer:cleanup"];
+func.dependencies = ["deploy_redeemer_v2_dusd", "deploy_redeemer_v2_deth"];
 
 export default func;
 
