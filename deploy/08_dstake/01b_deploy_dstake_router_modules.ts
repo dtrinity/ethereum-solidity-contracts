@@ -13,6 +13,8 @@ import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKE
  * Why this exists:
  * - `01_deploy_dstake_core.ts` intentionally skips if core already exists, so older deployments can miss newer modules.
  * - This script is safe to run repeatedly: it only deploys missing module deployments and wires modules if unset/mismatched.
+ *
+ * @param hre The Hardhat Runtime Environment
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -21,12 +23,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployerSigner = await ethers.getSigner(deployer);
 
   const config = await getConfig(hre);
+
   if (!config.dStake) {
     console.log("No dSTAKE configuration found for this network. Skipping module deployment.");
     return;
   }
 
   let processedInstances = 0;
+
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const symbol = instanceConfig.symbol;
@@ -71,6 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (!governanceModuleDeployment?.address || governanceModuleDeployment.address === ethers.ZeroAddress) {
       throw new Error(`Failed to deploy ${governanceModuleDeploymentName}`);
     }
+
     if (!rebalanceModuleDeployment?.address || rebalanceModuleDeployment.address === ethers.ZeroAddress) {
       throw new Error(`Failed to deploy ${rebalanceModuleDeploymentName}`);
     }
@@ -81,6 +86,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // you must wire via the admin (e.g., Safe) instead.
     const defaultAdminRole = await router.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await router.hasRole(defaultAdminRole, deployer);
+
     if (!deployerIsAdmin) {
       throw new Error(
         `Deployer ${deployer} lacks DEFAULT_ADMIN_ROLE on ${routerDeploymentName}; cannot wire modules. Wire via admin, or temporarily grant admin back to deployer.`,
@@ -88,6 +94,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     const currentGovernance = await router.governanceModule();
+
     if (currentGovernance !== governanceModuleDeployment.address) {
       console.log(`    ⚙️ Wiring governance module for ${routerDeploymentName} to ${governanceModuleDeployment.address}`);
       // Use direct call (avoids hardhat-deploy ABI dedupe warnings on older deployment JSONs)
@@ -95,6 +102,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     const currentRebalance = await router.rebalanceModule();
+
     if (currentRebalance !== rebalanceModuleDeployment.address) {
       console.log(`    ⚙️ Wiring rebalance module for ${routerDeploymentName} to ${rebalanceModuleDeployment.address}`);
       // Use direct call (avoids hardhat-deploy ABI dedupe warnings on older deployment JSONs)
@@ -103,6 +111,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   console.log(`🥩 ${__filename.split("/").slice(-2).join("/")}: ✅`);
+
   if (processedInstances > 0) {
     // Mark as fully executed (one-shot) for this network once all instances are wired.
     return true;

@@ -16,6 +16,7 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
   const governanceMultisig = config.walletAddresses.governanceMultisig;
+
   if (!governanceMultisig || !isAddress(governanceMultisig)) {
     console.log("⚠️  Skipping dETH AMO V2 configure - governance multisig not configured");
     console.log(`☯️  ${__filename.split("/").slice(-2).join("/")}: ⏭️  (skipped)`);

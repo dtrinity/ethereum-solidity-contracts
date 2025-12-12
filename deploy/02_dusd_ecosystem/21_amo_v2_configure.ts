@@ -8,14 +8,15 @@ import {
   DUSD_AMO_DEBT_TOKEN_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
+  DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
   DUSD_TOKEN_ID,
   USD_ORACLE_AGGREGATOR_ID,
-  DUSD_HARD_PEG_ORACLE_WRAPPER_ID,
 } from "../../typescript/deploy-ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
   const governanceMultisig = config.walletAddresses.governanceMultisig;
+
   if (!governanceMultisig || !isAddress(governanceMultisig)) {
     console.log("⚠️  Skipping dUSD AMO V2 configure - governance multisig not configured");
     console.log(`☯️  ${__filename.split("/").slice(-2).join("/")}: ⏭️  (skipped)`);

@@ -118,5 +118,3 @@ func.tags = ["redeemer:cleanup"];
 func.dependencies = ["deploy_redeemer_v2_dusd", "deploy_redeemer_v2_deth"];
 
 export default func;
-
-

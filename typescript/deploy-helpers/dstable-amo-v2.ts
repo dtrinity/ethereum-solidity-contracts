@@ -10,11 +10,26 @@ export type DeployAmoV2Params = {
   amoManagerV2Id: string;
 };
 
+/**
+ * Checks if the deployer account can grant a specific role on a contract.
+ *
+ * @param contract The contract instance to check role permissions on
+ * @param role The role bytes32 identifier to check
+ * @param deployer The deployer account address to check permissions for
+ * @returns True if the deployer can grant the role, false otherwise
+ */
 async function canGrantRole(contract: any, role: string, deployer: string): Promise<boolean> {
   const adminRole = await contract.getRoleAdmin(role);
   return await contract.hasRole(adminRole, deployer);
 }
 
+/**
+ * Deploys AMO V2 contracts for a specific asset, including debt token and manager.
+ *
+ * @param hre The Hardhat Runtime Environment
+ * @param params Configuration parameters for AMO deployment
+ * @returns Object containing skip status and any manual actions required
+ */
 export async function deployAmoV2ForAsset(
   hre: HardhatRuntimeEnvironment,
   params: DeployAmoV2Params,
@@ -64,6 +79,7 @@ export async function deployAmoV2ForAsset(
 
   const currentOracle = await oracleAggregator.assetOracles(debtTokenDeployment.address);
   const targetOracle = hardPegWrapper!.address;
+
   if (currentOracle.toLowerCase() !== targetOracle.toLowerCase()) {
     if (deployerIsOracleManager) {
       const tx = await oracleAggregator.setOracle(debtTokenDeployment.address, targetOracle);
@@ -86,6 +102,13 @@ export async function deployAmoV2ForAsset(
   return { skipped: false, manualActions };
 }
 
+/**
+ * Configures AMO V2 contracts for a specific asset, setting up roles and permissions.
+ *
+ * @param hre The Hardhat Runtime Environment
+ * @param params Configuration parameters for AMO configuration including governance multisig
+ * @returns Object containing skip status and any manual actions required
+ */
 export async function configureAmoV2ForAsset(
   hre: HardhatRuntimeEnvironment,
   params: DeployAmoV2Params & { governanceMultisig: string },
@@ -128,6 +151,7 @@ export async function configureAmoV2ForAsset(
   const baseCurrencyUnit = await oracle.BASE_CURRENCY_UNIT();
   const expectedPrice = baseCurrencyUnit;
   const currentPrice = await oracle.getAssetPrice(debtTokenDep!.address);
+
   if (currentPrice !== expectedPrice) {
     throw new Error(
       `Debt token oracle price mismatch for ${label}. Expected ${expectedPrice}, received ${currentPrice}. Ensure hard peg oracle is set first.`,
@@ -136,6 +160,7 @@ export async function configureAmoV2ForAsset(
 
   // --- Roles ---
   const AMO_MANAGER_ROLE = await debtToken.AMO_MANAGER_ROLE();
+
   if (!(await debtToken.hasRole(AMO_MANAGER_ROLE, amoManagerDep!.address))) {
     if (await canGrantRole(debtToken, AMO_MANAGER_ROLE, deployer)) {
       const tx = await debtToken.grantRole(AMO_MANAGER_ROLE, amoManagerDep!.address);
@@ -147,6 +172,7 @@ export async function configureAmoV2ForAsset(
   }
 
   const MINTER_ROLE = await dstable.MINTER_ROLE();
+
   if (!(await dstable.hasRole(MINTER_ROLE, amoManagerDep!.address))) {
     if (await canGrantRole(dstable, MINTER_ROLE, deployer)) {
       const tx = await dstable.grantRole(MINTER_ROLE, amoManagerDep!.address);
@@ -158,6 +184,7 @@ export async function configureAmoV2ForAsset(
   }
 
   const WITHDRAWER_ROLE = await collateralVault.COLLATERAL_WITHDRAWER_ROLE();
+
   if (!(await collateralVault.hasRole(WITHDRAWER_ROLE, amoManagerDep!.address))) {
     if (await canGrantRole(collateralVault, WITHDRAWER_ROLE, deployer)) {
       const tx = await collateralVault.grantRole(WITHDRAWER_ROLE, amoManagerDep!.address);
@@ -170,8 +197,10 @@ export async function configureAmoV2ForAsset(
 
   // --- Allowlists / wiring ---
   const collateralManagerRole = await collateralVault.COLLATERAL_MANAGER_ROLE();
+
   if (!(await collateralVault.isCollateralSupported(debtTokenDep!.address))) {
     const deployerIsManager = await collateralVault.hasRole(collateralManagerRole, deployer);
+
     if (deployerIsManager) {
       const tx = await collateralVault.allowCollateral(debtTokenDep!.address);
       await tx.wait();
@@ -184,6 +213,7 @@ export async function configureAmoV2ForAsset(
   if (!(await debtToken.isAllowlisted(vault!.address))) {
     const adminRole = await debtToken.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await debtToken.hasRole(adminRole, deployer);
+
     if (deployerIsAdmin) {
       const tx = await debtToken.setAllowlisted(vault!.address, true);
       await tx.wait();
@@ -196,6 +226,7 @@ export async function configureAmoV2ForAsset(
   if (!(await debtToken.isAllowlisted(amoManagerDep!.address))) {
     const adminRole = await debtToken.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await debtToken.hasRole(adminRole, deployer);
+
     if (deployerIsAdmin) {
       const tx = await debtToken.setAllowlisted(amoManagerDep!.address, true);
       await tx.wait();
@@ -208,6 +239,7 @@ export async function configureAmoV2ForAsset(
   if ((await amoManager.collateralVault()) !== vault!.address) {
     const adminRole = await amoManager.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await amoManager.hasRole(adminRole, deployer);
+
     if (deployerIsAdmin) {
       const tx = await amoManager.setCollateralVault(vault!.address);
       await tx.wait();
@@ -220,6 +252,7 @@ export async function configureAmoV2ForAsset(
   if (governanceMultisig && !(await amoManager.isAmoWalletAllowed(governanceMultisig))) {
     const adminRole = await amoManager.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await amoManager.hasRole(adminRole, deployer);
+
     if (deployerIsAdmin) {
       const tx = await amoManager.setAmoWalletAllowed(governanceMultisig, true);
       await tx.wait();
@@ -232,6 +265,7 @@ export async function configureAmoV2ForAsset(
   if (!(await amoManager.isAmoWalletAllowed(deployer))) {
     const adminRole = await amoManager.DEFAULT_ADMIN_ROLE();
     const deployerIsAdmin = await amoManager.hasRole(adminRole, deployer);
+
     if (deployerIsAdmin) {
       const tx = await amoManager.setAmoWalletAllowed(deployer, true);
       await tx.wait();

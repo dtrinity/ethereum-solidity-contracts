@@ -1,7 +1,7 @@
+import type { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import type { Signer } from "ethers";
 
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
@@ -16,6 +16,17 @@ import {
   DUSD_A_TOKEN_WRAPPER_ID,
 } from "../../typescript/deploy-ids";
 
+/**
+ * Ensures that an account has a specific role on a contract, granting it if necessary.
+ *
+ * @param params Configuration object containing role assignment details
+ * @param params.contract The contract instance to check/grant roles on
+ * @param params.role The role bytes32 identifier to ensure
+ * @param params.roleLabel Human-readable label for the role (for logging)
+ * @param params.account The account address that should have the role
+ * @param params.signer The signer to use for granting the role if needed
+ * @param params.contractLabel Human-readable label for the contract (for logging)
+ */
 async function ensureRole(params: {
   contract: any;
   role: string;
@@ -23,7 +34,7 @@ async function ensureRole(params: {
   account: string;
   signer: Signer;
   contractLabel: string;
-}) {
+}): Promise<void> {
   const { contract, role, roleLabel, account, signer, contractLabel } = params;
   const signerAddress = await signer.getAddress();
 
@@ -32,6 +43,7 @@ async function ensureRole(params: {
 
   const adminRole = await contract.getRoleAdmin(role);
   const signerCanGrant = await contract.hasRole(adminRole, signerAddress);
+
   if (!signerCanGrant) {
     throw new Error(`Deployer ${signerAddress} cannot grant ${roleLabel} on ${contractLabel}: missing admin role ${adminRole}`);
   }
@@ -40,18 +52,30 @@ async function ensureRole(params: {
   console.log(`    🔑 Granted ${roleLabel} to ${account} on ${contractLabel}`);
 }
 
+/**
+ * Ensures that router delegatecall modules (governance and rebalance) are properly wired.
+ *
+ * @param params Configuration object containing router wiring details
+ * @param params.deployments Hardhat deployments object for accessing deployment information
+ * @param params.router The router contract instance to check/wire modules on
+ * @param params.routerDeploymentName Deployment name identifier for the router (for logging)
+ * @param params.deployer The deployer account address
+ * @param params.deployerSigner The signer for the deployer account
+ */
 async function ensureRouterModulesWired(params: {
   deployments: HardhatRuntimeEnvironment["deployments"];
   router: any;
   routerDeploymentName: string;
   deployer: string;
   deployerSigner: Signer;
-}) {
+}): Promise<void> {
   const { deployments, router, routerDeploymentName, deployer, deployerSigner } = params;
 
   const currentGovernanceModule = await router.governanceModule();
+
   if (currentGovernanceModule === ethers.ZeroAddress) {
     const governanceModuleDeployment = await deployments.getOrNull(`${routerDeploymentName}_GovernanceModule`);
+
     if (!governanceModuleDeployment) {
       throw new Error(
         `Router ${routerDeploymentName} has governanceModule unset, but deployment ${routerDeploymentName}_GovernanceModule is missing`,
@@ -72,8 +96,10 @@ async function ensureRouterModulesWired(params: {
   }
 
   const currentRebalanceModule = await router.rebalanceModule();
+
   if (currentRebalanceModule === ethers.ZeroAddress) {
     const rebalanceModuleDeployment = await deployments.getOrNull(`${routerDeploymentName}_RebalanceModule`);
+
     if (!rebalanceModuleDeployment) {
       throw new Error(
         `Router ${routerDeploymentName} has rebalanceModule unset, and deployment ${routerDeploymentName}_RebalanceModule is missing`,
@@ -322,8 +348,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         // Guard: router requires an adapter to exist for the strategy share.
         // On local networks we prefer skipping misconfig over hard-failing the entire deploy.
         const expectedAdapter = await routerContract.strategyShareToAdapter(instanceConfig.defaultDepositStrategyShare);
+
         if (expectedAdapter === ethers.ZeroAddress) {
           const msg = `Default deposit strategy share ${instanceConfig.defaultDepositStrategyShare} has no adapter in ${routerDeploymentName}`;
+
           if (hre.network.name === "hardhat" || hre.network.name === "localhost") {
             console.warn(`    ⚠️  ${msg}; skipping setDefaultDepositStrategyShare on ${hre.network.name}`);
             continue;

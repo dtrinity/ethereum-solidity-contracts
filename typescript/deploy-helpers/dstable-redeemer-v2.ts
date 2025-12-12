@@ -11,6 +11,13 @@ export type DeployRedeemerV2Params = {
   initialRedemptionFeeBps: number;
 };
 
+/**
+ * Deploys RedeemerV2 contract for a specific asset and configures necessary permissions.
+ *
+ * @param hre The Hardhat Runtime Environment
+ * @param params Configuration parameters for RedeemerV2 deployment
+ * @returns Object containing skip status and any manual actions required
+ */
 export async function deployRedeemerV2ForAsset(
   hre: HardhatRuntimeEnvironment,
   params: DeployRedeemerV2Params,
@@ -25,6 +32,7 @@ export async function deployRedeemerV2ForAsset(
     console.log(`⚠️  Skipping RedeemerV2(${label}) - missing/invalid initialFeeReceiver`);
     return { skipped: true, manualActions };
   }
+
   if (initialRedemptionFeeBps === undefined || initialRedemptionFeeBps === null) {
     console.log(`⚠️  Skipping RedeemerV2(${label}) - missing initialRedemptionFeeBps`);
     return { skipped: true, manualActions };
@@ -60,9 +68,11 @@ export async function deployRedeemerV2ForAsset(
   const vault = await hre.ethers.getContractAt("CollateralHolderVault", collateralVault!.address, signer);
   const withdrawerRole = await vault.COLLATERAL_WITHDRAWER_ROLE();
   const alreadyHasRole = await vault.hasRole(withdrawerRole, redeemerDeployment.address);
+
   if (!alreadyHasRole) {
     const adminRole = await vault.getRoleAdmin(withdrawerRole);
     const deployerCanGrant = await vault.hasRole(adminRole, deployer);
+
     if (deployerCanGrant) {
       const tx = await vault.grantRole(withdrawerRole, redeemerDeployment.address);
       await tx.wait();
