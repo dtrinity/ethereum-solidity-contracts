@@ -174,6 +174,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           const defaultAdminRole: string = await access.DEFAULT_ADMIN_ROLE();
 
           const adminHasRole = await access.hasRole(defaultAdminRole, targetAdmin);
+
           if (!adminHasRole) {
             await access.grantRole(defaultAdminRole, targetAdmin);
             console.log(`    ➕ Granted adapter DEFAULT_ADMIN_ROLE to ${targetAdmin} for ${deploymentName}`);
@@ -181,6 +182,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
           // Revoke deployer admin last to avoid locking ourselves out mid-script.
           const deployerHasRole = await access.hasRole(defaultAdminRole, deployer);
+
           if (deployerHasRole && targetAdmin.toLowerCase() !== deployer.toLowerCase()) {
             await access.revokeRole(defaultAdminRole, deployer);
             console.log(`    ➖ Revoked adapter DEFAULT_ADMIN_ROLE from deployer for ${deploymentName}`);

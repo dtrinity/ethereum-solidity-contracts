@@ -132,6 +132,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           console.log(`    ➖ Revoked token DEFAULT_ADMIN_ROLE from deployer`);
         }
       }
+
       if (targetFeeManager.toLowerCase() !== deployer.toLowerCase()) {
         if (await dstakeToken.hasRole(tokenFeeManagerRole, deployer)) {
           await dstakeToken.revokeRole(tokenFeeManagerRole, deployer);
@@ -328,6 +329,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
         // Revoke strategy rebalancer from deployer if deployer is not explicitly listed as an exchanger.
         const deployerIsExchanger = instanceConfig.collateralExchangers.some((x) => x.toLowerCase() === deployer.toLowerCase());
+
         if (!deployerIsExchanger && (await routerContract.hasRole(strategyRebalancerRole, deployer))) {
           await routerContract.revokeRole(strategyRebalancerRole, deployer);
           console.log(`    ➖ Revoked STRATEGY_REBALANCER_ROLE from deployer for ${routerDeploymentName}`);

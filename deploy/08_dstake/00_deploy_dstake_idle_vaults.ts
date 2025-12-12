@@ -14,6 +14,8 @@ import { DStakeInstanceConfig } from "../../config/types";
  *
  * These are intended to be used as the initial/default dSTAKE strategy vault on mainnet
  * (100% allocation), with other strategies optionally whitelisted at 0%.
+ *
+ * @param hre
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -21,6 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   const config = await getConfig(hre);
+
   if (!config.dStake) {
     console.log("No dStake configuration found for this network. Skipping idle vault deployment.");
     return;
@@ -42,6 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const deploymentName = `DStakeIdleVault_${symbol}`;
     const existing = await deployments.getOrNull(deploymentName);
+
     if (existing) {
       console.log(`    ${deploymentName} already exists at ${existing.address}. Skipping deployment.`);
       continue;
@@ -54,10 +58,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         : instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress
           ? instanceConfig.initialAdmin
           : deployer;
-    const rewardManager =
-      idleCfg?.rewardManager && idleCfg.rewardManager !== ethers.ZeroAddress
-        ? idleCfg.rewardManager
-        : admin; // reasonable default: same Safe
+    const rewardManager = idleCfg?.rewardManager && idleCfg.rewardManager !== ethers.ZeroAddress ? idleCfg.rewardManager : admin; // reasonable default: same Safe
 
     const name = idleCfg?.name ?? `dSTAKE Idle Vault ${symbol}`;
     const idleSymbol = idleCfg?.symbol ?? `idle${symbol}`;
@@ -78,5 +79,3 @@ export default func;
 func.tags = ["dStakeIdleVaults", "dStake"];
 func.dependencies = ["dStable"];
 func.id = "deploy_dstake_idle_vaults";
-
-

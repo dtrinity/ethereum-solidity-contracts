@@ -141,4 +141,3 @@ contract ERC4626OracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl {
         return price;
     }
 }
-
