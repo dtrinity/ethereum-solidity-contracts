@@ -55,13 +55,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     const idleCfg = instanceConfig.idleVault;
-    const admin =
-      idleCfg?.admin && idleCfg.admin !== ethers.ZeroAddress
-        ? idleCfg.admin
-        : instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress
-          ? instanceConfig.initialAdmin
-          : deployer;
-    const rewardManager = idleCfg?.rewardManager && idleCfg.rewardManager !== ethers.ZeroAddress ? idleCfg.rewardManager : admin; // reasonable default: same Safe
+    // Admin defaults to deployer; role migration to governance happens via separate Safe transactions after deployment.
+    const admin = idleCfg?.admin && idleCfg.admin !== ethers.ZeroAddress ? idleCfg.admin : deployer;
+    const rewardManager = idleCfg?.rewardManager && idleCfg.rewardManager !== ethers.ZeroAddress ? idleCfg.rewardManager : admin; // reasonable default: same as admin
 
     const name = idleCfg?.name ?? `dSTAKE Idle Vault ${symbol}`;
     const idleSymbol = idleCfg?.symbol ?? `idle${symbol}`;

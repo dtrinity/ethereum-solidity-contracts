@@ -312,13 +312,13 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         sfrxUSD: strategySFRXUSD,
       },
     },
+    // NOTE: dStake roles (admin, fee manager, collateral exchangers) are initialized to the deployer
+    // during deployment and must be migrated to governance via separate transactions after deployment.
     dStake: {
       sdUSD: {
         dStable: emptyStringIfUndefined(dUSDDeployment?.address),
         name: "Staked dUSD",
         symbol: "sdUSD",
-        initialAdmin: user1,
-        initialFeeManager: user1,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -331,7 +331,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdUSDDeployment?.address || dLendATokenWrapperDUSDDeployment?.address),
         defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDUSDDeployment?.address),
         collateralVault: "DStakeCollateralVaultV2_sdUSD",
-        collateralExchangers: [user1],
         idleVault: {
           rewardManager: deployer,
         },
@@ -351,8 +350,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         dStable: emptyStringIfUndefined(dETHDeployment?.address),
         name: "Staked dETH",
         symbol: "sdETH",
-        initialAdmin: user1,
-        initialFeeManager: user1,
         initialWithdrawalFeeBps: 10,
         adapters: [
           {
@@ -365,7 +362,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         defaultDepositStrategyShare: emptyStringIfUndefined(idleVaultSdETHDeployment?.address || dLendATokenWrapperDSDeployment?.address),
         defaultDepositVaultAsset: emptyStringIfUndefined(dLendATokenWrapperDSDeployment?.address),
         collateralVault: "DStakeCollateralVaultV2_sdETH",
-        collateralExchangers: [user1],
         idleVault: {
           rewardManager: deployer,
         },

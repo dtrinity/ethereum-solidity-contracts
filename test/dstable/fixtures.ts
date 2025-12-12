@@ -5,12 +5,12 @@ import {
   DETH_AMO_MANAGER_V2_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_ISSUER_V2_CONTRACT_ID,
-  DETH_REDEEMER_CONTRACT_ID,
+  DETH_REDEEMER_V2_CONTRACT_ID,
   DUSD_AMO_DEBT_TOKEN_ID,
   DUSD_AMO_MANAGER_V2_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_ISSUER_V2_CONTRACT_ID,
-  DUSD_REDEEMER_CONTRACT_ID,
+  DUSD_REDEEMER_V2_CONTRACT_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   USD_ORACLE_AGGREGATOR_ID,
 } from "../../typescript/deploy-ids";
@@ -57,7 +57,7 @@ export const createDStableAmoV2Fixture = (config: DStableFixtureConfig) => {
 export const DUSD_CONFIG: DStableFixtureConfig = {
   symbol: "dUSD",
   issuerContractId: DUSD_ISSUER_V2_CONTRACT_ID,
-  redeemerContractId: DUSD_REDEEMER_CONTRACT_ID,
+  redeemerContractId: DUSD_REDEEMER_V2_CONTRACT_ID,
   collateralVaultContractId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   amoManagerV2Id: DUSD_AMO_MANAGER_V2_ID,
   amoDebtTokenId: DUSD_AMO_DEBT_TOKEN_ID,
@@ -69,7 +69,7 @@ export const DUSD_CONFIG: DStableFixtureConfig = {
 export const DETH_CONFIG: DStableFixtureConfig = {
   symbol: "dETH",
   issuerContractId: DETH_ISSUER_V2_CONTRACT_ID,
-  redeemerContractId: DETH_REDEEMER_CONTRACT_ID,
+  redeemerContractId: DETH_REDEEMER_V2_CONTRACT_ID,
   collateralVaultContractId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
   amoManagerV2Id: DETH_AMO_MANAGER_V2_ID,
   amoDebtTokenId: DETH_AMO_DEBT_TOKEN_ID,

@@ -129,11 +129,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   // --- dSTAKE (mainnet placeholders) ---
   // NOTE:
-  // - We intentionally keep these values "reviewable" and Safe-oriented.
   // - The deploy scripts will skip instances where addresses are missing/ZeroAddress.
-  const dstakeAdmin = governanceAddress;
-  const dstakeFeeManager = governanceAddress;
-  const dstakeCollateralExchangers = [governanceAddress];
+  // - Roles (admin, fee manager, collateral exchangers) are initialized to the deployer
+  //   and must be migrated to governance via separate Safe transactions after deployment.
 
   return {
     tokenAddresses: {
@@ -226,8 +224,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         dStable: stringOrEmpty(dUSDDeployment?.address),
         name: "Staked dUSD",
         symbol: "sdUSD",
-        initialAdmin: dstakeAdmin,
-        initialFeeManager: dstakeFeeManager,
         initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
         adapters: [
           {
@@ -248,11 +244,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         ],
         defaultDepositStrategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
         defaultDepositVaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
-        collateralExchangers: dstakeCollateralExchangers,
         idleVault: {
           name: "dSTAKE Idle dUSD Vault",
           symbol: "idle-dUSD",
-          admin: dstakeAdmin,
           rewardManager: incentivesVault, // Shared with dLEND
         },
       },
@@ -261,8 +255,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         dStable: stringOrEmpty(dETHDeployment?.address),
         name: "Staked dETH",
         symbol: "sdETH",
-        initialAdmin: dstakeAdmin,
-        initialFeeManager: dstakeFeeManager,
         initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
         adapters: [
           {
@@ -282,11 +274,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         ],
         defaultDepositStrategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
         defaultDepositVaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
-        collateralExchangers: dstakeCollateralExchangers,
         idleVault: {
           name: "dSTAKE Idle dETH Vault",
           symbol: "idle-dETH",
-          admin: dstakeAdmin,
           rewardManager: incentivesVault, // Shared vault with dLEND
         },
       },

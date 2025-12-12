@@ -40,16 +40,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       continue;
     }
 
-    if (!instanceConfig.initialAdmin || instanceConfig.initialAdmin === ethers.ZeroAddress) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: missing initialAdmin.`);
-      continue;
-    }
-
-    if (!instanceConfig.initialFeeManager || instanceConfig.initialFeeManager === ethers.ZeroAddress) {
-      console.warn(`Skipping dSTAKE instance ${instanceKey}: missing initialFeeManager.`);
-      continue;
-    }
-
     if (!Array.isArray(instanceConfig.adapters) || instanceConfig.adapters.length === 0) {
       console.warn(`Skipping dSTAKE instance ${instanceKey}: no adapters configured.`);
       continue;
@@ -88,9 +78,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
               instanceConfig.name,
               instanceConfig.symbol,
               // Initialize AccessControl to the deployer so we can finish wiring (migrateCore, fees) in 03_configure_dstake.
-              // 03_configure_dstake will grant/revoke roles to match instanceConfig.initialAdmin / initialFeeManager.
-              deployer, // initialAdmin (temporary)
-              deployer, // initialFeeManager (temporary)
+              // Role migration to governance addresses happens via separate Safe transactions after deployment.
+              deployer, // initialAdmin (remains with deployer until migrated)
+              deployer, // initialFeeManager (remains with deployer until migrated)
             ],
           },
         },

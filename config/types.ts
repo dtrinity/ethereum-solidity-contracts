@@ -207,16 +207,16 @@ export interface DStakeInstanceConfig {
   readonly dStable: Address; // Address of the underlying stable token (e.g., dUSD, dETH)
   readonly name: string; // Name for DStakeTokenV2 (e.g., "Staked dUSD")
   readonly symbol: string; // Symbol for DStakeTokenV2 (e.g., "sdUSD")
-  readonly initialAdmin: Address;
-  readonly initialFeeManager: Address;
   readonly initialWithdrawalFeeBps: number;
   readonly adapters: DStakeAdapterConfig[]; // List of supported adapters/strategy shares
   readonly defaultDepositStrategyShare: Address; // Initial default strategy share for deposits
   readonly defaultDepositVaultAsset?: Address; // Asset used for vault deposits when configuring adapters
-  readonly collateralExchangers: Address[]; // List of allowed exchanger addresses
   readonly collateralVault?: Address; // The DStakeCollateralVaultV2 for this instance (needed for adapter deployment)
   readonly dLendRewardManager?: DLendRewardManagerConfig; // Added for dLend rewards
   readonly idleVault?: DStakeIdleVaultConfig; // Optional idle vault configuration
+  // NOTE: Role management fields (initialAdmin, initialFeeManager, collateralExchangers) have been removed.
+  // Roles are initialized to the deployer during deployment and must be migrated to governance
+  // addresses via separate Safe transactions after deployment is complete.
 }
 
 export interface VestingConfig {
