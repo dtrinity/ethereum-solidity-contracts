@@ -341,11 +341,17 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         });
         await hre.network.provider.request({ method: "evm_mine", params: [] });
 
-        // Preview expected conversion
-        const [expectedVaultAsset, expectedVaultAmount] = await adapter.previewDepositIntoStrategy(threshold);
+        // Get the actual default strategy currently configured (likely Idle Vault)
+        const defaultStrategyShare = await dStakeRouter.defaultDepositStrategyShare();
+        const defaultAdapterAddr = await dStakeRouter.strategyShareToAdapter(defaultStrategyShare);
+        const defaultAdapter = await ethers.getContractAt("IDStableConversionAdapterV2", defaultAdapterAddr);
+        const defaultVaultToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", defaultStrategyShare);
 
-        // Capture initial vault balance
-        const beforeVaultBalance = await vaultAssetToken.balanceOf(dStakeCollateralVault.target);
+        // Preview expected conversion
+        const [expectedVaultAsset, expectedVaultAmount] = await defaultAdapter.previewDepositIntoStrategy(threshold);
+
+        // Capture initial vault balance of the destination asset
+        const beforeVaultBalance = await defaultVaultToken.balanceOf(dStakeCollateralVault.target);
 
         // Execute compoundRewards and assert event emission
         await expect(rewardManager.connect(callerSigner).compoundRewards(threshold, [rewardToken.target], receiver))
@@ -353,7 +359,7 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
           .withArgs(expectedVaultAsset, expectedVaultAmount, threshold);
 
         // Assert vault received the converted asset
-        const afterVaultBalance = await vaultAssetToken.balanceOf(dStakeCollateralVault.target);
+        const afterVaultBalance = await defaultVaultToken.balanceOf(dStakeCollateralVault.target);
         expect(afterVaultBalance - beforeVaultBalance).to.equal(expectedVaultAmount);
 
         // Assert rewardManager consumed all exchange assets

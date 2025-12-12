@@ -55,6 +55,15 @@ describe("dSTAKE v2 core flows", function () {
         if (!(await dStableToken.hasRole(minterRole, deployerAddr))) {
           await dStableToken.grantRole(minterRole, deployerAddr);
         }
+
+        // Ensure default deposit strategy is set to the vault asset (dLend wrapper) for these tests
+        // as they rely on specific adapter behavior and balance checks.
+        // This is necessary because the default configuration might use the Idle Vault.
+        const adminSigner = await ethers.getSigner(adminAddr);
+        const currentDefault = await router.defaultDepositStrategyShare();
+        if (currentDefault !== vaultAssetAddress) {
+          await router.connect(adminSigner).setDefaultDepositStrategyShare(vaultAssetAddress);
+        }
       });
 
       const mintDStable = async (recipient: string, amount: bigint) => {

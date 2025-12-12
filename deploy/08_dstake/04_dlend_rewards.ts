@@ -286,8 +286,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Authorize the rewards manager contract as an adapter caller (contract-to-contract auth).
     if (deployment.address) {
       const routerContract = await ethers.getContractAt("DStakeRouterV2", dStakeRouterAddress);
-      const adapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
-      await ensureAdapterAuthorizedCaller(adapterAddress, deployment.address, deployerSigner);
+
+      // Authorize for the managed strategy share adapter
+      const managedAdapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
+      await ensureAdapterAuthorizedCaller(managedAdapterAddress, deployment.address, deployerSigner);
+
+      // Also authorize for the default deposit strategy adapter if different (e.g., Idle Vault)
+      // This is required because the manager compounds by depositing into the default strategy.
+      const defaultStrategyShare = await routerContract.defaultDepositStrategyShare();
+
+      if (defaultStrategyShare !== ethers.ZeroAddress && defaultStrategyShare !== targetStaticATokenWrapperAddress) {
+        const defaultAdapterAddress = await routerContract.strategyShareToAdapter(defaultStrategyShare);
+        await ensureAdapterAuthorizedCaller(defaultAdapterAddress, deployment.address, deployerSigner);
+      }
+
       console.log(`    Deployed DStakeRewardManagerDLend for ${instanceKey}.`);
     }
   }
