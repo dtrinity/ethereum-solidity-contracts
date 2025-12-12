@@ -31,6 +31,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     return;
   }
 
+  // Collect manual steps for cases where deployer does not have permissions (e.g. partially-migrated deployments).
+  const manualActions: string[] = [];
+
   // All configs are valid, proceed with configuration
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
@@ -100,6 +103,49 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       await dstakeToken.connect(deployerSigner).setWithdrawalFee(instanceConfig.initialWithdrawalFeeBps);
     }
 
+    // --- Migrate Token Roles (DEFAULT_ADMIN_ROLE + FEE_MANAGER_ROLE) ---
+    try {
+      const tokenDefaultAdminRole = await dstakeToken.DEFAULT_ADMIN_ROLE();
+      const tokenFeeManagerRole = await dstakeToken.FEE_MANAGER_ROLE();
+
+      const targetTokenAdmin = instanceConfig.initialAdmin;
+      const targetFeeManager = instanceConfig.initialFeeManager;
+
+      if (targetTokenAdmin && targetTokenAdmin !== ethers.ZeroAddress) {
+        if (!(await dstakeToken.hasRole(tokenDefaultAdminRole, targetTokenAdmin))) {
+          await dstakeToken.grantRole(tokenDefaultAdminRole, targetTokenAdmin);
+          console.log(`    ➕ Granted token DEFAULT_ADMIN_ROLE to ${targetTokenAdmin}`);
+        }
+      }
+
+      if (targetFeeManager && targetFeeManager !== ethers.ZeroAddress) {
+        if (!(await dstakeToken.hasRole(tokenFeeManagerRole, targetFeeManager))) {
+          await dstakeToken.grantRole(tokenFeeManagerRole, targetFeeManager);
+          console.log(`    ➕ Granted token FEE_MANAGER_ROLE to ${targetFeeManager}`);
+        }
+      }
+
+      // Revoke deployer roles last (after grants) to avoid locking ourselves out mid-run.
+      if (targetTokenAdmin.toLowerCase() !== deployer.toLowerCase()) {
+        if (await dstakeToken.hasRole(tokenDefaultAdminRole, deployer)) {
+          await dstakeToken.revokeRole(tokenDefaultAdminRole, deployer);
+          console.log(`    ➖ Revoked token DEFAULT_ADMIN_ROLE from deployer`);
+        }
+      }
+      if (targetFeeManager.toLowerCase() !== deployer.toLowerCase()) {
+        if (await dstakeToken.hasRole(tokenFeeManagerRole, deployer)) {
+          await dstakeToken.revokeRole(tokenFeeManagerRole, deployer);
+          console.log(`    ➖ Revoked token FEE_MANAGER_ROLE from deployer`);
+        }
+      }
+    } catch (error) {
+      manualActions.push(
+        `Token (${dstakeTokenDeployment.address}) role migration: grant DEFAULT_ADMIN_ROLE to ${instanceConfig.initialAdmin}, grant FEE_MANAGER_ROLE to ${instanceConfig.initialFeeManager}, revoke those roles from ${deployer}. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     // --- Configure DStakeCollateralVault ---
     const routerContract = DStakeRouterV2Factory.connect(routerDeployment.address, deployerSigner);
 
@@ -110,6 +156,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (vaultRouter !== routerDeployment.address || !isRouterRoleGranted) {
       console.log(`    ⚙️ Setting router for ${collateralVaultDeploymentName} to ${routerDeployment.address}`);
       await collateralVault.connect(deployerSigner).setRouter(routerDeployment.address);
+    }
+
+    // --- Migrate CollateralVault Admin ---
+    try {
+      const vaultDefaultAdminRole = await collateralVault.DEFAULT_ADMIN_ROLE();
+      const targetAdmin = instanceConfig.initialAdmin;
+
+      if (targetAdmin && targetAdmin !== ethers.ZeroAddress) {
+        if (!(await collateralVault.hasRole(vaultDefaultAdminRole, targetAdmin))) {
+          await collateralVault.grantRole(vaultDefaultAdminRole, targetAdmin);
+          console.log(`    ➕ Granted collateral vault DEFAULT_ADMIN_ROLE to ${targetAdmin}`);
+        }
+
+        if (targetAdmin.toLowerCase() !== deployer.toLowerCase()) {
+          if (await collateralVault.hasRole(vaultDefaultAdminRole, deployer)) {
+            await collateralVault.revokeRole(vaultDefaultAdminRole, deployer);
+            console.log(`    ➖ Revoked collateral vault DEFAULT_ADMIN_ROLE from deployer`);
+          }
+        }
+      }
+    } catch (error) {
+      manualActions.push(
+        `CollateralVault (${collateralVaultDeployment.address}) admin migration: grant DEFAULT_ADMIN_ROLE to ${instanceConfig.initialAdmin}; revoke DEFAULT_ADMIN_ROLE from ${deployer}. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
 
     // --- Configure DStakeRouter Adapters ---
@@ -190,6 +262,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const defaultAdminRole = await routerContract.DEFAULT_ADMIN_ROLE();
     const configManagerRole = await routerContract.CONFIG_MANAGER_ROLE();
     const adapterManagerRole = await routerContract.ADAPTER_MANAGER_ROLE();
+    const vaultManagerRole = await routerContract.VAULT_MANAGER_ROLE();
+    const pauserRole = await routerContract.PAUSER_ROLE();
 
     const targetAdmin = instanceConfig.initialAdmin;
 
@@ -207,6 +281,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       if (!(await routerContract.hasRole(adapterManagerRole, targetAdmin))) {
         await routerContract.grantRole(adapterManagerRole, targetAdmin);
         console.log(`    ➕ Granted ADAPTER_MANAGER_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
+      }
+
+      if (!(await routerContract.hasRole(vaultManagerRole, targetAdmin))) {
+        await routerContract.grantRole(vaultManagerRole, targetAdmin);
+        console.log(`    ➕ Granted VAULT_MANAGER_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
+      }
+
+      if (!(await routerContract.hasRole(pauserRole, targetAdmin))) {
+        await routerContract.grantRole(pauserRole, targetAdmin);
+        console.log(`    ➕ Granted PAUSER_ROLE to ${targetAdmin} for ${routerDeploymentName}`);
       }
     }
 
@@ -228,6 +312,45 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         console.log(`    ⚙️ Set default deposit strategy share for ${routerDeploymentName}`);
       }
     }
+
+    // --- Revoke Deployer Roles (post-configuration, mainnet safety) ---
+    // We do this at the very end so deployer can still finish configuration using its constructor-granted roles.
+    try {
+      if (targetAdmin && targetAdmin !== ethers.ZeroAddress && targetAdmin.toLowerCase() !== deployer.toLowerCase()) {
+        const rolesToRevoke = [configManagerRole, adapterManagerRole, vaultManagerRole, pauserRole];
+
+        for (const role of rolesToRevoke) {
+          if (await routerContract.hasRole(role, deployer)) {
+            await routerContract.revokeRole(role, deployer);
+            console.log(`    ➖ Revoked router role ${role} from deployer for ${routerDeploymentName}`);
+          }
+        }
+
+        // Revoke strategy rebalancer from deployer if deployer is not explicitly listed as an exchanger.
+        const deployerIsExchanger = instanceConfig.collateralExchangers.some((x) => x.toLowerCase() === deployer.toLowerCase());
+        if (!deployerIsExchanger && (await routerContract.hasRole(strategyRebalancerRole, deployer))) {
+          await routerContract.revokeRole(strategyRebalancerRole, deployer);
+          console.log(`    ➖ Revoked STRATEGY_REBALANCER_ROLE from deployer for ${routerDeploymentName}`);
+        }
+
+        // Default admin last (only after all grants are complete).
+        if (await routerContract.hasRole(defaultAdminRole, deployer)) {
+          await routerContract.revokeRole(defaultAdminRole, deployer);
+          console.log(`    ➖ Revoked DEFAULT_ADMIN_ROLE from deployer for ${routerDeploymentName}`);
+        }
+      }
+    } catch (error) {
+      manualActions.push(
+        `Router (${routerDeployment.address}) role revocation from deployer failed. Please revoke deployer roles manually after ensuring ${targetAdmin} holds admin/config roles. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  if (manualActions.length > 0) {
+    console.log("\n⚠️  Manual actions required to finalize dSTAKE configuration / role migrations:");
+    manualActions.forEach((a) => console.log(`   - ${a}`));
   }
 
   console.log(`🥩 ${__filename.split("/").slice(-2).join("/")}: ✅`);

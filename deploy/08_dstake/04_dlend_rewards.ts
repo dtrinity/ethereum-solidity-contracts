@@ -71,7 +71,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig | undefined;
 
     if (!rewardManagerConfig) {
-      throw new Error(`dLendRewardManager not configured for dSTAKE instance ${instanceKey}.`);
+      // dLend rewards are optional; skip instances that don't configure a rewards manager.
+      console.log(`No dLendRewardManager configuration for ${instanceKey}. Skipping dLend rewards deployment for this instance.`);
+      continue;
     }
 
     if (!instanceConfig.dStable || instanceConfig.dStable === "" || instanceConfig.dStable === ethers.ZeroAddress) {
@@ -162,7 +164,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Actual deployment logic using fetched addresses
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
-    const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig;
+    const rewardManagerConfig = instanceConfig.dLendRewardManager as DLendRewardManagerConfig | undefined;
 
     if (!rewardManagerConfig) {
       console.log(`No dLendRewardManager configuration for dSTAKE instance ${instanceKey}. Skipping.`);

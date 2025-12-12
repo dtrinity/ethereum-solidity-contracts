@@ -42,3 +42,4 @@ func.dependencies = [DETH_TOKEN_ID];
 func.id = "deploy-eth-erc4626-wrapper";
 
 export default func;
+

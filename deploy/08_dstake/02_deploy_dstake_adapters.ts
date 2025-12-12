@@ -12,6 +12,12 @@ import {
 } from "../../typescript/deploy-ids";
 
 const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
+const ACCESS_CONTROL_ABI = [
+  "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
+  "function hasRole(bytes32 role, address account) view returns (bool)",
+  "function grantRole(bytes32 role, address account) external",
+  "function revokeRole(bytes32 role, address account) external",
+];
 
 /**
  * Grants router permissions to call adapter methods if both addresses are configured.
@@ -53,10 +59,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     return;
   }
 
+  const manualActions: string[] = [];
+
   // All configs are valid, proceed with adapter deployment
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const dStableSymbol = instanceConfig.symbol;
+    const targetAdmin =
+      instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : undefined;
 
     if (!dStableSymbol) {
       console.warn(`Skipping adapter deployment for ${instanceKey}: missing symbol.`);
@@ -155,7 +165,40 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           `    ⚠️  Router ${routerDeploymentName} not found. Remember to run this script again after deploying the router to set permissions.`,
         );
       }
+
+      // Mainnet safety: migrate adapter admin role off the deployer when a target admin is configured.
+      // (Adapters use AccessControl; leaving deployer as DEFAULT_ADMIN_ROLE is not acceptable for production.)
+      if (targetAdmin) {
+        try {
+          const access = await ethers.getContractAt(ACCESS_CONTROL_ABI, adapterAddress, deployerSigner);
+          const defaultAdminRole: string = await access.DEFAULT_ADMIN_ROLE();
+
+          const adminHasRole = await access.hasRole(defaultAdminRole, targetAdmin);
+          if (!adminHasRole) {
+            await access.grantRole(defaultAdminRole, targetAdmin);
+            console.log(`    ➕ Granted adapter DEFAULT_ADMIN_ROLE to ${targetAdmin} for ${deploymentName}`);
+          }
+
+          // Revoke deployer admin last to avoid locking ourselves out mid-script.
+          const deployerHasRole = await access.hasRole(defaultAdminRole, deployer);
+          if (deployerHasRole && targetAdmin.toLowerCase() !== deployer.toLowerCase()) {
+            await access.revokeRole(defaultAdminRole, deployer);
+            console.log(`    ➖ Revoked adapter DEFAULT_ADMIN_ROLE from deployer for ${deploymentName}`);
+          }
+        } catch (error) {
+          manualActions.push(
+            `Adapter (${adapterAddress}) admin migration: grantRole(DEFAULT_ADMIN_ROLE, ${targetAdmin}); revokeRole(DEFAULT_ADMIN_ROLE, ${deployer}). Error: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }
     }
+  }
+
+  if (manualActions.length > 0) {
+    console.log("\n⚠️  Manual actions required to finalize adapter admin migration:");
+    manualActions.forEach((a) => console.log(`   - ${a}`));
   }
 
   console.log(`🥩 ${__filename.split("/").slice(-2).join("/")}: ✅`);
@@ -164,7 +207,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["dStakeAdapters", "dStake"];
-func.dependencies = ["dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
+func.dependencies = ["dStakeIdleVaults", "dStakeCore", "dLendCore", "dUSD-aTokenWrapper", "dETH-aTokenWrapper"];
 
 // Ensure one-shot execution.
 func.id = "deploy_dstake_adapters";

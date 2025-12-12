@@ -23,6 +23,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const symbol = instanceConfig.symbol;
+    const proxyAdminOwner =
+      instanceConfig.initialAdmin && instanceConfig.initialAdmin !== ethers.ZeroAddress ? instanceConfig.initialAdmin : deployer;
 
     if (!symbol) {
       console.warn(`Skipping dSTAKE instance ${instanceKey}: missing symbol configuration.`);
@@ -78,7 +80,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       proxy: {
         // OZ v5 TransparentUpgradeableProxy mints a dedicated ProxyAdmin internally per proxy.
         // We therefore avoid viaAdminContract and just set the initial owner for that ProxyAdmin here.
-        owner: deployer, // keep ownership with deployer for now; migrate later in role-migration script
+        // For mainnet safety we set ProxyAdmin ownership to the configured governance/admin address (usually a Safe).
+        // Note: This does NOT affect on-chain AccessControl roles inside the token itself.
+        owner: proxyAdminOwner,
         proxyContract: "OpenZeppelinTransparentProxy",
         execute: {
           init: {
@@ -87,8 +91,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
               instanceConfig.dStable,
               instanceConfig.name,
               instanceConfig.symbol,
-              deployer, // initialAdmin = deployer
-              deployer, // initialFeeManager = deployer
+              // Initialize AccessControl to the deployer so we can finish wiring (migrateCore, fees) in 03_configure_dstake.
+              // 03_configure_dstake will grant/revoke roles to match instanceConfig.initialAdmin / initialFeeManager.
+              deployer, // initialAdmin (temporary)
+              deployer, // initialFeeManager (temporary)
             ],
           },
         },
