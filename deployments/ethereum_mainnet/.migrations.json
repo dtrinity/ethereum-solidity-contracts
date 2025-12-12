@@ -39,12 +39,13 @@
   "dLend:Incentives": 1765427080,
   "dLend_StaticATokenFactory": 1765427151,
   "dStableATokenWrappers": 1765427175,
-  "deploy_redeemer_v2": 1765427175,
   "01_deploy_amo_manager_v2_and_debt": 1765428465,
   "02_configure_amo_system": 1765428472,
   "deploy_dstake_adapters": 1765529447,
   "configure_dstake": 1765531253,
   "dstake_dlend_rewards": 1765531253,
   "deploy_dstake_idle_vaults": 1765532264,
-  "deploy_dstake_router_modules": 1765532267
+  "deploy_dstake_router_modules": 1765532267,
+  "deploy_redeemer_v2": 1765536264,
+  "revoke_legacy_redeemers": 1765536372
 }
