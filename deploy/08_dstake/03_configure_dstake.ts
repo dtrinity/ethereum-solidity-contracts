@@ -75,11 +75,9 @@ async function ensureRouterModulesWired(params: {
   if (currentRebalanceModule === ethers.ZeroAddress) {
     const rebalanceModuleDeployment = await deployments.getOrNull(`${routerDeploymentName}_RebalanceModule`);
     if (!rebalanceModuleDeployment) {
-      // Rebalance is not needed for the configure steps below; keep it as a warning to avoid hard failure.
-      console.warn(
-        `    ⚠️ Router ${routerDeploymentName} has rebalanceModule unset and ${routerDeploymentName}_RebalanceModule is missing`,
+      throw new Error(
+        `Router ${routerDeploymentName} has rebalanceModule unset, and deployment ${routerDeploymentName}_RebalanceModule is missing`,
       );
-      return;
     }
 
     await ensureRole({
@@ -93,6 +91,11 @@ async function ensureRouterModulesWired(params: {
 
     console.log(`    ⚙️ Wiring rebalance module for ${routerDeploymentName} to ${rebalanceModuleDeployment.address}`);
     await router.connect(deployerSigner).setRebalanceModule(rebalanceModuleDeployment.address);
+  }
+
+  // Fail fast if wiring still isn't complete for any reason.
+  if ((await router.rebalanceModule()) === ethers.ZeroAddress) {
+    throw new Error(`Router ${routerDeploymentName} rebalanceModule is still unset after wiring attempt`);
   }
 }
 
@@ -338,7 +341,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["dStakeConfigure", "dStake"];
-func.dependencies = ["dStakeCore", "dStakeAdapters"];
+func.dependencies = ["dStakeCore", "dStakeModules", "dStakeAdapters"];
 func.runAtTheEnd = true;
 
 // Prevent re-execution after successful run.

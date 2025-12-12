@@ -29,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     return;
   }
 
+  let processedInstances = 0;
   for (const instanceKey in config.dStake) {
     const instanceConfig = config.dStake[instanceKey] as DStakeInstanceConfig;
     const symbol = instanceConfig.symbol;
@@ -37,6 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.warn(`Skipping idle vault for ${instanceKey}: missing symbol.`);
       continue;
     }
+    processedInstances++;
 
     if (!instanceConfig.dStable || instanceConfig.dStable === ethers.ZeroAddress) {
       console.warn(`Skipping idle vault for ${instanceKey}: dStable address not configured.`);
@@ -73,6 +75,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   console.log(`🥩 ${__filename.split("/").slice(-2).join("/")}: ✅`);
+  if (processedInstances > 0) {
+    // Mark as fully executed (one-shot) for this network once all intended instances have been processed.
+    return true;
+  }
+  return;
 };
 
 export default func;

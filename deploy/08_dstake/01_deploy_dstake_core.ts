@@ -5,6 +5,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import { DStakeInstanceConfig } from "../../config/types";
 import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKEN_ID_PREFIX } from "../../typescript/deploy-ids";
+import { DStakeRouterV2__factory as DStakeRouterV2Factory } from "../../typechain-types/factories/contracts/vaults/dstake/DStakeRouterV2.sol";
 // Assuming these IDs exist
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -127,19 +128,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: false,
     });
 
-    await deployments.execute(
-      routerDeploymentName,
-      { from: deployer, log: false },
-      "setGovernanceModule",
-      governanceModuleDeployment.address,
-    );
-
-    await deployments.execute(
-      routerDeploymentName,
-      { from: deployer, log: false },
-      "setRebalanceModule",
-      rebalanceModuleDeployment.address,
-    );
+    // Wire modules via direct calls to avoid hardhat-deploy ABI dedupe warnings.
+    const deployerSigner = await ethers.getSigner(deployer);
+    const router = DStakeRouterV2Factory.connect((await deployments.get(routerDeploymentName)).address, deployerSigner);
+    await router.setGovernanceModule(governanceModuleDeployment.address);
+    await router.setRebalanceModule(rebalanceModuleDeployment.address);
 
     // NOTE: Governance permissions will be granted in the post-deployment
     // role-migration script. No additional role grants are necessary here.

@@ -44,5 +44,7 @@
   "02_configure_amo_system": 1765428472,
   "deploy_dstake_adapters": 1765529447,
   "configure_dstake": 1765531253,
-  "dstake_dlend_rewards": 1765531253
+  "dstake_dlend_rewards": 1765531253,
+  "deploy_dstake_idle_vaults": 1765532264,
+  "deploy_dstake_router_modules": 1765532267
 }
