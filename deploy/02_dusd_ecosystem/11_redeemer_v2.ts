@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
   const dUSDConfig = config.dStables.dUSD;
 
-  const { manualActions } = await deployRedeemerV2ForAsset(hre, {
+  const { skipped, manualActions } = await deployRedeemerV2ForAsset(hre, {
     label: "dUSD",
     redeemerV2Id: DUSD_REDEEMER_V2_CONTRACT_ID,
     collateralVaultId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
@@ -23,6 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     initialFeeReceiver: dUSDConfig?.initialFeeReceiver,
     initialRedemptionFeeBps: dUSDConfig?.initialRedemptionFeeBps,
   });
+
+  if (skipped) {
+    return false;
+  }
 
   if (manualActions.length > 0) {
     console.log("\n⚠️  Manual actions required to finalize dUSD RedeemerV2:");

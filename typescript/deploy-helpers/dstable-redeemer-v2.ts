@@ -7,8 +7,8 @@ export type DeployRedeemerV2Params = {
   collateralVaultId: string;
   tokenId: string;
   oracleAggregatorId: string;
-  initialFeeReceiver: string;
-  initialRedemptionFeeBps: number;
+  initialFeeReceiver: string | undefined;
+  initialRedemptionFeeBps: number | undefined;
 };
 
 /**

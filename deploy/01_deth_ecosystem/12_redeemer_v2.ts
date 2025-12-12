@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const config = await getConfig(hre);
   const dETHConfig = config.dStables.dETH;
 
-  const { manualActions } = await deployRedeemerV2ForAsset(hre, {
+  const { skipped, manualActions } = await deployRedeemerV2ForAsset(hre, {
     label: "dETH",
     redeemerV2Id: DETH_REDEEMER_V2_CONTRACT_ID,
     collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
@@ -23,6 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     initialFeeReceiver: dETHConfig?.initialFeeReceiver,
     initialRedemptionFeeBps: dETHConfig?.initialRedemptionFeeBps,
   });
+
+  if (skipped) {
+    return false;
+  }
 
   if (manualActions.length > 0) {
     console.log("\n⚠️  Manual actions required to finalize dETH RedeemerV2:");
