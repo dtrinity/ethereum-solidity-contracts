@@ -210,6 +210,11 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                   [dETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Peg dETH to ETH
                 }
               : {}),
+            ...(frxETHDeployment?.address && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [frxETHDeployment.address]: mockOracleNameToAddress["WETH_USD"], // Treat frxETH at parity with ETH for mocks
+                }
+              : {}),
             ...(yUSDDeployment?.address && mockOracleNameToAddress["yUSD_USD"]
               ? {
                   [yUSDDeployment.address]: mockOracleNameToAddress["yUSD_USD"],
