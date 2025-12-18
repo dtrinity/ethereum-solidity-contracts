@@ -1,9 +1,5 @@
 import { IReserveParams } from "../types";
-import {
-  rateStrategyBorrowDStable,
-  rateStrategyHighLiquidityStable,
-  rateStrategyHighLiquidityVolatile,
-} from "./interest-rate-strategies";
+import { rateStrategyBorrowDStable, rateStrategyHighLiquidityStable, rateStrategyHighLiquidityVolatile } from "./interest-rate-strategies";
 
 const baseReserveConfig: Pick<
   IReserveParams,
