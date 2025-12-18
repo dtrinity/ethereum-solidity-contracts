@@ -35,7 +35,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const oracleConfig = config.oracleAggregators.ETH;
 
   const aggregatorDeployment = await hre.deployments.get(ETH_ORACLE_AGGREGATOR_ID);
-  const aggregator = (await hre.ethers.getContractAt("OracleAggregatorV1_1", aggregatorDeployment.address, signer)) as OracleAggregatorV11;
+  const aggregator = (await hre.ethers.getContractAt(
+    "OracleAggregatorV1_1",
+    aggregatorDeployment.address,
+    signer,
+  )) as unknown as OracleAggregatorV11;
 
   const api3Assets = oracleConfig.api3OracleAssets;
   const redstoneAssets = oracleConfig.redstoneOracleAssets;
