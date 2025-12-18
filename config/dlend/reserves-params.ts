@@ -66,3 +66,8 @@ export const strategySFRXETH: IReserveParams = {
   ...baseETHLikeConfig,
   supplyCap: "1000",
 };
+
+export const strategyFRXETH: IReserveParams = {
+  ...baseETHLikeConfig,
+  supplyCap: "1000",
+};

@@ -11,6 +11,7 @@ import {
   ETH_API3_ORACLE_WRAPPER_ID,
   ETH_API3_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_ERC4626_ORACLE_WRAPPER_ID,
+  ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID,
   ETH_ORACLE_AGGREGATOR_ID,
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_ORACLE_WRAPPER_ID,
@@ -20,6 +21,11 @@ import {
 type Api3AssetsConfig = Config["oracleAggregators"][string]["api3OracleAssets"];
 type RedstoneAssetsConfig = Config["oracleAggregators"][string]["redstoneOracleAssets"];
 type Erc4626OracleAssetsConfig = Config["oracleAggregators"][string]["erc4626OracleAssets"];
+type FrxEthOracleConfig = {
+  asset: string;
+  etherRouter: string;
+  redemptionQueue: string;
+};
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const { deployer } = await hre.getNamedAccounts();
@@ -34,8 +40,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const api3Assets = oracleConfig.api3OracleAssets;
   const redstoneAssets = oracleConfig.redstoneOracleAssets;
   const erc4626OracleAssets = oracleConfig.erc4626OracleAssets;
+  const frxEthConfig = (oracleConfig as any).frxEthFundamentalOracle as FrxEthOracleConfig | undefined;
 
-  if (!hasAnyConfiguredAsset(api3Assets, redstoneAssets, erc4626OracleAssets)) {
+  if (!hasAnyConfiguredAsset(api3Assets, redstoneAssets, erc4626OracleAssets, frxEthConfig)) {
     console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: no ETH oracle assets configured – skipping`);
     return true;
   }
@@ -43,6 +50,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   await routeApi3Assets(hre, aggregator, api3Assets);
   await routeRedstoneAssets(hre, aggregator, redstoneAssets);
   await routeErc4626OracleAssets(hre, aggregator, erc4626OracleAssets);
+  await routeFrxEthOracle(hre, aggregator, frxEthConfig);
 
   console.log(`🔁 ${__filename.split("/").slice(-2).join("/")}: ✅`);
   return true;
@@ -215,16 +223,38 @@ async function routeErc4626OracleAssets(
 }
 
 /**
+ * Routes the FRXETH oracle to the appropriate wrapper address on the aggregator.
+ *
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param aggregator Oracle aggregator instance to configure.
+ * @param config Configuration for the FRXETH oracle.
+ */
+async function routeFrxEthOracle(
+  hre: HardhatRuntimeEnvironment,
+  aggregator: OracleAggregatorV11,
+  config?: FrxEthOracleConfig,
+): Promise<void> {
+  if (!config) {
+    return;
+  }
+  const wrapperAddress = await resolveDeploymentAddress(hre, ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID);
+  await ensureOracleMapping(aggregator, config.asset, wrapperAddress);
+}
+
+/**
  * Checks whether any API3, Redstone, or ERC4626 assets are configured for deployment.
  *
  * @param api3Assets API3 asset configuration block.
  * @param redstoneAssets Redstone asset configuration block.
  * @param erc4626OracleAssets ERC4626 oracle asset configuration block.
+ * @param frxEthConfig FRXETH oracle configuration block.
+ * @returns True if any API3, Redstone, or ERC4626 assets are configured, false otherwise.
  */
 function hasAnyConfiguredAsset(
   api3Assets?: Api3AssetsConfig,
   redstoneAssets?: RedstoneAssetsConfig,
   erc4626OracleAssets?: Erc4626OracleAssetsConfig,
+  frxEthConfig?: FrxEthOracleConfig,
 ): boolean {
   const counts = [
     Object.keys(api3Assets?.plainApi3OracleWrappers ?? {}).length,
@@ -234,6 +264,7 @@ function hasAnyConfiguredAsset(
     Object.keys(redstoneAssets?.redstoneOracleWrappersWithThresholding ?? {}).length,
     Object.keys(redstoneAssets?.compositeRedstoneOracleWrappersWithThresholding ?? {}).length,
     Object.keys(erc4626OracleAssets ?? {}).length,
+    frxEthConfig && frxEthConfig.asset ? 1 : 0,
   ];
   return counts.some((count) => count > 0);
 }
@@ -251,6 +282,7 @@ func.dependencies = [
   ETH_REDSTONE_ORACLE_WRAPPER_ID,
   ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
   ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID,
 ];
 func.id = "point-eth-aggregator-to-wrappers-v1_1";
 

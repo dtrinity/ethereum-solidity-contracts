@@ -13,7 +13,7 @@ import {
   rateStrategyMediumLiquidityStable,
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategyFRXETH, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 /**
@@ -34,6 +34,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   const sfrxUSDDeployment = await _hre.deployments.getOrNull("sfrxUSD");
   const WETHDeployment = await _hre.deployments.getOrNull("WETH");
   const stETHDeployment = await _hre.deployments.getOrNull("stETH");
+  const frxETHDeployment = await _hre.deployments.getOrNull("frxETH");
 
   // Fetch deployed dLend StaticATokenLM wrappers
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull("dLend_ATokenWrapper_dUSD");
@@ -54,6 +55,9 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
 
   // Get mock oracle deployments
   const mockOracleNameToAddress: Record<string, string> = {};
+
+  const mockEtherRouter = await _hre.deployments.getOrNull("MockFraxEtherRouter");
+  const mockRedemptionQueue = await _hre.deployments.getOrNull("MockFraxRedemptionQueueV2");
 
   // Get mock oracle addresses
   const mockOracleAddressesDeployment = await _hre.deployments.getOrNull("MockOracleNameToAddress");
@@ -117,6 +121,12 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           decimals: 18,
           initialSupply: 1e6,
         },
+        frxETH: {
+          name: "Frax ETH",
+          address: frxETHDeployment?.address,
+          decimals: 18,
+          initialSupply: 1e6,
+        },
       },
       curvePools: {},
     },
@@ -125,6 +135,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       dETH: emptyStringIfUndefined(dETHDeployment?.address),
       WETH: emptyStringIfUndefined(WETHDeployment?.address),
       stETH: emptyStringIfUndefined(stETHDeployment?.address),
+      frxETH: emptyStringIfUndefined(frxETHDeployment?.address),
       frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address),
       USDC: emptyStringIfUndefined(USDCDeployment?.address),
@@ -160,7 +171,11 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         },
       },
       dETH: {
-        collaterals: [WETHDeployment?.address || ZeroAddress, stETHDeployment?.address || ZeroAddress],
+        collaterals: [
+          WETHDeployment?.address || ZeroAddress,
+          stETHDeployment?.address || ZeroAddress,
+          frxETHDeployment?.address || ZeroAddress,
+        ],
         initialFeeReceiver: deployer,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS, // Default for stablecoins
         collateralRedemptionFees: {
@@ -168,6 +183,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           [WETHDeployment?.address || ZeroAddress]: 0.4 * ONE_PERCENT_BPS,
           // Yield bearing stablecoins: 0.5%
           [stETHDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
+          [frxETHDeployment?.address || ZeroAddress]: 0.5 * ONE_PERCENT_BPS,
         },
       },
     },
@@ -289,6 +305,11 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        frxEthFundamentalOracle: {
+          asset: frxETHDeployment?.address || ZeroAddress,
+          etherRouter: mockEtherRouter?.address || ZeroAddress,
+          redemptionQueue: mockRedemptionQueue?.address || ZeroAddress,
+        },
       },
     },
     dLend: {
@@ -310,6 +331,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         stETH: strategySTETH,
         WETH: strategyWETH,
         sfrxUSD: strategySFRXUSD,
+        frxETH: strategyFRXETH,
       },
     },
     // NOTE: dStake roles (admin, fee manager, collateral exchangers) are initialized to the deployer
