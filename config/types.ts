@@ -84,6 +84,11 @@ export interface OracleAggregatorConfig {
   readonly erc4626OracleAssets?: {
     [assetAddress: string]: string; // asset -> vault mapping
   };
+  readonly frxEthFundamentalOracle?: {
+    asset: string;
+    etherRouter: string;
+    redemptionQueue: string;
+  };
   readonly api3OracleAssets: {
     plainApi3OracleWrappers: {
       [key: string]: string;

@@ -1,5 +1,5 @@
 import { IReserveParams } from "../types";
-import { rateStrategyBorrowDStable, rateStrategyHighLiquidityVolatile } from "./interest-rate-strategies";
+import { rateStrategyBorrowDStable, rateStrategyHighLiquidityStable, rateStrategyHighLiquidityVolatile } from "./interest-rate-strategies";
 
 const baseReserveConfig: Pick<
   IReserveParams,
@@ -65,4 +65,23 @@ export const strategySTETH: IReserveParams = {
 export const strategySFRXETH: IReserveParams = {
   ...baseETHLikeConfig,
   supplyCap: "1000",
+};
+
+export const strategyFRXETH: IReserveParams = {
+  ...baseETHLikeConfig,
+  supplyCap: "1000",
+};
+
+// USD yield-bearing collateral
+export const strategySFRXUSD: IReserveParams = {
+  ...baseReserveConfig,
+  reserveFactor: "1000",
+  borrowingEnabled: false,
+  stableBorrowRateEnabled: false,
+  borrowCap: "0",
+  baseLTVAsCollateral: "8000",
+  liquidationThreshold: "8500",
+  liquidationBonus: "10500",
+  strategy: rateStrategyHighLiquidityStable,
+  supplyCap: "1000000",
 };
