@@ -7,7 +7,8 @@
   "scripts": {
     "size:dstake-router": "hardhat size-contracts",
     "gas-estimate": "npx tsx scripts/mainnet-gas-estimation.ts",
-    "gas-estimate:help": "npx tsx scripts/mainnet-gas-estimation.ts --help"
+    "gas-estimate:help": "npx tsx scripts/mainnet-gas-estimation.ts --help",
+    "verify:check": "npm run --prefix .shared sanity:verify-check --"
   },
   "dependencies": {
     "@dtrinity/shared-hardhat-tools": "portal:.shared"
