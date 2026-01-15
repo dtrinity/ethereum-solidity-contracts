@@ -142,6 +142,17 @@ npm run --prefix .shared sanity:deploy-addresses -- \
   --network mainnet \
   --output reports/contract-addresses.md
 
+# Check explorer verification status (cached by default)
+npm run --prefix .shared sanity:verify-check -- \
+  --network mainnet \
+  --chain-id 1
+
+# Force a refresh against the explorer
+npm run --prefix .shared sanity:verify-check -- \
+  --network mainnet \
+  --chain-id 1 \
+  --force
+
 # Aggregate oracle addresses by category (customisable via --category/--exclude)
 npm run --prefix .shared sanity:oracle-addresses -- \
   --network mainnet \
@@ -169,8 +180,10 @@ dry-runs (`--dry-run`) and operates on alternate deployment roots via
 `--deployments-dir`. The contract and oracle reporters emit markdown by default;
 pass `--json` to integrate with automation, or provide categories with
 `--category Name=Pattern1,Pattern2` and optional exclusions such as
-`--exclude Name=PatternToSkip`. `metrics:nsloc` stores a markdown summary at
-`reports/nsloc.md` unless you override `--output`.
+`--exclude Name=PatternToSkip`. `sanity:verify-check` caches explorer responses
+under `.verify-args/verification-cache.json`; pass `--force` to refresh and add
+`.verify-args/` to your repo `.gitignore` if needed. `metrics:nsloc` stores a
+markdown summary at `reports/nsloc.md` unless you override `--output`.
 
 ### Running Linting Checks
 
@@ -288,11 +301,11 @@ node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks --include-pre-commit-
 node_modules/.bin/ts-node .shared/scripts/setup.ts --hooks --force
 ```
 
-The shared pre-commit hook runs the guardrail suite (Prettier, ESLint, Solhint) and checks staged Solidity/tests for
+The shared pre-commit hook runs the guardrail suite (Prettier, ESLint, TypeScript type-checks, Solhint) and checks staged Solidity/tests for
 `console.log` or lingering `.only`. Prettier runs by default—set `SHARED_HARDHAT_PRE_COMMIT_PRETTIER=0` to skip it
 temporarily. Contract compilation is also enabled unless you opt out (`SHARED_HARDHAT_PRE_COMMIT_COMPILE=0`).
 
-The pre-push hook reruns guardrails (Prettier enabled by default—set
+The pre-push hook reruns guardrails (Prettier/ESLint/type-check/Solhint, with Prettier enabled by default—set
 `SHARED_HARDHAT_PRE_PUSH_PRETTIER=0` to skip), executes tests by default (opt out with
 `SHARED_HARDHAT_PRE_PUSH_TEST=0`), and requires Slither only on long-lived branches (`main`, `master`, `develop`).
 Customize the test command via `SHARED_HARDHAT_PRE_PUSH_TEST_CMD="yarn test --runInBand"`.
@@ -411,6 +424,17 @@ npm run --prefix .shared slither -- --network sonic
 # Ethereum network
 npm run --prefix .shared slither -- --network ethereum
 ```
+
+### Explorer Verification Targets
+
+The shared Makefile exposes helper targets for Sonic explorer verification (`explorer.verify.sonic_*`). These rely on the multichain Etherscan v2 API, so export a single `ETHERSCAN_API_KEY` before invoking them:
+
+```bash
+export ETHERSCAN_API_KEY=<your-etherscan-key>
+make explorer.verify.sonic_mainnet
+```
+
+Downstream repos can reuse the same environment variable across verification networks without passing per-explorer API keys.
 
 ## Release Cadence
 

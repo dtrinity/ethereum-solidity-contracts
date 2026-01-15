@@ -176,7 +176,7 @@ check_sensitive_information() {
       deployments/*|*/deployments/*)
         continue
         ;;
-      contracts/dlend/core/protocol/libraries/configuration/*)
+      contracts/*/protocol/libraries/configuration/*)
         continue
         ;;
       contracts/vaults/atoken_wrapper/ECDSA.sol)
