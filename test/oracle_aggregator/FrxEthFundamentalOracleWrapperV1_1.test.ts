@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 const ONE = 10n ** 18n;
 
 describe("FrxEthFundamentalOracleWrapperV1_1", () => {
-  async function deployFixture() {
+  async function deployFixture(baseUnit: bigint = ONE) {
     const frxEthFactory = await ethers.getContractFactory("MockFrxEth");
     const frxEth = await frxEthFactory.deploy(ONE);
 
@@ -17,7 +17,7 @@ describe("FrxEthFundamentalOracleWrapperV1_1", () => {
     const wrapperFactory = await ethers.getContractFactory("FrxEthFundamentalOracleWrapperV1_1");
     const wrapper = await wrapperFactory.deploy(
       ethers.ZeroAddress,
-      ONE,
+      baseUnit,
       await frxEth.getAddress(),
       await router.getAddress(),
       await queue.getAddress(),
@@ -36,6 +36,19 @@ describe("FrxEthFundamentalOracleWrapperV1_1", () => {
     const [price, alive] = await wrapper.getPriceInfo(await frxEth.getAddress());
     expect(alive).to.equal(true);
     expect(price).to.equal(ONE / 2n); // 0.5e18
+  });
+
+  it("scales NAV to the base currency unit", async () => {
+    const baseUnit = 10n ** 6n;
+    const { frxEth, router, queue, wrapper } = await deployFixture(baseUnit);
+
+    await frxEth.setTotalSupply(1_000_000000000000000000000n); // 1e24
+    await router.setEthTotalBalanced(500_000000000000000000000n); // 0.5e24
+    await queue.setRedemptionFee(0);
+
+    const [price, alive] = await wrapper.getPriceInfo(await frxEth.getAddress());
+    expect(alive).to.equal(true);
+    expect(price).to.equal(baseUnit / 2n);
   });
 
   it("caps at 1 when NAV > 1 and redemptionRate=1", async () => {
@@ -86,6 +99,17 @@ describe("FrxEthFundamentalOracleWrapperV1_1", () => {
     const { frxEth, router, queue, wrapper } = await deployFixture();
     await frxEth.setTotalSupply(1n);
     await router.setShouldRevert(true);
+    await queue.setRedemptionFee(0);
+
+    const [, alive] = await wrapper.getPriceInfo(await frxEth.getAddress());
+    expect(alive).to.equal(false);
+  });
+
+  it("returns dead when router reports stale balances", async () => {
+    const { frxEth, router, queue, wrapper } = await deployFixture();
+    await frxEth.setTotalSupply(1n);
+    await router.setEthTotalBalanced(1n);
+    await router.setIsStale(true);
     await queue.setRedemptionFee(0);
 
     const [, alive] = await wrapper.getPriceInfo(await frxEth.getAddress());

@@ -7,12 +7,13 @@ pragma solidity ^0.8.20;
  */
 contract MockFraxEtherRouter {
     struct CachedConsEFxBalances {
+        bool isStale;
+        address amoAddress;
         uint96 ethFree;
         uint96 ethInLpBalanced;
         uint96 ethTotalBalanced;
         uint96 frxEthFree;
         uint96 frxEthInLpBalanced;
-        uint96 frxEthTotalBalanced;
     }
 
     CachedConsEFxBalances private balances;
@@ -20,6 +21,14 @@ contract MockFraxEtherRouter {
 
     function setEthTotalBalanced(uint256 amount) external {
         balances.ethTotalBalanced = uint96(amount);
+    }
+
+    function setIsStale(bool value) external {
+        balances.isStale = value;
+    }
+
+    function setAmoAddress(address value) external {
+        balances.amoAddress = value;
     }
 
     function setBalances(CachedConsEFxBalances calldata newBalances) external {

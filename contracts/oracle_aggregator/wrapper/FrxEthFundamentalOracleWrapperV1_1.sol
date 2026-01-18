@@ -7,14 +7,13 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 /**
  * @title FrxEthFundamentalOracleWrapperV1_1
  * @notice Fundamental frxETH/ETH oracle using EtherRouter consolidated balances and RedemptionQueue fee.
- * @dev Returns ETH per frxETH (1e18-scaled). Defensive: returns (0,false) on any upstream read failure.
+ * @dev Returns ETH per frxETH scaled to BASE_CURRENCY_UNIT. Defensive: returns (0,false) on any upstream read failure.
  */
 contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl {
     /* Roles */
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     /* Constants */
-    uint256 private constant ONE = 1e18;
     uint256 private constant FEE_PRECISION = 1e6;
 
     /* Immutables */
@@ -23,10 +22,13 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
     IERC20SupplyLike public immutable frxEth;
     IEtherRouterLike public immutable etherRouter;
     IRedemptionQueueV2Like public immutable redemptionQueue;
+    // If true, forces EtherRouter to recompute balances (can be expensive). Defaults to true.
+    bool public forceLive;
 
     /* Errors */
     error UnsupportedAsset(address asset);
     error PriceIsStale();
+    error InvalidBaseCurrencyUnit(uint256 unit);
 
     constructor(
         address baseCurrency,
@@ -35,14 +37,25 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
         address etherRouter_,
         address redemptionQueue_
     ) {
+        if (baseCurrencyUnit == 0) {
+            revert InvalidBaseCurrencyUnit(baseCurrencyUnit);
+        }
+
         BASE_CURRENCY = baseCurrency;
         BASE_CURRENCY_UNIT = baseCurrencyUnit;
         frxEth = IERC20SupplyLike(frxEth_);
         etherRouter = IEtherRouterLike(etherRouter_);
         redemptionQueue = IRedemptionQueueV2Like(redemptionQueue_);
+        forceLive = true;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ORACLE_MANAGER_ROLE, msg.sender);
+    }
+
+    /* ========== Admin ========== */
+
+    function setForceLive(bool forceLive_) external onlyRole(ORACLE_MANAGER_ROLE) {
+        forceLive = forceLive_;
     }
 
     /* ========== Views ========== */
@@ -63,9 +76,12 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
         }
 
         uint256 backingEth;
-        try etherRouter.getConsolidatedEthFrxEthBalanceView(true) returns (
+        try etherRouter.getConsolidatedEthFrxEthBalanceView(forceLive) returns (
             IEtherRouterLike.CachedConsEFxBalances memory balances
         ) {
+            if (balances.isStale) {
+                return (0, false);
+            }
             backingEth = uint256(balances.ethTotalBalanced);
         } catch {
             return (0, false);
@@ -82,11 +98,12 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
             return (0, false);
         }
 
-        uint256 navE18 = (backingEth * ONE) / supply;
-        uint256 redemptionRateE18 = (ONE * (FEE_PRECISION - uint256(redemptionFee))) / FEE_PRECISION;
+        uint256 baseUnit = BASE_CURRENCY_UNIT;
+        uint256 nav = (backingEth * baseUnit) / supply;
+        uint256 redemptionRate = (baseUnit * (FEE_PRECISION - uint256(redemptionFee))) / FEE_PRECISION;
 
-        uint256 min1 = navE18 < ONE ? navE18 : ONE;
-        price = min1 < redemptionRateE18 ? min1 : redemptionRateE18;
+        uint256 min1 = nav < baseUnit ? nav : baseUnit;
+        price = min1 < redemptionRate ? min1 : redemptionRate;
         isAlive = price > 0;
     }
 
@@ -105,15 +122,16 @@ interface IERC20SupplyLike {
 
 interface IEtherRouterLike {
     struct CachedConsEFxBalances {
+        bool isStale;
+        address amoAddress;
         uint96 ethFree;
         uint96 ethInLpBalanced;
         uint96 ethTotalBalanced;
         uint96 frxEthFree;
         uint96 frxEthInLpBalanced;
-        uint96 frxEthTotalBalanced;
     }
 
-    function getConsolidatedEthFrxEthBalanceView(bool forceFresh) external view returns (CachedConsEFxBalances memory);
+    function getConsolidatedEthFrxEthBalanceView(bool forceLive) external view returns (CachedConsEFxBalances memory);
 }
 
 interface IRedemptionQueueV2Like {
