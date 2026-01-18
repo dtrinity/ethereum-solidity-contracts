@@ -17,7 +17,40 @@
     "ownable": true,
     "defaultAdmin": true
   },
-  "exclusions": [],
+  "exclusions": [
+    {
+      "deployment": "DStakeRouterV2_sdETH_GovernanceModule",
+      "reason": "Delegatecall module - roles managed on main router"
+    },
+    {
+      "deployment": "DStakeRouterV2_sdETH_RebalanceModule",
+      "reason": "Delegatecall module - roles managed on main router"
+    },
+    {
+      "deployment": "DStakeRouterV2_sdUSD_GovernanceModule",
+      "reason": "Delegatecall module - roles managed on main router"
+    },
+    {
+      "deployment": "DStakeRouterV2_sdUSD_RebalanceModule",
+      "reason": "Delegatecall module - roles managed on main router"
+    },
+    {
+      "deployment": "DStakeTokenV2_sdETH_Implementation",
+      "reason": "Proxy implementation - roles managed on proxy contract"
+    },
+    {
+      "deployment": "DStakeTokenV2_sdUSD_Implementation",
+      "reason": "Proxy implementation - roles managed on proxy contract"
+    },
+    {
+      "deployment": "dETH_Implementation",
+      "reason": "Proxy implementation - roles managed on proxy contract"
+    },
+    {
+      "deployment": "dUSD_Implementation",
+      "reason": "Proxy implementation - roles managed on proxy contract"
+    }
+  ],
   "overrides": [],
   "output": {
     "json": "reports/roles/ethereum-testnet-latest.json"
