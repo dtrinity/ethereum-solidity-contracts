@@ -198,6 +198,16 @@ export function loadRoleManifest(manifestPath: string): RoleManifest {
   }
 }
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const BURN_ADDRESSES = new Set([
+  ZERO_ADDRESS.toLowerCase(),
+  "0x000000000000000000000000000000000000dead",
+]);
+
+function isPlaceholderOrBurnAddress(address: string): boolean {
+  return BURN_ADDRESSES.has(address.toLowerCase());
+}
+
 export function resolveRoleManifest(manifest: RoleManifest): ResolvedRoleManifest {
   if (manifest.version !== 2) {
     throw new ManifestValidationError(`Unsupported manifest version: ${manifest.version}`);
@@ -205,6 +215,19 @@ export function resolveRoleManifest(manifest: RoleManifest): ResolvedRoleManifes
 
   const deployer = getAddress(manifest.deployer);
   const governance = getAddress(manifest.governance);
+
+  if (isPlaceholderOrBurnAddress(deployer)) {
+    throw new ManifestValidationError(
+      `deployer cannot be a zero/burn address: ${deployer}. Update the manifest with the actual deployer wallet.`,
+    );
+  }
+
+  if (isPlaceholderOrBurnAddress(governance)) {
+    throw new ManifestValidationError(
+      `governance cannot be a zero/burn address: ${governance}. Update the manifest with the actual governance multisig.`,
+    );
+  }
+
   const context: AddressContext = { deployer, governance };
 
   const autoInclude: ResolvedAutoIncludeConfig = {

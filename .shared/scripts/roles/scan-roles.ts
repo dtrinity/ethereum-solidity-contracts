@@ -53,6 +53,11 @@ async function main(): Promise<void> {
       throw new Error('Missing deployer/governance addresses. Provide --deployer/--governance or set roles.deployer / roles.governance in the Hardhat network config.');
     }
 
+    // Warn if deployer === governance on mainnet (suspicious configuration)
+    if (deployer.toLowerCase() === governance.toLowerCase() && options.network.toLowerCase().includes('mainnet')) {
+      logger.warn(`\n⚠️  deployer === governance on mainnet network "${options.network}". Is this intentional?`);
+    }
+
     logger.info(`Scanning roles/ownership on ${options.network}`);
 
     const result = await scanRolesAndOwnership({
@@ -123,11 +128,39 @@ async function main(): Promise<void> {
       });
     }
 
+    // Detect contracts owned by addresses that are neither deployer nor governance
+    // This helps catch manifest misconfigurations where the wrong deployer address is specified
+    const unknownOwners = new Map<string, number>();
+    for (const c of governanceOwnableMismatches) {
+      const owner = c.owner.toLowerCase();
+      if (owner !== deployer.toLowerCase() && owner !== governance.toLowerCase()) {
+        unknownOwners.set(c.owner, (unknownOwners.get(c.owner) || 0) + 1);
+      }
+    }
+
+    if (unknownOwners.size > 0) {
+      logger.warn('\n⚠️  Potential manifest misconfiguration detected:');
+      for (const [addr, count] of unknownOwners) {
+        logger.warn(`   ${count} contract(s) owned by ${addr} (not deployer or governance)`);
+        if (count >= 3) {
+          logger.warn(`   → Consider: Is "${addr}" the actual deployer? Update manifest if so.`);
+        }
+      }
+    }
+
     let driftIssues: DriftIssue[] = [];
     let manifest;
 
     if (options.manifest) {
       manifest = resolveRoleManifest(loadRoleManifest(options.manifest));
+
+      // Warn if manifest network doesn't match the scan network
+      if (manifest.network && manifest.network !== options.network) {
+        logger.warn(
+          `\n⚠️  Network mismatch: manifest.network="${manifest.network}" but scanning "${options.network}"`,
+        );
+      }
+
       const rolesByDeployment = new Map(result.rolesContracts.map((info) => [info.deploymentName, info]));
       const ownableByDeployment = new Map(result.ownableContracts.map((info) => [info.deploymentName, info]));
       const plans = prepareContractPlans({ manifest, rolesByDeployment, ownableByDeployment });
