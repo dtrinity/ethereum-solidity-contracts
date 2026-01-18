@@ -11,7 +11,7 @@ import {
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategySFRXETH, strategySTETH, strategyWETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategyFRXETH, strategySFRXETH, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 // Stablecoins stay pegged to USD (base currency of the USD aggregator)
@@ -77,6 +77,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   addCollateralFee(dETHCollateralFees, WSTETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, SFRXETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
+  addCollateralFee(dETHCollateralFees, FRXETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
 
   // USD oracle feeds
   const usdPlainRedstoneFeeds: Record<string, string> = {};
@@ -126,6 +127,11 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   // Since frxETH is 1:1 redeemable with ETH, no external price feed is needed
   const ethErc4626OracleAssets: Record<string, string> = {};
   addSimpleErc4626Asset(ethErc4626OracleAssets, SFRXETH_ADDRESS, SFRXETH_ADDRESS);
+  const frxEthFundamentalOracle = {
+    asset: FRXETH_ADDRESS,
+    etherRouter: "0x5acAf61d339dd123e60ba450Ea38fbC49445007C",
+    redemptionQueue: "0xfDC69e6BE352BD5644C438302DE4E311AAD5565b",
+  };
 
   // --- dSTAKE (mainnet placeholders) ---
   // NOTE:
@@ -184,6 +190,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        frxEthFundamentalOracle,
       },
     },
     dStables: {
@@ -194,7 +201,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         collateralRedemptionFees: dUSDCollateralFees,
       },
       dETH: {
-        collaterals: filterAddresses([WETH_ADDRESS, WSTETH_ADDRESS, SFRXETH_ADDRESS]),
+        collaterals: filterAddresses([WETH_ADDRESS, WSTETH_ADDRESS, SFRXETH_ADDRESS, FRXETH_ADDRESS]),
         initialFeeReceiver: governanceAddress,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS,
         collateralRedemptionFees: dETHCollateralFees,
@@ -216,6 +223,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         WETH: strategyWETH,
         wstETH: strategySTETH,
         sfrxETH: strategySFRXETH,
+        frxETH: strategyFRXETH,
       },
     },
     dStake: {
