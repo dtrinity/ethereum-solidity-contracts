@@ -1,8 +1,14 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { AbiItem } from "web3-utils";
 import { Interface } from "@ethersproject/abi";
+import { Logger } from "@ethersproject/logger";
 import * as fs from "fs";
 import * as path from "path";
+
+// Suppress ethers.js warnings about duplicate ABI fragment definitions.
+// This occurs when multiple contracts define the same custom error (e.g., ArrayLengthMismatch).
+// The warning is harmless but noisy when scanning many deployments.
+Logger.setLogLevel(Logger.levels.ERROR);
 
 import {
   DEFAULT_MULTICALL3_ADDRESS,

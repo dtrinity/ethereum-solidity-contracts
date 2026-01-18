@@ -106,12 +106,12 @@ export async function deployAmoV2ForAsset(
  * Configures AMO V2 contracts for a specific asset, setting up roles and permissions.
  *
  * @param hre The Hardhat Runtime Environment
- * @param params Configuration parameters for AMO configuration including governance multisig
+ * @param params Configuration parameters for AMO configuration
  * @returns Object containing skip status and any manual actions required
  */
 export async function configureAmoV2ForAsset(
   hre: HardhatRuntimeEnvironment,
-  params: DeployAmoV2Params & { governanceMultisig: string },
+  params: DeployAmoV2Params,
 ): Promise<{ skipped: boolean; manualActions: string[] }> {
   const { deployments, ethers } = hre;
   const { getOrNull } = deployments;
@@ -119,7 +119,7 @@ export async function configureAmoV2ForAsset(
   const signer = await ethers.getSigner(deployer);
 
   const manualActions: string[] = [];
-  const { label, tokenId, oracleAggregatorId, collateralVaultId, amoManagerV2Id, amoDebtTokenId, governanceMultisig } = params;
+  const { label, tokenId, oracleAggregatorId, collateralVaultId, amoManagerV2Id, amoDebtTokenId } = params;
 
   const [token, oracleAgg, vault, amoManagerDep, debtTokenDep] = await Promise.all([
     getOrNull(tokenId),
@@ -249,31 +249,8 @@ export async function configureAmoV2ForAsset(
     }
   }
 
-  if (governanceMultisig && !(await amoManager.isAmoWalletAllowed(governanceMultisig))) {
-    const adminRole = await amoManager.DEFAULT_ADMIN_ROLE();
-    const deployerIsAdmin = await amoManager.hasRole(adminRole, deployer);
-
-    if (deployerIsAdmin) {
-      const tx = await amoManager.setAmoWalletAllowed(governanceMultisig, true);
-      await tx.wait();
-      console.log(`  ✅ Allowlisted governance wallet on AmoManagerV2 (${label})`);
-    } else {
-      manualActions.push(`AmoManagerV2 (${amoManagerDep!.address}).setAmoWalletAllowed(${governanceMultisig}, true)`);
-    }
-  }
-
-  if (!(await amoManager.isAmoWalletAllowed(deployer))) {
-    const adminRole = await amoManager.DEFAULT_ADMIN_ROLE();
-    const deployerIsAdmin = await amoManager.hasRole(adminRole, deployer);
-
-    if (deployerIsAdmin) {
-      const tx = await amoManager.setAmoWalletAllowed(deployer, true);
-      await tx.wait();
-      console.log(`  ✅ Allowlisted deployer on AmoManagerV2 (${label})`);
-    } else {
-      manualActions.push(`AmoManagerV2 (${amoManagerDep!.address}).setAmoWalletAllowed(${deployer}, true)`);
-    }
-  }
+  // NOTE: AMO wallets are NOT automatically allowlisted during deployment.
+  // Allowed wallets should be explicitly configured via governance after deployment.
 
   return { skipped: false, manualActions };
 }

@@ -172,10 +172,9 @@ function runDeploymentTestsForDStable(
       it("should have correct AmoManagerV2 allowlists", async function () {
         const vaultAddress = await collateralVaultContract.getAddress();
         const allowedWallets = await amoManagerV2.getAllowedAmoWallets();
-        const networkConfigLocal = await getConfig(hre);
-        const governanceWallet = networkConfigLocal.walletAddresses.governanceMultisig;
 
-        expect(allowedWallets).to.include(governanceWallet);
+        // AMO wallets are no longer granted during deployment - allowlist should be empty
+        expect(allowedWallets).to.be.empty;
         expect(await amoManagerV2.collateralVault()).to.equal(vaultAddress);
       });
     });
@@ -194,7 +193,7 @@ function runDeploymentTestsForDStable(
 
       it("should have zero AMO wallet allowlist length by default", async function () {
         const length = await amoManagerV2.getAllowedAmoWalletsLength();
-        expect(length).to.be.greaterThanOrEqual(0);
+        expect(length).to.equal(0n);
       });
 
       it("should track collateral tokens for reference", async function () {

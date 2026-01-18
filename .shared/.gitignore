@@ -14,3 +14,7 @@ artifacts/
 *.swo
 *~
 .idea/
+
+# Verification artifacts
+reports/verification/
+.verify-args/

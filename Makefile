@@ -1,8 +1,10 @@
 # Make 'help' the default target
 .DEFAULT_GOAL := help
 
-ROLES_NETWORK ?= ethereum_testnet
-ROLES_MANIFEST ?= manifests/ethereum-testnet-roles.json
+# IMPORTANT: No defaults for ROLES_NETWORK and ROLES_MANIFEST to prevent footguns.
+# Users must explicitly pass: make roles.scan ROLES_NETWORK=<network> ROLES_MANIFEST=<path>
+ROLES_NETWORK ?=
+ROLES_MANIFEST ?=
 ROLES_SCAN_ARGS ?= --drift-check
 ROLES_TRANSFER_ARGS ?=
 ROLES_REVOKE_ARGS ?=
