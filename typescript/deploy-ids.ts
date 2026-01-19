@@ -120,6 +120,9 @@ export const SDETH_ROUTER_ID = `${DSTAKE_ROUTER_ID_PREFIX}_sdETH`;
 export const DUSD_REDEEMER_V2_CONTRACT_ID = "dUSD_RedeemerV2";
 export const DETH_REDEEMER_V2_CONTRACT_ID = "dETH_RedeemerV2";
 
+// litUSD vault
+export const LITUSD_VAULT_ID = "LitUSDVault";
+
 // Vesting NFT
 export const ERC20_VESTING_NFT_ID = "ERC20VestingNFT";
 export const DSTAKE_NFT_VESTING_DEPLOYMENT_TAG = "dstake_nft_vesting";

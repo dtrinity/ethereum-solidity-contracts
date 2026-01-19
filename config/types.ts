@@ -22,6 +22,7 @@ export interface Config {
   readonly dStake?: {
     [key: string]: DStakeInstanceConfig; // e.g., sdUSD, sdETH
   };
+  readonly litUSDVault?: LitUSDVaultConfig;
   readonly vesting?: VestingConfig;
   readonly morpho?: MorphoConfig;
 }
@@ -217,6 +218,17 @@ export interface DStakeInstanceConfig {
   // NOTE: Role management fields (initialAdmin, initialFeeManager, collateralExchangers) have been removed.
   // Roles are initialized to the deployer during deployment and must be migrated to governance
   // addresses via separate Safe transactions after deployment is complete.
+}
+
+// --- litUSD Vault Types ---
+
+export interface LitUSDVaultConfig {
+  readonly litUSD: Address; // LitUSD token address held by the vault
+  readonly bankPoRFeed: Address; // Chainlink PoR feed for the bank USD balance
+  readonly admin?: Address; // Optional admin override; defaults to deployer
+  readonly withdrawer?: Address; // Optional withdrawer override; defaults to admin
+  readonly slippageBps?: number; // Optional completion threshold override in BPS (default 50)
+  readonly deploymentName?: string; // Optional deployment ID override
 }
 
 export interface VestingConfig {
