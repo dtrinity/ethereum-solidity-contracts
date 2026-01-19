@@ -37,6 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deploymentName = vaultConfig.deploymentName && vaultConfig.deploymentName !== "" ? vaultConfig.deploymentName : LITUSD_VAULT_ID;
 
   const existing = await getOrNull(deploymentName);
+
   if (existing) {
     console.log(`litUSD vault already deployed at ${existing.address}. Skipping deployment.`);
     return;
