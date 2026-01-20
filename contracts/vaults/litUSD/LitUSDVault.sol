@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -12,13 +13,16 @@ import { IPriceFeed } from "contracts/oracle_aggregator/interface/chainlink/IPri
  * @title LitUSDVault
  * @notice Tracks total reserves during pending LitUSD -> USD redemptions by freezing PoR snapshots.
  */
-contract LitUSDVault is AccessControl, ReentrancyGuard {
+contract LitUSDVault is AccessControl, ReentrancyGuard, ERC20 {
     using SafeERC20 for IERC20Metadata;
 
     enum ReserveState {
         NORMAL,
         ADMIN_WITHDRAW_PENDING
     }
+
+    string public constant VAULT_NAME = "Vault LitUSD";
+    string public constant VAULT_SYMBOL = "vLitUSD";
 
     bytes32 public constant WITHDRAW_ROLE = keccak256("WITHDRAW_ROLE");
 
@@ -40,19 +44,27 @@ contract LitUSDVault is AccessControl, ReentrancyGuard {
     event SlippageBpsSet(uint256 oldBps, uint256 newBps);
     event AdminWithdrawStarted(address indexed receiver, uint256 amount, uint256 frozenBankUSD);
     event AdminWithdrawCompleted(uint256 deltaBankUSD, uint256 pendingAmount);
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
 
     error ZeroAddress();
     error ZeroAmount();
     error PendingRedemption();
     error InvalidSlippageBps(uint256 newBps);
     error InvalidBankUSD();
+    error InsufficientLiquidity(uint256 available, uint256 required);
 
     modifier processOracle() {
         _processOracle();
         _;
     }
 
-    constructor(address _litUSD, address _bankPoRFeed, address _admin, address _withdrawer) {
+    constructor(
+        address _litUSD,
+        address _bankPoRFeed,
+        address _admin,
+        address _withdrawer
+    ) ERC20(VAULT_NAME, VAULT_SYMBOL) {
         if (_litUSD == address(0) || _bankPoRFeed == address(0) || _admin == address(0) || _withdrawer == address(0)) {
             revert ZeroAddress();
         }
@@ -68,6 +80,13 @@ contract LitUSDVault is AccessControl, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns the share token decimals (matches LitUSD decimals).
+     */
+    function decimals() public view override returns (uint8) {
+        return litUSDDecimals;
+    }
+
+    /**
      * @notice Returns the total reserve value in LitUSD decimals.
      */
     function totalReserve() external view returns (uint256 total) {
@@ -78,6 +97,80 @@ contract LitUSDVault is AccessControl, ReentrancyGuard {
 
         uint256 bankUSD = _readBankUSD();
         return vaultLitUSD + bankUSD;
+    }
+
+    /**
+     * @notice Deposit LitUSD and mint vault shares 1:1.
+     */
+    function deposit(uint256 assets, address receiver) external nonReentrant processOracle returns (uint256 shares) {
+        if (receiver == address(0)) revert ZeroAddress();
+        if (assets == 0) revert ZeroAmount();
+
+        shares = assets;
+        litUSD.safeTransferFrom(msg.sender, address(this), assets);
+        _mint(receiver, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Mint vault shares 1:1 by depositing LitUSD.
+     */
+    function mint(uint256 shares, address receiver) external nonReentrant processOracle returns (uint256 assets) {
+        if (receiver == address(0)) revert ZeroAddress();
+        if (shares == 0) revert ZeroAmount();
+
+        assets = shares;
+        litUSD.safeTransferFrom(msg.sender, address(this), assets);
+        _mint(receiver, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Burn vault shares and withdraw LitUSD 1:1.
+     */
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external nonReentrant processOracle returns (uint256 shares) {
+        if (receiver == address(0) || owner == address(0)) revert ZeroAddress();
+        if (assets == 0) revert ZeroAmount();
+
+        shares = assets;
+        if (msg.sender != owner) {
+            _spendAllowance(owner, msg.sender, shares);
+        }
+
+        uint256 available = litUSD.balanceOf(address(this));
+        if (available < assets) revert InsufficientLiquidity(available, assets);
+
+        _burn(owner, shares);
+        litUSD.safeTransfer(receiver, assets);
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @notice Burn vault shares and redeem LitUSD 1:1.
+     */
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external nonReentrant processOracle returns (uint256 assets) {
+        if (receiver == address(0) || owner == address(0)) revert ZeroAddress();
+        if (shares == 0) revert ZeroAmount();
+
+        assets = shares;
+        if (msg.sender != owner) {
+            _spendAllowance(owner, msg.sender, shares);
+        }
+
+        uint256 available = litUSD.balanceOf(address(this));
+        if (available < assets) revert InsufficientLiquidity(available, assets);
+
+        _burn(owner, shares);
+        litUSD.safeTransfer(receiver, assets);
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     /**

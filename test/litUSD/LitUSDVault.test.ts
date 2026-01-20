@@ -24,6 +24,37 @@ describe("LitUSDVault", function () {
     return { admin, other, litUSD, feed, vault };
   }
 
+  it("mints shares on deposit and allows withdrawal when liquid", async function () {
+    const { admin, other, litUSD, feed, vault } = await deployFixture();
+
+    await feed.setMock(usd(1000n));
+    await litUSD.connect(admin).transfer(other.address, lit(200n));
+    await litUSD.connect(other).approve(await vault.getAddress(), lit(200n));
+
+    await vault.connect(other).deposit(lit(200n), other.address);
+    expect(await vault.balanceOf(other.address)).to.equal(lit(200n));
+    expect(await litUSD.balanceOf(await vault.getAddress())).to.equal(lit(200n));
+
+    await vault.connect(other).withdraw(lit(50n), other.address, other.address);
+    expect(await vault.balanceOf(other.address)).to.equal(lit(150n));
+    expect(await litUSD.balanceOf(other.address)).to.equal(lit(50n));
+  });
+
+  it("reverts user withdrawal when vault liquidity is insufficient", async function () {
+    const { admin, other, litUSD, feed, vault } = await deployFixture();
+
+    await feed.setMock(usd(1000n));
+    await litUSD.connect(admin).transfer(other.address, lit(500n));
+    await litUSD.connect(other).approve(await vault.getAddress(), lit(500n));
+
+    await vault.connect(other).deposit(lit(500n), other.address);
+    await vault.connect(admin).adminWithdrawUnderlying(admin.address, lit(400n));
+
+    await expect(vault.connect(other).withdraw(lit(500n), other.address, other.address))
+      .to.be.revertedWithCustomError(vault, "InsufficientLiquidity")
+      .withArgs(lit(100n), lit(500n));
+  });
+
   it("computes total reserve in NORMAL state", async function () {
     const { admin, litUSD, feed, vault } = await deployFixture();
 
