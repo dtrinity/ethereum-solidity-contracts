@@ -75,15 +75,8 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
             return (0, false);
         }
 
-        uint256 backingEth;
-        try etherRouter.getConsolidatedEthFrxEthBalanceView(forceLive) returns (
-            IEtherRouterLike.CachedConsEFxBalances memory balances
-        ) {
-            if (balances.isStale) {
-                return (0, false);
-            }
-            backingEth = uint256(balances.ethTotalBalanced);
-        } catch {
+        (bool ok, bool isStale, uint256 backingEth) = _getEthTotalBalanced(forceLive);
+        if (!ok || isStale) {
             return (0, false);
         }
 
@@ -111,6 +104,39 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
         (uint256 price, bool alive) = getPriceInfo(asset);
         if (!alive) revert PriceIsStale();
         return price;
+    }
+
+    function _getEthTotalBalanced(bool forceLive) internal view returns (bool ok, bool isStale, uint256 ethTotal) {
+        (bool success, bytes memory data) = address(etherRouter).staticcall(
+            abi.encodeWithSelector(IEtherRouterLike.getConsolidatedEthFrxEthBalanceView.selector, forceLive)
+        );
+        if (!success || data.length % 32 != 0) {
+            return (false, false, 0);
+        }
+
+        uint256 words = data.length / 32;
+        if (words < 6) {
+            return (false, false, 0);
+        }
+
+        uint256 word0 = _loadWord(data, 0);
+        uint256 word1 = _loadWord(data, 1);
+        uint256 maxUint160 = type(uint160).max;
+
+        if (words >= 7 && word0 <= 1 && word1 <= maxUint160) {
+            isStale = word0 == 1;
+            ethTotal = _loadWord(data, 4);
+            return (true, isStale, ethTotal);
+        }
+
+        ethTotal = _loadWord(data, 2);
+        return (true, false, ethTotal);
+    }
+
+    function _loadWord(bytes memory data, uint256 index) internal pure returns (uint256 word) {
+        assembly {
+            word := mload(add(data, add(0x20, mul(index, 0x20))))
+        }
     }
 }
 
