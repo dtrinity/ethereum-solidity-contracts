@@ -45,7 +45,13 @@ contract LitUSDVault is AccessControl, ReentrancyGuard, ERC20 {
     event AdminWithdrawStarted(address indexed receiver, uint256 amount, uint256 frozenBankUSD);
     event AdminWithdrawCompleted(uint256 deltaBankUSD, uint256 pendingAmount);
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed caller,
+        address indexed receiver,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     error ZeroAddress();
     error ZeroAmount();
