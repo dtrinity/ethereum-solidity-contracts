@@ -3,12 +3,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import {
-  USD_ORACLE_AGGREGATOR_ID,
-  USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
-} from "../../typescript/deploy-ids";
-import { GovernanceExecutor } from "../../typescript/hardhat/governance";
+import { USD_ORACLE_AGGREGATOR_ID, USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
+import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 type CompositeFeedConfig = {
   feedAsset: string;
@@ -20,14 +17,22 @@ type CompositeFeedConfig = {
   fixedPriceInBase2: bigint;
 };
 
+/**
+ * Resolve the composite feed config for the target asset.
+ *
+ * @param compositeFeeds - Composite feed map keyed by asset address.
+ * @param assetAddress - Target asset address to locate.
+ */
 function findCompositeFeedConfig(
   compositeFeeds: Record<string, CompositeFeedConfig>,
   assetAddress: string,
 ): CompositeFeedConfig | undefined {
   const direct = compositeFeeds[assetAddress];
+
   if (direct) {
     return direct;
   }
+
   const normalized = assetAddress.toLowerCase();
   return Object.values(compositeFeeds).find((feed) => feed.feedAsset.toLowerCase() === normalized);
 }
@@ -44,6 +49,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const config = await getConfig(hre);
 
   const wstethAddress = config.tokenAddresses.wstETH;
+
   if (!wstethAddress || wstethAddress.toLowerCase() === ZeroAddress.toLowerCase()) {
     console.log("🔁 add-wsteth-usd-oracle-safe: wstETH address missing – skipping");
     return true;
@@ -58,10 +64,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const executor = new GovernanceExecutor(hre, deployerSigner, config.safeConfig);
+
   if (!executor.useSafe) {
-    throw new Error(
-      "Safe config is required for wstETH oracle wiring. Provide config.safeConfig and set USE_SAFE=true if needed.",
-    );
+    throw new Error("Safe config is required for wstETH oracle wiring. Provide config.safeConfig and set USE_SAFE=true if needed.");
   }
 
   await executor.initialize();
@@ -77,6 +82,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   );
 
   const existingFeed = await compositeWrapper.compositeFeeds(feedConfig.feedAsset);
+
   if (existingFeed.feed1.toLowerCase() === ZeroAddress.toLowerCase()) {
     const txData = compositeWrapper.interface.encodeFunctionData("addCompositeFeed", [
       feedConfig.feedAsset,
@@ -99,6 +105,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const currentOracle = await oracleAggregator.assetOracles(wstethAddress);
+
   if (currentOracle.toLowerCase() !== wrapperAddress.toLowerCase()) {
     const txData = oracleAggregator.interface.encodeFunctionData("setOracle", [wstethAddress, wrapperAddress]);
 
