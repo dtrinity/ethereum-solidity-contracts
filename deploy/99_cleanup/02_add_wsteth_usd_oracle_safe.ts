@@ -71,8 +71,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   await executor.initialize();
 
-  const { address: oracleAggregatorAddress } = await deployments.get(USD_ORACLE_AGGREGATOR_ID);
-  const { address: wrapperAddress } = await deployments.get(USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID);
+  const oracleAggregatorDeployment = await deployments.getOrNull(USD_ORACLE_AGGREGATOR_ID);
+  const wrapperDeployment = await deployments.getOrNull(USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID);
+
+  if (!oracleAggregatorDeployment || !wrapperDeployment) {
+    const missing: string[] = [];
+    if (!oracleAggregatorDeployment) missing.push(USD_ORACLE_AGGREGATOR_ID);
+    if (!wrapperDeployment) missing.push(USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID);
+
+    throw new Error(
+      [
+        `Missing hardhat-deploy deployment(s) on network "${hre.network.name}": ${missing.join(", ")}`,
+        `Expected files under: ${hre.config.paths.deployments}/${hre.network.name}/`,
+        `Note: running with "--reset" deletes the deployments folder before scripts run. Re-run without "--reset" for Safe wiring, or restore the deployments folder from git.`,
+      ].join("\n"),
+    );
+  }
+
+  const oracleAggregatorAddress = oracleAggregatorDeployment.address;
+  const wrapperAddress = wrapperDeployment.address;
 
   const oracleAggregator = await ethers.getContractAt("OracleAggregatorV1_1", oracleAggregatorAddress, deployerSigner);
   const compositeWrapper = await ethers.getContractAt(
@@ -80,6 +97,42 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     wrapperAddress,
     deployerSigner,
   );
+
+  // Ensure the Safe can manage oracle configs (role needed for addCompositeFeed/setOracle).
+  // This is the "admin wiring" step: queue grantRole to the Safe if it doesn't already have it.
+  const safeAddress = config.safeConfig.safeAddress;
+  const [oracleManagerRoleAgg, oracleManagerRoleWrapper] = await Promise.all([
+    oracleAggregator.ORACLE_MANAGER_ROLE(),
+    compositeWrapper.ORACLE_MANAGER_ROLE(),
+  ]);
+  const [safeHasAggRole, safeHasWrapperRole] = await Promise.all([
+    oracleAggregator.hasRole(oracleManagerRoleAgg, safeAddress),
+    compositeWrapper.hasRole(oracleManagerRoleWrapper, safeAddress),
+  ]);
+
+  if (!safeHasWrapperRole) {
+    const txData = compositeWrapper.interface.encodeFunctionData("grantRole", [oracleManagerRoleWrapper, safeAddress]);
+    await executor.tryOrQueue(
+      async () => {
+        throw new Error("Direct execution disabled: queue Safe transaction instead.");
+      },
+      () => ({ to: wrapperAddress, value: "0", data: txData }),
+    );
+  } else {
+    console.log("   ✓ Safe already has ORACLE_MANAGER_ROLE on USD composite wrapper");
+  }
+
+  if (!safeHasAggRole) {
+    const txData = oracleAggregator.interface.encodeFunctionData("grantRole", [oracleManagerRoleAgg, safeAddress]);
+    await executor.tryOrQueue(
+      async () => {
+        throw new Error("Direct execution disabled: queue Safe transaction instead.");
+      },
+      () => ({ to: oracleAggregatorAddress, value: "0", data: txData }),
+    );
+  } else {
+    console.log("   ✓ Safe already has ORACLE_MANAGER_ROLE on USD OracleAggregator");
+  }
 
   const existingFeed = await compositeWrapper.compositeFeeds(feedConfig.feedAsset);
 
@@ -119,7 +172,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     console.log("   ✓ wstETH already routed to USD composite wrapper");
   }
 
-  await executor.flush("Add wstETH USD composite oracle feed");
+  const success = await executor.flush("Add wstETH USD composite oracle feed");
+  if (!success) {
+    throw new Error("Failed to flush Safe transactions");
+  }
   console.log("🔁 add-wsteth-usd-oracle-safe: ✅");
   return true;
 };

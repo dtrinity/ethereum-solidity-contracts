@@ -99,7 +99,7 @@ async function extractAPI3FeedsSummary(): Promise<FeedSummary[]> {
  */
 function printFeedsTable(feeds: FeedSummary[]) {
   console.log("\n" + "=".repeat(120));
-  console.log("📋 API3 FEEDS SUMMARY - KATANA MAINNET");
+  console.log("📋 API3 FEEDS SUMMARY - ETHEREUM MAINNET");
   console.log("=".repeat(120));
 
   if (feeds.length === 0) {
@@ -163,7 +163,7 @@ function printFeedsTable(feeds: FeedSummary[]) {
  * Main function
  */
 async function main() {
-  console.log("🚀 Listing API3 feeds for Katana Mainnet...");
+  console.log("🚀 Listing API3 feeds for Ethereum Mainnet...");
 
   try {
     const feeds = await extractAPI3FeedsSummary();

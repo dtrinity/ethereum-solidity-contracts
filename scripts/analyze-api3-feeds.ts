@@ -346,7 +346,7 @@ function printAnalysis(feeds: FeedInfo[]) {
  * Main function
  */
 async function main() {
-  console.log("🚀 Starting API3 feeds analysis for Katana Mainnet...");
+  console.log("🚀 Starting API3 feeds analysis for Ethereum Mainnet...");
 
   try {
     const feeds = await extractAPI3Feeds();
