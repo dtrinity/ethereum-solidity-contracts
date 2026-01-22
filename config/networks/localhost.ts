@@ -260,9 +260,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                   },
                 }
               : {}),
-            ...(wstETHDeployment?.address &&
-            mockOracleNameToAddress["wstETH_stETH"] &&
-            mockOracleNameToAddress["WETH_USD"]
+            ...(wstETHDeployment?.address && mockOracleNameToAddress["wstETH_stETH"] && mockOracleNameToAddress["WETH_USD"]
               ? {
                   [wstETHDeployment.address]: {
                     feedAsset: wstETHDeployment.address,
