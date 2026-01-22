@@ -96,108 +96,147 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   const usdThresholdRedstoneFeeds = {
     ...(USDCDeployment?.address && mockOracleNameToAddress["USDC_USD"]
       ? {
-          [USDCDeployment.address]: {
-            feed: mockOracleNameToAddress["USDC_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [USDCDeployment.address]: {
+          feed: mockOracleNameToAddress["USDC_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(USDTDeployment?.address && mockOracleNameToAddress["USDT_USD"]
       ? {
-          [USDTDeployment.address]: {
-            feed: mockOracleNameToAddress["USDT_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [USDTDeployment.address]: {
+          feed: mockOracleNameToAddress["USDT_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(USDSDeployment?.address && mockOracleNameToAddress["USDS_USD"]
       ? {
-          [USDSDeployment.address]: {
-            feed: mockOracleNameToAddress["USDS_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [USDSDeployment.address]: {
+          feed: mockOracleNameToAddress["USDS_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(frxUSDDeployment?.address && mockOracleNameToAddress["frxUSD_USD"]
       ? {
-          [frxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["frxUSD_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [frxUSDDeployment.address]: {
+          feed: mockOracleNameToAddress["frxUSD_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(fxUSDDeployment?.address && mockOracleNameToAddress["fxUSD_USD"]
       ? {
-          [fxUSDDeployment.address]: {
-            feed: mockOracleNameToAddress["fxUSD_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [fxUSDDeployment.address]: {
+          feed: mockOracleNameToAddress["fxUSD_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(aUSDCDeployment?.address && mockOracleNameToAddress["aUSDC_USD"]
       ? {
-          [aUSDCDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDC_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [aUSDCDeployment.address]: {
+          feed: mockOracleNameToAddress["aUSDC_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(aUSDTDeployment?.address && mockOracleNameToAddress["aUSDT_USD"]
       ? {
-          [aUSDTDeployment.address]: {
-            feed: mockOracleNameToAddress["aUSDT_USD"],
-            lowerThreshold: STABLE_THRESHOLD,
-            fixedPrice: STABLE_THRESHOLD,
-          },
-        }
+        [aUSDTDeployment.address]: {
+          feed: mockOracleNameToAddress["aUSDT_USD"],
+          lowerThreshold: STABLE_THRESHOLD,
+          fixedPrice: STABLE_THRESHOLD,
+        },
+      }
       : {}),
   };
 
   const usdCompositeRedstoneFeeds = {
     ...(sUSDSDeployment?.address && mockOracleNameToAddress["sUSDS_USDS"] && mockOracleNameToAddress["USDS_USD"]
       ? {
-          [sUSDSDeployment.address]: {
-            feedAsset: sUSDSDeployment.address,
-            feed1: mockOracleNameToAddress["sUSDS_USDS"],
-            feed2: mockOracleNameToAddress["USDS_USD"],
-            lowerThresholdInBase1: 0n,
-            fixedPriceInBase1: 0n,
-            lowerThresholdInBase2: STABLE_THRESHOLD,
-            fixedPriceInBase2: STABLE_THRESHOLD,
-          },
-        }
+        [sUSDSDeployment.address]: {
+          feedAsset: sUSDSDeployment.address,
+          feed1: mockOracleNameToAddress["sUSDS_USDS"],
+          feed2: mockOracleNameToAddress["USDS_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: STABLE_THRESHOLD,
+          fixedPriceInBase2: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(sfrxUSDDeployment?.address && mockOracleNameToAddress["sfrxUSD_frxUSD"] && mockOracleNameToAddress["frxUSD_USD"]
       ? {
-          [sfrxUSDDeployment.address]: {
-            feedAsset: sfrxUSDDeployment.address,
-            feed1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
-            feed2: mockOracleNameToAddress["frxUSD_USD"],
-            lowerThresholdInBase1: 0n,
-            fixedPriceInBase1: 0n,
-            lowerThresholdInBase2: STABLE_THRESHOLD,
-            fixedPriceInBase2: STABLE_THRESHOLD,
-          },
-        }
+        [sfrxUSDDeployment.address]: {
+          feedAsset: sfrxUSDDeployment.address,
+          feed1: mockOracleNameToAddress["sfrxUSD_frxUSD"],
+          feed2: mockOracleNameToAddress["frxUSD_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: STABLE_THRESHOLD,
+          fixedPriceInBase2: STABLE_THRESHOLD,
+        },
+      }
       : {}),
     ...(fxSAVEDeployment?.address && mockOracleNameToAddress["fxSAVE_fxUSD"] && mockOracleNameToAddress["fxUSD_USD"]
       ? {
-          [fxSAVEDeployment.address]: {
-            feedAsset: fxSAVEDeployment.address,
-            feed1: mockOracleNameToAddress["fxSAVE_fxUSD"],
-            feed2: mockOracleNameToAddress["fxUSD_USD"],
-            lowerThresholdInBase1: 0n,
-            fixedPriceInBase1: 0n,
-            lowerThresholdInBase2: STABLE_THRESHOLD,
-            fixedPriceInBase2: STABLE_THRESHOLD,
-          },
-        }
+        [fxSAVEDeployment.address]: {
+          feedAsset: fxSAVEDeployment.address,
+          feed1: mockOracleNameToAddress["fxSAVE_fxUSD"],
+          feed2: mockOracleNameToAddress["fxUSD_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: STABLE_THRESHOLD,
+          fixedPriceInBase2: STABLE_THRESHOLD,
+        },
+      }
+      : {}),
+    ...(sfrxETHDeployment?.address && mockOracleNameToAddress["sfrxETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+        [sfrxETHDeployment.address]: {
+          feedAsset: sfrxETHDeployment.address,
+          feed1: mockOracleNameToAddress["sfrxETH_WETH"],
+          feed2: mockOracleNameToAddress["WETH_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: 0n,
+          fixedPriceInBase2: 0n,
+        },
+      }
+      : {}),
+    ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+        [stETHDeployment.address]: {
+          feedAsset: stETHDeployment.address,
+          feed1: mockOracleNameToAddress["stETH_WETH"],
+          feed2: mockOracleNameToAddress["WETH_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: 0n,
+          fixedPriceInBase2: 0n,
+        },
+      }
+      : {}),
+    ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+        [rETHDeployment.address]: {
+          feedAsset: rETHDeployment.address,
+          feed1: mockOracleNameToAddress["rETH_WETH"],
+          feed2: mockOracleNameToAddress["WETH_USD"],
+          lowerThresholdInBase1: 0n,
+          fixedPriceInBase1: 0n,
+          lowerThresholdInBase2: 0n,
+          fixedPriceInBase2: 0n,
+        },
+      }
       : {}),
   };
 
