@@ -36,6 +36,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     dETHDeployment,
     WETHDeployment,
     stETHDeployment,
+    wstETHDeployment,
     sfrxETHDeployment,
     rETHDeployment,
     USDCDeployment,
@@ -60,6 +61,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     hre.deployments.getOrNull(DETH_TOKEN_ID),
     hre.deployments.getOrNull("WETH"),
     hre.deployments.getOrNull("stETH"),
+    hre.deployments.getOrNull("wstETH"),
     hre.deployments.getOrNull("sfrxETH"),
     hre.deployments.getOrNull("rETH"),
     hre.deployments.getOrNull("USDC"),
@@ -242,6 +244,19 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           },
         }
       : {}),
+    ...(wstETHDeployment?.address && mockOracleNameToAddress["wstETH_stETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [wstETHDeployment.address]: {
+            feedAsset: wstETHDeployment.address,
+            feed1: mockOracleNameToAddress["wstETH_stETH"],
+            feed2: mockOracleNameToAddress["WETH_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: 0n,
+            fixedPriceInBase2: 0n,
+          },
+        }
+      : {}),
   };
 
   const ethPlainRedstoneFeeds = {
@@ -357,6 +372,12 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           decimals: 18,
           initialSupply: 1_000_000,
         },
+        wstETH: {
+          name: "Wrapped stETH",
+          address: wstETHDeployment?.address,
+          decimals: 18,
+          initialSupply: 1_000_000,
+        },
         sfrxETH: {
           name: "Staked Frax Ether",
           address: sfrxETHDeployment?.address,
@@ -388,6 +409,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       aUSDC: stringOrEmpty(aUSDCDeployment?.address),
       aUSDT: stringOrEmpty(aUSDTDeployment?.address),
       stETH: stringOrEmpty(stETHDeployment?.address),
+      wstETH: stringOrEmpty(wstETHDeployment?.address),
       sfrxETH: stringOrEmpty(sfrxETHDeployment?.address),
       rETH: stringOrEmpty(rETHDeployment?.address),
     },

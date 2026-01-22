@@ -46,5 +46,8 @@
   "dstake_dlend_rewards": 1761826958,
   "dETH_IssuerV2_1": 1761888868,
   "dUSD_IssuerV2_1": 1761888903,
-  "deploy-eth-erc4626-wrapper": 1765539944
+  "deploy-eth-erc4626-wrapper": 1765539944,
+  "add-wsteth-usd-oracle-safe": 1769049842,
+  "mock_wsteth_setup": 1769050021,
+  "add-wsteth-usd-oracle-safe-v2": 1769050140
 }

@@ -38,8 +38,9 @@ function findCompositeFeedConfig(
 }
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
-  if (isLocalNetwork(hre.network.name)) {
-    console.log("🔁 add-wsteth-usd-oracle-safe: local network detected – skipping");
+  const runOnLocal = process.env.RUN_ON_LOCAL?.toLowerCase() === "true";
+  if (isLocalNetwork(hre.network.name) && !runOnLocal) {
+    console.log("🔁 add-wsteth-usd-oracle-safe: local network detected – skipping (set RUN_ON_LOCAL=true to run)");
     return true;
   }
 
@@ -64,10 +65,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const executor = new GovernanceExecutor(hre, deployerSigner, config.safeConfig);
-
-  if (!executor.useSafe) {
-    throw new Error("Safe config is required for wstETH oracle wiring. Provide config.safeConfig and set USE_SAFE=true if needed.");
-  }
 
   await executor.initialize();
 
@@ -98,40 +95,72 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     deployerSigner,
   );
 
-  // Ensure the Safe can manage oracle configs (role needed for addCompositeFeed/setOracle).
-  // This is the "admin wiring" step: queue grantRole to the Safe if it doesn't already have it.
-  const safeAddress = config.safeConfig.safeAddress;
+  const managerAddress = executor.useSafe ? config.safeConfig!.safeAddress : deployer;
+
+  // Ensure the manager can manage oracle configs (role needed for addCompositeFeed/setOracle).
+  // - In Safe mode: queue grantRole to the Safe if it doesn't already have it.
+  // - In direct mode: grantRole to the deployer if needed (must be role admin).
   const [oracleManagerRoleAgg, oracleManagerRoleWrapper] = await Promise.all([
     oracleAggregator.ORACLE_MANAGER_ROLE(),
     compositeWrapper.ORACLE_MANAGER_ROLE(),
   ]);
-  const [safeHasAggRole, safeHasWrapperRole] = await Promise.all([
-    oracleAggregator.hasRole(oracleManagerRoleAgg, safeAddress),
-    compositeWrapper.hasRole(oracleManagerRoleWrapper, safeAddress),
+  const [managerHasAggRole, managerHasWrapperRole] = await Promise.all([
+    oracleAggregator.hasRole(oracleManagerRoleAgg, managerAddress),
+    compositeWrapper.hasRole(oracleManagerRoleWrapper, managerAddress),
   ]);
 
-  if (!safeHasWrapperRole) {
-    const txData = compositeWrapper.interface.encodeFunctionData("grantRole", [oracleManagerRoleWrapper, safeAddress]);
-    await executor.tryOrQueue(
-      async () => {
-        throw new Error("Direct execution disabled: queue Safe transaction instead.");
-      },
-      () => ({ to: wrapperAddress, value: "0", data: txData }),
-    );
+  if (!managerHasWrapperRole) {
+    const txData = compositeWrapper.interface.encodeFunctionData("grantRole", [oracleManagerRoleWrapper, managerAddress]);
+    if (executor.useSafe) {
+      await executor.tryOrQueue(
+        async () => {
+          throw new Error("Direct execution disabled: queue Safe transaction instead.");
+        },
+        () => ({ to: wrapperAddress, value: "0", data: txData }),
+      );
+    } else {
+      try {
+        const tx = await compositeWrapper.grantRole(oracleManagerRoleWrapper, managerAddress);
+        await tx.wait();
+      } catch (error) {
+        throw new Error(
+          [
+            `Failed to grant ORACLE_MANAGER_ROLE on USD composite wrapper to ${managerAddress}.`,
+            `Either deployer (${deployer}) is not the role admin on ${wrapperAddress}, or the contract permissions differ on this network.`,
+            String(error),
+          ].join("\n"),
+        );
+      }
+    }
   } else {
-    console.log("   ✓ Safe already has ORACLE_MANAGER_ROLE on USD composite wrapper");
+    console.log(`   ✓ Manager already has ORACLE_MANAGER_ROLE on USD composite wrapper (${managerAddress})`);
   }
 
-  if (!safeHasAggRole) {
-    const txData = oracleAggregator.interface.encodeFunctionData("grantRole", [oracleManagerRoleAgg, safeAddress]);
-    await executor.tryOrQueue(
-      async () => {
-        throw new Error("Direct execution disabled: queue Safe transaction instead.");
-      },
-      () => ({ to: oracleAggregatorAddress, value: "0", data: txData }),
-    );
+  if (!managerHasAggRole) {
+    const txData = oracleAggregator.interface.encodeFunctionData("grantRole", [oracleManagerRoleAgg, managerAddress]);
+    if (executor.useSafe) {
+      await executor.tryOrQueue(
+        async () => {
+          throw new Error("Direct execution disabled: queue Safe transaction instead.");
+        },
+        () => ({ to: oracleAggregatorAddress, value: "0", data: txData }),
+      );
+    } else {
+      try {
+        const tx = await oracleAggregator.grantRole(oracleManagerRoleAgg, managerAddress);
+        await tx.wait();
+      } catch (error) {
+        throw new Error(
+          [
+            `Failed to grant ORACLE_MANAGER_ROLE on USD OracleAggregator to ${managerAddress}.`,
+            `Either deployer (${deployer}) is not the role admin on ${oracleAggregatorAddress}, or the contract permissions differ on this network.`,
+            String(error),
+          ].join("\n"),
+        );
+      }
+    }
   } else {
-    console.log("   ✓ Safe already has ORACLE_MANAGER_ROLE on USD OracleAggregator");
+    console.log(`   ✓ Manager already has ORACLE_MANAGER_ROLE on USD OracleAggregator (${managerAddress})`);
   }
 
   const existingFeed = await compositeWrapper.compositeFeeds(feedConfig.feedAsset);
@@ -147,12 +176,35 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       feedConfig.fixedPriceInBase2,
     ]);
 
-    await executor.tryOrQueue(
-      async () => {
-        throw new Error("Direct execution disabled: queue Safe transaction instead.");
-      },
-      () => ({ to: wrapperAddress, value: "0", data: txData }),
-    );
+    if (executor.useSafe) {
+      await executor.tryOrQueue(
+        async () => {
+          throw new Error("Direct execution disabled: queue Safe transaction instead.");
+        },
+        () => ({ to: wrapperAddress, value: "0", data: txData }),
+      );
+    } else {
+      try {
+        const tx = await compositeWrapper.addCompositeFeed(
+          feedConfig.feedAsset,
+          feedConfig.feed1,
+          feedConfig.feed2,
+          feedConfig.lowerThresholdInBase1,
+          feedConfig.fixedPriceInBase1,
+          feedConfig.lowerThresholdInBase2,
+          feedConfig.fixedPriceInBase2,
+        );
+        await tx.wait();
+      } catch (error) {
+        throw new Error(
+          [
+            `Failed to add wstETH composite feed on USD composite wrapper (${wrapperAddress}).`,
+            `Ensure ${managerAddress} has ORACLE_MANAGER_ROLE and inputs are correct.`,
+            String(error),
+          ].join("\n"),
+        );
+      }
+    }
   } else {
     console.log("   ✓ wstETH composite feed already configured on USD composite wrapper");
   }
@@ -162,12 +214,27 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   if (currentOracle.toLowerCase() !== wrapperAddress.toLowerCase()) {
     const txData = oracleAggregator.interface.encodeFunctionData("setOracle", [wstethAddress, wrapperAddress]);
 
-    await executor.tryOrQueue(
-      async () => {
-        throw new Error("Direct execution disabled: queue Safe transaction instead.");
-      },
-      () => ({ to: oracleAggregatorAddress, value: "0", data: txData }),
-    );
+    if (executor.useSafe) {
+      await executor.tryOrQueue(
+        async () => {
+          throw new Error("Direct execution disabled: queue Safe transaction instead.");
+        },
+        () => ({ to: oracleAggregatorAddress, value: "0", data: txData }),
+      );
+    } else {
+      try {
+        const tx = await oracleAggregator.setOracle(wstethAddress, wrapperAddress);
+        await tx.wait();
+      } catch (error) {
+        throw new Error(
+          [
+            `Failed to set wstETH oracle on USD OracleAggregator (${oracleAggregatorAddress}).`,
+            `Ensure ${managerAddress} has ORACLE_MANAGER_ROLE.`,
+            String(error),
+          ].join("\n"),
+        );
+      }
+    }
   } else {
     console.log("   ✓ wstETH already routed to USD composite wrapper");
   }
@@ -187,6 +254,6 @@ func.dependencies = [
   USD_ORACLE_AGGREGATOR_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
 ];
-func.id = "add-wsteth-usd-oracle-safe";
+func.id = "add-wsteth-usd-oracle-safe-v2";
 
 export default func;

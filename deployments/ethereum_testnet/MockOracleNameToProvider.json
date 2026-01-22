@@ -1,7 +1,7 @@
 {
   "address": "0x0000000000000000000000000000000000000000",
   "abi": [],
-  "numDeployments": 1,
+  "numDeployments": 2,
   "linkedData": {
     "USDC_USD": "REDSTONE",
     "USDT_USD": "REDSTONE",
@@ -18,6 +18,7 @@
     "WETH_USD": "REDSTONE",
     "stETH_WETH": "REDSTONE",
     "sfrxETH_WETH": "REDSTONE",
-    "rETH_WETH": "REDSTONE"
+    "rETH_WETH": "REDSTONE",
+    "wstETH_stETH": "REDSTONE"
   }
 }
