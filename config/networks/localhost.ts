@@ -265,6 +265,19 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                   },
                 }
               : {}),
+            ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [stETHDeployment.address]: {
+                    feedAsset: stETHDeployment.address,
+                    feed1: mockOracleNameToAddress["stETH_WETH"],
+                    feed2: mockOracleNameToAddress["WETH_USD"],
+                    lowerThresholdInBase1: 0n,
+                    fixedPriceInBase1: 0n,
+                    lowerThresholdInBase2: 0n,
+                    fixedPriceInBase2: 0n,
+                  },
+                }
+              : {}),
           },
         },
       },

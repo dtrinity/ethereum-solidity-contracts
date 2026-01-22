@@ -203,6 +203,45 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           },
         }
       : {}),
+    ...(sfrxETHDeployment?.address && mockOracleNameToAddress["sfrxETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [sfrxETHDeployment.address]: {
+            feedAsset: sfrxETHDeployment.address,
+            feed1: mockOracleNameToAddress["sfrxETH_WETH"],
+            feed2: mockOracleNameToAddress["WETH_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: 0n,
+            fixedPriceInBase2: 0n,
+          },
+        }
+      : {}),
+    ...(stETHDeployment?.address && mockOracleNameToAddress["stETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [stETHDeployment.address]: {
+            feedAsset: stETHDeployment.address,
+            feed1: mockOracleNameToAddress["stETH_WETH"],
+            feed2: mockOracleNameToAddress["WETH_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: 0n,
+            fixedPriceInBase2: 0n,
+          },
+        }
+      : {}),
+    ...(rETHDeployment?.address && mockOracleNameToAddress["rETH_WETH"] && mockOracleNameToAddress["WETH_USD"]
+      ? {
+          [rETHDeployment.address]: {
+            feedAsset: rETHDeployment.address,
+            feed1: mockOracleNameToAddress["rETH_WETH"],
+            feed2: mockOracleNameToAddress["WETH_USD"],
+            lowerThresholdInBase1: 0n,
+            fixedPriceInBase1: 0n,
+            lowerThresholdInBase2: 0n,
+            fixedPriceInBase2: 0n,
+          },
+        }
+      : {}),
   };
 
   const ethPlainRedstoneFeeds = {
