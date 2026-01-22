@@ -39,6 +39,7 @@ function findCompositeFeedConfig(
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const runOnLocal = process.env.RUN_ON_LOCAL?.toLowerCase() === "true";
+
   if (isLocalNetwork(hre.network.name) && !runOnLocal) {
     console.log("🔁 add-wsteth-usd-oracle-safe: local network detected – skipping (set RUN_ON_LOCAL=true to run)");
     return true;
@@ -111,6 +112,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   if (!managerHasWrapperRole) {
     const txData = compositeWrapper.interface.encodeFunctionData("grantRole", [oracleManagerRoleWrapper, managerAddress]);
+
     if (executor.useSafe) {
       await executor.tryOrQueue(
         async () => {
@@ -138,6 +140,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   if (!managerHasAggRole) {
     const txData = oracleAggregator.interface.encodeFunctionData("grantRole", [oracleManagerRoleAgg, managerAddress]);
+
     if (executor.useSafe) {
       await executor.tryOrQueue(
         async () => {
@@ -173,6 +176,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       feedConfig.lowerThresholdInBase1,
       feedConfig.fixedPriceInBase1,
       feedConfig.lowerThresholdInBase2,
+
       feedConfig.fixedPriceInBase2,
     ]);
 
@@ -240,6 +244,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const success = await executor.flush("Add wstETH USD composite oracle feed");
+
   if (!success) {
     throw new Error("Failed to flush Safe transactions");
   }
@@ -254,6 +259,6 @@ func.dependencies = [
   USD_ORACLE_AGGREGATOR_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
 ];
-func.id = "add-wsteth-usd-oracle-safe-v2";
+func.id = "add-wsteth-usd-oracle-safe";
 
 export default func;
