@@ -10,11 +10,9 @@ export function getEnvPrivateKeys(network: string): string[] {
   let pks: string[] = [];
 
   switch (network) {
-    case "katana_testnet":
     case "ethereum_testnet":
       pks = [getPrivateKeyFromMnemonic(`testnet_deployer`), getPrivateKeyFromEnv(`testnet_deployer`)];
       break;
-    case "katana_mainnet":
     case "ethereum_mainnet":
       pks = [getPrivateKeyFromMnemonic(`mainnet_deployer`), getPrivateKeyFromEnv(`mainnet_deployer`)];
       break;
@@ -98,9 +96,7 @@ export function getStandardNamedAccounts(): {
     deployer: {
       hardhat: 0,
       localhost: 0,
-      katana_testnet: 0,
       ethereum_testnet: 0,
-      katana_mainnet: 0,
       ethereum_mainnet: 0,
     },
     // For testing ONLY

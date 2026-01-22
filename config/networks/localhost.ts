@@ -34,6 +34,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
   const sfrxUSDDeployment = await _hre.deployments.getOrNull("sfrxUSD");
   const WETHDeployment = await _hre.deployments.getOrNull("WETH");
   const stETHDeployment = await _hre.deployments.getOrNull("stETH");
+  const wstETHDeployment = await _hre.deployments.getOrNull("wstETH");
 
   // Fetch deployed dLend StaticATokenLM wrappers
   const dLendATokenWrapperDUSDDeployment = await _hre.deployments.getOrNull("dLend_ATokenWrapper_dUSD");
@@ -117,6 +118,12 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
           decimals: 18,
           initialSupply: 1e6,
         },
+        wstETH: {
+          name: "Wrapped stETH",
+          address: wstETHDeployment?.address,
+          decimals: 18,
+          initialSupply: 1e6,
+        },
       },
       curvePools: {},
     },
@@ -125,6 +132,7 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       dETH: emptyStringIfUndefined(dETHDeployment?.address),
       WETH: emptyStringIfUndefined(WETHDeployment?.address),
       stETH: emptyStringIfUndefined(stETHDeployment?.address),
+      wstETH: emptyStringIfUndefined(wstETHDeployment?.address),
       frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address),
       USDC: emptyStringIfUndefined(USDCDeployment?.address),
@@ -244,6 +252,19 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
                   [stETHDeployment.address]: {
                     feedAsset: stETHDeployment.address,
                     feed1: mockOracleNameToAddress["stETH_WETH"],
+                    feed2: mockOracleNameToAddress["WETH_USD"],
+                    lowerThresholdInBase1: 0n,
+                    fixedPriceInBase1: 0n,
+                    lowerThresholdInBase2: 0n,
+                    fixedPriceInBase2: 0n,
+                  },
+                }
+              : {}),
+            ...(wstETHDeployment?.address && mockOracleNameToAddress["wstETH_stETH"] && mockOracleNameToAddress["WETH_USD"]
+              ? {
+                  [wstETHDeployment.address]: {
+                    feedAsset: wstETHDeployment.address,
+                    feed1: mockOracleNameToAddress["wstETH_stETH"],
                     feed2: mockOracleNameToAddress["WETH_USD"],
                     lowerThresholdInBase1: 0n,
                     fixedPriceInBase1: 0n,

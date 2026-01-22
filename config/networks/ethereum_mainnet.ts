@@ -152,6 +152,16 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       governanceMultisig: governanceAddress,
       incentivesVault,
     },
+    safeConfig: {
+      safeAddress: GOVERNANCE_SAFE,
+      owners: [
+        "0x4B58fF1AAE6AdD7465A5584eBCaeb876ec8f21FD",
+        "0xDC672ba6e55B71b39FA5423D42B88E7aDF9d24A4",
+        "0x9E0c8376940aBE845A89b7304147a95c72644f59",
+      ],
+      threshold: 2,
+      chainId: 1,
+    },
     oracleAggregators: {
       USD: {
         priceDecimals: ORACLE_AGGREGATOR_PRICE_DECIMALS,

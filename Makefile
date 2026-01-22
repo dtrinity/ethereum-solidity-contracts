@@ -159,11 +159,11 @@ clean-deployments: ## Clean the deployments for a given network which matches at
 
 explorer.verify.ethereum_testnet:
 	@echo "Verifying contracts on Ethereum testnet (Sepolia)..."
-	@yarn hardhat --network ethereum_testnet etherscan-verify --api-key $${ETHERSCAN_API_KEY} --api-url https://api-sepolia.etherscan.io/api --sleep
+	@ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) yarn hardhat --network ethereum_testnet etherscan-verify --api-key $(ETHERSCAN_API_KEY) --license MIT --solc-input --sleep
 
 explorer.verify.ethereum_mainnet:
 	@echo "Verifying contracts on Ethereum mainnet..."
-	@yarn hardhat --network ethereum_mainnet etherscan-verify --sleep
+	@ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) yarn hardhat --network ethereum_mainnet etherscan-verify --api-key $(ETHERSCAN_API_KEY) --sleep
 
 ##############
 ## Building ##

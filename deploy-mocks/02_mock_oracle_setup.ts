@@ -26,6 +26,7 @@ const redstoneFeeds: OracleFeedConfig[] = [
   { name: "fxSAVE_fxUSD", price: "1.02" },
   { name: "WETH_USD", price: "3200" },
   { name: "stETH_WETH", price: "1.0" },
+  { name: "wstETH_stETH", price: "1.10" },
   { name: "sfrxETH_WETH", price: "1.02" },
   { name: "rETH_WETH", price: "1.03" },
 ];

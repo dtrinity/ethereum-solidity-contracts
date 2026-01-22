@@ -208,7 +208,7 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     console.error(`\nDeployment directory not found: ${deploymentsDir}`);
-    console.error("Use --network to point at a valid Hardhat deployments folder (e.g., --network katana_mainnet).\n");
+    console.error("Use --network to point at a valid Hardhat deployments folder (e.g., --network ethereum_mainnet).\n");
     process.exitCode = 1;
     return;
   }

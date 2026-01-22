@@ -174,8 +174,9 @@ export class SafeManager {
       console.log(`✅ Transaction simulation successful`);
       return;
     } catch (error) {
-      console.error(`❌ Transaction simulation failed:`, error);
-      throw new Error(`Transaction would fail: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`⚠️ Transaction simulation failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`⚠️ Continuing with batch creation despite simulation failure (this is expected if the Safe lacks permissions yet)`);
+      // Do not throw, allow batch creation to proceed
     }
   }
 

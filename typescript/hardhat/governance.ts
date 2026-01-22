@@ -10,7 +10,7 @@ import { isMainnet } from "./deploy";
  * (using signer) or to queue them as Safe transactions for multisig execution.
  *
  * Behavior:
- * - By default, enables Safe queueing only on Katana mainnet (chainId 99999)
+ * - By default, enables Safe queueing only on Ethereum mainnet (chainId 1)
  *   when a `safeConfig` is provided. You can override by setting USE_SAFE=true
  *   in env to force Safe usage on other networks.
  * - For non-Safe mode, direct calls are attempted; on failure, the helper

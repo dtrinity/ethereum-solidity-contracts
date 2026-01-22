@@ -381,7 +381,7 @@ function printAnalysis(feeds: FeedInfo[]) {
  * Main function
  */
 async function main() {
-  console.log("🚀 Starting Chainlink/Redstone feeds analysis for Katana Mainnet...");
+  console.log("🚀 Starting Chainlink/Redstone feeds analysis for Ethereum Mainnet...");
 
   try {
     const feeds = await extractChainlinkFeeds();
