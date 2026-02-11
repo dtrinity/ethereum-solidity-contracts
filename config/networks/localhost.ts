@@ -143,7 +143,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
       WETH: emptyStringIfUndefined(WETHDeployment?.address),
       stETH: emptyStringIfUndefined(stETHDeployment?.address),
       wstETH: emptyStringIfUndefined(wstETHDeployment?.address),
-      wstETH: emptyStringIfUndefined(wstETHDeployment?.address),
       frxETH: emptyStringIfUndefined(frxETHDeployment?.address),
       frxUSD: emptyStringIfUndefined(frxUSDDeployment?.address),
       sfrxUSD: emptyStringIfUndefined(sfrxUSDDeployment?.address),
