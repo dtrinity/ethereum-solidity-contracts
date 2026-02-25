@@ -11,11 +11,12 @@ import {
 } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
+import { ensureRoleGrantedToManager } from "../_shared/safe-role";
 
 /**
  * Normalizes an address value for case-insensitive comparisons.
  *
- * @param address
+ * @param address Address to normalize.
  */
 function normalize(address: string): string {
   return address.toLowerCase();
@@ -24,7 +25,7 @@ function normalize(address: string): string {
 /**
  * Returns true when the address equals the canonical zero address.
  *
- * @param address
+ * @param address Address to compare.
  */
 function isZeroAddress(address: string): boolean {
   return normalize(address) === normalize(ZeroAddress);
@@ -62,6 +63,54 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     signer,
   );
   const erc4626Wrapper = await ethers.getContractAt("ChainlinkERC4626WrapperV1_1", erc4626WrapperAddress, signer);
+  const managerAddress = config.safeConfig!.safeAddress;
+
+  const [aggregatorRole, plainWrapperRole, compositeWrapperRole, erc4626WrapperRole] = await Promise.all([
+    aggregator.ORACLE_MANAGER_ROLE(),
+    plainWrapper.ORACLE_MANAGER_ROLE(),
+    compositeWrapper.ORACLE_MANAGER_ROLE(),
+    erc4626Wrapper.ORACLE_MANAGER_ROLE(),
+  ]);
+
+  await ensureRoleGrantedToManager({
+    executor,
+    contract: aggregator,
+    contractAddress: aggregatorAddress,
+    managerAddress,
+    role: aggregatorRole,
+    roleLabel: "ORACLE_MANAGER_ROLE",
+    contractLabel: USD_ORACLE_AGGREGATOR_ID,
+  });
+
+  await ensureRoleGrantedToManager({
+    executor,
+    contract: plainWrapper,
+    contractAddress: plainWrapperAddress,
+    managerAddress,
+    role: plainWrapperRole,
+    roleLabel: "ORACLE_MANAGER_ROLE",
+    contractLabel: USD_REDSTONE_ORACLE_WRAPPER_ID,
+  });
+
+  await ensureRoleGrantedToManager({
+    executor,
+    contract: compositeWrapper,
+    contractAddress: compositeWrapperAddress,
+    managerAddress,
+    role: compositeWrapperRole,
+    roleLabel: "ORACLE_MANAGER_ROLE",
+    contractLabel: USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  });
+
+  await ensureRoleGrantedToManager({
+    executor,
+    contract: erc4626Wrapper,
+    contractAddress: erc4626WrapperAddress,
+    managerAddress,
+    role: erc4626WrapperRole,
+    roleLabel: "ORACLE_MANAGER_ROLE",
+    contractLabel: USD_CHAINLINK_ERC4626_WRAPPER_ID,
+  });
 
   const plainFeeds = config.oracleAggregators.USD.redstoneOracleAssets.plainRedstoneOracleWrappers;
   const compositeFeeds = config.oracleAggregators.USD.redstoneOracleAssets.compositeRedstoneOracleWrappersWithThresholding;
@@ -170,11 +219,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-func.tags = ["post-deploy", "oracle-rollout", "usd-oracle", "safe"];
+func.tags = ["post-deploy", "oracle-rollout", "usd-oracle", "safe", "setup-ethereum-mainnet-collateral-oracles-safe"];
 func.dependencies = [
-  "setup-usd-oracle-wrappers-v1_1",
-  "deploy-chainlink-erc4626-wrappers",
-  "point-usd-aggregator-to-wrappers-v1_1",
+  "setup-ethereum-mainnet-new-listings-preflight",
   USD_ORACLE_AGGREGATOR_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,

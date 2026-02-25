@@ -13,6 +13,7 @@ import {
 } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
+import { ensureRoleGrantedToManager, getRoleAccess } from "../_shared/safe-role";
 
 const ROLLOUT_COLLATERAL_SYMBOLS = [
   "WETH",
@@ -33,8 +34,8 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
 /**
  * Splits a list into smaller chunks.
  *
- * @param items
- * @param size
+ * @param items Source list to split.
+ * @param size Chunk size.
  */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -49,7 +50,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 /**
  * Normalizes an address value for case-insensitive comparisons.
  *
- * @param value
+ * @param value Address to normalize.
  */
 function normalize(value: string): string {
   return value.toLowerCase();
@@ -58,9 +59,9 @@ function normalize(value: string): string {
 /**
  * Resolves token addresses from config first, then from deployments as fallback.
  *
- * @param hre
- * @param symbol
- * @param tokenMap
+ * @param hre Hardhat runtime used for deployment lookups.
+ * @param symbol Token symbol to resolve.
+ * @param tokenMap Token address map from config.
  */
 async function resolveTokenAddress(
   hre: HardhatRuntimeEnvironment,
@@ -108,10 +109,44 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const pool = await ethers.getContractAt("Pool", poolAddress, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
+  const managerAddress = config.safeConfig!.safeAddress;
 
   const reservesSetupHelperDeployment = await deployments.get(RESERVES_SETUP_HELPER_ID);
   const reservesSetupHelperAddress = reservesSetupHelperDeployment.address;
   const reservesSetupHelper = await ethers.getContractAt("ReservesSetupHelper", reservesSetupHelperAddress, signer);
+
+  const [poolAdminRole, assetListingAdminRole, riskAdminRole] = await Promise.all([
+    aclManager.POOL_ADMIN_ROLE(),
+    aclManager.ASSET_LISTING_ADMIN_ROLE(),
+    aclManager.RISK_ADMIN_ROLE(),
+  ]);
+
+  const [poolAdminAccess, hasAssetListingAdmin, riskAdminAccess] = await Promise.all([
+    getRoleAccess(aclManager, poolAdminRole, managerAddress),
+    aclManager.hasRole(assetListingAdminRole, managerAddress),
+    getRoleAccess(aclManager, riskAdminRole, managerAddress),
+  ]);
+
+  if (!poolAdminAccess.hasRole && !hasAssetListingAdmin) {
+    await ensureRoleGrantedToManager({
+      executor,
+      contract: aclManager,
+      contractAddress: aclManagerAddress,
+      managerAddress,
+      role: poolAdminRole,
+      roleLabel: "POOL_ADMIN_ROLE",
+      contractLabel: "ACLManager",
+    });
+  }
+
+  if (!riskAdminAccess.canGrantRole) {
+    throw new Error(
+      [
+        `[role-check] ${managerAddress} cannot grant RISK_ADMIN_ROLE via ACLManager (${aclManagerAddress}).`,
+        `Missing admin role ${riskAdminAccess.adminRole}.`,
+      ].join(" "),
+    );
+  }
 
   const { address: treasuryAddress } = await deployments.get(TREASURY_PROXY_ID);
   const { address: aTokenImplAddress } = await deployments.get(ATOKEN_IMPL_ID);
@@ -241,10 +276,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe"];
+func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-safe"];
 func.dependencies = [
-  "dLend:init_reserves",
+  "setup-ethereum-mainnet-new-listings-preflight",
   "setup-ethereum-mainnet-collateral-oracles-safe",
+  "setup-ethereum-mainnet-eth-oracles-safe",
   POOL_ADDRESSES_PROVIDER_ID,
   RESERVES_SETUP_HELPER_ID,
 ];

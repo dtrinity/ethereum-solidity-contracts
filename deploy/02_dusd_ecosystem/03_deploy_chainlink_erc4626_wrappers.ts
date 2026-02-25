@@ -37,7 +37,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-wrappers"];
+func.tags = [
+  "local-setup",
+  "dlend",
+  "usd-oracle",
+  "oracle-wrappers",
+  "deploy-chainlink-erc4626-wrappers",
+  USD_CHAINLINK_ERC4626_WRAPPER_ID,
+];
 func.dependencies = ["local_oracle_setup", "local_token_setup"];
 func.id = "deploy-chainlink-erc4626-wrappers";
 

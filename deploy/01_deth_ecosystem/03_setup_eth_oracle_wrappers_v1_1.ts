@@ -305,7 +305,19 @@ function assertAddress(value: string, context: string): void {
   }
 }
 
-func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-wrappers"];
+func.tags = [
+  "local-setup",
+  "dlend",
+  "eth-oracle",
+  "oracle-wrappers",
+  "setup-eth-oracle-wrappers-v1_1",
+  ETH_API3_ORACLE_WRAPPER_ID,
+  ETH_API3_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_API3_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_ORACLE_WRAPPER_ID,
+  ETH_REDSTONE_WRAPPER_WITH_THRESHOLDING_ID,
+  ETH_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
+];
 func.dependencies = [DETH_TOKEN_ID];
 func.id = "setup-eth-oracle-wrappers-v1_1";
 

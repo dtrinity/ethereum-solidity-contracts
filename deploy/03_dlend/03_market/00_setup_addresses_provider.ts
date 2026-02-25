@@ -69,7 +69,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 // This script can only be run successfully once per market (the deployment on each network will be in a dedicated directory), core version
 func.id = `PoolAddressesProvider`;
-func.tags = ["dlend", "dlend-market"];
+func.tags = ["dlend", "dlend-market", POOL_ADDRESSES_PROVIDER_ID, "PoolAddressesProvider"];
 func.dependencies = ["dlend-core", "dlend-periphery-pre"];
 
 export default func;

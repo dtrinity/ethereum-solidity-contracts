@@ -36,7 +36,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-wrappers"];
+func.tags = [
+  "local-setup",
+  "dlend",
+  "eth-oracle",
+  "oracle-wrappers",
+  "deploy-frxeth-fundamental-oracle-wrapper",
+  ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID,
+];
 func.dependencies = [];
 func.id = "deploy-frxeth-fundamental-oracle-wrapper";
 
