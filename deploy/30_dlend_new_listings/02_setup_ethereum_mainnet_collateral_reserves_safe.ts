@@ -19,7 +19,6 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
   "wstETH",
   "rETH",
   "sfrxETH",
-  "frxETH",
   "sUSDe",
   "sUSDS",
   "syrupUSDC",
@@ -33,6 +32,9 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
 
 /**
  * Splits a list into smaller chunks.
+ *
+ * @param items
+ * @param size
  */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -46,6 +48,8 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 
 /**
  * Normalizes an address value for case-insensitive comparisons.
+ *
+ * @param value
  */
 function normalize(value: string): string {
   return value.toLowerCase();
@@ -53,6 +57,10 @@ function normalize(value: string): string {
 
 /**
  * Resolves token addresses from config first, then from deployments as fallback.
+ *
+ * @param hre
+ * @param symbol
+ * @param tokenMap
  */
 async function resolveTokenAddress(
   hre: HardhatRuntimeEnvironment,

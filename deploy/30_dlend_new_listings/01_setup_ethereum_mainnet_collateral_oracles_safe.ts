@@ -14,6 +14,8 @@ import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 /**
  * Normalizes an address value for case-insensitive comparisons.
+ *
+ * @param address
  */
 function normalize(address: string): string {
   return address.toLowerCase();
@@ -21,6 +23,8 @@ function normalize(address: string): string {
 
 /**
  * Returns true when the address equals the canonical zero address.
+ *
+ * @param address
  */
 function isZeroAddress(address: string): boolean {
   return normalize(address) === normalize(ZeroAddress);

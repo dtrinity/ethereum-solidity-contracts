@@ -15,7 +15,6 @@ import {
   strategyCBBTC,
   strategyDETH,
   strategyDUSD,
-  strategyFRXETH,
   strategyLBTC,
   strategyPAXG,
   strategyRETH,
@@ -61,26 +60,25 @@ const INCENTIVES_SAFE = "0x4B4B5cC616be4cd1947B93f2304d36b3e80D3ef6";
 
 // Chainlink feeds (known)
 const ETH_USD_FEED = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
-const BTC_USD_FEED = "0xF4030086522a5bEEa4988F8cA5B36dbc97BeE88c";
+const BTC_USD_FEED = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
 const USDC_USD_FEED = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
 const USDT_USD_FEED = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D";
 const FRXUSD_USD_FEED = "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83";
 const USDS_USD_FEED = "0xfF30586cD0F29eD462364C7e81375FC0C71219b1";
+const USDE_USD_FEED = "0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961";
+const RETH_ETH_FEED = "0x536218f9E9Eb48863970252233c8F271f554C2d0";
+const LBTC_BTC_FEED = "0x5c29868C58b6e15e2b962943278969Ab6a7D3212";
+const WBTC_BTC_FEED = "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23";
+const CBBTC_USD_FEED = "0x2665701293fCbEB223D11A08D826563EDcCE423A";
+const PAXG_USD_FEED = "0x9944D86CEB9160aF5C5feB251FD671923323f8C3";
 
 // ETH-denominated feeds (known)
 const WSTETH_STETH_FEED = "0x4F67e4d9BD67eFa28236013288737D39AeF48e79";
 
-// Unknown feeds intentionally set to invalid placeholders so rollout cannot accidentally proceed without review.
-const USDE_USD_FEED = "REPLACE_ME_INVALID_CHAINLINK_USDE_USD_FEED";
-const RETH_ETH_FEED = "REPLACE_ME_INVALID_CHAINLINK_RETH_ETH_FEED";
-const FRXETH_ETH_FEED = "REPLACE_ME_INVALID_CHAINLINK_FRXETH_ETH_FEED";
-const LBTC_BTC_FEED = "REPLACE_ME_INVALID_CHAINLINK_LBTC_BTC_FEED";
-const WBTC_BTC_FEED = "REPLACE_ME_INVALID_CHAINLINK_WBTC_BTC_FEED";
-const CBBTC_USD_FEED = "REPLACE_ME_INVALID_CHAINLINK_CBBTC_USD_FEED";
-const PAXG_USD_FEED = "REPLACE_ME_INVALID_CHAINLINK_PAXG_USD_FEED";
-
 /**
  * Returns Ethereum mainnet deployment configuration for protocol modules.
+ *
+ * @param hre
  */
 export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config> {
   const { deployer } = await hre.getNamedAccounts();
@@ -135,7 +133,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   addCompositeFeed(usdCompositeRedstoneFeeds, WSTETH_ADDRESS, WSTETH_ADDRESS, WSTETH_STETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
   addCompositeFeed(usdCompositeRedstoneFeeds, RETH_ADDRESS, RETH_ADDRESS, RETH_ETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
-  addCompositeFeed(usdCompositeRedstoneFeeds, FRXETH_ADDRESS, FRXETH_ADDRESS, FRXETH_ETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
   addCompositeFeed(usdCompositeRedstoneFeeds, LBTC_ADDRESS, LBTC_ADDRESS, LBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
   addCompositeFeed(usdCompositeRedstoneFeeds, WBTC_ADDRESS, WBTC_ADDRESS, WBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
 
@@ -260,7 +257,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         wstETH: strategySTETH,
         rETH: strategyRETH,
         sfrxETH: strategySFRXETH,
-        frxETH: strategyFRXETH,
 
         sUSDe: strategySUSDE,
         sUSDS: strategySUSDS,
@@ -335,6 +331,8 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
 /**
  * Returns the provided address string or an empty fallback when undefined.
+ *
+ * @param value
  */
 function stringOrEmpty(value: string | undefined): string {
   return value ?? "";
@@ -342,6 +340,10 @@ function stringOrEmpty(value: string | undefined): string {
 
 /**
  * Adds a collateral fee override when the token address is defined.
+ *
+ * @param fees
+ * @param address
+ * @param feeBps
  */
 function addCollateralFee(fees: Record<string, number>, address: string | undefined, feeBps: number): void {
   if (address) {
@@ -351,6 +353,10 @@ function addCollateralFee(fees: Record<string, number>, address: string | undefi
 
 /**
  * Adds a plain feed mapping when both asset and feed are defined.
+ *
+ * @param feeds
+ * @param asset
+ * @param feed
  */
 function addPlainFeed(feeds: Record<string, string>, asset: string | undefined, feed: string | undefined): void {
   if (asset && feed) {
@@ -360,6 +366,11 @@ function addPlainFeed(feeds: Record<string, string>, asset: string | undefined, 
 
 /**
  * Adds a threshold feed mapping when both asset and feed are defined.
+ *
+ * @param feeds
+ * @param asset
+ * @param feed
+ * @param threshold
  */
 function addThresholdFeed(
   feeds: Record<string, { feed: string; lowerThreshold: bigint; fixedPrice: bigint }>,
@@ -378,6 +389,8 @@ function addThresholdFeed(
 
 /**
  * Filters undefined entries from an address list.
+ *
+ * @param addresses
  */
 function filterAddresses(addresses: (string | undefined)[]): string[] {
   return addresses.filter((value): value is string => Boolean(value));
@@ -385,6 +398,11 @@ function filterAddresses(addresses: (string | undefined)[]): string[] {
 
 /**
  * Adds an ERC4626 feed config when asset, vault and feed are defined.
+ *
+ * @param feeds
+ * @param asset
+ * @param vault
+ * @param feed
  */
 function addErc4626Feed(
   feeds: Record<string, { vault: string; feed: string }>,
@@ -399,6 +417,10 @@ function addErc4626Feed(
 
 /**
  * Adds a simple ERC4626 asset mapping when asset and vault are defined.
+ *
+ * @param assets
+ * @param asset
+ * @param vault
  */
 function addSimpleErc4626Asset(assets: Record<string, string>, asset: string | undefined, vault: string | undefined): void {
   if (asset && vault) {
@@ -408,6 +430,16 @@ function addSimpleErc4626Asset(assets: Record<string, string>, asset: string | u
 
 /**
  * Adds a composite feed mapping when required addresses are defined.
+ *
+ * @param feeds
+ * @param asset
+ * @param feedAsset
+ * @param feed1
+ * @param feed2
+ * @param lowerThresholdInBase1
+ * @param fixedPriceInBase1
+ * @param lowerThresholdInBase2
+ * @param fixedPriceInBase2
  */
 function addCompositeFeed(
   feeds: Record<

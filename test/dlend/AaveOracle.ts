@@ -131,19 +131,4 @@ describe("AaveOracle", () => {
       expect(source).to.equal(await oracleAggregator.getAddress());
     });
   });
-
-  describe("frxETH coverage", () => {
-    it("should return a non-zero price for frxETH when configured", async () => {
-      const frxEthDeployment = await hre.deployments.getOrNull("frxETH");
-      if (!frxEthDeployment) {
-        return;
-      }
-      const oracleForAsset = await oracleAggregator.assetOracles(frxEthDeployment.address);
-      if (oracleForAsset === ethers.ZeroAddress) {
-        return;
-      }
-      const price = await oracleAggregator.getAssetPrice(frxEthDeployment.address);
-      expect(price).to.be.gt(0n);
-    });
-  });
 });

@@ -28,6 +28,14 @@ const baseDSTABLEConfig: IReserveParams = {
 
 /**
  * Builds a non-borrowable collateral reserve strategy from the provided risk parameters.
+ *
+ * @param params
+ * @param params.supplyCap
+ * @param params.baseLTVAsCollateral
+ * @param params.liquidationThreshold
+ * @param params.liquidationBonus
+ * @param params.reserveDecimals
+ * @param params.strategy
  */
 function buildCollateralStrategy(params: {
   supplyCap: string;
@@ -128,13 +136,6 @@ export const strategyRETH: IReserveParams = buildCollateralStrategy({
 });
 
 export const strategySFRXETH: IReserveParams = buildCollateralStrategy({
-  supplyCap: "250",
-  baseLTVAsCollateral: "7850",
-  liquidationThreshold: "8100",
-  liquidationBonus: "10600",
-});
-
-export const strategyFRXETH: IReserveParams = buildCollateralStrategy({
   supplyCap: "250",
   baseLTVAsCollateral: "7850",
   liquidationThreshold: "8100",

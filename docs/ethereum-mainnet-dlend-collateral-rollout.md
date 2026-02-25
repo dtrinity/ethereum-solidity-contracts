@@ -12,38 +12,30 @@ This document converts planning notes into an execution checklist for adding/upd
 ## Assets in Rollout
 
 - Yieldcoin: `sUSDe`, `sUSDS`, `syrupUSDC`, `syrupUSDT`, `sfrxUSD`
-- LST: `wstETH`, `rETH`, `sfrxETH`, `frxETH`, `LBTC`
+- LST: `wstETH`, `rETH`, `sfrxETH`, `LBTC`
 - Crypto: `WETH`, `WBTC`, `cbBTC`
 - RWA: `PAXG`
 
 ## Oracle Model
 
 - ERC4626 + Chainlink feed: `sUSDe`, `sUSDS`, `syrupUSDC`, `syrupUSDT`, `sfrxUSD`, `sfrxETH`
-- Composite feeds: `wstETH`, `rETH`, `frxETH`, `LBTC`, `WBTC`
+- Composite feeds: `wstETH`, `rETH`, `LBTC`, `WBTC`
 - Direct USD feeds: `WETH`, `dETH`, `cbBTC`, `PAXG`
 
-## Placeholder Feeds Requiring Manual Fill
+## Chainlink Feeds
 
-The following values are intentionally invalid strings in `config/networks/ethereum_mainnet.ts` and must be replaced before execution:
-
-- `REPLACE_ME_INVALID_CHAINLINK_USDE_USD_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_RETH_ETH_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_FRXETH_ETH_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_LBTC_BTC_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_WBTC_BTC_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_CBBTC_USD_FEED`
-- `REPLACE_ME_INVALID_CHAINLINK_PAXG_USD_FEED`
+Mainnet feed constants in `config/networks/ethereum_mainnet.ts` should be fully populated before execution.
 
 ## Safe Scripts
 
-- `deploy/99_cleanup/03_setup_ethereum_mainnet_collateral_oracles_safe.ts`
+- `deploy/30_dlend_new_listings/01_setup_ethereum_mainnet_collateral_oracles_safe.ts`
   - Queues wrapper setup (`setFeed`, `addCompositeFeed`, `setERC4626Feed`) and `OracleAggregatorV1_1.setOracle` mapping updates.
-- `deploy/99_cleanup/04_setup_ethereum_mainnet_collateral_reserves_safe.ts`
+- `deploy/30_dlend_new_listings/02_setup_ethereum_mainnet_collateral_reserves_safe.ts`
   - Queues reserve initialization (`PoolConfigurator.initReserves`) and risk config updates (`ReservesSetupHelper.configureReserves`) with temporary risk-admin grant/revoke.
 
 ## Execution Checklist
 
-1. Replace all invalid placeholder feed strings with final feed addresses.
+1. Verify all feed constants are populated with final mainnet addresses.
 2. Run compile and lint.
 3. Run deployment scripts in Safe mode to generate Safe builder batches.
 4. Execute Safe transactions in order:

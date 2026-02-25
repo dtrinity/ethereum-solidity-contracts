@@ -17,7 +17,7 @@ import {
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategyFRXETH, strategySFRXETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategySFRXETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 const STABLE_THRESHOLD = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
@@ -586,7 +586,6 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         dUSD: strategyDUSD,
         dETH: strategyDETH,
         sfrxETH: strategySFRXETH,
-        frxETH: strategyFRXETH,
       },
     },
   };

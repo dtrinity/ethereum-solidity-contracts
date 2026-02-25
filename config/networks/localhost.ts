@@ -13,7 +13,7 @@ import {
   rateStrategyMediumLiquidityStable,
   rateStrategyMediumLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategyFRXETH, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
+import { strategyDETH, strategyDUSD, strategySFRXUSD, strategySTETH, strategyWETH } from "../dlend/reserves-params";
 import { Config } from "../types";
 
 /**
@@ -370,7 +370,6 @@ export async function getConfig(_hre: HardhatRuntimeEnvironment): Promise<Config
         stETH: strategySTETH,
         WETH: strategyWETH,
         sfrxUSD: strategySFRXUSD,
-        frxETH: strategyFRXETH,
       },
     },
     // NOTE: dStake roles (admin, fee manager, collateral exchangers) are initialized to the deployer
