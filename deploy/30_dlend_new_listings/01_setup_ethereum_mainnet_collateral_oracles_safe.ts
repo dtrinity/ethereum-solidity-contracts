@@ -11,7 +11,13 @@ import {
 } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-import { ensureRoleGrantedToManager } from "../_shared/safe-role";
+import {
+  assertChainlinkErc4626PriceWithinBounds,
+  assertCompositeFeedPriceWithinBounds,
+  assertPlainFeedPriceWithinBounds,
+  getUsdOraclePriceBounds,
+} from "../_shared/oracle-price-sanity";
+import { assertRoleGrantedToManager } from "../_shared/safe-role";
 
 /**
  * Normalizes an address value for case-insensitive comparisons.
@@ -72,8 +78,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     erc4626Wrapper.ORACLE_MANAGER_ROLE(),
   ]);
 
-  await ensureRoleGrantedToManager({
-    executor,
+  await assertRoleGrantedToManager({
     contract: aggregator,
     contractAddress: aggregatorAddress,
     managerAddress,
@@ -82,8 +87,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     contractLabel: USD_ORACLE_AGGREGATOR_ID,
   });
 
-  await ensureRoleGrantedToManager({
-    executor,
+  await assertRoleGrantedToManager({
     contract: plainWrapper,
     contractAddress: plainWrapperAddress,
     managerAddress,
@@ -92,8 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     contractLabel: USD_REDSTONE_ORACLE_WRAPPER_ID,
   });
 
-  await ensureRoleGrantedToManager({
-    executor,
+  await assertRoleGrantedToManager({
     contract: compositeWrapper,
     contractAddress: compositeWrapperAddress,
     managerAddress,
@@ -102,8 +105,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     contractLabel: USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   });
 
-  await ensureRoleGrantedToManager({
-    executor,
+  await assertRoleGrantedToManager({
     contract: erc4626Wrapper,
     contractAddress: erc4626WrapperAddress,
     managerAddress,
@@ -115,6 +117,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const plainFeeds = config.oracleAggregators.USD.redstoneOracleAssets.plainRedstoneOracleWrappers;
   const compositeFeeds = config.oracleAggregators.USD.redstoneOracleAssets.compositeRedstoneOracleWrappersWithThresholding;
   const erc4626Feeds = config.oracleAggregators.USD.chainlinkErc4626OracleAssets ?? {};
+  const [plainBounds, compositeBounds, erc4626Bounds] = await Promise.all([
+    plainWrapper.BASE_CURRENCY_UNIT().then(getUsdOraclePriceBounds),
+    compositeWrapper.BASE_CURRENCY_UNIT().then(getUsdOraclePriceBounds),
+    erc4626Wrapper.BASE_CURRENCY_UNIT().then(getUsdOraclePriceBounds),
+  ]);
 
   for (const [asset, feed] of Object.entries(plainFeeds)) {
     const currentFeed = await plainWrapper.assetToFeed(asset);
@@ -132,6 +139,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const currentOracle = await aggregator.assetOracles(asset);
 
     if (normalize(currentOracle) !== normalize(plainWrapperAddress)) {
+      await assertPlainFeedPriceWithinBounds({
+        hre,
+        signer,
+        wrapper: plainWrapper,
+        feed,
+        bounds: plainBounds,
+        label: `USD plain wrapper ${asset}`,
+      });
+
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, plainWrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -176,6 +192,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const currentOracle = await aggregator.assetOracles(feedAsset);
 
     if (normalize(currentOracle) !== normalize(compositeWrapperAddress)) {
+      await assertCompositeFeedPriceWithinBounds({
+        hre,
+        signer,
+        wrapper: compositeWrapper,
+        config: feedConfig,
+        bounds: compositeBounds,
+        label: `USD composite wrapper ${feedAsset}`,
+      });
+
       const data = aggregator.interface.encodeFunctionData("setOracle", [feedAsset, compositeWrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -204,6 +229,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const currentOracle = await aggregator.assetOracles(asset);
 
     if (normalize(currentOracle) !== normalize(erc4626WrapperAddress)) {
+      await assertChainlinkErc4626PriceWithinBounds({
+        hre,
+        signer,
+        wrapper: erc4626Wrapper,
+        vault: feedConfig.vault,
+        feed: feedConfig.feed,
+        bounds: erc4626Bounds,
+        label: `USD ERC4626 wrapper ${asset}`,
+      });
+
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, erc4626WrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -222,11 +257,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 func.tags = ["post-deploy", "oracle-rollout", "usd-oracle", "safe", "setup-ethereum-mainnet-collateral-oracles-safe"];
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
+  "setup-ethereum-mainnet-new-listings-role-grants-safe",
   USD_ORACLE_AGGREGATOR_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_CHAINLINK_ERC4626_WRAPPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-oracles-safe";
+func.id = "setup-ethereum-mainnet-collateral-oracles-safe-v2";
 
 export default func;

@@ -80,3 +80,38 @@ export async function ensureRoleGrantedToManager(params: {
     () => ({ to: contractAddress, value: "0", data }),
   );
 }
+
+/**
+ * Requires `managerAddress` to already have `role` on `contract`.
+ *
+ * @param params Role assertion request.
+ * @param params.contract AccessControl-compatible contract.
+ * @param params.contractAddress Target contract address.
+ * @param params.managerAddress Safe/manager address.
+ * @param params.role Target role identifier.
+ * @param params.roleLabel Human-readable role label.
+ * @param params.contractLabel Human-readable contract label.
+ */
+export async function assertRoleGrantedToManager(params: {
+  contract: AccessControlLike;
+  contractAddress: string;
+  managerAddress: string;
+  role: string;
+  roleLabel: string;
+  contractLabel: string;
+}): Promise<void> {
+  const { contract, contractAddress, managerAddress, role, roleLabel, contractLabel } = params;
+
+  const access = await getRoleAccess(contract, role, managerAddress);
+
+  if (access.hasRole) {
+    return;
+  }
+
+  throw new Error(
+    [
+      `[role-check] ${managerAddress} is missing ${roleLabel} on ${contractLabel} (${contractAddress}).`,
+      `Run setup-ethereum-mainnet-new-listings-role-grants-safe and execute that Safe batch first.`,
+    ].join(" "),
+  );
+}

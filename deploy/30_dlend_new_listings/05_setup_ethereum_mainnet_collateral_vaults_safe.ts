@@ -11,7 +11,7 @@ import {
 } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-import { ensureRoleGrantedToManager } from "../_shared/safe-role";
+import { assertRoleGrantedToManager } from "../_shared/safe-role";
 
 type RolloutConfig = {
   label: string;
@@ -99,8 +99,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const redeemer = await ethers.getContractAt("RedeemerV2", redeemerAddress, signer);
     const collateralManagerRole = await collateralVault.COLLATERAL_MANAGER_ROLE();
 
-    await ensureRoleGrantedToManager({
-      executor,
+    await assertRoleGrantedToManager({
       contract: collateralVault,
       contractAddress: vaultAddress,
       managerAddress,
@@ -112,8 +111,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     if (rollout.customFees.size > 0) {
       const redeemerDefaultAdminRole = await redeemer.DEFAULT_ADMIN_ROLE();
 
-      await ensureRoleGrantedToManager({
-        executor,
+      await assertRoleGrantedToManager({
         contract: redeemer,
         contractAddress: redeemerAddress,
         managerAddress,
@@ -182,6 +180,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 func.tags = ["post-deploy", "dstable", "collateral-rollout", "safe", "setup-ethereum-mainnet-collateral-vaults-safe"];
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
+  "setup-ethereum-mainnet-new-listings-role-grants-safe",
   "setup-ethereum-mainnet-collateral-oracles-safe",
   "setup-ethereum-mainnet-eth-oracles-safe",
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
@@ -189,6 +188,6 @@ func.dependencies = [
   DUSD_REDEEMER_V2_CONTRACT_ID,
   DETH_REDEEMER_V2_CONTRACT_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-vaults-safe";
+func.id = "setup-ethereum-mainnet-collateral-vaults-safe-v2";
 
 export default func;

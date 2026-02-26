@@ -13,7 +13,7 @@ import {
 } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-import { ensureRoleGrantedToManager, getRoleAccess } from "../_shared/safe-role";
+import { assertRoleGrantedToManager, getRoleAccess } from "../_shared/safe-role";
 
 const ROLLOUT_COLLATERAL_SYMBOLS = [
   "WETH",
@@ -128,8 +128,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   ]);
 
   if (!poolAdminAccess.hasRole && !hasAssetListingAdmin) {
-    await ensureRoleGrantedToManager({
-      executor,
+    await assertRoleGrantedToManager({
       contract: aclManager,
       contractAddress: aclManagerAddress,
       managerAddress,
@@ -279,11 +278,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-safe"];
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
+  "setup-ethereum-mainnet-new-listings-role-grants-safe",
   "setup-ethereum-mainnet-collateral-oracles-safe",
   "setup-ethereum-mainnet-eth-oracles-safe",
   POOL_ADDRESSES_PROVIDER_ID,
   RESERVES_SETUP_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-safe";
+func.id = "setup-ethereum-mainnet-collateral-reserves-safe-v2";
 
 export default func;
