@@ -55,5 +55,7 @@
   "deploy_amo_v2_dusd": 1765540478,
   "configure_amo_v2_dusd": 1765540483,
   "add-wsteth-usd-oracle-safe": 1768971291,
-  "add-wsteth-usd-oracle-safe-v2": 1769051731
+  "add-wsteth-usd-oracle-safe-v2": 1769051731,
+  "deploy-frxeth-fundamental-oracle-wrapper": 1772037879,
+  "setup-ethereum-mainnet-eth-oracles-safe": 1772037892
 }
