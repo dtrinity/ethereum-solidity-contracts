@@ -26,6 +26,12 @@ This document converts planning notes into an execution checklist for adding/upd
 
 Mainnet feed constants in `config/networks/ethereum_mainnet.ts` should be fully populated before execution.
 
+## Hard Rule
+
+- Never run deployment commands with `--reset` on mainnet rollout flows.
+- `--reset` deletes `deployments/ethereum_mainnet/` state and can desynchronize Safe rollout batches.
+- To re-run one step, remove only that step's migration key in `.migrations.json` and re-run the same tag without `--reset`.
+
 ## Safe Scripts
 
 - `deploy/30_dlend_new_listings/01_setup_ethereum_mainnet_collateral_oracles_safe.ts`

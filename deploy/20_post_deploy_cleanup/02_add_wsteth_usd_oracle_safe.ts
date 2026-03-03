@@ -81,7 +81,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       [
         `Missing hardhat-deploy deployment(s) on network "${hre.network.name}": ${missing.join(", ")}`,
         `Expected files under: ${hre.config.paths.deployments}/${hre.network.name}/`,
-        `Note: running with "--reset" deletes the deployments folder before scripts run. Re-run without "--reset" for Safe wiring, or restore the deployments folder from git.`,
+        `NEVER run with "--reset" on persistent networks: it deletes the deployments folder before scripts run.`,
+        `Re-run without "--reset" for Safe wiring, or restore the deployments folder from git.`,
       ].join("\n"),
     );
   }

@@ -108,7 +108,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         `New listings preflight failed.`,
         `Missing hardhat-deploy artifacts: ${missingDeployments.join(", ")}`,
         `Expected files under ${hre.config.paths.deployments}/${hre.network.name}.`,
-        `Do not run new listings with --reset on mainnet.`,
+        `NEVER run new listings with --reset on mainnet.`,
       ].join(" "),
     );
   }
