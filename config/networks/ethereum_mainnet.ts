@@ -66,7 +66,6 @@ const USDT_USD_FEED = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D";
 const FRXUSD_USD_FEED = "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83";
 const USDS_USD_FEED = "0xfF30586cD0F29eD462364C7e81375FC0C71219b1";
 const USDE_USD_FEED = "0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961";
-const RETH_ETH_FEED = "0x536218f9E9Eb48863970252233c8F271f554C2d0";
 const LBTC_BTC_FEED = "0x5c29868C58b6e15e2b962943278969Ab6a7D3212";
 const WBTC_BTC_FEED = "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23";
 const CBBTC_USD_FEED = "0x2665701293fCbEB223D11A08D826563EDcCE423A";
@@ -112,6 +111,12 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   addPlainFeed(usdPlainRedstoneFeeds, CBBTC_ADDRESS, CBBTC_USD_FEED);
   addPlainFeed(usdPlainRedstoneFeeds, PAXG_ADDRESS, PAXG_USD_FEED);
 
+  const rethUsdAggregator = await hre.deployments.getOrNull("RETH_USD_ChainlinkCompositeAggregator");
+
+  if (rethUsdAggregator) {
+    addPlainFeed(usdPlainRedstoneFeeds, RETH_ADDRESS, rethUsdAggregator.address);
+  }
+
   const usdThresholdRedstoneFeeds: Record<string, { feed: string; lowerThreshold: bigint; fixedPrice: bigint }> = {};
   addThresholdFeed(usdThresholdRedstoneFeeds, USDC_ADDRESS, USDC_USD_FEED, STABLE_THRESHOLD);
   addThresholdFeed(usdThresholdRedstoneFeeds, USDT_ADDRESS, USDT_USD_FEED, STABLE_THRESHOLD);
@@ -132,7 +137,8 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   > = {};
 
   addCompositeFeed(usdCompositeRedstoneFeeds, WSTETH_ADDRESS, WSTETH_ADDRESS, WSTETH_STETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
-  addCompositeFeed(usdCompositeRedstoneFeeds, RETH_ADDRESS, RETH_ADDRESS, RETH_ETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
+  // rETH uses a custom ChainlinkCompositeAggregator because RETH_ETH_FEED has 18 decimals.
+  // We will add it to usdPlainRedstoneFeeds instead.
   addCompositeFeed(usdCompositeRedstoneFeeds, LBTC_ADDRESS, LBTC_ADDRESS, LBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
   addCompositeFeed(usdCompositeRedstoneFeeds, WBTC_ADDRESS, WBTC_ADDRESS, WBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
 

@@ -8,6 +8,8 @@ pragma solidity ^0.8.20;
 contract MockFraxRedemptionQueueV2 {
     uint64 public redemptionFee; // 1e6 precision
     bool public shouldRevert;
+    bool public hasEthShortage;
+    uint256 public shortageOrSurplusAmount;
 
     function setRedemptionFee(uint64 feeE6) external {
         redemptionFee = feeE6;
@@ -15,6 +17,11 @@ contract MockFraxRedemptionQueueV2 {
 
     function setShouldRevert(bool value) external {
         shouldRevert = value;
+    }
+
+    function setEthShortageOrSurplus(bool isEthShortage, uint256 amount) external {
+        hasEthShortage = isEthShortage;
+        shortageOrSurplusAmount = amount;
     }
 
     function redemptionQueueState()
@@ -30,5 +37,10 @@ contract MockFraxRedemptionQueueV2 {
     {
         if (shouldRevert) revert("MockFraxRedemptionQueueV2: revert requested");
         return (0, 0, redemptionFee, 0, 0);
+    }
+
+    function ethShortageOrSurplus() external view returns (bool isEthShortage, uint256 amount) {
+        if (shouldRevert) revert("MockFraxRedemptionQueueV2: revert requested");
+        return (hasEthShortage, shortageOrSurplusAmount);
     }
 }

@@ -125,8 +125,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   for (const [asset, feed] of Object.entries(plainFeeds)) {
     const currentFeed = await plainWrapper.assetToFeed(asset);
+    const requiresFeedUpdate = normalize(currentFeed) !== normalize(feed);
+    const currentOracle = await aggregator.assetOracles(asset);
+    const requiresOracleUpdate = normalize(currentOracle) !== normalize(plainWrapperAddress);
 
-    if (normalize(currentFeed) !== normalize(feed)) {
+    if (requiresFeedUpdate || requiresOracleUpdate) {
+      await assertPlainFeedPriceWithinBounds({
+        hre,
+        signer,
+        wrapper: plainWrapper,
+        feed,
+        bounds: plainBounds,
+        label: `USD plain wrapper ${asset}`,
+      });
+    }
+
+    if (requiresFeedUpdate) {
       const data = plainWrapper.interface.encodeFunctionData("setFeed", [asset, feed]);
       await executor.tryOrQueue(
         async () => {
@@ -136,18 +150,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       );
     }
 
-    const currentOracle = await aggregator.assetOracles(asset);
-
-    if (normalize(currentOracle) !== normalize(plainWrapperAddress)) {
-      await assertPlainFeedPriceWithinBounds({
-        hre,
-        signer,
-        wrapper: plainWrapper,
-        feed,
-        bounds: plainBounds,
-        label: `USD plain wrapper ${asset}`,
-      });
-
+    if (requiresOracleUpdate) {
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, plainWrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -170,6 +173,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       currentFeed.primaryThreshold.fixedPriceInBase !== feedConfig.fixedPriceInBase1 ||
       currentFeed.secondaryThreshold.lowerThresholdInBase !== feedConfig.lowerThresholdInBase2 ||
       currentFeed.secondaryThreshold.fixedPriceInBase !== feedConfig.fixedPriceInBase2;
+    const currentOracle = await aggregator.assetOracles(feedAsset);
+    const requiresOracleUpdate = normalize(currentOracle) !== normalize(compositeWrapperAddress);
+
+    if (requiresUpdate || requiresOracleUpdate) {
+      await assertCompositeFeedPriceWithinBounds({
+        hre,
+        signer,
+        wrapper: compositeWrapper,
+        config: feedConfig,
+        bounds: compositeBounds,
+        label: `USD composite wrapper ${feedAsset}`,
+      });
+    }
 
     if (requiresUpdate) {
       const data = compositeWrapper.interface.encodeFunctionData("addCompositeFeed", [
@@ -189,18 +205,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       );
     }
 
-    const currentOracle = await aggregator.assetOracles(feedAsset);
-
-    if (normalize(currentOracle) !== normalize(compositeWrapperAddress)) {
-      await assertCompositeFeedPriceWithinBounds({
-        hre,
-        signer,
-        wrapper: compositeWrapper,
-        config: feedConfig,
-        bounds: compositeBounds,
-        label: `USD composite wrapper ${feedAsset}`,
-      });
-
+    if (requiresOracleUpdate) {
       const data = aggregator.interface.encodeFunctionData("setOracle", [feedAsset, compositeWrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -215,20 +220,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const currentFeed = await erc4626Wrapper.erc4626Feeds(asset);
     const currentFeedAddress = currentFeed.priceFeed;
     const currentVaultAddress = currentFeed.vault;
-
-    if (normalize(currentFeedAddress) !== normalize(feedConfig.feed) || normalize(currentVaultAddress) !== normalize(feedConfig.vault)) {
-      const data = erc4626Wrapper.interface.encodeFunctionData("setERC4626Feed", [asset, feedConfig.vault, feedConfig.feed]);
-      await executor.tryOrQueue(
-        async () => {
-          throw new Error("Direct execution disabled: queue Safe transaction instead.");
-        },
-        () => ({ to: erc4626WrapperAddress, value: "0", data }),
-      );
-    }
-
+    const requiresFeedConfigUpdate =
+      normalize(currentFeedAddress) !== normalize(feedConfig.feed) || normalize(currentVaultAddress) !== normalize(feedConfig.vault);
     const currentOracle = await aggregator.assetOracles(asset);
+    const requiresOracleUpdate = normalize(currentOracle) !== normalize(erc4626WrapperAddress);
 
-    if (normalize(currentOracle) !== normalize(erc4626WrapperAddress)) {
+    if (requiresFeedConfigUpdate || requiresOracleUpdate) {
       await assertChainlinkErc4626PriceWithinBounds({
         hre,
         signer,
@@ -238,7 +235,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         bounds: erc4626Bounds,
         label: `USD ERC4626 wrapper ${asset}`,
       });
+    }
 
+    if (requiresFeedConfigUpdate) {
+      const data = erc4626Wrapper.interface.encodeFunctionData("setERC4626Feed", [asset, feedConfig.vault, feedConfig.feed]);
+      await executor.tryOrQueue(
+        async () => {
+          throw new Error("Direct execution disabled: queue Safe transaction instead.");
+        },
+        () => ({ to: erc4626WrapperAddress, value: "0", data }),
+      );
+    }
+
+    if (requiresOracleUpdate) {
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, erc4626WrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -258,11 +267,12 @@ func.tags = ["post-deploy", "oracle-rollout", "usd-oracle", "safe", "setup-ether
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
   "setup-ethereum-mainnet-new-listings-role-grants-safe",
+  "deploy-reth-chainlink-composite-aggregator",
   USD_ORACLE_AGGREGATOR_ID,
   USD_REDSTONE_ORACLE_WRAPPER_ID,
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_CHAINLINK_ERC4626_WRAPPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-oracles-safe-v2";
+func.id = "setup-ethereum-mainnet-collateral-oracles-safe-v3";
 
 export default func;

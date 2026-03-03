@@ -2,6 +2,7 @@ import { BaseContract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const CHAINLINK_BASE_UNIT = 10n ** 8n;
+const CHAINLINK_EXPECTED_FEED_DECIMALS = 8n;
 const CHAINLINK_HEARTBEAT_SECONDS = 24n * 60n * 60n;
 
 type WrapperWithHeartbeat = BaseContract & {
@@ -14,6 +15,7 @@ type WrapperWithBaseUnit = BaseContract & {
 };
 
 type PriceFeedLike = BaseContract & {
+  decimals(): Promise<bigint>;
   latestRoundData(): Promise<readonly [bigint, bigint, bigint, bigint, bigint]>;
 };
 
@@ -96,7 +98,8 @@ export async function assertPlainFeedPriceWithinBounds(params: {
   ]);
 
   const priceFeed = (await hre.ethers.getContractAt("IPriceFeed", feed, signer)) as unknown as PriceFeedLike;
-  const [, answer, , updatedAt] = await priceFeed.latestRoundData();
+  const [[, answer, , updatedAt], feedDecimals] = await Promise.all([priceFeed.latestRoundData(), priceFeed.decimals()]);
+  assertSupportedFeedDecimals(feedDecimals, label);
   assertFresh(updatedAt, staleLimit, nowTimestamp, label);
   const priceInBase = chainlinkPriceToBase(answer, baseUnit);
   assertPriceBounds(priceInBase, bounds, baseUnit, label);
@@ -131,8 +134,14 @@ export async function assertCompositeFeedPriceWithinBounds(params: {
   const feed1 = (await hre.ethers.getContractAt("IPriceFeed", config.feed1, signer)) as unknown as PriceFeedLike;
   const feed2 = (await hre.ethers.getContractAt("IPriceFeed", config.feed2, signer)) as unknown as PriceFeedLike;
 
-  const [, answer1, , updatedAt1] = await feed1.latestRoundData();
-  const [, answer2, , updatedAt2] = await feed2.latestRoundData();
+  const [[, answer1, , updatedAt1], [, answer2, , updatedAt2], feed1Decimals, feed2Decimals] = await Promise.all([
+    feed1.latestRoundData(),
+    feed2.latestRoundData(),
+    feed1.decimals(),
+    feed2.decimals(),
+  ]);
+  assertSupportedFeedDecimals(feed1Decimals, `${label}:primary`);
+  assertSupportedFeedDecimals(feed2Decimals, `${label}:secondary`);
   assertFresh(updatedAt1, staleLimit, nowTimestamp, `${label}:primary`);
   assertFresh(updatedAt2, staleLimit, nowTimestamp, `${label}:secondary`);
 
@@ -175,9 +184,14 @@ export async function assertChainlinkErc4626PriceWithinBounds(params: {
   ]);
 
   const priceFeed = (await hre.ethers.getContractAt("IPriceFeed", feed, signer)) as unknown as PriceFeedLike;
-  const vaultContract = (await hre.ethers.getContractAt("IERC4626", vault, signer)) as unknown as Erc4626Like;
+  const vaultContract = (await hre.ethers.getContractAt(
+    "@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626",
+    vault,
+    signer,
+  )) as unknown as Erc4626Like;
 
-  const [, answer, , updatedAt] = await priceFeed.latestRoundData();
+  const [[, answer, , updatedAt], feedDecimals] = await Promise.all([priceFeed.latestRoundData(), priceFeed.decimals()]);
+  assertSupportedFeedDecimals(feedDecimals, label);
   assertFresh(updatedAt, staleLimit, nowTimestamp, label);
 
   const shareToken = (await hre.ethers.getContractAt("IERC20Metadata", vault, signer)) as unknown as Erc20MetadataLike;
@@ -215,7 +229,11 @@ export async function assertErc4626PriceWithinBounds(params: {
 }): Promise<void> {
   const { hre, signer, wrapper, vault, bounds, label } = params;
   const baseUnit = await wrapper.BASE_CURRENCY_UNIT();
-  const vaultContract = (await hre.ethers.getContractAt("IERC4626", vault, signer)) as unknown as Erc4626Like;
+  const vaultContract = (await hre.ethers.getContractAt(
+    "@openzeppelin/contracts/interfaces/IERC4626.sol:IERC4626",
+    vault,
+    signer,
+  )) as unknown as Erc4626Like;
   const shareToken = (await hre.ethers.getContractAt("IERC20Metadata", vault, signer)) as unknown as Erc20MetadataLike;
   const underlying = await vaultContract.asset();
   const underlyingToken = (await hre.ethers.getContractAt("IERC20Metadata", underlying, signer)) as unknown as Erc20MetadataLike;
@@ -301,6 +319,24 @@ function chainlinkPriceToBase(answer: bigint, baseCurrencyUnit: bigint): bigint 
   }
 
   return (answer * baseCurrencyUnit) / CHAINLINK_BASE_UNIT;
+}
+
+/**
+ * Ensures a feed uses the decimal precision expected by wrappers relying on BaseChainlinkWrapperV1_1 conversion.
+ *
+ * @param feedDecimals Decimals reported by feed.decimals().
+ * @param label Human-readable check label.
+ */
+function assertSupportedFeedDecimals(feedDecimals: bigint, label: string): void {
+  if (feedDecimals !== CHAINLINK_EXPECTED_FEED_DECIMALS) {
+    throw new Error(
+      [
+        `[oracle-sanity] ${label} has unsupported feed decimals=${feedDecimals.toString()}.`,
+        `expected=${CHAINLINK_EXPECTED_FEED_DECIMALS.toString()}.`,
+        "Use an 8-decimal adapter/aggregator feed for this wrapper.",
+      ].join(" "),
+    );
+  }
 }
 
 /**

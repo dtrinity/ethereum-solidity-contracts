@@ -116,8 +116,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     }
 
     const currentFeed = await redstoneWrapper.assetToFeed(asset);
+    const requiresFeedUpdate = normalize(currentFeed) !== normalize(feed);
+    const currentOracle = await aggregator.assetOracles(asset);
+    const requiresOracleUpdate = normalize(currentOracle) !== normalize(redstoneWrapperAddress);
 
-    if (normalize(currentFeed) !== normalize(feed)) {
+    if (requiresFeedUpdate || requiresOracleUpdate) {
+      await assertPlainFeedPriceWithinBounds({
+        hre,
+        signer,
+        wrapper: redstoneWrapper,
+        feed,
+        bounds: redstoneBounds,
+        label: `ETH plain wrapper ${asset}`,
+      });
+    }
+
+    if (requiresFeedUpdate) {
       const data = redstoneWrapper.interface.encodeFunctionData("setFeed", [asset, feed]);
       await executor.tryOrQueue(
         async () => {
@@ -127,18 +141,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       );
     }
 
-    const currentOracle = await aggregator.assetOracles(asset);
-
-    if (normalize(currentOracle) !== normalize(redstoneWrapperAddress)) {
-      await assertPlainFeedPriceWithinBounds({
-        hre,
-        signer,
-        wrapper: redstoneWrapper,
-        feed,
-        bounds: redstoneBounds,
-        label: `ETH plain wrapper ${asset}`,
-      });
-
+    if (requiresOracleUpdate) {
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, redstoneWrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -156,8 +159,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
     const currentVaultConfig = await erc4626Wrapper.assetToVault(asset);
     const currentVault = currentVaultConfig.vault;
+    const requiresVaultUpdate = normalize(currentVault) !== normalize(vault);
+    const currentOracle = await aggregator.assetOracles(asset);
+    const requiresOracleUpdate = normalize(currentOracle) !== normalize(erc4626WrapperAddress);
 
-    if (normalize(currentVault) !== normalize(vault)) {
+    if (requiresVaultUpdate || requiresOracleUpdate) {
+      await assertErc4626PriceWithinBounds({
+        hre,
+        signer,
+        wrapper: erc4626Wrapper,
+        vault,
+        bounds: erc4626Bounds,
+        label: `ETH ERC4626 wrapper ${asset}`,
+      });
+    }
+
+    if (requiresVaultUpdate) {
       const data = erc4626Wrapper.interface.encodeFunctionData("setVault", [asset, vault]);
       await executor.tryOrQueue(
         async () => {
@@ -167,18 +184,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       );
     }
 
-    const currentOracle = await aggregator.assetOracles(asset);
-
-    if (normalize(currentOracle) !== normalize(erc4626WrapperAddress)) {
-      await assertErc4626PriceWithinBounds({
-        hre,
-        signer,
-        wrapper: erc4626Wrapper,
-        vault,
-        bounds: erc4626Bounds,
-        label: `ETH ERC4626 wrapper ${asset}`,
-      });
-
+    if (requiresOracleUpdate) {
       const data = aggregator.interface.encodeFunctionData("setOracle", [asset, erc4626WrapperAddress]);
       await executor.tryOrQueue(
         async () => {
@@ -225,6 +231,6 @@ func.dependencies = [
   ETH_ERC4626_ORACLE_WRAPPER_ID,
   ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-eth-oracles-safe-v2";
+func.id = "setup-ethereum-mainnet-eth-oracles-safe-v3";
 
 export default func;

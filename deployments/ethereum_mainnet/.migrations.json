@@ -57,5 +57,15 @@
   "add-wsteth-usd-oracle-safe": 1768971291,
   "add-wsteth-usd-oracle-safe-v2": 1769051731,
   "deploy-frxeth-fundamental-oracle-wrapper": 1772037879,
-  "setup-ethereum-mainnet-eth-oracles-safe": 1772037892
+  "setup-ethereum-mainnet-eth-oracles-safe": 1772037892,
+  "setup-ethereum-mainnet-new-listings-role-grants-safe": 1772079926,
+  "deploy-reth-chainlink-composite-aggregator": 1772466872,
+  "setup-ethereum-mainnet-collateral-oracles-safe-v2": 1772467027,
+  "setup-ethereum-mainnet-collateral-oracles-safe-v3": 1772472914,
+  "setup-ethereum-mainnet-eth-oracles-safe-v2": 1772473434,
+  "setup-ethereum-mainnet-collateral-reserves-safe-v2": 1772473587,
+  "setup-ethereum-mainnet-collateral-vaults-safe-v2": 1772473600,
+  "deploy-frxeth-fundamental-oracle-wrapper-v2": 1772474167,
+  "setup-ethereum-mainnet-eth-oracles-safe-v3": 1772474178,
+  "setup-ethereum-mainnet-collateral-vaults-safe-v3": 1772474195
 }

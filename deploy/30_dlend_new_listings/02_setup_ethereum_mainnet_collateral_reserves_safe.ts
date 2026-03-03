@@ -107,6 +107,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const poolConfigurator = await ethers.getContractAt("PoolConfigurator", poolConfiguratorAddress, signer);
   const poolAddress = await addressProvider.getPool();
   const pool = await ethers.getContractAt("Pool", poolAddress, signer);
+  const priceOracleAddress = await addressProvider.getPriceOracle();
+  const priceOracle = await ethers.getContractAt("IAaveOracle", priceOracleAddress, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
   const managerAddress = config.safeConfig!.safeAddress;
@@ -114,6 +116,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const reservesSetupHelperDeployment = await deployments.get(RESERVES_SETUP_HELPER_ID);
   const reservesSetupHelperAddress = reservesSetupHelperDeployment.address;
   const reservesSetupHelper = await ethers.getContractAt("ReservesSetupHelper", reservesSetupHelperAddress, signer);
+  const reservesSetupHelperOwner = await reservesSetupHelper.owner();
+
+  if (normalize(reservesSetupHelperOwner) !== normalize(managerAddress)) {
+    throw new Error(
+      [
+        `[reserve-check] ReservesSetupHelper owner mismatch.`,
+        `helper=${reservesSetupHelperAddress}`,
+        `owner=${reservesSetupHelperOwner}`,
+        `expected=${managerAddress}.`,
+        "Transfer helper ownership to the governance Safe before running collateral reserve rollout.",
+      ].join(" "),
+    );
+  }
 
   const [poolAdminRole, assetListingAdminRole, riskAdminRole] = await Promise.all([
     aclManager.POOL_ADMIN_ROLE(),
@@ -153,6 +168,106 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const { address: variableDebtTokenImplAddress } = await deployments.get(VARIABLE_DEBT_TOKEN_IMPL_ID);
 
   const rolloutSymbols = ROLLOUT_COLLATERAL_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
+  const verifiedOracleAssets = new Set<string>();
+  const expectedOracleAssets = new Set<string>();
+
+  for (const asset of Object.keys(config.oracleAggregators.USD.redstoneOracleAssets.plainRedstoneOracleWrappers ?? {})) {
+    expectedOracleAssets.add(normalize(asset));
+  }
+
+  for (const asset of Object.keys(config.oracleAggregators.USD.redstoneOracleAssets.redstoneOracleWrappersWithThresholding ?? {})) {
+    expectedOracleAssets.add(normalize(asset));
+  }
+
+  for (const [asset, compositeConfig] of Object.entries(
+    config.oracleAggregators.USD.redstoneOracleAssets.compositeRedstoneOracleWrappersWithThresholding ?? {},
+  )) {
+    expectedOracleAssets.add(normalize(asset));
+    expectedOracleAssets.add(normalize(compositeConfig.feedAsset));
+  }
+
+  for (const asset of Object.keys(config.oracleAggregators.USD.chainlinkErc4626OracleAssets ?? {})) {
+    expectedOracleAssets.add(normalize(asset));
+  }
+
+  for (const asset of Object.keys(config.oracleAggregators.ETH.redstoneOracleAssets.plainRedstoneOracleWrappers ?? {})) {
+    expectedOracleAssets.add(normalize(asset));
+  }
+
+  for (const asset of Object.keys(config.oracleAggregators.ETH.erc4626OracleAssets ?? {})) {
+    expectedOracleAssets.add(normalize(asset));
+  }
+
+  if (config.oracleAggregators.ETH.frxEthFundamentalOracle?.asset) {
+    expectedOracleAssets.add(normalize(config.oracleAggregators.ETH.frxEthFundamentalOracle.asset));
+  }
+
+  const assertReserveOracleReadiness = async (symbol: string, asset: string): Promise<void> => {
+    const normalizedAsset = normalize(asset);
+
+    if (verifiedOracleAssets.has(normalizedAsset)) {
+      return;
+    }
+
+    const assetSource = await priceOracle.getSourceOfAsset(asset);
+
+    if (normalize(assetSource) === normalize(ZeroAddress)) {
+      throw new Error(
+        [`[oracle-check] Missing price source for reserve ${symbol}.`, `asset=${asset}`, `oracle=${priceOracleAddress}`].join(" "),
+      );
+    }
+
+    const oracleAggregator = await ethers.getContractAt(["function assetOracles(address) view returns (address)"], assetSource, signer);
+    const mappedWrapper = await oracleAggregator.assetOracles(asset);
+
+    if (normalize(mappedWrapper) === normalize(ZeroAddress)) {
+      if (!expectedOracleAssets.has(normalizedAsset)) {
+        throw new Error(
+          [
+            `[oracle-check] Asset ${symbol} has no oracle wrapper configured in source aggregator.`,
+            `asset=${asset}`,
+            `source=${assetSource}`,
+            "Missing oracle rollout config entry for this reserve.",
+          ].join(" "),
+        );
+      }
+
+      // The wrapper may be queued in an earlier Safe batch in the same rollout run.
+      verifiedOracleAssets.add(normalizedAsset);
+      return;
+    }
+
+    let assetPrice: bigint;
+
+    try {
+      assetPrice = await priceOracle.getAssetPrice(asset);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        [
+          `[oracle-check] Price lookup reverted for reserve ${symbol}.`,
+          `asset=${asset}`,
+          `wrapper=${mappedWrapper}`,
+          `source=${assetSource}`,
+          `reason=${message.split("\n")[0]}`,
+        ].join(" "),
+      );
+    }
+
+    if (assetPrice <= 0n) {
+      throw new Error(
+        [
+          `[oracle-check] Non-positive price for reserve ${symbol}.`,
+          `asset=${asset}`,
+          `wrapper=${mappedWrapper}`,
+          `source=${assetSource}`,
+          `price=${assetPrice.toString()}`,
+        ].join(" "),
+      );
+    }
+
+    verifiedOracleAssets.add(normalizedAsset);
+  };
 
   const initInputParams: Array<Record<string, unknown>> = [];
   const symbolsQueuedForInit = new Set<string>();
@@ -171,6 +286,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     if (alreadyInitialized) {
       continue;
     }
+
+    await assertReserveOracleReadiness(symbol, tokenAddress);
 
     const strategyDeployment = await deployments.get(`ReserveStrategy-${reserveParams.strategy.name}`);
     const token = await ethers.getContractAt("IERC20Detailed", tokenAddress, signer);
@@ -225,6 +342,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     if (!initializedOnChain && !symbolsQueuedForInit.has(symbol)) {
       continue;
     }
+
+    await assertReserveOracleReadiness(symbol, tokenAddress);
 
     reserveConfigInputParams.push({
       asset: tokenAddress,

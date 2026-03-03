@@ -45,6 +45,6 @@ func.tags = [
   ETH_FRXETH_FUNDAMENTAL_ORACLE_WRAPPER_ID,
 ];
 func.dependencies = [];
-func.id = "deploy-frxeth-fundamental-oracle-wrapper";
+func.id = "deploy-frxeth-fundamental-oracle-wrapper-v2";
 
 export default func;

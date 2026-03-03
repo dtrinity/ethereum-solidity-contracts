@@ -85,6 +85,19 @@ describe("FrxEthFundamentalOracleWrapperV1_1", () => {
     expect(alive).to.equal(false);
   });
 
+  it("uses redemptionRate when queue has no shortage and NAV is extremely low", async () => {
+    const { frxEth, router, queue, wrapper } = await deployFixture();
+
+    await frxEth.setTotalSupply(1_000_000000000000000000000n); // 1e24
+    await router.setEthTotalBalanced(100_000000000000000n); // 1e17 (NAV 1e-7)
+    await queue.setRedemptionFee(5_000); // 0.5% fee => 0.995
+    await queue.setEthShortageOrSurplus(false, 0);
+
+    const [price, alive] = await wrapper.getPriceInfo(await frxEth.getAddress());
+    expect(alive).to.equal(true);
+    expect(price).to.equal((ONE * 995n) / 1000n);
+  });
+
   it("returns dead when supply is zero", async () => {
     const { frxEth, router, queue, wrapper } = await deployFixture();
     await frxEth.setTotalSupply(0);

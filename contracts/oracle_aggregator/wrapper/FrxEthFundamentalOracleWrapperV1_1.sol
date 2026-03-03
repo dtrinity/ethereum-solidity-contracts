@@ -15,6 +15,7 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
 
     /* Constants */
     uint256 private constant FEE_PRECISION = 1e6;
+    uint256 private constant MIN_RELIABLE_NAV_DIVISOR = 1000; // 0.1%
 
     /* Immutables */
     address public immutable BASE_CURRENCY;
@@ -93,10 +94,41 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
 
         uint256 baseUnit = BASE_CURRENCY_UNIT;
         uint256 nav = (backingEth * baseUnit) / supply;
+
+        bool hasEthShortage;
+        uint256 shortageAmount;
+        bool hasShortageSignal;
+
+        try redemptionQueue.ethShortageOrSurplus() returns (bool isShortage, uint256 amount) {
+            hasEthShortage = isShortage;
+            shortageAmount = amount;
+            hasShortageSignal = true;
+        } catch {}
+
+        if (hasShortageSignal && hasEthShortage) {
+            if (shortageAmount >= backingEth) {
+                return (0, false);
+            }
+
+            uint256 adjustedBackingEth = backingEth - shortageAmount;
+            nav = (adjustedBackingEth * baseUnit) / supply;
+        }
+
         uint256 redemptionRate = (baseUnit * (FEE_PRECISION - uint256(redemptionFee))) / FEE_PRECISION;
 
         uint256 min1 = nav < baseUnit ? nav : baseUnit;
         price = min1 < redemptionRate ? min1 : redemptionRate;
+
+        // On some live Frax deployments, router balances may represent a subset of backing.
+        // If queue signals no shortage but NAV is extremely low, prefer redemptionRate.
+        if (hasShortageSignal && !hasEthShortage) {
+            uint256 navFloor = baseUnit >= MIN_RELIABLE_NAV_DIVISOR ? baseUnit / MIN_RELIABLE_NAV_DIVISOR : 1;
+
+            if (price < navFloor) {
+                price = redemptionRate < baseUnit ? redemptionRate : baseUnit;
+            }
+        }
+
         isAlive = price > 0;
     }
 
@@ -106,9 +138,9 @@ contract FrxEthFundamentalOracleWrapperV1_1 is IOracleWrapperV1_1, AccessControl
         return price;
     }
 
-    function _getEthTotalBalanced(bool forceLive) internal view returns (bool ok, bool isStale, uint256 ethTotal) {
+    function _getEthTotalBalanced(bool forceLive_) internal view returns (bool ok, bool isStale, uint256 ethTotal) {
         (bool success, bytes memory data) = address(etherRouter).staticcall(
-            abi.encodeWithSelector(IEtherRouterLike.getConsolidatedEthFrxEthBalanceView.selector, forceLive)
+            abi.encodeWithSelector(IEtherRouterLike.getConsolidatedEthFrxEthBalanceView.selector, forceLive_)
         );
         if (!success || data.length % 32 != 0) {
             return (false, false, 0);
@@ -171,4 +203,6 @@ interface IRedemptionQueueV2Like {
             uint120 ttlEthRequested,
             uint120 ttlEthServed
         );
+
+    function ethShortageOrSurplus() external view returns (bool isEthShortage, uint256 amount);
 }

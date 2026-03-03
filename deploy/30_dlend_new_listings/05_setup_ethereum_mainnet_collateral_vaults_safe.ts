@@ -17,6 +17,7 @@ type RolloutConfig = {
   label: string;
   collateralVaultId: string;
   redeemerId: string;
+  expectedFeeReceiver: string;
   collaterals: string[];
   customFees: Map<string, bigint>;
 };
@@ -79,6 +80,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       label: "dUSD",
       collateralVaultId: DUSD_COLLATERAL_VAULT_CONTRACT_ID,
       redeemerId: DUSD_REDEEMER_V2_CONTRACT_ID,
+      expectedFeeReceiver: config.dStables.dUSD?.initialFeeReceiver ?? "",
       collaterals: config.dStables.dUSD?.collaterals ?? [],
       customFees: toFeeMap(config.dStables.dUSD?.collateralRedemptionFees),
     },
@@ -86,6 +88,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       label: "dETH",
       collateralVaultId: DETH_COLLATERAL_VAULT_CONTRACT_ID,
       redeemerId: DETH_REDEEMER_V2_CONTRACT_ID,
+      expectedFeeReceiver: config.dStables.dETH?.initialFeeReceiver ?? "",
       collaterals: config.dStables.dETH?.collaterals ?? [],
       customFees: toFeeMap(config.dStables.dETH?.collateralRedemptionFees),
     },
@@ -97,7 +100,50 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
     const collateralVault = await ethers.getContractAt("CollateralHolderVault", vaultAddress, signer);
     const redeemer = await ethers.getContractAt("RedeemerV2", redeemerAddress, signer);
-    const collateralManagerRole = await collateralVault.COLLATERAL_MANAGER_ROLE();
+    const [collateralManagerRole, collateralWithdrawerRole, configuredVaultAddress, currentFeeReceiver] = await Promise.all([
+      collateralVault.COLLATERAL_MANAGER_ROLE(),
+      collateralVault.COLLATERAL_WITHDRAWER_ROLE(),
+      redeemer.collateralVault(),
+      redeemer.feeReceiver(),
+    ]);
+
+    if (isZeroAddress(rollout.expectedFeeReceiver)) {
+      throw new Error(`[sanity-check] Missing expected feeReceiver in config for ${rollout.label}.`);
+    }
+
+    if (normalize(configuredVaultAddress) !== normalize(vaultAddress)) {
+      throw new Error(
+        [
+          `[sanity-check] Redeemer collateral vault mismatch for ${rollout.label}.`,
+          `redeemer=${redeemerAddress}`,
+          `configuredVault=${configuredVaultAddress}`,
+          `expectedVault=${vaultAddress}`,
+        ].join(" "),
+      );
+    }
+
+    if (normalize(currentFeeReceiver) !== normalize(rollout.expectedFeeReceiver)) {
+      throw new Error(
+        [
+          `[sanity-check] Fee receiver mismatch for ${rollout.label}.`,
+          `redeemer=${redeemerAddress}`,
+          `currentFeeReceiver=${currentFeeReceiver}`,
+          `expectedFeeReceiver=${rollout.expectedFeeReceiver}`,
+        ].join(" "),
+      );
+    }
+
+    const redeemerHasWithdrawRole = await collateralVault.hasRole(collateralWithdrawerRole, redeemerAddress);
+
+    if (!redeemerHasWithdrawRole) {
+      throw new Error(
+        [
+          `[sanity-check] Redeemer is missing COLLATERAL_WITHDRAWER_ROLE for ${rollout.label}.`,
+          `vault=${vaultAddress}`,
+          `redeemer=${redeemerAddress}`,
+        ].join(" "),
+      );
+    }
 
     await assertRoleGrantedToManager({
       contract: collateralVault,
@@ -188,6 +234,6 @@ func.dependencies = [
   DUSD_REDEEMER_V2_CONTRACT_ID,
   DETH_REDEEMER_V2_CONTRACT_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-vaults-safe-v2";
+func.id = "setup-ethereum-mainnet-collateral-vaults-safe-v3";
 
 export default func;
