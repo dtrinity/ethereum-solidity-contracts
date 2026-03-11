@@ -40,8 +40,7 @@ const decodeEthTotalBalanced = (data: string) => {
     return { ok: false, isStale: false, ethTotalBalanced: 0n };
   }
 
-  const loadWord = (index: number) =>
-    BigInt(ethers.hexlify(bytes.slice(index * 32, (index + 1) * 32)));
+  const loadWord = (index: number) => BigInt(ethers.hexlify(bytes.slice(index * 32, (index + 1) * 32)));
   const word0 = loadWord(0);
   const word1 = loadWord(1);
 
@@ -64,14 +63,7 @@ describeFork("FrxEthFundamentalOracleWrapperV1_1 (fork)", () => {
 
   it("returns a capped fundamental rate using mainnet data", async () => {
     const wrapperFactory = await ethers.getContractFactory("FrxEthFundamentalOracleWrapperV1_1");
-    const wrapper = await wrapperFactory.deploy(
-      ethers.ZeroAddress,
-      ONE,
-      FRXETH,
-      ETHER_ROUTER,
-      REDEMPTION_QUEUE,
-      await getFeeOverrides(),
-    );
+    const wrapper = await wrapperFactory.deploy(ethers.ZeroAddress, ONE, FRXETH, ETHER_ROUTER, REDEMPTION_QUEUE, await getFeeOverrides());
 
     const [price, alive] = await wrapper.getPriceInfo(FRXETH);
 
@@ -107,10 +99,7 @@ describeFork("FrxEthFundamentalOracleWrapperV1_1 (fork)", () => {
     }
     const redemptionRate = queueReadable ? (ONE * (FEE_PRECISION - redemptionFee)) / FEE_PRECISION : 0n;
     const navFloor = ONE / 1000n;
-    const expected =
-      !isEthShortage && nav > 0n && nav < navFloor
-        ? min(redemptionRate, ONE)
-        : min(min(nav, ONE), redemptionRate);
+    const expected = !isEthShortage && nav > 0n && nav < navFloor ? min(redemptionRate, ONE) : min(min(nav, ONE), redemptionRate);
 
     expect(price).to.equal(expected);
     expect(alive).to.equal(expected > 0n);
