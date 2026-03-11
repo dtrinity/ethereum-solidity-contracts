@@ -30,7 +30,7 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
   "PAXG",
 ] as const;
 
-const INIT_BATCH_ONE_SYMBOLS = ROLLOUT_COLLATERAL_SYMBOLS.slice(0, 7);
+const INIT_BATCH_TWO_SYMBOLS = ROLLOUT_COLLATERAL_SYMBOLS.slice(7);
 
 /**
  * Splits a list into smaller chunks.
@@ -81,7 +81,7 @@ async function resolveTokenAddress(
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
-    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-safe: local network detected – skipping");
+    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe: local network detected – skipping");
     return true;
   }
 
@@ -136,7 +136,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const { address: stableDebtTokenImplAddress } = await deployments.get(STABLE_DEBT_TOKEN_IMPL_ID);
   const { address: variableDebtTokenImplAddress } = await deployments.get(VARIABLE_DEBT_TOKEN_IMPL_ID);
 
-  const rolloutSymbols = INIT_BATCH_ONE_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
+  const rolloutSymbols = INIT_BATCH_TWO_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
   const verifiedOracleAssets = new Set<string>();
   const expectedOracleAssets = new Set<string>();
 
@@ -201,7 +201,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         );
       }
 
-      // The wrapper may be queued in an earlier Safe batch in the same rollout run.
       verifiedOracleAssets.add(normalizedAsset);
       return;
     }
@@ -292,16 +291,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     );
   }
 
-  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve init rollout (batch 1/2)");
+  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve init rollout (batch 2/2)");
 
   if (!success) {
-    throw new Error("Failed to create Safe batch for collateral reserve init rollout (batch 1/2).");
+    throw new Error("Failed to create Safe batch for collateral reserve init rollout (batch 2/2).");
   }
-  console.log("🔁 setup-ethereum-mainnet-collateral-reserves-safe: ✅");
+  console.log("🔁 setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe: ✅");
   return true;
 };
 
-func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-safe"];
+func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe"];
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
   "setup-ethereum-mainnet-new-listings-role-grants-safe",
@@ -309,6 +308,6 @@ func.dependencies = [
   "setup-ethereum-mainnet-eth-oracles-safe",
   POOL_ADDRESSES_PROVIDER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-safe-v6";
+func.id = "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v2";
 
 export default func;

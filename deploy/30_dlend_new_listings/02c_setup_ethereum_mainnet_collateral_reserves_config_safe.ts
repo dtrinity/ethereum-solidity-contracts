@@ -3,16 +3,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import {
-  ATOKEN_IMPL_ID,
-  POOL_ADDRESSES_PROVIDER_ID,
-  STABLE_DEBT_TOKEN_IMPL_ID,
-  TREASURY_PROXY_ID,
-  VARIABLE_DEBT_TOKEN_IMPL_ID,
-} from "../../typescript/deploy-ids";
+import { POOL_ADDRESSES_PROVIDER_ID, RESERVES_SETUP_HELPER_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-import { assertRoleGrantedToManager, getRoleAccess } from "../_shared/safe-role";
 
 const ROLLOUT_COLLATERAL_SYMBOLS = [
   "WETH",
@@ -29,24 +22,6 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
   "cbBTC",
   "PAXG",
 ] as const;
-
-const INIT_BATCH_ONE_SYMBOLS = ROLLOUT_COLLATERAL_SYMBOLS.slice(0, 7);
-
-/**
- * Splits a list into smaller chunks.
- *
- * @param items Source list to split.
- * @param size Chunk size.
- */
-function chunkArray<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-
-  return chunks;
-}
 
 /**
  * Normalizes an address value for case-insensitive comparisons.
@@ -81,7 +56,7 @@ async function resolveTokenAddress(
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
-    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-safe: local network detected – skipping");
+    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-config-safe: local network detected – skipping");
     return true;
   }
 
@@ -97,7 +72,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const executor = new GovernanceExecutor(hre, signer, config.safeConfig);
 
   if (!executor.useSafe) {
-    throw new Error("Safe config is required for collateral reserve rollout. Provide config.safeConfig and enable Safe mode.");
+    throw new Error("Safe config is required for collateral reserve config rollout. Provide config.safeConfig and enable Safe mode.");
   }
 
   await executor.initialize();
@@ -105,38 +80,45 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
   const poolConfiguratorAddress = await addressProvider.getPoolConfigurator();
-  const poolConfigurator = await ethers.getContractAt("PoolConfigurator", poolConfiguratorAddress, signer);
-  const poolAddress = await addressProvider.getPool();
-  const pool = await ethers.getContractAt("Pool", poolAddress, signer);
+  const pool = await ethers.getContractAt("Pool", await addressProvider.getPool(), signer);
   const priceOracleAddress = await addressProvider.getPriceOracle();
   const priceOracle = await ethers.getContractAt("IAaveOracle", priceOracleAddress, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
   const managerAddress = config.safeConfig!.safeAddress;
-  const [poolAdminRole, assetListingAdminRole] = await Promise.all([aclManager.POOL_ADMIN_ROLE(), aclManager.ASSET_LISTING_ADMIN_ROLE()]);
 
-  const [poolAdminAccess, hasAssetListingAdmin] = await Promise.all([
-    getRoleAccess(aclManager, poolAdminRole, managerAddress),
-    aclManager.hasRole(assetListingAdminRole, managerAddress),
-  ]);
+  const reservesSetupHelperDeployment = await deployments.get(RESERVES_SETUP_HELPER_ID);
+  const reservesSetupHelperAddress = reservesSetupHelperDeployment.address;
+  const reservesSetupHelper = await ethers.getContractAt("ReservesSetupHelper", reservesSetupHelperAddress, signer);
+  const reservesSetupHelperOwner = await reservesSetupHelper.owner();
 
-  if (!poolAdminAccess.hasRole && !hasAssetListingAdmin) {
-    await assertRoleGrantedToManager({
-      contract: aclManager,
-      contractAddress: aclManagerAddress,
-      managerAddress,
-      role: poolAdminRole,
-      roleLabel: "POOL_ADMIN_ROLE",
-      contractLabel: "ACLManager",
-    });
+  if (normalize(reservesSetupHelperOwner) !== normalize(managerAddress)) {
+    throw new Error(
+      [
+        `[reserve-check] ReservesSetupHelper owner mismatch.`,
+        `helper=${reservesSetupHelperAddress}`,
+        `owner=${reservesSetupHelperOwner}`,
+        `expected=${managerAddress}.`,
+        "Transfer helper ownership to the governance Safe before running collateral reserve config rollout.",
+      ].join(" "),
+    );
   }
 
-  const { address: treasuryAddress } = await deployments.get(TREASURY_PROXY_ID);
-  const { address: aTokenImplAddress } = await deployments.get(ATOKEN_IMPL_ID);
-  const { address: stableDebtTokenImplAddress } = await deployments.get(STABLE_DEBT_TOKEN_IMPL_ID);
-  const { address: variableDebtTokenImplAddress } = await deployments.get(VARIABLE_DEBT_TOKEN_IMPL_ID);
+  const riskAdminRole = await aclManager.RISK_ADMIN_ROLE();
+  const helperHasRiskAdmin = await aclManager.hasRole(riskAdminRole, reservesSetupHelperAddress);
 
-  const rolloutSymbols = INIT_BATCH_ONE_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
+  if (!helperHasRiskAdmin) {
+    throw new Error(
+      [
+        `[role-check] ReservesSetupHelper is missing RISK_ADMIN_ROLE.`,
+        `helper=${reservesSetupHelperAddress}`,
+        `aclManager=${aclManagerAddress}`,
+        "Run and execute setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe before generating reserve config batch.",
+      ].join(" "),
+    );
+  }
+
+  const rolloutSymbols = ROLLOUT_COLLATERAL_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
   const verifiedOracleAssets = new Set<string>();
   const expectedOracleAssets = new Set<string>();
 
@@ -201,9 +183,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         );
       }
 
-      // The wrapper may be queued in an earlier Safe batch in the same rollout run.
-      verifiedOracleAssets.add(normalizedAsset);
-      return;
+      throw new Error(
+        [
+          `[oracle-check] Asset ${symbol} wrapper is still missing from the source aggregator.`,
+          `asset=${asset}`,
+          `source=${assetSource}`,
+          "Execute the oracle rollout Safe batches before generating reserve config batch.",
+        ].join(" "),
+      );
     }
 
     let assetPrice: bigint;
@@ -238,7 +225,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     verifiedOracleAssets.add(normalizedAsset);
   };
 
-  const initInputParams: Array<Record<string, unknown>> = [];
+  const reserveConfigInputParams: Array<Record<string, unknown>> = [];
+  const uninitializedSymbols: string[] = [];
 
   for (const symbol of rolloutSymbols) {
     const reserveParams = config.dLend.reservesConfig[symbol];
@@ -249,66 +237,73 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     }
 
     const reserveData = await pool.getReserveData(tokenAddress);
-    const alreadyInitialized = normalize(reserveData.aTokenAddress) !== normalize(ZeroAddress);
+    const initializedOnChain = normalize(reserveData.aTokenAddress) !== normalize(ZeroAddress);
 
-    if (alreadyInitialized) {
+    if (!initializedOnChain) {
+      uninitializedSymbols.push(symbol);
       continue;
     }
 
     await assertReserveOracleReadiness(symbol, tokenAddress);
 
-    const strategyDeployment = await deployments.get(`ReserveStrategy-${reserveParams.strategy.name}`);
-    const token = await ethers.getContractAt("IERC20Detailed", tokenAddress, signer);
-    const tokenName = await token.name();
-    const tokenDecimals = Number(await token.decimals());
-
-    initInputParams.push({
-      aTokenImpl: aTokenImplAddress,
-      stableDebtTokenImpl: stableDebtTokenImplAddress,
-      variableDebtTokenImpl: variableDebtTokenImplAddress,
-      underlyingAssetDecimals: tokenDecimals,
-      interestRateStrategyAddress: strategyDeployment.address,
-      underlyingAsset: tokenAddress,
-      treasury: treasuryAddress,
-      incentivesController: ZeroAddress,
-      underlyingAssetName: tokenName,
-      aTokenName: `dLEND ${tokenName}`,
-      aTokenSymbol: `dLEND-${symbol}`,
-      variableDebtTokenName: `dLEND Variable Debt ${symbol}`,
-      variableDebtTokenSymbol: `dLEND-variableDebt-${symbol}`,
-      stableDebtTokenName: `dLEND Stable Debt ${symbol}`,
-      stableDebtTokenSymbol: `dLEND-stableDebt-${symbol}`,
-      params: "0x10",
+    reserveConfigInputParams.push({
+      asset: tokenAddress,
+      baseLTV: reserveParams.baseLTVAsCollateral,
+      liquidationThreshold: reserveParams.liquidationThreshold,
+      liquidationBonus: reserveParams.liquidationBonus,
+      reserveFactor: reserveParams.reserveFactor,
+      borrowCap: reserveParams.borrowCap,
+      supplyCap: reserveParams.supplyCap,
+      stableBorrowingEnabled: reserveParams.stableBorrowRateEnabled,
+      borrowingEnabled: reserveParams.borrowingEnabled,
+      flashLoanEnabled: reserveParams.flashLoanEnabled,
     });
   }
 
-  for (const initChunk of chunkArray(initInputParams, 3)) {
-    const data = poolConfigurator.interface.encodeFunctionData("initReserves", [initChunk]);
+  if (uninitializedSymbols.length > 0) {
+    throw new Error(
+      [
+        `[reserve-check] Some collateral reserves are not initialized on-chain yet: ${uninitializedSymbols.join(", ")}.`,
+        "Execute setup-ethereum-mainnet-collateral-reserves-safe first, wait for it to be mined, then rerun this config step.",
+      ].join(" "),
+    );
+  }
+
+  if (reserveConfigInputParams.length > 0) {
+    const configureReservesData = reservesSetupHelper.interface.encodeFunctionData("configureReserves", [
+      poolConfiguratorAddress,
+      reserveConfigInputParams,
+    ]);
+
     await executor.tryOrQueue(
       async () => {
         throw new Error("Direct execution disabled: queue Safe transaction instead.");
       },
-      () => ({ to: poolConfiguratorAddress, value: "0", data }),
+      () => ({ to: reservesSetupHelperAddress, value: "0", data: configureReservesData }),
     );
   }
 
-  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve init rollout (batch 1/2)");
+  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve config rollout");
 
   if (!success) {
-    throw new Error("Failed to create Safe batch for collateral reserve init rollout (batch 1/2).");
+    throw new Error("Failed to create Safe batch for collateral reserve config rollout.");
   }
-  console.log("🔁 setup-ethereum-mainnet-collateral-reserves-safe: ✅");
+  console.log("🔁 setup-ethereum-mainnet-collateral-reserves-config-safe: ✅");
   return true;
 };
 
-func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-safe"];
+func.tags = ["post-deploy", "dlend", "reserve-rollout", "safe", "setup-ethereum-mainnet-collateral-reserves-config-safe"];
 func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
   "setup-ethereum-mainnet-new-listings-role-grants-safe",
+  "setup-ethereum-mainnet-collateral-reserves-safe",
+  "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe",
+  "setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe",
   "setup-ethereum-mainnet-collateral-oracles-safe",
   "setup-ethereum-mainnet-eth-oracles-safe",
   POOL_ADDRESSES_PROVIDER_ID,
+  RESERVES_SETUP_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-safe-v6";
+func.id = "setup-ethereum-mainnet-collateral-reserves-config-safe-v4";
 
 export default func;

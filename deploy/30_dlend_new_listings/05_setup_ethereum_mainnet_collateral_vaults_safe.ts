@@ -218,7 +218,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     console.log(`🔁 setup-ethereum-mainnet-collateral-vaults-safe: processed ${rollout.label}`);
   }
 
-  await executor.flush("Ethereum mainnet dStable collateral vault rollout");
+  const success = await executor.flush("Ethereum mainnet dStable collateral vault rollout");
+
+  if (!success) {
+    throw new Error("Failed to create Safe batch for collateral vault rollout.");
+  }
   console.log("🔁 setup-ethereum-mainnet-collateral-vaults-safe: ✅");
   return true;
 };
@@ -229,6 +233,7 @@ func.dependencies = [
   "setup-ethereum-mainnet-new-listings-role-grants-safe",
   "setup-ethereum-mainnet-collateral-oracles-safe",
   "setup-ethereum-mainnet-eth-oracles-safe",
+  "setup-ethereum-mainnet-collateral-reserves-revoke-risk-admin-safe",
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DUSD_REDEEMER_V2_CONTRACT_ID,

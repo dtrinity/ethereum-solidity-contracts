@@ -273,6 +273,6 @@ func.dependencies = [
   USD_REDSTONE_COMPOSITE_WRAPPER_WITH_THRESHOLDING_ID,
   USD_CHAINLINK_ERC4626_WRAPPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-oracles-safe-v3";
+func.id = "setup-ethereum-mainnet-collateral-oracles-safe-v4";
 
 export default func;

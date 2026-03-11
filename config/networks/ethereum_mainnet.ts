@@ -138,7 +138,8 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   addCompositeFeed(usdCompositeRedstoneFeeds, WSTETH_ADDRESS, WSTETH_ADDRESS, WSTETH_STETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
   // rETH uses a custom ChainlinkCompositeAggregator because RETH_ETH_FEED has 18 decimals.
-  // We will add it to usdPlainRedstoneFeeds instead.
+  // Keep it commented out for now while rETH is excluded from this rollout.
+  // addPlainFeed(usdPlainRedstoneFeeds, RETH_ADDRESS, rethUsdAggregator.address);
   addCompositeFeed(usdCompositeRedstoneFeeds, LBTC_ADDRESS, LBTC_ADDRESS, LBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
   addCompositeFeed(usdCompositeRedstoneFeeds, WBTC_ADDRESS, WBTC_ADDRESS, WBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
 
