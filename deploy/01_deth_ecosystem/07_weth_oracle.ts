@@ -94,6 +94,7 @@ func.tags = ["deth", "weth-oracle"];
 func.dependencies = [
   USD_ORACLE_AGGREGATOR_ID,
   ETH_ORACLE_AGGREGATOR_ID,
+  "point-usd-aggregator-to-wrappers-v1_1",
   "setup-eth-oracle-wrappers-v1_1",
   "point-eth-aggregator-to-wrappers-v1_1",
 ];

@@ -1,4 +1,5 @@
 import { BaseContract } from "ethers";
+import { DeployFunction } from "hardhat-deploy/types";
 
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
@@ -115,3 +116,9 @@ export async function assertRoleGrantedToManager(params: {
     ].join(" "),
   );
 }
+
+const func: DeployFunction = async () => true;
+func.skip = async (): Promise<boolean> => true;
+func.id = "safe-role-helper";
+
+export default func;

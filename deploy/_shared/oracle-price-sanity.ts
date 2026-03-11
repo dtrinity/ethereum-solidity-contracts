@@ -1,5 +1,6 @@
 import { BaseContract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
 
 const CHAINLINK_BASE_UNIT = 10n ** 8n;
 const CHAINLINK_EXPECTED_FEED_DECIMALS = 8n;
@@ -374,6 +375,12 @@ function assertPriceBounds(priceInBase: bigint, bounds: OraclePriceBounds, baseC
     );
   }
 }
+
+const func: DeployFunction = async () => true;
+func.skip = async (): Promise<boolean> => true;
+func.id = "oracle-price-sanity-helper";
+
+export default func;
 
 /**
  * Formats a base-unit value into readable decimal string.
