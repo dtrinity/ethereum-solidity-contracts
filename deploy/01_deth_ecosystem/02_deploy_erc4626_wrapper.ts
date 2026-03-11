@@ -37,7 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   return true;
 };
 
-func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-wrappers"];
+func.tags = ["local-setup", "dlend", "eth-oracle", "oracle-wrappers", "deploy-eth-erc4626-wrapper", ETH_ERC4626_ORACLE_WRAPPER_ID];
 func.dependencies = [DETH_TOKEN_ID];
 func.id = "deploy-eth-erc4626-wrapper";
 

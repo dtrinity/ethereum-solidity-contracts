@@ -29,6 +29,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = DUSD_TOKEN_ID;
-func.tags = ["dusd", "token", "upgradeable", "local-setup", "dlend"];
+func.tags = ["dusd", "token", "upgradeable", "local-setup", "dlend", DUSD_TOKEN_ID];
 
 export default func;

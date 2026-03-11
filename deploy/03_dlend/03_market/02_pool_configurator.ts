@@ -62,7 +62,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "dLend:PoolConfigurator";
-func.tags = ["dlend", "dlend-market"];
+func.tags = ["dlend", "dlend-market", RESERVES_SETUP_HELPER_ID, "PoolConfigurator"];
 func.dependencies = ["dlend-core", "dlend-periphery-pre"];
 
 export default func;

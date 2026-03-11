@@ -64,6 +64,10 @@ describe("AaveOracle", () => {
       const reservesList = await fixture.contracts.pool.getReservesList();
 
       for (const asset of reservesList) {
+        const oracleForAsset = await oracleAggregator.assetOracles(asset);
+        if (oracleForAsset === ethers.ZeroAddress) {
+          continue; // skip assets not configured in this fixture
+        }
         const aggregatorPrice = await oracleAggregator.getAssetPrice(asset);
         const aavePrice = await aaveOracle.getAssetPrice(asset);
 

@@ -11,45 +11,73 @@ import {
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
-import { strategyDETH, strategyDUSD, strategySFRXETH, strategySTETH, strategyWETH } from "../dlend/reserves-params";
+import {
+  strategyCBBTC,
+  strategyDETH,
+  strategyDUSD,
+  strategyLBTC,
+  strategyPAXG,
+  strategyRETH,
+  strategySFRXETH,
+  strategySFRXUSD,
+  strategySTETH,
+  strategySUSDE,
+  strategySUSDS,
+  strategySYRUPUSDC,
+  strategySYRUPUSDT,
+  strategyWBTC,
+  strategyWETH,
+} from "../dlend/reserves-params";
 import { Config } from "../types";
 
-// Stablecoins stay pegged to USD (base currency of the USD aggregator)
 const STABLE_THRESHOLD = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
 
-// Known production addresses
+// Known production token addresses
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 const WSTETH_ADDRESS = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0";
+const RETH_ADDRESS = "0xae78736Cd615f374D3085123A210448E74Fc6393";
 const FRXETH_ADDRESS = "0x5E8422345238F34275888049021821E8E08CAa1f";
 const SFRXETH_ADDRESS = "0xac3E018457B222d93114458476f3E3416Abbe38F";
+
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-const FRXUSD_ADDRESS = "0xCAcd6fd266aF91b8AeD52aCCc382b4e165586E29";
-const SFRXUSD_ADDRESS = "0xcf62F905562626CfcDD2261162a51fd02Fc9c5b6";
 const USDS_ADDRESS = "0xdC035D45d973E3EC169d2276DDab16f1e407384F";
 const SUSDS_ADDRESS = "0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD";
+const SUSDE_ADDRESS = "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497";
+const SYRUP_USDC_ADDRESS = "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b";
+const SYRUP_USDT_ADDRESS = "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d";
+const FRXUSD_ADDRESS = "0xCAcd6fd266aF91b8AeD52aCCc382b4e165586E29";
+const SFRXUSD_ADDRESS = "0xcf62F905562626CfcDD2261162a51fd02Fc9c5b6";
+
+const LBTC_ADDRESS = "0x8236a87084f8B84306f72007F36F2618A5634494";
+const WBTC_ADDRESS = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599";
+const CBBTC_ADDRESS = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
+const PAXG_ADDRESS = "0x45804880De22913dAFE09f4980848ECE6EcbAf78";
 
 // Safe wallets
-const GOVERNANCE_SAFE = "0xE83c188a7BE46B90715C757A06cF917175f30262"; // Reuse cross-chain governance Safe by default
-const INCENTIVES_SAFE = "0x4B4B5cC616be4cd1947B93f2304d36b3e80D3ef6"; // Incentives Safe used on other chains
+const GOVERNANCE_SAFE = "0xE83c188a7BE46B90715C757A06cF917175f30262";
+const INCENTIVES_SAFE = "0x4B4B5cC616be4cd1947B93f2304d36b3e80D3ef6";
 
-// Chainlink feeds
-const ETH_USD_FEED = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; // Chainlink ETH/USD feed
-const USDC_USD_FEED = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"; // Chainlink USDC/USD feed
-const USDT_USD_FEED = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"; // Chainlink USDT/USD feed
-const FRXUSD_USD_FEED = "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83"; // Chainlink frxUSD/USD feed
-const USDS_USD_FEED = "0xfF30586cD0F29eD462364C7e81375FC0C71219b1"; // Chainlink USDS/USD feed
+// Chainlink feeds (known)
+const ETH_USD_FEED = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
+const BTC_USD_FEED = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
+const USDC_USD_FEED = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6";
+const USDT_USD_FEED = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D";
+const FRXUSD_USD_FEED = "0x9B4a96210bc8D9D55b1908B465D8B0de68B7fF83";
+const USDS_USD_FEED = "0xfF30586cD0F29eD462364C7e81375FC0C71219b1";
+const USDE_USD_FEED = "0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961";
+const LBTC_BTC_FEED = "0x5c29868C58b6e15e2b962943278969Ab6a7D3212";
+const WBTC_BTC_FEED = "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23";
+const CBBTC_USD_FEED = "0x2665701293fCbEB223D11A08D826563EDcCE423A";
+const PAXG_USD_FEED = "0x9944D86CEB9160aF5C5feB251FD671923323f8C3";
 
-// ETH-denominated feeds
-// Lido wstETH/stETH fundamental exchange rate oracle (not market-based) deployed by Compound using Lido's helper contract
-// Since stETH is 1:1 redeemable with ETH, this effectively gives wstETH/ETH
+// ETH-denominated feeds (known)
 const WSTETH_STETH_FEED = "0x4F67e4d9BD67eFa28236013288737D39AeF48e79";
 
 /**
- * Ethereum mainnet configuration for production deployment.
- * Governance defaults to the shared Safe, and incentives vault to governance.
+ * Returns Ethereum mainnet deployment configuration for protocol modules.
  *
- * @param hre - Hardhat runtime environment.
+ * @param hre
  */
 export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config> {
   const { deployer } = await hre.getNamedAccounts();
@@ -64,11 +92,9 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     hre.deployments.getOrNull("DStakeIdleVault_sdETH"),
   ]);
 
-  // Governance defaults to the shared Safe; fall back to deployer to avoid undefined values during dry-runs
   const governanceAddress = GOVERNANCE_SAFE ?? deployer;
   const incentivesVault = INCENTIVES_SAFE ?? governanceAddress;
 
-  // Collateral redemption fee overrides (fallback to defaults when not set)
   const dUSDCollateralFees: Record<string, number> = {};
   const dETHCollateralFees: Record<string, number> = {};
 
@@ -77,11 +103,19 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   addCollateralFee(dETHCollateralFees, WSTETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, SFRXETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
+  addCollateralFee(dETHCollateralFees, FRXETH_ADDRESS, 0.5 * ONE_PERCENT_BPS);
 
-  // USD oracle feeds
   const usdPlainRedstoneFeeds: Record<string, string> = {};
   addPlainFeed(usdPlainRedstoneFeeds, WETH_ADDRESS, ETH_USD_FEED);
   addPlainFeed(usdPlainRedstoneFeeds, dETHDeployment?.address, ETH_USD_FEED);
+  addPlainFeed(usdPlainRedstoneFeeds, CBBTC_ADDRESS, CBBTC_USD_FEED);
+  addPlainFeed(usdPlainRedstoneFeeds, PAXG_ADDRESS, PAXG_USD_FEED);
+
+  const rethUsdAggregator = await hre.deployments.getOrNull("RETH_USD_ChainlinkCompositeAggregator");
+
+  if (rethUsdAggregator) {
+    addPlainFeed(usdPlainRedstoneFeeds, RETH_ADDRESS, rethUsdAggregator.address);
+  }
 
   const usdThresholdRedstoneFeeds: Record<string, { feed: string; lowerThreshold: bigint; fixedPrice: bigint }> = {};
   addThresholdFeed(usdThresholdRedstoneFeeds, USDC_ADDRESS, USDC_USD_FEED, STABLE_THRESHOLD);
@@ -102,36 +136,32 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     }
   > = {};
 
-  // wstETH/USD = wstETH/stETH * ETH/USD (using stETH ≈ ETH assumption)
-  // feed1 = wstETH/stETH fundamental rate from Lido
-  // feed2 = ETH/USD from Chainlink
-  // No thresholding needed - both are fundamental/reliable rates
   addCompositeFeed(usdCompositeRedstoneFeeds, WSTETH_ADDRESS, WSTETH_ADDRESS, WSTETH_STETH_FEED, ETH_USD_FEED, 0n, 0n, 0n, 0n);
+  // rETH uses a custom ChainlinkCompositeAggregator because RETH_ETH_FEED has 18 decimals.
+  // Keep it commented out for now while rETH is excluded from this rollout.
+  // addPlainFeed(usdPlainRedstoneFeeds, RETH_ADDRESS, rethUsdAggregator.address);
+  addCompositeFeed(usdCompositeRedstoneFeeds, LBTC_ADDRESS, LBTC_ADDRESS, LBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
+  addCompositeFeed(usdCompositeRedstoneFeeds, WBTC_ADDRESS, WBTC_ADDRESS, WBTC_BTC_FEED, BTC_USD_FEED, 0n, 0n, 0n, 0n);
 
   const usdChainlinkErc4626Feeds: Record<string, { vault: string; feed: string }> = {};
-
+  addErc4626Feed(usdChainlinkErc4626Feeds, SUSDE_ADDRESS, SUSDE_ADDRESS, USDE_USD_FEED);
   addErc4626Feed(usdChainlinkErc4626Feeds, SUSDS_ADDRESS, SUSDS_ADDRESS, USDS_USD_FEED);
+  addErc4626Feed(usdChainlinkErc4626Feeds, SYRUP_USDC_ADDRESS, SYRUP_USDC_ADDRESS, USDC_USD_FEED);
+  addErc4626Feed(usdChainlinkErc4626Feeds, SYRUP_USDT_ADDRESS, SYRUP_USDT_ADDRESS, USDT_USD_FEED);
   addErc4626Feed(usdChainlinkErc4626Feeds, SFRXUSD_ADDRESS, SFRXUSD_ADDRESS, FRXUSD_USD_FEED);
-  // sfrxETH/USD = sfrxETH/frxETH (from vault) * ETH/USD (using frxETH ≈ ETH assumption)
   addErc4626Feed(usdChainlinkErc4626Feeds, SFRXETH_ADDRESS, SFRXETH_ADDRESS, ETH_USD_FEED);
 
-  // ETH oracle feeds
   const ethPlainRedstoneFeeds: Record<string, string> = {};
-  // wstETH uses the Lido wstETH/stETH fundamental rate oracle
-  // Since stETH is 1:1 redeemable with ETH, wstETH/stETH ≈ wstETH/ETH
   addPlainFeed(ethPlainRedstoneFeeds, WSTETH_ADDRESS, WSTETH_STETH_FEED);
 
-  // Simple ERC4626 oracle assets - for vaults where underlying is 1:1 with base currency (ETH)
-  // sfrxETH uses ERC4626OracleWrapperV1_1 which reads convertToAssets() directly
-  // Since frxETH is 1:1 redeemable with ETH, no external price feed is needed
   const ethErc4626OracleAssets: Record<string, string> = {};
   addSimpleErc4626Asset(ethErc4626OracleAssets, SFRXETH_ADDRESS, SFRXETH_ADDRESS);
 
-  // --- dSTAKE (mainnet placeholders) ---
-  // NOTE:
-  // - The deploy scripts will skip instances where addresses are missing/ZeroAddress.
-  // - Roles (admin, fee manager, collateral exchangers) are initialized to the deployer
-  //   and must be migrated to governance via separate Safe transactions after deployment.
+  const frxEthFundamentalOracle = {
+    asset: FRXETH_ADDRESS,
+    etherRouter: "0x5acAf61d339dd123e60ba450Ea38fbC49445007C",
+    redemptionQueue: "0xfDC69e6BE352BD5644C438302DE4E311AAD5565b",
+  };
 
   return {
     tokenAddresses: {
@@ -142,11 +172,19 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       USDT: USDT_ADDRESS,
       USDS: stringOrEmpty(USDS_ADDRESS),
       sUSDS: stringOrEmpty(SUSDS_ADDRESS),
+      sUSDe: SUSDE_ADDRESS,
+      syrupUSDC: SYRUP_USDC_ADDRESS,
+      syrupUSDT: SYRUP_USDT_ADDRESS,
       frxUSD: stringOrEmpty(FRXUSD_ADDRESS),
       sfrxUSD: stringOrEmpty(SFRXUSD_ADDRESS),
       wstETH: WSTETH_ADDRESS,
+      rETH: RETH_ADDRESS,
       frxETH: FRXETH_ADDRESS,
       sfrxETH: SFRXETH_ADDRESS,
+      LBTC: LBTC_ADDRESS,
+      WBTC: WBTC_ADDRESS,
+      cbBTC: CBBTC_ADDRESS,
+      PAXG: PAXG_ADDRESS,
     },
     walletAddresses: {
       governanceMultisig: governanceAddress,
@@ -194,6 +232,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        frxEthFundamentalOracle,
       },
     },
     dStables: {
@@ -204,7 +243,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         collateralRedemptionFees: dUSDCollateralFees,
       },
       dETH: {
-        collaterals: filterAddresses([WETH_ADDRESS, WSTETH_ADDRESS, SFRXETH_ADDRESS]),
+        collaterals: filterAddresses([WETH_ADDRESS, WSTETH_ADDRESS, SFRXETH_ADDRESS, FRXETH_ADDRESS]),
         initialFeeReceiver: governanceAddress,
         initialRedemptionFeeBps: 0.4 * ONE_PERCENT_BPS,
         collateralRedemptionFees: dETHCollateralFees,
@@ -218,34 +257,40 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       },
       rateStrategies: [rateStrategyBorrowDStable, rateStrategyHighLiquidityVolatile, rateStrategyHighLiquidityStable],
       reservesConfig: {
-        // dSTABLEs
         dUSD: strategyDUSD,
         dETH: strategyDETH,
 
-        // LSTs
         WETH: strategyWETH,
         wstETH: strategySTETH,
+        rETH: strategyRETH,
         sfrxETH: strategySFRXETH,
+
+        sUSDe: strategySUSDE,
+        sUSDS: strategySUSDS,
+        syrupUSDC: strategySYRUPUSDC,
+        syrupUSDT: strategySYRUPUSDT,
+        sfrxUSD: strategySFRXUSD,
+
+        LBTC: strategyLBTC,
+        WBTC: strategyWBTC,
+        cbBTC: strategyCBBTC,
+        PAXG: strategyPAXG,
       },
     },
     dStake: {
-      // Staked dUSD (sdUSD)
       sdUSD: {
         dStable: stringOrEmpty(dUSDDeployment?.address),
         name: "Staked dUSD",
         symbol: "sdUSD",
-        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
+        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT,
         adapters: [
           {
-            // Default strategy: idle vault (ERC4626) holding dUSD.
             strategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
             adapterContract: "GenericERC4626ConversionAdapter",
             vaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
             targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
           {
-            // Whitelist dLEND wrapper at 0% initially; allocation can be raised later via setVaultConfigs().
-            // If not deployed yet, the deploy scripts will try to infer it from DUSD_A_TOKEN_WRAPPER_ID.
             strategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
@@ -257,25 +302,22 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         idleVault: {
           name: "dSTAKE Idle dUSD Vault",
           symbol: "idle-dUSD",
-          rewardManager: incentivesVault, // Shared with dLEND
+          rewardManager: incentivesVault,
         },
       },
-      // Staked dETH (sdETH)
       sdETH: {
         dStable: stringOrEmpty(dETHDeployment?.address),
         name: "Staked dETH",
         symbol: "sdETH",
-        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT, // 0.10%
+        initialWithdrawalFeeBps: 10 * ONE_BPS_UNIT,
         adapters: [
           {
-            // Default strategy: idle vault (ERC4626) holding dETH.
             strategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
             adapterContract: "GenericERC4626ConversionAdapter",
             vaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
             targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
           {
-            // Whitelist dLEND wrapper at 0% initially; allocation can be raised later via setVaultConfigs().
             strategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
@@ -287,7 +329,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         idleVault: {
           name: "dSTAKE Idle dETH Vault",
           symbol: "idle-dETH",
-          rewardManager: incentivesVault, // Shared vault with dLEND
+          rewardManager: incentivesVault,
         },
       },
     },
@@ -297,18 +339,18 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 /**
  * Returns the provided address string or an empty fallback when undefined.
  *
- * @param value - Address string to normalise.
+ * @param value
  */
 function stringOrEmpty(value: string | undefined): string {
   return value ?? "";
 }
 
 /**
- * Adds the given collateral fee in basis points when the address is defined.
+ * Adds a collateral fee override when the token address is defined.
  *
- * @param fees - Mutable map of collateral fee overrides.
- * @param address - Collateral token address.
- * @param feeBps - Redemption fee in basis points.
+ * @param fees
+ * @param address
+ * @param feeBps
  */
 function addCollateralFee(fees: Record<string, number>, address: string | undefined, feeBps: number): void {
   if (address) {
@@ -317,11 +359,11 @@ function addCollateralFee(fees: Record<string, number>, address: string | undefi
 }
 
 /**
- * Adds a plain oracle feed to the supplied map when both asset and feed are present.
+ * Adds a plain feed mapping when both asset and feed are defined.
  *
- * @param feeds - Mutable feed map.
- * @param asset - Asset address to price.
- * @param feed - Oracle feed address.
+ * @param feeds
+ * @param asset
+ * @param feed
  */
 function addPlainFeed(feeds: Record<string, string>, asset: string | undefined, feed: string | undefined): void {
   if (asset && feed) {
@@ -330,12 +372,12 @@ function addPlainFeed(feeds: Record<string, string>, asset: string | undefined, 
 }
 
 /**
- * Adds a thresholded oracle feed when inputs are available.
+ * Adds a threshold feed mapping when both asset and feed are defined.
  *
- * @param feeds - Mutable feed map.
- * @param asset - Asset address to price.
- * @param feed - Oracle feed address.
- * @param threshold - Threshold price to pin at.
+ * @param feeds
+ * @param asset
+ * @param feed
+ * @param threshold
  */
 function addThresholdFeed(
   feeds: Record<string, { feed: string; lowerThreshold: bigint; fixedPrice: bigint }>,
@@ -353,21 +395,21 @@ function addThresholdFeed(
 }
 
 /**
- * Filters undefined/empty entries from address lists to avoid accidentally wiring the zero address.
+ * Filters undefined entries from an address list.
  *
- * @param addresses - Candidate address list.
+ * @param addresses
  */
 function filterAddresses(addresses: (string | undefined)[]): string[] {
   return addresses.filter((value): value is string => Boolean(value));
 }
 
 /**
- * Adds an ERC4626 oracle feed configuration when all inputs are specified.
+ * Adds an ERC4626 feed config when asset, vault and feed are defined.
  *
- * @param feeds - Mutable feed map.
- * @param asset - Asset address to price (the vault share token).
- * @param vault - ERC4626 vault address (usually same as asset).
- * @param feed - Oracle feed address for the underlying asset.
+ * @param feeds
+ * @param asset
+ * @param vault
+ * @param feed
  */
 function addErc4626Feed(
   feeds: Record<string, { vault: string; feed: string }>,
@@ -381,11 +423,11 @@ function addErc4626Feed(
 }
 
 /**
- * Adds a simple ERC4626 oracle asset where the underlying is assumed 1:1 with base currency.
+ * Adds a simple ERC4626 asset mapping when asset and vault are defined.
  *
- * @param assets - Mutable asset map.
- * @param asset - Asset address to price (the vault share token).
- * @param vault - ERC4626 vault address (usually same as asset).
+ * @param assets
+ * @param asset
+ * @param vault
  */
 function addSimpleErc4626Asset(assets: Record<string, string>, asset: string | undefined, vault: string | undefined): void {
   if (asset && vault) {
@@ -394,17 +436,17 @@ function addSimpleErc4626Asset(assets: Record<string, string>, asset: string | u
 }
 
 /**
- * Adds a composite oracle feed (feed1 * feed2) with optional thresholding.
+ * Adds a composite feed mapping when required addresses are defined.
  *
- * @param feeds - Mutable feed map.
- * @param asset - Asset address to price.
- * @param feedAsset - Asset address for feed lookups (usually same as asset).
- * @param feed1 - First oracle feed address (e.g., asset/intermediate).
- * @param feed2 - Second oracle feed address (e.g., intermediate/base).
- * @param lowerThresholdInBase1 - Threshold for feed1 (0 = no thresholding).
- * @param fixedPriceInBase1 - Fixed price for feed1 when above threshold.
- * @param lowerThresholdInBase2 - Threshold for feed2 (0 = no thresholding).
- * @param fixedPriceInBase2 - Fixed price for feed2 when above threshold.
+ * @param feeds
+ * @param asset
+ * @param feedAsset
+ * @param feed1
+ * @param feed2
+ * @param lowerThresholdInBase1
+ * @param fixedPriceInBase1
+ * @param lowerThresholdInBase2
+ * @param fixedPriceInBase2
  */
 function addCompositeFeed(
   feeds: Record<

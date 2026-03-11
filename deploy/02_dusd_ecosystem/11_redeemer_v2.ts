@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_redeemer_v2_dusd";
-func.tags = ["dusd", "redeemerV2"];
+func.tags = ["dusd", "redeemerV2", DUSD_REDEEMER_V2_CONTRACT_ID];
 func.dependencies = [DUSD_TOKEN_ID, DUSD_COLLATERAL_VAULT_CONTRACT_ID, "deploy-usd-oracle-aggregator"];
 
 export default func;

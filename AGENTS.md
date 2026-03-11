@@ -12,6 +12,12 @@
 - `yarn gas-estimate -n <network>` aggregates deployment gas usage from `deployments/<network>/`.
 - Many CI helpers live in `.shared`; run them via `yarn workspace @dtrinity/shared-hardhat-tools <script>` if needed.
 
+## Deployment Safety Rules
+- Never run Hardhat deploy with `--reset` on persistent/shared networks (for example `ethereum_mainnet`). Treat this as a hard blocker.
+- `--reset` wipes deployment artifacts/state under `deployments/<network>/` before scripts run, which can invalidate Safe batch sequencing and rollout continuity.
+- To re-run one rollout step, edit only the specific key in `deployments/<network>/.migrations.json` and re-run that tag without `--reset`.
+- If Safe bundle files were deleted, regenerate by re-running the required tags in order without `--reset`.
+
 ## Coding Style & Naming Conventions
 - Solidity targets `pragma ^0.8.20`; prefer explicit imports and OZ patterns (e.g., `SafeERC20`).
 - Use CamelCase for contracts/libraries, CapitalizedWords for events, and snake_case for storage slots when required.

@@ -179,7 +179,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "dLend:tokens_implementations";
-func.tags = ["dlend", "dlend-market"];
+func.tags = ["dlend", "dlend-market", "tokens_implementations", "dLend:tokens_implementations"];
 func.dependencies = ["dlend-core", "dlend-periphery-pre", "PoolAddressesProvider", "init_pool"];
 
 export default func;

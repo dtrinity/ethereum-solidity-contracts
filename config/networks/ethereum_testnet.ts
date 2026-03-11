@@ -37,6 +37,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     WETHDeployment,
     stETHDeployment,
     wstETHDeployment,
+    frxETHDeployment,
     sfrxETHDeployment,
     rETHDeployment,
     USDCDeployment,
@@ -62,6 +63,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
     hre.deployments.getOrNull("WETH"),
     hre.deployments.getOrNull("stETH"),
     hre.deployments.getOrNull("wstETH"),
+    hre.deployments.getOrNull("frxETH"),
     hre.deployments.getOrNull("sfrxETH"),
     hre.deployments.getOrNull("rETH"),
     hre.deployments.getOrNull("USDC"),
@@ -85,6 +87,8 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   const mockOracleNameToAddress: Record<string, string> = {};
   const mockOracleAddressesDeployment = await hre.deployments.getOrNull("MockOracleNameToAddress");
+  const mockEtherRouter = await hre.deployments.getOrNull("MockFraxEtherRouter");
+  const mockRedemptionQueue = await hre.deployments.getOrNull("MockFraxRedemptionQueueV2");
 
   if (mockOracleAddressesDeployment?.linkedData) {
     Object.assign(mockOracleNameToAddress, mockOracleAddressesDeployment.linkedData as Record<string, string>);
@@ -294,6 +298,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
 
   addCollateralFee(dETHCollateralFees, WETHDeployment?.address, 0.4 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, stETHDeployment?.address, 0.5 * ONE_PERCENT_BPS);
+  addCollateralFee(dETHCollateralFees, frxETHDeployment?.address, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, sfrxETHDeployment?.address, 0.5 * ONE_PERCENT_BPS);
   addCollateralFee(dETHCollateralFees, rETHDeployment?.address, 0.5 * ONE_PERCENT_BPS);
 
@@ -378,6 +383,12 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           decimals: 18,
           initialSupply: 1_000_000,
         },
+        frxETH: {
+          name: "Frax Ether",
+          address: frxETHDeployment?.address,
+          decimals: 18,
+          initialSupply: 1_000_000,
+        },
         sfrxETH: {
           name: "Staked Frax Ether",
           address: sfrxETHDeployment?.address,
@@ -410,6 +421,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
       aUSDT: stringOrEmpty(aUSDTDeployment?.address),
       stETH: stringOrEmpty(stETHDeployment?.address),
       wstETH: stringOrEmpty(wstETHDeployment?.address),
+      frxETH: stringOrEmpty(frxETHDeployment?.address),
       sfrxETH: stringOrEmpty(sfrxETHDeployment?.address),
       rETH: stringOrEmpty(rETHDeployment?.address),
     },
@@ -449,6 +461,11 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
           redstoneOracleWrappersWithThresholding: {},
           compositeRedstoneOracleWrappersWithThresholding: {},
         },
+        frxEthFundamentalOracle: {
+          asset: addressOrZero(frxETHDeployment?.address),
+          etherRouter: addressOrZero(mockEtherRouter?.address),
+          redemptionQueue: addressOrZero(mockRedemptionQueue?.address),
+        },
       },
     },
     dStables: {
@@ -473,6 +490,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         collaterals: [
           addressOrZero(WETHDeployment?.address),
           addressOrZero(stETHDeployment?.address),
+          addressOrZero(frxETHDeployment?.address),
           addressOrZero(sfrxETHDeployment?.address),
           addressOrZero(rETHDeployment?.address),
         ],
@@ -484,6 +502,7 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         collaterals: [
           addressOrZero(WETHDeployment?.address),
           addressOrZero(stETHDeployment?.address),
+          addressOrZero(frxETHDeployment?.address),
           addressOrZero(sfrxETHDeployment?.address),
           addressOrZero(rETHDeployment?.address),
         ],

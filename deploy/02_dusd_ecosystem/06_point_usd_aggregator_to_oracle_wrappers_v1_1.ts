@@ -239,7 +239,7 @@ function hasAnyConfiguredAsset(
   return counts.some((count) => count > 0);
 }
 
-func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-routing"];
+func.tags = ["local-setup", "dlend", "usd-oracle", "oracle-routing", "point-usd-aggregator-to-wrappers-v1_1"];
 func.dependencies = [
   "deploy-usd-oracle-aggregator",
   "setup-usd-oracle-wrappers-v1_1",

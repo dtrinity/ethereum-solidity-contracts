@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = DETH_COLLATERAL_VAULT_CONTRACT_ID;
-func.tags = ["deth"];
-func.dependencies = ["dETH_setup"];
+func.tags = ["deth", DETH_COLLATERAL_VAULT_CONTRACT_ID];
+func.dependencies = [ETH_ORACLE_AGGREGATOR_ID];
 
 export default func;
