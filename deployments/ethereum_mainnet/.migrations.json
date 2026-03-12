@@ -79,5 +79,8 @@
   "setup-ethereum-mainnet-collateral-reserves-config-safe-v4": 1773201852,
   "setup-ethereum-mainnet-collateral-reserves-revoke-risk-admin-safe-v3": 1773202121,
   "setup-ethereum-mainnet-collateral-vaults-safe-v3": 1773203240,
-  "dstake_dlend_rewards": 1773298775
+  "dstake_dlend_rewards": 1773298775,
+  "setup-ethereum-mainnet-dstake-dlend-role-grants-safe": 1773299081,
+  "setup-ethereum-mainnet-dstake-dlend-safe": 1773299360,
+  "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe": 1773299962
 }
