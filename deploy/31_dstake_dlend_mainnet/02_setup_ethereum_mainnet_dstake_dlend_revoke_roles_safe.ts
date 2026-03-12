@@ -1,4 +1,3 @@
-import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
@@ -7,50 +6,13 @@ import { DStakeInstanceConfig } from "../../config/types";
 import { DSTAKE_COLLATERAL_VAULT_ID_PREFIX, DSTAKE_ROUTER_ID_PREFIX, DSTAKE_TOKEN_ID_PREFIX } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-import { ensureRoleGrantedToManager } from "../_shared/safe-role";
-
-/**
- * Ensures the given account has the specified role on the contract by having the deployer grant it (used when Safe batch is not needed).
- *
- * @param params - Options for the role grant.
- * @param params.contract - Access-controlled contract instance.
- * @param params.role - Role bytes32 to grant.
- * @param params.roleLabel - Human-readable role name for logging.
- * @param params.account - Address to grant the role to.
- * @param params.signer - Signer that must hold the role's admin (e.g. deployer).
- * @param params.contractLabel - Human-readable contract name for logging.
- */
-async function ensureRoleGrantedByDeployer(params: {
-  contract: any;
-  role: string;
-  roleLabel: string;
-  account: string;
-  signer: Signer;
-  contractLabel: string;
-}): Promise<void> {
-  const { contract, role, roleLabel, account, signer, contractLabel } = params;
-  const signerAddress = await signer.getAddress();
-
-  const alreadyHasRole = await contract.hasRole(role, account);
-  if (alreadyHasRole) return;
-
-  const adminRole = await contract.getRoleAdmin(role);
-  const signerCanGrant = await contract.hasRole(adminRole, signerAddress);
-
-  if (!signerCanGrant) {
-    throw new Error(`Deployer ${signerAddress} cannot grant ${roleLabel} on ${contractLabel}: missing admin role ${adminRole}`);
-  }
-
-  const tx = await contract.connect(signer).grantRole(role, account);
-  await tx.wait();
-  console.log(`    🔑 Granted ${roleLabel} to ${account} on ${contractLabel}`);
-}
+import { ensureRoleRevokedFromAccount } from "../_shared/safe-role";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   const runOnLocal = process.env.RUN_ON_LOCAL?.toLowerCase() === "true";
 
   if (isLocalNetwork(hre.network.name) && !runOnLocal) {
-    console.log("🔁 setup-ethereum-mainnet-dstake-dlend-role-grants-safe: local network detected – skipping");
+    console.log("🔁 setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe: local network detected – skipping");
     return true;
   }
 
@@ -60,14 +22,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const config = await getConfig(hre);
 
   if (!config.dStake) {
-    console.log("🔁 setup-ethereum-mainnet-dstake-dlend-role-grants-safe: no dSTAKE config – skipping");
+    console.log("🔁 setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe: no dSTAKE config – skipping");
     return true;
   }
 
   const executor = new GovernanceExecutor(hre, signer, config.safeConfig);
 
   if (!executor.useSafe || !config.safeConfig?.safeAddress) {
-    throw new Error("Safe config is required for dSTAKE dLEND role grants on mainnet.");
+    throw new Error("Safe config is required for dSTAKE dLEND role revokes on mainnet.");
   }
 
   await executor.initialize();
@@ -81,6 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       throw new Error(`Missing dSTAKE symbol for instance ${instanceKey}`);
     }
 
+    // 1. Revoke deployer roles from DStakeRouterV2
     const routerDeploymentName = `${DSTAKE_ROUTER_ID_PREFIX}_${symbol}`;
     const routerDeployment = await deployments.get(routerDeploymentName);
     const router = await ethers.getContractAt("DStakeRouterV2", routerDeployment.address, signer);
@@ -95,101 +58,152 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       router.DEFAULT_ADMIN_ROLE(),
     ]);
 
-    // Ensure Safe has DEFAULT_ADMIN_ROLE first, otherwise it cannot grant other roles to itself
-    await ensureRoleGrantedByDeployer({
-      contract: router,
-      role: defaultAdminRole,
-      roleLabel: "DEFAULT_ADMIN_ROLE",
-      account: managerAddress,
-      signer: signer,
-      contractLabel: routerDeploymentName,
-    });
-
-    await ensureRoleGrantedToManager({
+    await ensureRoleRevokedFromAccount({
       executor,
       contract: accessControlledRouter,
       contractAddress: routerDeployment.address,
       managerAddress,
+      account: deployer,
       role: adapterManagerRole,
       roleLabel: "ADAPTER_MANAGER_ROLE",
       contractLabel: routerDeploymentName,
     });
-    await ensureRoleGrantedToManager({
+    await ensureRoleRevokedFromAccount({
       executor,
       contract: accessControlledRouter,
       contractAddress: routerDeployment.address,
       managerAddress,
+      account: deployer,
       role: vaultManagerRole,
       roleLabel: "VAULT_MANAGER_ROLE",
       contractLabel: routerDeploymentName,
     });
-    await ensureRoleGrantedToManager({
+    await ensureRoleRevokedFromAccount({
       executor,
       contract: accessControlledRouter,
       contractAddress: routerDeployment.address,
       managerAddress,
+      account: deployer,
       role: configManagerRole,
       roleLabel: "CONFIG_MANAGER_ROLE",
       contractLabel: routerDeploymentName,
     });
-    await ensureRoleGrantedToManager({
+    await ensureRoleRevokedFromAccount({
       executor,
       contract: accessControlledRouter,
       contractAddress: routerDeployment.address,
       managerAddress,
+      account: deployer,
       role: rebalancerRole,
       roleLabel: "STRATEGY_REBALANCER_ROLE",
       contractLabel: routerDeploymentName,
     });
-    await ensureRoleGrantedToManager({
+    await ensureRoleRevokedFromAccount({
       executor,
       contract: accessControlledRouter,
       contractAddress: routerDeployment.address,
       managerAddress,
+      account: deployer,
       role: pauserRole,
       roleLabel: "PAUSER_ROLE",
       contractLabel: routerDeploymentName,
     });
+    await ensureRoleRevokedFromAccount({
+      executor,
+      contract: accessControlledRouter,
+      contractAddress: routerDeployment.address,
+      managerAddress,
+      account: deployer,
+      role: defaultAdminRole,
+      roleLabel: "DEFAULT_ADMIN_ROLE",
+      contractLabel: routerDeploymentName,
+    });
 
+    // 2. Revoke deployer roles from DStakeRewardManagerDLend
+    if (instanceConfig.dLendRewardManager) {
+      const rewardManagerDeploymentName = `DStakeRewardManagerDLend_${instanceKey}`;
+      const rewardManagerDeployment = await deployments.getOrNull(rewardManagerDeploymentName);
+
+      if (rewardManagerDeployment) {
+        const rewardManager = await ethers.getContractAt("DStakeRewardManagerDLend", rewardManagerDeployment.address, signer);
+        const accessControlledRewardManager = rewardManager as any;
+
+        const [rmDefaultAdminRole, rmRewardsManagerRole] = await Promise.all([
+          rewardManager.DEFAULT_ADMIN_ROLE(),
+          rewardManager.REWARDS_MANAGER_ROLE(),
+        ]);
+
+        await ensureRoleRevokedFromAccount({
+          executor,
+          contract: accessControlledRewardManager,
+          contractAddress: rewardManagerDeployment.address,
+          managerAddress,
+          account: deployer,
+          role: rmRewardsManagerRole,
+          roleLabel: "REWARDS_MANAGER_ROLE",
+          contractLabel: rewardManagerDeploymentName,
+        });
+        await ensureRoleRevokedFromAccount({
+          executor,
+          contract: accessControlledRewardManager,
+          contractAddress: rewardManagerDeployment.address,
+          managerAddress,
+          account: deployer,
+          role: rmDefaultAdminRole,
+          roleLabel: "DEFAULT_ADMIN_ROLE",
+          contractLabel: rewardManagerDeploymentName,
+        });
+      }
+    }
+
+    // 3. Revoke deployer roles from Adapters
     for (const adapterConfig of instanceConfig.adapters) {
       const adapterDeploymentName = `${adapterConfig.adapterContract}_${instanceConfig.symbol}`;
       const adapterDeployment = await deployments.getOrNull(adapterDeploymentName);
 
       if (adapterDeployment) {
         const adapter = await ethers.getContractAt("GenericERC4626ConversionAdapter", adapterDeployment.address, signer);
+        const accessControlledAdapter = adapter as any;
         const adapterAdminRole = await adapter.DEFAULT_ADMIN_ROLE();
 
-        await ensureRoleGrantedByDeployer({
-          contract: adapter,
+        await ensureRoleRevokedFromAccount({
+          executor,
+          contract: accessControlledAdapter,
+          contractAddress: adapterDeployment.address,
+          managerAddress,
+          account: deployer,
           role: adapterAdminRole,
           roleLabel: "DEFAULT_ADMIN_ROLE",
-          account: managerAddress,
-          signer: signer,
           contractLabel: adapterDeploymentName,
         });
       }
     }
 
-    // Ensure Safe has roles on Token and Collateral Vault
+    // 4. Revoke deployer roles from Token and Collateral Vault
     const tokenDeploymentName = `${DSTAKE_TOKEN_ID_PREFIX}_${symbol}`;
     const tokenDeployment = await deployments.getOrNull(tokenDeploymentName);
 
     if (tokenDeployment) {
       const token = await ethers.getContractAt("DStakeTokenV2", tokenDeployment.address, signer);
-      await ensureRoleGrantedByDeployer({
-        contract: token,
-        role: await token.DEFAULT_ADMIN_ROLE(),
-        roleLabel: "DEFAULT_ADMIN_ROLE",
-        account: managerAddress,
-        signer: signer,
-        contractLabel: tokenDeploymentName,
-      });
-      await ensureRoleGrantedByDeployer({
-        contract: token,
+      const accessControlledToken = token as any;
+      await ensureRoleRevokedFromAccount({
+        executor,
+        contract: accessControlledToken,
+        contractAddress: tokenDeployment.address,
+        managerAddress,
+        account: deployer,
         role: await token.FEE_MANAGER_ROLE(),
         roleLabel: "FEE_MANAGER_ROLE",
-        account: managerAddress,
-        signer: signer,
+        contractLabel: tokenDeploymentName,
+      });
+      await ensureRoleRevokedFromAccount({
+        executor,
+        contract: accessControlledToken,
+        contractAddress: tokenDeployment.address,
+        managerAddress,
+        account: deployer,
+        role: await token.DEFAULT_ADMIN_ROLE(),
+        roleLabel: "DEFAULT_ADMIN_ROLE",
         contractLabel: tokenDeploymentName,
       });
     }
@@ -199,29 +213,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
     if (vaultDeployment) {
       const vault = await ethers.getContractAt("DStakeCollateralVaultV2", vaultDeployment.address, signer);
-      await ensureRoleGrantedByDeployer({
-        contract: vault,
+      const accessControlledVault = vault as any;
+      await ensureRoleRevokedFromAccount({
+        executor,
+        contract: accessControlledVault,
+        contractAddress: vaultDeployment.address,
+        managerAddress,
+        account: deployer,
         role: await vault.DEFAULT_ADMIN_ROLE(),
         roleLabel: "DEFAULT_ADMIN_ROLE",
-        account: managerAddress,
-        signer: signer,
         contractLabel: vaultDeploymentName,
       });
     }
   }
 
-  const success = await executor.flush("Ethereum mainnet dSTAKE dLEND router role grants");
+  const success = await executor.flush("Ethereum mainnet dSTAKE dLEND deployer role revokes");
 
   if (!success) {
-    throw new Error("Failed to flush dSTAKE dLEND router role grants Safe batch");
+    throw new Error("Failed to flush dSTAKE dLEND deployer role revokes Safe batch");
   }
 
-  console.log("🔁 setup-ethereum-mainnet-dstake-dlend-role-grants-safe: ✅");
+  console.log("🔁 setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe: ✅");
   return true;
 };
 
-func.tags = ["post-deploy", "safe", "dstake", "dlend", "setup-ethereum-mainnet-dstake-dlend-role-grants-safe"];
-func.dependencies = ["dStakeConfigure"];
-func.id = "setup-ethereum-mainnet-dstake-dlend-role-grants-safe";
+func.tags = ["post-deploy", "safe", "dstake", "dlend", "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe"];
+func.dependencies = ["setup-ethereum-mainnet-dstake-dlend-safe"];
+func.id = "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe";
 
 export default func;

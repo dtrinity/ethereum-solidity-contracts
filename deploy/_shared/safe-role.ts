@@ -122,3 +122,53 @@ func.skip = async (): Promise<boolean> => true;
 func.id = "safe-role-helper";
 
 export default func;
+
+/**
+ * Ensures `account` does not have `role` on `contract`, queueing `revokeRole` via Safe if needed.
+ *
+ * @param params Role revoke request.
+ * @param params.executor Governance executor.
+ * @param params.contract AccessControl-compatible contract.
+ * @param params.contractAddress Target contract address.
+ * @param params.managerAddress Safe/manager address (the one revoking the role).
+ * @param params.account Account to revoke role from.
+ * @param params.role Target role identifier.
+ * @param params.roleLabel Human-readable role label.
+ * @param params.contractLabel Human-readable contract label.
+ */
+export async function ensureRoleRevokedFromAccount(params: {
+  executor: GovernanceExecutor;
+  contract: AccessControlLike;
+  contractAddress: string;
+  managerAddress: string;
+  account: string;
+  role: string;
+  roleLabel: string;
+  contractLabel: string;
+}): Promise<void> {
+  const { executor, contract, contractAddress, managerAddress, account, role, roleLabel, contractLabel } = params;
+
+  const access = await getRoleAccess(contract, role, account);
+
+  if (!access.hasRole) {
+    return;
+  }
+
+  const managerAccess = await getRoleAccess(contract, role, managerAddress);
+
+  if (!managerAccess.canGrantRole) {
+    throw new Error(
+      [
+        `[role-check] ${managerAddress} lacks admin role ${managerAccess.adminRole} required to revoke ${roleLabel} on ${contractLabel} (${contractAddress}).`,
+      ].join(" "),
+    );
+  }
+
+  const data = contract.interface.encodeFunctionData("revokeRole", [role, account]);
+  await executor.tryOrQueue(
+    async () => {
+      throw new Error("Direct execution disabled: queue Safe transaction instead.");
+    },
+    () => ({ to: contractAddress, value: "0", data }),
+  );
+}
