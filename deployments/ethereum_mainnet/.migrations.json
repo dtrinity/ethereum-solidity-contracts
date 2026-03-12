@@ -20,7 +20,6 @@
   "dUSD_IssuerV2_2": 1765386134,
   "dUSD_Redeemer": 1765386181,
   "dusd-whitelist-collateral": 1765386347,
-  "point-usd-oracle-aggregator-for-usd": 1765386347,
   "dLend:PoolAddressesProviderRegistry": 1765386375,
   "dLend:LogicLibraries": 1765386532,
   "dLend:Treasury": 1765386627,
@@ -82,5 +81,6 @@
   "dstake_dlend_rewards": 1773298775,
   "setup-ethereum-mainnet-dstake-dlend-role-grants-safe": 1773299081,
   "setup-ethereum-mainnet-dstake-dlend-safe": 1773299360,
-  "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe": 1773299962
+  "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe": 1773299962,
+  "point-usd-oracle-aggregator-for-usd": 1773307474
 }
