@@ -4,7 +4,13 @@ import { ZeroAddress } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { ONE_BPS_UNIT, ONE_HUNDRED_PERCENT_BPS, ONE_PERCENT_BPS } from "../../typescript/common/bps_constants";
-import { DETH_A_TOKEN_WRAPPER_ID, DETH_TOKEN_ID, DUSD_A_TOKEN_WRAPPER_ID, DUSD_TOKEN_ID } from "../../typescript/deploy-ids";
+import {
+  DETH_A_TOKEN_WRAPPER_ID,
+  DETH_TOKEN_ID,
+  DUSD_A_TOKEN_WRAPPER_ID,
+  DUSD_TOKEN_ID,
+  INCENTIVES_PROXY_ID,
+} from "../../typescript/deploy-ids";
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import {
   rateStrategyBorrowDStable,
@@ -90,6 +96,11 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
   const [idleVaultSdUSDDeployment, idleVaultSdETHDeployment] = await Promise.all([
     hre.deployments.getOrNull("DStakeIdleVault_sdUSD"),
     hre.deployments.getOrNull("DStakeIdleVault_sdETH"),
+  ]);
+  const [incentivesProxyDeployment, aTokenDUSDDeployment, aTokenDETHDeployment] = await Promise.all([
+    hre.deployments.getOrNull(INCENTIVES_PROXY_ID),
+    hre.deployments.getOrNull("dUSDAToken"),
+    hre.deployments.getOrNull("dETHAToken"),
   ]);
 
   const governanceAddress = GOVERNANCE_SAFE ?? deployer;
@@ -288,21 +299,32 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
             strategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
             adapterContract: "GenericERC4626ConversionAdapter",
             vaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
-            targetBps: ONE_HUNDRED_PERCENT_BPS,
+            targetBps: 0,
           },
           {
             strategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
-            targetBps: 0,
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
         ],
-        defaultDepositStrategyShare: stringOrEmpty(idleVaultSdUSDDeployment?.address),
-        defaultDepositVaultAsset: stringOrEmpty(idleVaultSdUSDDeployment?.address),
+        defaultDepositStrategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+        defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
         idleVault: {
           name: "dSTAKE Idle dUSD Vault",
           symbol: "idle-dUSD",
           rewardManager: incentivesVault,
+        },
+        dLendRewardManager: {
+          managedStrategyShare: stringOrEmpty(dLendATokenWrapperDUSDDeployment?.address),
+          dLendAssetToClaimFor: stringOrEmpty(aTokenDUSDDeployment?.address),
+          dLendRewardsController: stringOrEmpty(incentivesProxyDeployment?.address),
+          treasury: incentivesVault,
+          maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS,
+          initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS,
+          initialExchangeThreshold: 1n * 10n ** 18n,
+          initialAdmin: governanceAddress,
+          initialRewardsManager: incentivesVault,
         },
       },
       sdETH: {
@@ -315,21 +337,32 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
             strategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
             adapterContract: "GenericERC4626ConversionAdapter",
             vaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
-            targetBps: ONE_HUNDRED_PERCENT_BPS,
+            targetBps: 0,
           },
           {
             strategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
             adapterContract: "WrappedDLendConversionAdapter",
             vaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
-            targetBps: 0,
+            targetBps: ONE_HUNDRED_PERCENT_BPS,
           },
         ],
-        defaultDepositStrategyShare: stringOrEmpty(idleVaultSdETHDeployment?.address),
-        defaultDepositVaultAsset: stringOrEmpty(idleVaultSdETHDeployment?.address),
+        defaultDepositStrategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+        defaultDepositVaultAsset: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
         idleVault: {
           name: "dSTAKE Idle dETH Vault",
           symbol: "idle-dETH",
           rewardManager: incentivesVault,
+        },
+        dLendRewardManager: {
+          managedStrategyShare: stringOrEmpty(dLendATokenWrapperDETHDeployment?.address),
+          dLendAssetToClaimFor: stringOrEmpty(aTokenDETHDeployment?.address),
+          dLendRewardsController: stringOrEmpty(incentivesProxyDeployment?.address),
+          treasury: incentivesVault,
+          maxTreasuryFeeBps: 5 * ONE_PERCENT_BPS,
+          initialTreasuryFeeBps: 1 * ONE_PERCENT_BPS,
+          initialExchangeThreshold: 1n * 10n ** 18n,
+          initialAdmin: governanceAddress,
+          initialRewardsManager: incentivesVault,
         },
       },
     },
