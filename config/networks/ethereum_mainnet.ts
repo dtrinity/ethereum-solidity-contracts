@@ -14,6 +14,7 @@ import {
 import { ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT, ORACLE_AGGREGATOR_PRICE_DECIMALS } from "../../typescript/oracle_aggregator/constants";
 import {
   rateStrategyBorrowDStable,
+  rateStrategyBorrowDUSDMainnetV2,
   rateStrategyHighLiquidityStable,
   rateStrategyHighLiquidityVolatile,
 } from "../dlend/interest-rate-strategies";
@@ -37,6 +38,12 @@ import {
 import { Config } from "../types";
 
 const STABLE_THRESHOLD = ORACLE_AGGREGATOR_BASE_CURRENCY_UNIT;
+
+const strategyDUSDMainnet = {
+  ...strategyDUSD,
+  reserveFactor: "0",
+  strategy: rateStrategyBorrowDUSDMainnetV2,
+};
 
 // Known production token addresses
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -266,9 +273,14 @@ export async function getConfig(hre: HardhatRuntimeEnvironment): Promise<Config>
         total: 0.0005e4,
         protocol: 0.0004e4,
       },
-      rateStrategies: [rateStrategyBorrowDStable, rateStrategyHighLiquidityVolatile, rateStrategyHighLiquidityStable],
+      rateStrategies: [
+        rateStrategyBorrowDStable,
+        rateStrategyBorrowDUSDMainnetV2,
+        rateStrategyHighLiquidityVolatile,
+        rateStrategyHighLiquidityStable,
+      ],
       reservesConfig: {
-        dUSD: strategyDUSD,
+        dUSD: strategyDUSDMainnet,
         dETH: strategyDETH,
 
         WETH: strategyWETH,
