@@ -218,6 +218,10 @@ export async function scanRolesAndOwnership(options: ScanOptions): Promise<ScanR
     try {
       const artifactPath = path.join(deploymentsPath, filename);
       const deployment = JSON.parse(fs.readFileSync(artifactPath, "utf-8"));
+      // Skip non-artifact JSON (e.g. safe-deployment-state.json) that lack an ABI array
+      if (!Array.isArray(deployment?.abi) || !deployment?.address) {
+        continue;
+      }
       deployments.push({
         deploymentName: filename.replace(".json", ""),
         contractName: deployment.contractName ?? filename.replace(".json", ""),

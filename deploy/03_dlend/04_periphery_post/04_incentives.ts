@@ -112,6 +112,49 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     waitConfirmations: 1,
   });
 
+  // Set incentives controller on all existing reserve tokens (aToken, variableDebt, stableDebt).
+  // Reserves are initialized with ZeroAddress because Incentives deploys after init_reserves.
+  if (incentivesProxyAddress && config.dLend?.reservesConfig) {
+    const poolAddress = await addressesProviderInstance.getPool();
+    const poolContract = await ethers.getContractAt("Pool", poolAddress, await ethers.getSigner(deployer));
+    const reserveSymbols = Object.keys(config.dLend.reservesConfig);
+
+    for (const symbol of reserveSymbols) {
+      let underlyingAddress = config.tokenAddresses[symbol as keyof typeof config.tokenAddresses];
+
+      if (!underlyingAddress) {
+        const dep = await deployments.getOrNull(symbol);
+        if (dep?.address) underlyingAddress = dep.address;
+      }
+      if (!underlyingAddress) continue;
+
+      const reserveData = await poolContract.getReserveData(underlyingAddress);
+      if (reserveData.aTokenAddress === ZeroAddress) continue; // reserve not initialized
+
+      const tokens: { addr: string; contractName: string; label: string }[] = [
+        { addr: reserveData.aTokenAddress, contractName: "AToken", label: "aToken" },
+        { addr: reserveData.variableDebtTokenAddress, contractName: "VariableDebtToken", label: "variableDebtToken" },
+        { addr: reserveData.stableDebtTokenAddress, contractName: "StableDebtToken", label: "stableDebtToken" },
+      ];
+
+      for (const { addr, contractName, label } of tokens) {
+        try {
+          const tokenContract = await ethers.getContractAt(contractName, addr, await ethers.getSigner(deployer));
+          const current = await tokenContract.getIncentivesController();
+
+          if (current === ZeroAddress) {
+            await tokenContract.setIncentivesController(incentivesProxyAddress);
+            console.log(`  - Set incentives controller on ${symbol} ${label}`);
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`  - Could not set incentives controller on ${symbol} ${label}: ${msg}`);
+          console.warn("    Caller must have POOL_ADMIN.");
+        }
+      }
+    }
+  }
+
   console.log(`🏦 ${__filename.split("/").slice(-2).join("/")}: ✅`);
 
   return true;

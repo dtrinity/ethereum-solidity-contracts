@@ -20,7 +20,6 @@
   "dUSD_IssuerV2_2": 1765386134,
   "dUSD_Redeemer": 1765386181,
   "dusd-whitelist-collateral": 1765386347,
-  "point-usd-oracle-aggregator-for-usd": 1765386347,
   "dLend:PoolAddressesProviderRegistry": 1765386375,
   "dLend:LogicLibraries": 1765386532,
   "dLend:Treasury": 1765386627,
@@ -43,7 +42,6 @@
   "02_configure_amo_system": 1765428472,
   "deploy_dstake_adapters": 1765529447,
   "configure_dstake": 1765531253,
-  "dstake_dlend_rewards": 1765531253,
   "deploy_dstake_idle_vaults": 1765532264,
   "deploy_dstake_router_modules": 1765532267,
   "deploy_redeemer_v2": 1765536264,
@@ -79,5 +77,10 @@
   "setup-ethereum-mainnet-collateral-oracles-safe-v4": 1773201611,
   "setup-ethereum-mainnet-collateral-reserves-config-safe-v4": 1773201852,
   "setup-ethereum-mainnet-collateral-reserves-revoke-risk-admin-safe-v3": 1773202121,
-  "setup-ethereum-mainnet-collateral-vaults-safe-v3": 1773203240
+  "setup-ethereum-mainnet-collateral-vaults-safe-v3": 1773203240,
+  "dstake_dlend_rewards": 1773298775,
+  "setup-ethereum-mainnet-dstake-dlend-role-grants-safe": 1773299081,
+  "setup-ethereum-mainnet-dstake-dlend-safe": 1773299360,
+  "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe": 1773299962,
+  "point-usd-oracle-aggregator-for-usd": 1773307474
 }

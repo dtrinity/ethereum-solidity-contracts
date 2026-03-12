@@ -17,8 +17,15 @@ import {
   INCENTIVES_PROXY_ID,
   POOL_DATA_PROVIDER_ID,
 } from "../../typescript/deploy-ids";
+import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
+const ACCESS_CONTROL_ABI = [
+  "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
+  "function REWARDS_MANAGER_ROLE() view returns (bytes32)",
+  "function hasRole(bytes32 role, address account) view returns (bool)",
+  "function grantRole(bytes32 role, address account) external",
+];
 
 /**
  * Authorizes reward managers to pull rewards from adapters when both addresses are valid.
@@ -26,11 +33,13 @@ const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool a
  * @param adapterAddress Address of adapter contract managing authorized callers.
  * @param caller Reward manager or router address that should be granted access.
  * @param signer Signer capable of executing the authorization transaction.
+ * @param manualActions Collector for manual follow-ups if authorization cannot be performed.
  */
 async function ensureAdapterAuthorizedCaller(
   adapterAddress: string,
   caller: string,
   signer: Awaited<ReturnType<typeof ethers.getSigner>>,
+  manualActions: string[],
 ): Promise<void> {
   if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
     return;
@@ -39,10 +48,55 @@ async function ensureAdapterAuthorizedCaller(
   const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
 
   try {
-    await adapter.setAuthorizedCaller(caller, true);
+    const tx = await adapter.setAuthorizedCaller(caller, true);
+    await tx.wait();
   } catch (error) {
+    manualActions.push(`Adapter (${adapterAddress}).setAuthorizedCaller(${caller}, true)`);
     console.warn(
       `⚠️  Unable to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}
+
+/**
+ * Grants a reward-manager role to the configured address when it is not already present.
+ *
+ * @param params Reward-manager role grant parameters.
+ * @param params.rewardManagerAddress Reward manager contract address.
+ * @param params.roleName Role identifier getter to resolve.
+ * @param params.account Account that should receive the role.
+ * @param params.signer Signer used to submit the role grant.
+ * @param params.manualActions Collector for follow-up actions when the grant fails.
+ */
+async function ensureRewardManagerRole(params: {
+  rewardManagerAddress: string;
+  roleName: "DEFAULT_ADMIN_ROLE" | "REWARDS_MANAGER_ROLE";
+  account: string;
+  signer: Awaited<ReturnType<typeof ethers.getSigner>>;
+  manualActions: string[];
+}): Promise<void> {
+  const { rewardManagerAddress, roleName, account, signer, manualActions } = params;
+
+  if (!account || account === ethers.ZeroAddress) {
+    return;
+  }
+
+  const rewardManager = await ethers.getContractAt(ACCESS_CONTROL_ABI, rewardManagerAddress, signer);
+  const role = await rewardManager[roleName]();
+
+  if (await rewardManager.hasRole(role, account)) {
+    return;
+  }
+
+  try {
+    const tx = await rewardManager.grantRole(role, account);
+    await tx.wait();
+  } catch (error) {
+    manualActions.push(`DStakeRewardManagerDLend (${rewardManagerAddress}).grantRole(${roleName}, ${account})`);
+    console.warn(
+      `⚠️  Unable to grant ${roleName} to ${account} on reward manager ${rewardManagerAddress}: ${
+        error instanceof Error ? error.message : error
+      }`,
     );
   }
 }
@@ -63,6 +117,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   const deployerSigner = await ethers.getSigner(deployer);
+  const executor = new GovernanceExecutor(hre, deployerSigner, config.safeConfig);
+  await executor.initialize();
 
   // --- Validation Loop ---
   for (const instanceKey in config.dStake) {
@@ -261,6 +317,30 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       skipIfAlreadyDeployed: true,
     });
 
+    const rewardManagerAdmin =
+      rewardManagerConfig.initialAdmin && rewardManagerConfig.initialAdmin !== ethers.ZeroAddress
+        ? rewardManagerConfig.initialAdmin
+        : deployer;
+    const rewardManagerOps =
+      rewardManagerConfig.initialRewardsManager && rewardManagerConfig.initialRewardsManager !== ethers.ZeroAddress
+        ? rewardManagerConfig.initialRewardsManager
+        : rewardManagerAdmin;
+
+    await ensureRewardManagerRole({
+      rewardManagerAddress: deployment.address,
+      roleName: "DEFAULT_ADMIN_ROLE",
+      account: rewardManagerAdmin,
+      signer: deployerSigner,
+      manualActions,
+    });
+    await ensureRewardManagerRole({
+      rewardManagerAddress: deployment.address,
+      roleName: "REWARDS_MANAGER_ROLE",
+      account: rewardManagerOps,
+      signer: deployerSigner,
+      manualActions,
+    });
+
     // Authorize this manager as a claimer via EmissionManager
     const emissionManagerDeployment = await deployments.get(EMISSION_MANAGER_ID);
     const emissionManager = EmissionManagerFactory.connect(emissionManagerDeployment.address, deployerSigner);
@@ -273,10 +353,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const needsClaimerUpdate = existingClaimer.toLowerCase() !== deployment.address.toLowerCase();
 
     if (needsClaimerUpdate) {
-      if (emissionOwner.toLowerCase() === deployer.toLowerCase()) {
-        const tx = await emissionManager.connect(deployerSigner).setClaimer(targetStaticATokenWrapperAddress, deployment.address);
-        await tx.wait();
-      } else {
+      const setClaimerData = emissionManager.interface.encodeFunctionData("setClaimer", [
+        targetStaticATokenWrapperAddress,
+        deployment.address,
+      ]);
+      const completedOrQueued = await executor.tryOrQueue(
+        async () => {
+          if (emissionOwner.toLowerCase() !== deployer.toLowerCase()) {
+            throw new Error(`Deployer ${deployer} is not EmissionManager owner ${emissionOwner}`);
+          }
+          const tx = await emissionManager.connect(deployerSigner).setClaimer(targetStaticATokenWrapperAddress, deployment.address);
+          await tx.wait();
+        },
+        () => ({ to: emissionManagerDeployment.address, value: "0", data: setClaimerData }),
+      );
+
+      if (!completedOrQueued && !executor.useSafe) {
         manualActions.push(
           `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`,
         );
@@ -289,7 +381,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       // Authorize for the managed strategy share adapter
       const managedAdapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
-      await ensureAdapterAuthorizedCaller(managedAdapterAddress, deployment.address, deployerSigner);
+      await ensureAdapterAuthorizedCaller(managedAdapterAddress, deployment.address, deployerSigner, manualActions);
 
       // Also authorize for the default deposit strategy adapter if different (e.g., Idle Vault)
       // This is required because the manager compounds by depositing into the default strategy.
@@ -297,11 +389,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (defaultStrategyShare !== ethers.ZeroAddress && defaultStrategyShare !== targetStaticATokenWrapperAddress) {
         const defaultAdapterAddress = await routerContract.strategyShareToAdapter(defaultStrategyShare);
-        await ensureAdapterAuthorizedCaller(defaultAdapterAddress, deployment.address, deployerSigner);
+        await ensureAdapterAuthorizedCaller(defaultAdapterAddress, deployment.address, deployerSigner, manualActions);
       }
 
       console.log(`    Deployed DStakeRewardManagerDLend for ${instanceKey}.`);
     }
+  }
+
+  const flushed = await executor.flush("Ethereum mainnet dSTAKE dLEND reward manager claimer setup");
+
+  if (!flushed) {
+    throw new Error("Failed to flush Safe transactions for dSTAKE dLEND reward manager setup");
   }
 
   // After processing all instances, print any manual steps that are required.
