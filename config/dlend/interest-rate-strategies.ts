@@ -21,6 +21,19 @@ export const rateStrategyBorrowDStable: IInterestRateStrategyParams = {
   optimalStableToTotalDebtRatio: ethers.parseUnits("0", 27).toString(),
 };
 
+export const rateStrategyBorrowDUSDMainnetV2: IInterestRateStrategyParams = {
+  name: "rateStrategyBorrowDUSDMainnetV2",
+  optimalUsageRatio: ethers.parseUnits("0.8", 27).toString(), // 80% kink
+  baseVariableBorrowRate: ethers.parseUnits("0.03", 27).toString(), // 3% at 0% utilization
+  variableRateSlope1: ethers.parseUnits("0.045", 27).toString(), // 7.5% at kink
+  variableRateSlope2: ethers.parseUnits("0.225", 27).toString(), // 30% at 100% utilization
+  stableRateSlope1: ethers.parseUnits("0", 27).toString(),
+  stableRateSlope2: ethers.parseUnits("0", 27).toString(),
+  baseStableRateOffset: ethers.parseUnits("0", 27).toString(),
+  stableRateExcessOffset: ethers.parseUnits("0", 27).toString(),
+  optimalStableToTotalDebtRatio: ethers.parseUnits("0", 27).toString(),
+};
+
 export const rateStrategyHighLiquidityVolatile: IInterestRateStrategyParams = {
   name: "rateStrategyHighLiquidityVolatile",
   optimalUsageRatio: ethers.parseUnits("0.5", 27).toString(), // kink
