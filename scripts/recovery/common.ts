@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { JsonRpcProvider } from "ethers";
@@ -39,6 +39,73 @@ export function loadDeploymentAddress(deploymentName: string, fallback = ""): st
  */
 export function createProvider(): JsonRpcProvider {
   return new JsonRpcProvider(process.env.RPC_URL || "https://ethereum-rpc.publicnode.com");
+}
+
+/**
+ * Normalizes an address for case-insensitive comparisons.
+ *
+ * @param value Address to normalize.
+ */
+export function normalizeAddress(value: string): string {
+  return value.toLowerCase();
+}
+
+/**
+ * Removes duplicate addresses while preserving the original order.
+ *
+ * @param values Addresses to deduplicate.
+ */
+export function uniqueAddresses(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizeAddress(value);
+
+    if (seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    out.push(value);
+  }
+
+  return out;
+}
+
+/**
+ * Loads and deduplicates an address list from the first defined env var.
+ *
+ * @param names Candidate env vars in precedence order.
+ */
+export function parseAddressListEnv(...names: string[]): string[] {
+  for (const name of names) {
+    const raw = process.env[name];
+
+    if (!raw) {
+      continue;
+    }
+
+    return uniqueAddresses(JSON.parse(raw) as string[]);
+  }
+
+  return [];
+}
+
+/**
+ * Loads a boolean env var with a default fallback.
+ *
+ * @param name Env var name.
+ * @param defaultValue Fallback when unset.
+ */
+export function parseBooleanEnv(name: string, defaultValue: boolean): boolean {
+  const raw = process.env[name];
+
+  if (!raw) {
+    return defaultValue;
+  }
+
+  return raw.toLowerCase() === "true";
 }
 
 /**
@@ -120,10 +187,7 @@ export const aTokenAbi = [
 
 /**
  * Resolves the reserve list from env or on-chain state.
- *
- * @param fallbackPoolAddress Pool address used for on-chain fallback.
  */
 export function parseReserveOverrides(): string[] {
-  return JSON.parse(process.env.RESERVES_JSON || "[]") as string[];
+  return parseAddressListEnv("RESERVES_JSON");
 }
-

@@ -5,55 +5,16 @@ import { getConfig } from "../../config/config";
 import { DUSD_TOKEN_ID, POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-
-const DEFAULT_CBBTC = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
-
-type DecodedReserveConfig = {
-  ltv: bigint;
-  liquidationThreshold: bigint;
-  liquidationBonus: bigint;
-  frozen: boolean;
-  borrowingEnabled: boolean;
-  stableRateBorrowingEnabled: boolean;
-  paused: boolean;
-  flashLoanEnabled: boolean;
-};
-
-/**
- * Decodes an Aave-v3-style config bitfield.
- *
- * @param value Packed config value.
- * @param start Start bit.
- * @param width Width in bits.
- */
-function bit(value: bigint, start: bigint, width = 1n): bigint {
-  return (value >> start) & ((1n << width) - 1n);
-}
-
-/**
- * Parses the recovery reserve list from env.
- */
-function parseRecoveryReserves(): string[] {
-  return JSON.parse(process.env.RECOVERY_RESERVES_JSON || "[]") as string[];
-}
-
-/**
- * Converts the raw config bitmap into named fields.
- *
- * @param data Raw reserve config.
- */
-function decodeConfig(data: bigint): DecodedReserveConfig {
-  return {
-    ltv: bit(data, 0n, 16n),
-    liquidationThreshold: bit(data, 16n, 16n),
-    liquidationBonus: bit(data, 32n, 16n),
-    frozen: bit(data, 57n) === 1n,
-    borrowingEnabled: bit(data, 58n) === 1n,
-    stableRateBorrowingEnabled: bit(data, 59n) === 1n,
-    paused: bit(data, 60n) === 1n,
-    flashLoanEnabled: bit(data, 63n) === 1n,
-  };
-}
+import {
+  DEFAULT_CBBTC,
+  getPoolReserves,
+  getReserveConfig,
+  normalizeAddress,
+  parseAddressListEnv,
+  parseBooleanEnv,
+  queueReserveIntoFrozenState,
+  queueSafeCall,
+} from "./common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
@@ -73,19 +34,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   await executor.initialize();
 
-  const recoveryReserves = parseRecoveryReserves();
-
-  if (recoveryReserves.length === 0) {
-    throw new Error("RECOVERY_RESERVES_JSON must contain at least one reserve.");
-  }
-
+  const subsetOverride = parseAddressListEnv("PHASE1_RESERVES_JSON", "RECOVERY_RESERVES_JSON");
+  const allowSubset = parseBooleanEnv("PHASE1_ALLOW_SUBSET", false);
   const dUSDAddress = process.env.RECOVERY_DUSD_ADDRESS || config.tokenAddresses.dUSD || (await deployments.get(DUSD_TOKEN_ID)).address;
   const cbBtcAddress = process.env.RECOVERY_CBBTC_ADDRESS || config.tokenAddresses.cbBTC || DEFAULT_CBBTC;
-  const setCbBtcLtvZero = (process.env.RECOVERY_SET_CBBTC_LTV_ZERO || "true").toLowerCase() === "true";
-
-  if (!recoveryReserves.some((asset) => asset.toLowerCase() === dUSDAddress.toLowerCase())) {
-    throw new Error("RECOVERY_RESERVES_JSON must include dUSD so the recovery batch unpauses it into frozen mode.");
-  }
+  const setCbBtcLtvZero = parseBooleanEnv("RECOVERY_SET_CBBTC_LTV_ZERO", true);
 
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
@@ -95,122 +48,67 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     ethers.getContractAt("PoolConfigurator", poolConfiguratorAddress, signer),
   ]);
 
-  const addSafeCall = async (txData: string): Promise<void> => {
-    await executor.tryOrQueue(
-      async () => {
-        throw new Error("Direct execution disabled: queue Safe transaction instead.");
-      },
-      () => ({ to: poolConfiguratorAddress, value: "0", data: txData }),
+  const allReserves = await getPoolReserves(pool);
+  const phase1Targets = subsetOverride.length > 0 ? subsetOverride : allReserves;
+
+  if (!phase1Targets.some((asset) => normalizeAddress(asset) === normalizeAddress(dUSDAddress))) {
+    throw new Error("Phase 1 target set must include dUSD.");
+  }
+
+  if (!phase1Targets.some((asset) => normalizeAddress(asset) === normalizeAddress(cbBtcAddress))) {
+    throw new Error("Phase 1 target set must include cbBTC.");
+  }
+
+  if (subsetOverride.length > 0 && !allowSubset) {
+    throw new Error(
+      "PHASE1_RESERVES_JSON / RECOVERY_RESERVES_JSON was provided, but Phase 1 is intended to freeze the full reserve list. Set PHASE1_ALLOW_SUBSET=true only for rehearsal runs.",
     );
-  };
+  }
 
-  const queueReserveTransition = async (asset: string): Promise<void> => {
-    const configRaw = await pool.getConfiguration(asset);
-    const current = decodeConfig(BigInt(configRaw.data.toString()));
+  for (const asset of phase1Targets) {
+    const current = await getReserveConfig(pool, asset);
+    const normalized = normalizeAddress(asset);
 
-    if (current.stableRateBorrowingEnabled) {
-      await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveStableRateBorrowing", [asset, false]));
-    }
-
-    if (current.borrowingEnabled) {
-      await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveBorrowing", [asset, false]));
-    }
-
-    if (current.flashLoanEnabled) {
-      await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFlashLoaning", [asset, false]));
-    }
-
-    if (!current.frozen) {
-      await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFreeze", [asset, true]));
-    }
-
-    if (current.paused) {
-      await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReservePause", [asset, false]));
-    }
-  };
-
-  for (const asset of recoveryReserves) {
-    const normalized = asset.toLowerCase();
-
-    if (normalized === cbBtcAddress.toLowerCase()) {
-      throw new Error("cbBTC must stay paused and cannot be part of RECOVERY_RESERVES_JSON.");
-    }
-
-    if (normalized === dUSDAddress.toLowerCase()) {
+    if (normalized === normalizeAddress(dUSDAddress)) {
+      await queueReserveIntoFrozenState(executor, poolConfigurator, poolConfiguratorAddress, asset, current, false);
       continue;
     }
 
-    await queueReserveTransition(asset);
+    await queueReserveIntoFrozenState(executor, poolConfigurator, poolConfiguratorAddress, asset, current, true);
+
+    if (normalized === normalizeAddress(cbBtcAddress) && setCbBtcLtvZero && current.ltv !== 0n) {
+      await queueSafeCall(
+        executor,
+        poolConfiguratorAddress,
+        poolConfigurator.interface.encodeFunctionData("configureReserveAsCollateral", [
+          cbBtcAddress,
+          0,
+          current.liquidationThreshold,
+          current.liquidationBonus,
+        ]),
+      );
+    }
   }
 
-  const cbBtcRawConfig = await pool.getConfiguration(cbBtcAddress);
-  const cbBtcConfig = decodeConfig(BigInt(cbBtcRawConfig.data.toString()));
-
-  if (cbBtcConfig.stableRateBorrowingEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveStableRateBorrowing", [cbBtcAddress, false]));
-  }
-
-  if (cbBtcConfig.borrowingEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveBorrowing", [cbBtcAddress, false]));
-  }
-
-  if (cbBtcConfig.flashLoanEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFlashLoaning", [cbBtcAddress, false]));
-  }
-
-  if (!cbBtcConfig.frozen) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFreeze", [cbBtcAddress, true]));
-  }
-
-  if (!cbBtcConfig.paused) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReservePause", [cbBtcAddress, true]));
-  }
-
-  if (setCbBtcLtvZero && cbBtcConfig.ltv !== 0n) {
-    await addSafeCall(
-      poolConfigurator.interface.encodeFunctionData("configureReserveAsCollateral", [
-        cbBtcAddress,
-        0,
-        cbBtcConfig.liquidationThreshold,
-        cbBtcConfig.liquidationBonus,
-      ]),
-    );
-  }
-
-  const dUSDRawConfig = await pool.getConfiguration(dUSDAddress);
-  const dUSDConfig = decodeConfig(BigInt(dUSDRawConfig.data.toString()));
-
-  if (dUSDConfig.stableRateBorrowingEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveStableRateBorrowing", [dUSDAddress, false]));
-  }
-
-  if (dUSDConfig.borrowingEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveBorrowing", [dUSDAddress, false]));
-  }
-
-  if (dUSDConfig.flashLoanEnabled) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFlashLoaning", [dUSDAddress, false]));
-  }
-
-  if (!dUSDConfig.frozen) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReserveFreeze", [dUSDAddress, true]));
-  }
-
-  if (dUSDConfig.paused) {
-    await addSafeCall(poolConfigurator.interface.encodeFunctionData("setReservePause", [dUSDAddress, false]));
-  }
-
-  const success = await executor.flush("Ethereum mainnet dLEND recovery reserve reconfiguration");
+  const success = await executor.flush("Ethereum mainnet dLEND recovery phase 1: freeze all reserves, unpause only dUSD");
 
   if (!success) {
-    throw new Error("Failed to flush dLEND recovery Safe batch");
+    throw new Error("Failed to flush dLEND recovery Phase 1 Safe batch");
   }
 
-  console.log("🔁 setup-ethereum-mainnet-dlend-recovery-safe: ✅");
+  console.log(`🔁 setup-ethereum-mainnet-dlend-recovery-safe: ✅ (${phase1Targets.length} reserves)`);
   return true;
 };
 
-func.tags = ["post-deploy", "safe", "dlend", "recovery", "setup-ethereum-mainnet-dlend-recovery-safe"];
+func.tags = [
+  "post-deploy",
+  "safe",
+  "dlend",
+  "recovery",
+  "phase1",
+  "setup-ethereum-mainnet-dlend-recovery-safe",
+  "setup-ethereum-mainnet-dlend-recovery-phase1-safe",
+];
 func.dependencies = ["setup-ethereum-mainnet-dlend-recovery-preflight"];
 func.id = "setup-ethereum-mainnet-dlend-recovery-safe";
 

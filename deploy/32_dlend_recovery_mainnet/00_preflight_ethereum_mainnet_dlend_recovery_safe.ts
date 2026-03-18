@@ -2,28 +2,10 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { DETH_TOKEN_ID, DUSD_TOKEN_ID, POOL_ADDRESSES_PROVIDER_ID, POOL_CONFIGURATOR_PROXY_ID } from "../../typescript/deploy-ids";
+import { DUSD_TOKEN_ID, POOL_ADDRESSES_PROVIDER_ID, POOL_CONFIGURATOR_PROXY_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-
-const DEFAULT_CBBTC = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
-
-/**
- * Adds a formatted blocker to the mutable blocker list.
- *
- * @param blockers Mutable blocker array.
- * @param message Message to append.
- */
-function addBlocker(blockers: string[], message: string): void {
-  blockers.push(message);
-}
-
-/**
- * Parses the recovery reserve list from env.
- */
-function parseRecoveryReserves(): string[] {
-  return JSON.parse(process.env.RECOVERY_RESERVES_JSON || "[]") as string[];
-}
+import { addBlocker, DEFAULT_CBBTC, getPoolReserves, isSubset, normalizeAddress, parseAddressListEnv, parseBooleanEnv } from "./common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
@@ -42,25 +24,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     throw new Error("Safe config is required for dLEND recovery rollout. Provide config.safeConfig and enable Safe mode.");
   }
 
-  const recoveryReserves = parseRecoveryReserves();
+  const safeAddress = config.safeConfig.safeAddress;
+  const subsetOverride = parseAddressListEnv("PHASE1_RESERVES_JSON", "RECOVERY_RESERVES_JSON");
+  const allowSubset = parseBooleanEnv("PHASE1_ALLOW_SUBSET", false);
   const dUSDAddress = process.env.RECOVERY_DUSD_ADDRESS || config.tokenAddresses.dUSD || (await deployments.get(DUSD_TOKEN_ID)).address;
-  const dETHAddress = process.env.RECOVERY_DETH_ADDRESS || config.tokenAddresses.dETH || (await deployments.get(DETH_TOKEN_ID)).address;
   const cbBtcAddress = process.env.RECOVERY_CBBTC_ADDRESS || config.tokenAddresses.cbBTC || DEFAULT_CBBTC;
-
-  if (recoveryReserves.length === 0) {
-    addBlocker(blockers, "RECOVERY_RESERVES_JSON must list the reserves that will end in recovery-safe mode.");
-  }
-
-  if (dUSDAddress && !recoveryReserves.some((asset) => asset.toLowerCase() === dUSDAddress.toLowerCase())) {
-    addBlocker(blockers, "RECOVERY_RESERVES_JSON must include dUSD so the recovery batch can unpause it into frozen mode.");
-  }
 
   if (!dUSDAddress) {
     addBlocker(blockers, "Unable to resolve the dUSD reserve address.");
-  }
-
-  if (!dETHAddress) {
-    addBlocker(blockers, "Unable to resolve the dETH reserve address.");
   }
 
   if (!cbBtcAddress) {
@@ -73,47 +44,101 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   ]);
 
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", providerDeployment.address, signer);
-  const [poolAddress, poolConfiguratorAddress] = await Promise.all([addressProvider.getPool(), addressProvider.getPoolConfigurator()]);
+  const [poolAddress, poolConfiguratorAddress, aclManagerAddress] = await Promise.all([
+    addressProvider.getPool(),
+    addressProvider.getPoolConfigurator(),
+    addressProvider.getACLManager(),
+  ]);
 
-  if (poolConfiguratorAddress.toLowerCase() !== configuratorDeployment.address.toLowerCase()) {
+  if (normalizeAddress(poolConfiguratorAddress) !== normalizeAddress(configuratorDeployment.address)) {
     addBlocker(
       blockers,
       `PoolConfiguratorProxy mismatch: provider=${poolConfiguratorAddress}, deployment=${configuratorDeployment.address}.`,
     );
   }
 
-  const pool = await ethers.getContractAt("Pool", poolAddress, signer);
-  const reservesList = new Set((await pool.getReservesList()).map((asset: string) => asset.toLowerCase()));
+  const [pool, aclManager] = await Promise.all([
+    ethers.getContractAt("Pool", poolAddress, signer),
+    ethers.getContractAt("ACLManager", aclManagerAddress, signer),
+  ]);
 
-  for (const asset of recoveryReserves) {
-    if (!reservesList.has(asset.toLowerCase())) {
-      addBlocker(blockers, `Recovery reserve ${asset} is not active in pool ${poolAddress}.`);
+  const allReserves = await getPoolReserves(pool);
+  const phase1Targets = subsetOverride.length > 0 ? subsetOverride : allReserves;
+  const allReserveSet = new Set(allReserves.map((asset) => normalizeAddress(asset)));
+
+  if (subsetOverride.length > 0 && !allowSubset) {
+    addBlocker(
+      blockers,
+      "PHASE1_RESERVES_JSON / RECOVERY_RESERVES_JSON was provided, but Phase 1 is intended to freeze every live reserve. Set PHASE1_ALLOW_SUBSET=true only for explicit rehearsal runs.",
+    );
+  }
+
+  if (!isSubset(phase1Targets, allReserves)) {
+    for (const asset of phase1Targets) {
+      if (!allReserveSet.has(normalizeAddress(asset))) {
+        addBlocker(blockers, `Phase 1 target reserve ${asset} is not active in pool ${poolAddress}.`);
+      }
     }
+  }
+
+  if (phase1Targets.length !== allReserves.length && !allowSubset) {
+    addBlocker(
+      blockers,
+      `Phase 1 target set has ${phase1Targets.length} reserves but pool ${poolAddress} has ${allReserves.length}. Phase 1 should cover the full reserve list.`,
+    );
   }
 
   for (const [label, asset] of [
     ["dUSD", dUSDAddress],
-    ["dETH", dETHAddress],
     ["cbBTC", cbBtcAddress],
   ] as const) {
-    if (asset && !reservesList.has(asset.toLowerCase())) {
+    if (asset && !allReserveSet.has(normalizeAddress(asset))) {
       addBlocker(blockers, `${label} reserve ${asset} is not active in pool ${poolAddress}.`);
     }
   }
 
-  if (recoveryReserves.some((asset) => asset.toLowerCase() === cbBtcAddress.toLowerCase())) {
-    addBlocker(blockers, "cbBTC must not be included in RECOVERY_RESERVES_JSON; it stays paused in the recovery batch.");
+  if (!phase1Targets.some((asset) => normalizeAddress(asset) === normalizeAddress(dUSDAddress))) {
+    addBlocker(blockers, "Phase 1 target set must include dUSD so it can be unpaused into frozen mode.");
+  }
+
+  if (!phase1Targets.some((asset) => normalizeAddress(asset) === normalizeAddress(cbBtcAddress))) {
+    addBlocker(blockers, "Phase 1 target set must include cbBTC so it can be quarantined in-place.");
+  }
+
+  const [isPoolAdmin, isRiskAdmin, isEmergencyAdmin] = await Promise.all([
+    aclManager.isPoolAdmin(safeAddress),
+    aclManager.isRiskAdmin(safeAddress),
+    aclManager.isEmergencyAdmin(safeAddress),
+  ]);
+
+  if (!isPoolAdmin && !isRiskAdmin) {
+    addBlocker(
+      blockers,
+      `Safe ${safeAddress} must be a pool admin or risk admin to disable borrowing, stable borrowing, flash loans, and to freeze reserves.`,
+    );
+  }
+
+  if (!isPoolAdmin && !isEmergencyAdmin) {
+    addBlocker(blockers, `Safe ${safeAddress} must be a pool admin or emergency admin to pause/unpause reserves.`);
   }
 
   if (blockers.length > 0) {
-    throw new Error(`dLEND recovery preflight failed:\n- ${blockers.join("\n- ")}`);
+    throw new Error(`dLEND recovery phase 1 preflight failed:\n- ${blockers.join("\n- ")}`);
   }
 
-  console.log("🔁 setup-ethereum-mainnet-dlend-recovery-preflight: ✅");
+  console.log(`🔁 setup-ethereum-mainnet-dlend-recovery-preflight: ✅ (${phase1Targets.length} reserves)`);
   return true;
 };
 
-func.tags = ["post-deploy", "safe", "dlend", "recovery", "setup-ethereum-mainnet-dlend-recovery-preflight"];
+func.tags = [
+  "post-deploy",
+  "safe",
+  "dlend",
+  "recovery",
+  "phase1",
+  "setup-ethereum-mainnet-dlend-recovery-preflight",
+  "setup-ethereum-mainnet-dlend-recovery-phase1-preflight",
+];
 func.id = "setup-ethereum-mainnet-dlend-recovery-preflight";
 
 export default func;

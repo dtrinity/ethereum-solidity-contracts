@@ -2,7 +2,20 @@ import "dotenv/config";
 
 import { Contract, formatUnits } from "ethers";
 
-import { aTokenAbi, createProvider, decodeConfig, DEFAULT_ATTACKER, DEFAULT_CBBTC, erc20Abi, loadDeploymentAddress, parseReserveOverrides, poolAbi } from "./common";
+import {
+  aTokenAbi,
+  createProvider,
+  decodeConfig,
+  DEFAULT_ATTACKER,
+  DEFAULT_CBBTC,
+  erc20Abi,
+  loadDeploymentAddress,
+  normalizeAddress,
+  parseAddressListEnv,
+  parseBooleanEnv,
+  parseReserveOverrides,
+  poolAbi,
+} from "./common";
 
 const provider = createProvider();
 const POOL = process.env.POOL || loadDeploymentAddress("PoolProxy");
@@ -10,7 +23,8 @@ const DUSD = process.env.DUSD || loadDeploymentAddress("dUSD");
 const CBBTC = process.env.CBBTC || DEFAULT_CBBTC;
 const ATTACKER = process.env.ATTACKER || DEFAULT_ATTACKER;
 const LOW_SUPPLY_WARNING = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
-const REQUIRE_ZERO_AVAILABLE_BORROWS = (process.env.REQUIRE_ZERO_AVAILABLE_BORROWS || "true").toLowerCase() === "true";
+const REQUIRE_ZERO_AVAILABLE_BORROWS = parseBooleanEnv("REQUIRE_ZERO_AVAILABLE_BORROWS", true);
+const REQUIRE_CBBTC_LTV_ZERO = parseBooleanEnv("REQUIRE_CBBTC_LTV_ZERO", true);
 
 if (!POOL || !DUSD || !CBBTC || !ATTACKER) {
   throw new Error("Missing required addresses. Set POOL, DUSD, CBBTC, and ATTACKER.");
@@ -20,6 +34,10 @@ async function main() {
   const pool = new Contract(POOL, poolAbi, provider);
   const configuredReserves = parseReserveOverrides();
   const reserves = configuredReserves.length > 0 ? configuredReserves : ((await pool.getReservesList()) as string[]);
+  const phase2LiveReserves = new Set([
+    normalizeAddress(DUSD),
+    ...parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON").map((asset) => normalizeAddress(asset)),
+  ]);
   const failures: string[] = [];
   const warnings: string[] = [];
 
@@ -37,10 +55,16 @@ async function main() {
   if (dusdConfig.flashLoanEnabled) failures.push("dUSD flash loans are still enabled");
 
   if (!cbBtcConfig.paused) failures.push("cbBTC is not paused");
+  if (!cbBtcConfig.frozen) failures.push("cbBTC is not frozen");
   if (cbBtcConfig.borrowingEnabled) failures.push("cbBTC borrowing is still enabled");
   if (cbBtcConfig.stableRateBorrowingEnabled) failures.push("cbBTC stable-rate borrowing is still enabled");
   if (cbBtcConfig.flashLoanEnabled) failures.push("cbBTC flash loans are still enabled");
-  if (cbBtcConfig.ltv !== 0) warnings.push("cbBTC LTV is not zero; attacker may still show nonzero available borrow base.");
+
+  if (REQUIRE_CBBTC_LTV_ZERO && cbBtcConfig.ltv !== 0) {
+    failures.push(`cbBTC LTV is ${cbBtcConfig.ltv} instead of 0`);
+  } else if (cbBtcConfig.ltv !== 0) {
+    warnings.push(`cbBTC LTV remains ${cbBtcConfig.ltv}`);
+  }
 
   const dusdReserve = await pool.getReserveData(DUSD);
   const dusdDebtToken = new Contract(dusdReserve.variableDebtTokenAddress, erc20Abi, provider);
@@ -65,9 +89,68 @@ async function main() {
       aToken.totalSupply(),
     ]);
     const totalSupplyFormatted = Number(formatUnits(totalSupply, decimals));
+    const normalized = normalizeAddress(asset);
 
-    if (!config.paused && config.flashLoanEnabled && totalSupplyFormatted <= LOW_SUPPLY_WARNING) {
-      failures.push(`${symbol} is unpaused, flashloan-enabled, and low-supply (${totalSupplyFormatted}).`);
+    if (!config.active) {
+      failures.push(`${symbol} is inactive`);
+    }
+
+    if (normalized === normalizeAddress(CBBTC)) {
+      if (!config.paused) {
+        failures.push("cbBTC is not paused");
+      }
+
+      if (!config.frozen) {
+        failures.push("cbBTC is not frozen");
+      }
+
+      if (config.borrowingEnabled) {
+        failures.push("cbBTC still has borrowing enabled");
+      }
+
+      if (config.stableRateBorrowingEnabled) {
+        failures.push("cbBTC still has stable-rate borrowing enabled");
+      }
+
+      if (config.flashLoanEnabled) {
+        failures.push("cbBTC still has flash loans enabled");
+      }
+
+      continue;
+    }
+
+    const shouldBeUnpaused = phase2LiveReserves.has(normalized);
+
+    if (shouldBeUnpaused && config.paused) {
+      failures.push(`${symbol} should be unpaused in Phase 2 but is still paused`);
+    }
+
+    if (!shouldBeUnpaused && !config.paused) {
+      failures.push(`${symbol} is unpaused even though it is not in the Phase 2 live reserve set`);
+    }
+
+    if (!shouldBeUnpaused) {
+      continue;
+    }
+
+    if (!config.frozen) {
+      failures.push(`${symbol} is not frozen`);
+    }
+
+    if (config.borrowingEnabled) {
+      failures.push(`${symbol} still has borrowing enabled`);
+    }
+
+    if (config.stableRateBorrowingEnabled) {
+      failures.push(`${symbol} still has stable-rate borrowing enabled`);
+    }
+
+    if (config.flashLoanEnabled) {
+      failures.push(`${symbol} still has flash loans enabled`);
+    }
+
+    if (shouldBeUnpaused && totalSupplyFormatted <= LOW_SUPPLY_WARNING) {
+      warnings.push(`${symbol} is live in Phase 2 with low aToken supply (${totalSupplyFormatted})`);
     }
   }
 
@@ -76,6 +159,7 @@ async function main() {
       {
         checkedAt: new Date().toISOString(),
         attacker: ATTACKER,
+        phase2LiveReserves: Array.from(phase2LiveReserves),
         failures,
         warnings,
         status: failures.length === 0 ? "PASS" : "FAIL",
