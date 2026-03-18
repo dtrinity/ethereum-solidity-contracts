@@ -22,9 +22,32 @@ This document turns the March 17, 2026 recovery kit into repo-native operator st
   - `scripts/recovery/preflight-checks.ts`
   - `scripts/recovery/repay-attacker-variable-debt.ts`
   - `scripts/recovery/assert-post-repay.ts`
+  - `scripts/recovery/assert-phase3.ts`
 - Safe batch generation:
   - `deploy/32_dlend_recovery_mainnet/00_preflight_ethereum_mainnet_dlend_recovery_safe.ts`
   - `deploy/32_dlend_recovery_mainnet/01_prepare_ethereum_mainnet_dlend_recovery_safe.ts`
+  - `deploy/32_dlend_recovery_mainnet/04_preflight_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
+  - `deploy/32_dlend_recovery_mainnet/05_prepare_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
+
+## Current Verified State
+
+Verified on March 19, 2026 after the repay and the next governance transition:
+
+- attacker `dUSD` variable debt is `0`
+- every non-`cbBTC` reserve is `unpaused + frozen`
+- every non-`cbBTC` reserve has `borrowing = false`
+- every non-`cbBTC` reserve has `stable borrowing = false`
+- every non-`cbBTC` reserve has `flashLoanEnabled = false`
+- `cbBTC` remains `paused + frozen + non-borrowable + flash-loans-disabled + LTV = 0`
+
+This means the protocol is now in a contained recovery posture:
+
+- repayments work
+- withdrawals work
+- liquidations work
+- new supply is blocked by `frozen`
+- new borrowing is blocked
+- flash loans are blocked
 
 ## Suggested Sequence
 
@@ -155,6 +178,54 @@ The assertion pass checks:
 - `dUSD` is unpaused but frozen with borrowing and flash loans disabled
 - every non-`cbBTC` reserve is unpaused and frozen unless you intentionally provide a smaller `PHASE2_UNPAUSE_RESERVES_JSON` set
 - no unpaused reserve is both low-supply and flash-loan-enabled
+
+As of March 19, 2026 this assertion passes against live state with the full non-`cbBTC` reserve set.
+
+### Phase 5. Deliberate resume only after remediation
+
+The next step is no longer another containment action. It is a deliberate resume decision.
+
+Use the `phase3` flow only after:
+
+- code-level protections are deployed and reviewed
+- reserve-by-reserve health checks are complete
+- monitoring/alerting is live for the reopen window
+
+The preflight enforces these acknowledgements:
+
+- `PHASE3_REMEDIATION_ACK=true`
+- `PHASE3_HEALTHCHECK_ACK=true`
+- `PHASE3_MONITORING_ACK=true`
+- `PHASE3_RESUME_RESERVES_JSON='[...]'`
+
+Optional resume controls:
+
+- `PHASE3_ENABLE_BORROWING_RESERVES_JSON='[...]'`
+- `PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON='[...]'`
+- `PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON='[...]'`
+- `PHASE3_ALLOW_FLASHLOANS=true` only if flash loans are intentionally being restored
+- `PHASE3_ALLOW_LOW_SUPPLY_RESUMES=true` only if you intentionally want to resume thin reserves
+
+Suggested sequence:
+
+```bash
+export PK_MAINNET_DEPLOYER='0x...'
+export PHASE3_REMEDIATION_ACK='true'
+export PHASE3_HEALTHCHECK_ACK='true'
+export PHASE3_MONITORING_ACK='true'
+export PHASE3_RESUME_RESERVES_JSON='["0x..."]'
+yarn recovery:safe:phase3:preflight
+yarn recovery:safe:phase3:batch
+```
+
+Then validate the chosen resume set:
+
+```bash
+export PHASE3_RESUME_RESERVES_JSON='["0x..."]'
+yarn recovery:assert:phase3
+```
+
+If you run `phase3` preflight without those acknowledgements, it should fail. That failure is expected and is part of the guardrail.
 
 ## Failure Modes
 
