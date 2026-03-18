@@ -8,6 +8,11 @@
     "size:dstake-router": "hardhat size-contracts",
     "gas-estimate": "npx tsx scripts/mainnet-gas-estimation.ts",
     "gas-estimate:help": "npx tsx scripts/mainnet-gas-estimation.ts --help",
+    "recovery:preflight": "npx tsx scripts/recovery/preflight-checks.ts",
+    "recovery:repay": "npx tsx scripts/recovery/repay-attacker-variable-debt.ts",
+    "recovery:assert": "npx tsx scripts/recovery/assert-post-repay.ts",
+    "recovery:safe:preflight": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-preflight",
+    "recovery:safe:batch": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-safe",
     "verify:check": "npm run --prefix .shared sanity:verify-check --",
     "prepare": "husky"
   },
@@ -70,6 +75,7 @@
     "solhint": "^5.0.5",
     "solidity-coverage": "^0.8.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typechain": "^8.3.2",
     "typescript": "^5.7.3"
   }
