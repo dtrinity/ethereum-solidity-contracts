@@ -62,6 +62,13 @@ Run the Phase 2 assertion:
 
 ```bash
 cd ethereum-solidity-contracts
-export PHASE2_UNPAUSE_RESERVES_JSON='["0xb419EcDd222981E7E54cEc316797eCb799c6AFdC","0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2","0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0","0xae78736Cd615f374D3085123A210448E74Fc6393","0x9D39A5DE30e57443BfF2A8307A4256c8797A3497","0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD","0x80ac24aA929eaF5013f6436cdA2a7ba190f5Cc0b","0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D"]'
 yarn recovery:assert:phase2
 ```
+
+By default, the assertion now expects the full post-repay recovery posture:
+
+- `cbBTC` still paused
+- every other reserve live in `unpaused + frozen` mode
+- flash loans disabled on all live reserves
+
+If you intentionally execute a smaller custom Phase 2 set, pass `PHASE2_UNPAUSE_RESERVES_JSON` to the assertion so it validates only that custom live set.

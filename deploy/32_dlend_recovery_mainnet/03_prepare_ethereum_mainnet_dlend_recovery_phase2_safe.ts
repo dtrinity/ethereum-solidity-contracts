@@ -8,6 +8,7 @@ import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import {
   DEFAULT_CBBTC,
+  getDefaultPhase2TargetReserves,
   getReserveConfig,
   normalizeAddress,
   parseAddressListEnv,
@@ -37,15 +38,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   await executor.initialize();
 
   const attacker = process.env.ATTACKER || DEFAULT_ATTACKER;
-  const targetReserves = parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON");
+  const requestedTargets = parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON");
   const dUSDAddress = process.env.RECOVERY_DUSD_ADDRESS || config.tokenAddresses.dUSD || (await deployments.get(DUSD_TOKEN_ID)).address;
   const cbBtcAddress = process.env.RECOVERY_CBBTC_ADDRESS || config.tokenAddresses.cbBTC || DEFAULT_CBBTC;
   const lowSupplyWarning = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
   const allowLowSupply = parseBooleanEnv("PHASE2_ALLOW_LOW_SUPPLY_RESERVES", false);
-
-  if (targetReserves.length === 0) {
-    throw new Error("PHASE2_UNPAUSE_RESERVES_JSON must contain at least one healthy non-cbBTC reserve.");
-  }
 
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
@@ -54,6 +51,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     ethers.getContractAt("Pool", poolAddress, signer),
     ethers.getContractAt("PoolConfigurator", poolConfiguratorAddress, signer),
   ]);
+  const targetReserves =
+    requestedTargets.length > 0 ? requestedTargets : await getDefaultPhase2TargetReserves(pool, dUSDAddress, cbBtcAddress);
+
+  if (targetReserves.length === 0) {
+    throw new Error(
+      "Phase 2 found no paused non-cbBTC reserves to move into frozen mode. Provide PHASE2_UNPAUSE_RESERVES_JSON only if you intend a custom target set.",
+    );
+  }
 
   const dusdReserveData = await pool.getReserveData(dUSDAddress);
   const dusdDebtToken = await ethers.getContractAt(ERC20_MIN_ABI, dusdReserveData.variableDebtTokenAddress, signer);

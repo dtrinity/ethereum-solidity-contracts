@@ -164,6 +164,35 @@ export function isSubset(subset: Iterable<string>, superset: Iterable<string>): 
 }
 
 /**
+ * Derives the default Phase 2 target set: every currently paused reserve except
+ * dUSD and cbBTC.
+ *
+ * @param pool Pool contract.
+ * @param dUSDAddress dUSD reserve address.
+ * @param cbBtcAddress cbBTC reserve address.
+ */
+export async function getDefaultPhase2TargetReserves(pool: Contract, dUSDAddress: string, cbBtcAddress: string): Promise<string[]> {
+  const reserves = await getPoolReserves(pool);
+  const targets: string[] = [];
+
+  for (const asset of reserves) {
+    const normalized = normalizeAddress(asset);
+
+    if (normalized === normalizeAddress(dUSDAddress) || normalized === normalizeAddress(cbBtcAddress)) {
+      continue;
+    }
+
+    const config = await getReserveConfig(pool, asset);
+
+    if (config.paused) {
+      targets.push(asset);
+    }
+  }
+
+  return targets;
+}
+
+/**
  * Queues a Safe call against the PoolConfigurator.
  *
  * @param executor Governance executor used to queue Safe txs.

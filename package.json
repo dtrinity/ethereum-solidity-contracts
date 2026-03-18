@@ -21,6 +21,8 @@
     "recovery:safe:phase1:batch": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase1-safe",
     "recovery:safe:phase2:preflight": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase2-preflight",
     "recovery:safe:phase2:batch": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase2-safe",
+    "recovery:safe:phase2:all-paused:preflight": "PHASE2_ALLOW_LOW_SUPPLY_RESERVES=true USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase2-preflight",
+    "recovery:safe:phase2:all-paused:batch": "PHASE2_ALLOW_LOW_SUPPLY_RESERVES=true USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase2-safe",
     "recovery:safe:phase3:preflight": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase3-preflight",
     "recovery:safe:phase3:batch": "USE_SAFE=true npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-phase3-safe",
     "verify:check": "npm run --prefix .shared sanity:verify-check --",

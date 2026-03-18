@@ -113,7 +113,33 @@ The script uses the on-behalf-of repay pattern:
 
 This avoids depending on a stale off-chain debt read.
 
-### Phase 3. Assert the post-repay state
+### Phase 3. Move all remaining non-cbBTC paused markets into frozen mode
+
+After the bad debt is repaid, the next operational step is to restore orderly withdrawals, repayments, and liquidations on every non-`cbBTC` market that is still fully paused.
+
+The repo now defaults this phase to:
+
+- discover every reserve that is currently `paused`
+- exclude `cbBTC`
+- exclude `dUSD` because it was already brought live in Phase 1
+- disable flash loans if still enabled
+- disable borrowing and stable borrowing if still enabled
+- freeze the reserve
+- unpause the reserve
+
+Use the packaged command if you want this default "all remaining paused non-cbBTC reserves" behavior:
+
+```bash
+export PK_MAINNET_DEPLOYER='0x...'
+yarn recovery:safe:phase2:all-paused:preflight
+yarn recovery:safe:phase2:all-paused:batch
+```
+
+The `all-paused` commands set `PHASE2_ALLOW_LOW_SUPPLY_RESERVES=true` intentionally, because the remaining paused markets are thin and the point of this phase is to move them into an explicitly safer `unpaused + frozen + flash-loans-disabled` posture.
+
+If you need a custom subset instead, provide `PHASE2_UNPAUSE_RESERVES_JSON` and use the base `recovery:safe:phase2:*` commands.
+
+### Phase 4. Assert the post-phase-2 state
 
 Run:
 
@@ -127,6 +153,7 @@ The assertion pass checks:
 - attacker borrow capacity is zero or explicitly tolerated
 - `cbBTC` remains paused
 - `dUSD` is unpaused but frozen with borrowing and flash loans disabled
+- every non-`cbBTC` reserve is unpaused and frozen unless you intentionally provide a smaller `PHASE2_UNPAUSE_RESERVES_JSON` set
 - no unpaused reserve is both low-supply and flash-loan-enabled
 
 ## Failure Modes

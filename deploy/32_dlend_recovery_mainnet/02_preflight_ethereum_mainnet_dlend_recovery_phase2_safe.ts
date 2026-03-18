@@ -9,6 +9,7 @@ import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import {
   addBlocker,
   DEFAULT_CBBTC,
+  getDefaultPhase2TargetReserves,
   getPoolReserves,
   getReserveConfig,
   normalizeAddress,
@@ -40,15 +41,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const attacker = process.env.ATTACKER || DEFAULT_ATTACKER;
   const dUSDAddress = process.env.RECOVERY_DUSD_ADDRESS || config.tokenAddresses.dUSD || (await deployments.get(DUSD_TOKEN_ID)).address;
   const cbBtcAddress = process.env.RECOVERY_CBBTC_ADDRESS || config.tokenAddresses.cbBTC || DEFAULT_CBBTC;
-  const targetReserves = parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON");
+  const requestedTargets = parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON");
   const lowSupplyWarning = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
   const allowLowSupply = parseBooleanEnv("PHASE2_ALLOW_LOW_SUPPLY_RESERVES", false);
   const requireZeroAvailableBorrows = parseBooleanEnv("REQUIRE_ZERO_AVAILABLE_BORROWS", true);
   const requireCbBtcLtvZero = parseBooleanEnv("REQUIRE_CBBTC_LTV_ZERO", true);
-
-  if (targetReserves.length === 0) {
-    addBlocker(blockers, "PHASE2_UNPAUSE_RESERVES_JSON must list the healthy non-cbBTC reserves that should exit full pause.");
-  }
 
   const [providerDeployment, configuratorDeployment] = await Promise.all([
     deployments.get(POOL_ADDRESSES_PROVIDER_ID),
@@ -75,7 +72,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   ]);
 
   const allReserves = await getPoolReserves(pool);
+  const targetReserves =
+    requestedTargets.length > 0 ? requestedTargets : await getDefaultPhase2TargetReserves(pool, dUSDAddress, cbBtcAddress);
   const allReserveSet = new Set(allReserves.map((asset) => normalizeAddress(asset)));
+
+  if (targetReserves.length === 0) {
+    addBlocker(
+      blockers,
+      "Phase 2 found no paused non-cbBTC reserves to move into frozen mode. Provide PHASE2_UNPAUSE_RESERVES_JSON only if you intend a custom target set.",
+    );
+  }
 
   if (!allReserveSet.has(normalizeAddress(dUSDAddress))) {
     addBlocker(blockers, `dUSD reserve ${dUSDAddress} is not active in pool ${poolAddress}.`);
@@ -135,7 +141,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     addBlocker(blockers, `Attacker availableBorrowsBase remains nonzero: ${attackerAccountData.availableBorrowsBase.toString()}.`);
   }
 
-  const allowedLiveReserves = new Set<string>([normalizeAddress(dUSDAddress), ...targetReserves.map((asset) => normalizeAddress(asset))]);
+  const targetReserveSet = new Set<string>(targetReserves.map((asset) => normalizeAddress(asset)));
 
   for (const asset of allReserves) {
     const normalized = normalizeAddress(asset);
@@ -197,22 +203,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       continue;
     }
 
-    const shouldBeLive = allowedLiveReserves.has(normalized);
-
-    if (!shouldBeLive && !reserveConfig.paused) {
-      addBlocker(blockers, `Reserve ${asset} is already unpaused even though it is not in PHASE2_UNPAUSE_RESERVES_JSON.`);
-    }
-
-    if (!shouldBeLive) {
+    if (targetReserveSet.has(normalized)) {
       continue;
     }
 
     if (reserveConfig.paused) {
-      addBlocker(blockers, `Reserve ${asset} is still paused even though it is in PHASE2_UNPAUSE_RESERVES_JSON.`);
+      continue;
     }
 
     if (!reserveConfig.frozen) {
-      addBlocker(blockers, `Reserve ${asset} is not frozen. Phase 2 live reserves must remain unpaused + frozen.`);
+      addBlocker(blockers, `Reserve ${asset} is live but not frozen. Phase 2 live reserves must remain unpaused + frozen.`);
     }
 
     if (reserveConfig.borrowingEnabled) {

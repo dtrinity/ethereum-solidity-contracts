@@ -34,10 +34,12 @@ async function main() {
   const pool = new Contract(POOL, poolAbi, provider);
   const configuredReserves = parseReserveOverrides();
   const reserves = configuredReserves.length > 0 ? configuredReserves : ((await pool.getReservesList()) as string[]);
-  const phase2LiveReserves = new Set([
-    normalizeAddress(DUSD),
-    ...parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON").map((asset) => normalizeAddress(asset)),
-  ]);
+  const explicitPhase2Targets = parseAddressListEnv("PHASE2_UNPAUSE_RESERVES_JSON");
+  const phase2LiveReserves = new Set(
+    explicitPhase2Targets.length > 0
+      ? [normalizeAddress(DUSD), ...explicitPhase2Targets.map((asset) => normalizeAddress(asset))]
+      : reserves.filter((asset) => normalizeAddress(asset) !== normalizeAddress(CBBTC)).map((asset) => normalizeAddress(asset)),
+  );
   const failures: string[] = [];
   const warnings: string[] = [];
 
