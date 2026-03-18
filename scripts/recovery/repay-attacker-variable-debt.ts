@@ -1,8 +1,17 @@
 import "dotenv/config";
 
-import { Contract, MaxUint256, Wallet } from "ethers";
+import { Contract, formatUnits, MaxUint256, Wallet } from "ethers";
 
-import { createProvider, decodeConfig, DEFAULT_ATTACKER, DEFAULT_CBBTC, erc20Abi, loadDeploymentAddress, poolAbi } from "./common";
+import {
+  createProvider,
+  decodeConfig,
+  DEFAULT_ATTACKER,
+  DEFAULT_CBBTC,
+  erc20Abi,
+  loadDeploymentAddress,
+  parseBooleanEnv,
+  poolAbi,
+} from "./common";
 
 const provider = createProvider();
 const signer = new Wallet(process.env.PRIVATE_KEY!, provider);
@@ -12,6 +21,7 @@ const DUSD = process.env.DUSD || loadDeploymentAddress("dUSD");
 const CBBTC = process.env.CBBTC || DEFAULT_CBBTC;
 const ATTACKER = process.env.ATTACKER || DEFAULT_ATTACKER;
 const VARIABLE_RATE_MODE = 2;
+const DRY_RUN = parseBooleanEnv("DRY_RUN", false);
 
 if (!process.env.PRIVATE_KEY || !POOL || !DUSD || !ATTACKER || !CBBTC) {
   throw new Error("Set PRIVATE_KEY and ensure POOL, DUSD, CBBTC, and ATTACKER are resolvable.");
@@ -54,16 +64,67 @@ async function main() {
   const dusdReserve = await pool.getReserveData(DUSD);
   const dusdDebtToken = new Contract(dusdReserve.variableDebtTokenAddress, erc20Abi, signer);
   const dusdToken = new Contract(DUSD, erc20Abi, signer);
+  const payer = await signer.getAddress();
+  const decimals = Number(await dusdToken.decimals());
 
-  const preDebt = await dusdDebtToken.balanceOf(ATTACKER);
-  console.log(`Pre-repay variable debt: ${preDebt.toString()}`);
+  const [preDebt, allowance, payerBalance] = await Promise.all([
+    dusdDebtToken.balanceOf(ATTACKER),
+    dusdToken.allowance(payer, POOL),
+    dusdToken.balanceOf(payer),
+  ]);
+  const balanceSufficient = payerBalance >= preDebt;
+
+  console.log(
+    JSON.stringify(
+      {
+        payer,
+        pool: POOL,
+        dUSD: DUSD,
+        attacker: ATTACKER,
+        variableRateMode: VARIABLE_RATE_MODE,
+        preDebt: preDebt.toString(),
+        preDebtFormatted: formatUnits(preDebt, decimals),
+        payerBalance: payerBalance.toString(),
+        payerBalanceFormatted: formatUnits(payerBalance, decimals),
+        balanceSufficient,
+        allowance: allowance.toString(),
+        allowanceFormatted: formatUnits(allowance, decimals),
+        dryRun: DRY_RUN,
+      },
+      null,
+      2,
+    ),
+  );
 
   if (preDebt === 0n) {
     console.log("Attacker variable debt is already zero; nothing to repay.");
     return;
   }
 
-  const allowance = await dusdToken.allowance(await signer.getAddress(), POOL);
+  const repayAmount = MaxUint256 - 1n;
+
+  if (DRY_RUN) {
+    console.log(
+      JSON.stringify(
+        {
+          action: "dry-run",
+          balanceSufficient,
+          approvalRequired: allowance < preDebt,
+          repayAmount: repayAmount.toString(),
+          note: "Run again with DRY_RUN=false (or unset) to actually send transactions.",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  if (!balanceSufficient) {
+    throw new Error(
+      `Payer dUSD balance (${formatUnits(payerBalance, decimals)}) is below attacker debt (${formatUnits(preDebt, decimals)}).`,
+    );
+  }
 
   if (allowance < preDebt) {
     const approveTx = await dusdToken.approve(POOL, MaxUint256);
@@ -71,7 +132,6 @@ async function main() {
     await approveTx.wait();
   }
 
-  const repayAmount = MaxUint256 - 1n;
   const repayTx = await pool.repay(DUSD, repayAmount, VARIABLE_RATE_MODE, ATTACKER);
   console.log(`Repay tx: ${repayTx.hash}`);
   const receipt = await repayTx.wait();
@@ -83,7 +143,7 @@ async function main() {
   console.log(
     JSON.stringify(
       {
-        payer: await signer.getAddress(),
+        payer,
         attacker: ATTACKER,
         preDebt: preDebt.toString(),
         postDebt: postDebt.toString(),

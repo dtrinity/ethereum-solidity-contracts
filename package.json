@@ -10,6 +10,7 @@
     "gas-estimate:help": "npx tsx scripts/mainnet-gas-estimation.ts --help",
     "recovery:preflight": "npx tsx scripts/recovery/preflight-checks.ts",
     "recovery:repay": "npx tsx scripts/recovery/repay-attacker-variable-debt.ts",
+    "recovery:repay:dry-run": "DRY_RUN=true npx tsx scripts/recovery/repay-attacker-variable-debt.ts",
     "recovery:assert": "npx tsx scripts/recovery/assert-post-repay.ts",
     "recovery:assert:phase1": "npx tsx scripts/recovery/assert-phase1.ts",
     "recovery:assert:phase2": "npx tsx scripts/recovery/assert-post-repay.ts",
