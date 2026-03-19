@@ -365,3 +365,11 @@ export async function queueReserveIntoResumeState(
     );
   }
 }
+
+/**
+ * No-op deploy entry for Hardhat Deploy. This file is a shared module; actual
+ * deployment steps live in the numbered scripts that import from here.
+ */
+export default async function (): Promise<void> {
+  // Shared module only; no deployment steps.
+}

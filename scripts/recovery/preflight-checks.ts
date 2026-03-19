@@ -2,7 +2,17 @@ import "dotenv/config";
 
 import { Contract, formatUnits } from "ethers";
 
-import { aTokenAbi, createProvider, decodeConfig, DEFAULT_ATTACKER, DEFAULT_CBBTC, erc20Abi, loadDeploymentAddress, parseReserveOverrides, poolAbi } from "./common";
+import {
+  aTokenAbi,
+  createProvider,
+  decodeConfig,
+  DEFAULT_ATTACKER,
+  DEFAULT_CBBTC,
+  erc20Abi,
+  loadDeploymentAddress,
+  parseReserveOverrides,
+  poolAbi,
+} from "./common";
 
 const provider = createProvider();
 const POOL = process.env.POOL || loadDeploymentAddress("PoolProxy");

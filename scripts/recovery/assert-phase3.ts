@@ -35,7 +35,9 @@ async function main() {
 
   const resumeReserves = parseAddressListEnv("PHASE3_RESUME_RESERVES_JSON");
   const borrowingReserves = new Set(parseAddressListEnv("PHASE3_ENABLE_BORROWING_RESERVES_JSON").map((asset) => normalizeAddress(asset)));
-  const stableBorrowingReserves = new Set(parseAddressListEnv("PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON").map((asset) => normalizeAddress(asset)));
+  const stableBorrowingReserves = new Set(
+    parseAddressListEnv("PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON").map((asset) => normalizeAddress(asset)),
+  );
   const flashLoanReserves = new Set(parseAddressListEnv("PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON").map((asset) => normalizeAddress(asset)));
 
   if (resumeReserves.length === 0) {

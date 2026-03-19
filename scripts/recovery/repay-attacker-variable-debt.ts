@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { Contract, formatUnits, MaxUint256, Wallet } from "ethers";
+import { Contract, formatUnits, MaxUint256, parseUnits, Wallet } from "ethers";
 
 import {
   createProvider,
@@ -22,9 +22,28 @@ const CBBTC = process.env.CBBTC || DEFAULT_CBBTC;
 const ATTACKER = process.env.ATTACKER || DEFAULT_ATTACKER;
 const VARIABLE_RATE_MODE = 2;
 const DRY_RUN = parseBooleanEnv("DRY_RUN", false);
+const REPAY_AMOUNT = process.env.REPAY_AMOUNT;
 
 if (!process.env.PRIVATE_KEY || !POOL || !DUSD || !ATTACKER || !CBBTC) {
   throw new Error("Set PRIVATE_KEY and ensure POOL, DUSD, CBBTC, and ATTACKER are resolvable.");
+}
+
+function parseRepayAmount(raw: string | undefined, decimals: number): bigint | null {
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    return parseUnits(normalized, decimals);
+  } catch (error) {
+    throw new Error(`Invalid REPAY_AMOUNT "${raw}". Use a decimal dUSD amount such as "1000" or "0.5".`, { cause: error });
+  }
 }
 
 async function main() {
@@ -72,7 +91,21 @@ async function main() {
     dusdToken.allowance(payer, POOL),
     dusdToken.balanceOf(payer),
   ]);
-  const balanceSufficient = payerBalance >= preDebt;
+  const requestedRepayAmount = parseRepayAmount(REPAY_AMOUNT, decimals);
+
+  if (requestedRepayAmount !== null && requestedRepayAmount <= 0n) {
+    throw new Error("REPAY_AMOUNT must be greater than zero when provided.");
+  }
+
+  if (requestedRepayAmount !== null && requestedRepayAmount > preDebt) {
+    throw new Error(
+      `REPAY_AMOUNT (${formatUnits(requestedRepayAmount, decimals)}) exceeds current attacker debt (${formatUnits(preDebt, decimals)}).`,
+    );
+  }
+
+  const repayAmount = requestedRepayAmount ?? MaxUint256 - 1n;
+  const requiredFunds = requestedRepayAmount ?? preDebt;
+  const balanceSufficient = payerBalance >= requiredFunds;
 
   console.log(
     JSON.stringify(
@@ -84,6 +117,9 @@ async function main() {
         variableRateMode: VARIABLE_RATE_MODE,
         preDebt: preDebt.toString(),
         preDebtFormatted: formatUnits(preDebt, decimals),
+        repayAmount: repayAmount.toString(),
+        repayAmountFormatted: requestedRepayAmount === null ? "MAX_MINUS_1" : formatUnits(repayAmount, decimals),
+        fullRepayMode: requestedRepayAmount === null,
         payerBalance: payerBalance.toString(),
         payerBalanceFormatted: formatUnits(payerBalance, decimals),
         balanceSufficient,
@@ -101,16 +137,15 @@ async function main() {
     return;
   }
 
-  const repayAmount = MaxUint256 - 1n;
-
   if (DRY_RUN) {
     console.log(
       JSON.stringify(
         {
           action: "dry-run",
           balanceSufficient,
-          approvalRequired: allowance < preDebt,
+          approvalRequired: allowance < requiredFunds,
           repayAmount: repayAmount.toString(),
+          repayAmountFormatted: requestedRepayAmount === null ? "MAX_MINUS_1" : formatUnits(repayAmount, decimals),
           note: "Run again with DRY_RUN=false (or unset) to actually send transactions.",
         },
         null,
@@ -122,11 +157,11 @@ async function main() {
 
   if (!balanceSufficient) {
     throw new Error(
-      `Payer dUSD balance (${formatUnits(payerBalance, decimals)}) is below attacker debt (${formatUnits(preDebt, decimals)}).`,
+      `Payer dUSD balance (${formatUnits(payerBalance, decimals)}) is below required repay amount (${formatUnits(requiredFunds, decimals)}).`,
     );
   }
 
-  if (allowance < preDebt) {
+  if (allowance < requiredFunds) {
     const approveTx = await dusdToken.approve(POOL, MaxUint256);
     console.log(`Approve tx: ${approveTx.hash}`);
     await approveTx.wait();
@@ -146,6 +181,7 @@ async function main() {
         payer,
         attacker: ATTACKER,
         preDebt: preDebt.toString(),
+        repayAmount: repayAmount.toString(),
         postDebt: postDebt.toString(),
         accountDataAfter: {
           totalCollateralBase: attackerAccountData.totalCollateralBase.toString(),
@@ -161,7 +197,7 @@ async function main() {
     ),
   );
 
-  if (postDebt !== 0n) {
+  if (requestedRepayAmount === null && postDebt !== 0n) {
     console.error("WARNING: attacker debt remains nonzero after repay.");
     process.exitCode = 2;
   }

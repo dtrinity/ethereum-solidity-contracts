@@ -8,7 +8,7 @@ Use this after the recovery governance transaction has already put `dUSD` and `c
 - reads the attacker's current variable `dUSD` debt
 - checks the payer wallet `dUSD` balance and allowance
 - approves the Pool if needed
-- calls `Pool.repay(dUSD, MaxUint256 - 1, 2, attacker)`
+- calls `Pool.repay(dUSD, amount, 2, attacker)`
 - prints the post-repay debt and account data
 
 ## Dry run first
@@ -28,12 +28,28 @@ This does not send transactions. It prints:
 - current allowance
 - whether an approval tx will be needed
 
+To dry-run a partial repay, pass `REPAY_AMOUNT` in human-readable `dUSD` units:
+
+```bash
+cd ethereum-solidity-contracts
+export PRIVATE_KEY='0x...'
+REPAY_AMOUNT=1000 yarn recovery:repay:dry-run
+```
+
 ## Execute the repay
 
 ```bash
 cd ethereum-solidity-contracts
 export PRIVATE_KEY='0x...'
 yarn recovery:repay
+```
+
+To execute a partial repay:
+
+```bash
+cd ethereum-solidity-contracts
+export PRIVATE_KEY='0x...'
+REPAY_AMOUNT=1000 yarn recovery:repay
 ```
 
 ## Required environment
@@ -47,6 +63,7 @@ Optional overrides if needed:
 - `DUSD`
 - `CBBTC`
 - `ATTACKER`
+- `REPAY_AMOUNT` (optional, human-readable `dUSD` amount such as `1000` or `0.5`)
 
 Defaults in the script already point to the current Ethereum mainnet dLEND deployment.
 
@@ -55,6 +72,8 @@ Defaults in the script already point to the current Ethereum mainnet dLEND deplo
 - The script uses `MaxUint256 - 1` intentionally.
 - In this fork, exact `MaxUint256` is rejected for third-party repay-on-behalf, but `MaxUint256 - 1` is accepted and clipped to the actual debt.
 - The wallet only needs enough `dUSD` to cover the real debt, not the oversized sentinel value.
+- If `REPAY_AMOUNT` is set, the script repays exactly that amount instead of using the full-repay sentinel.
+- `REPAY_AMOUNT` must be greater than zero and cannot exceed the current attacker debt snapshot.
 
 ## After the repay confirms
 
