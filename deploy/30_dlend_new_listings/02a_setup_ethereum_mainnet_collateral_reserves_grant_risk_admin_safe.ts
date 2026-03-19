@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { POOL_ADDRESSES_PROVIDER_ID, RESERVES_SETUP_HELPER_ID } from "../../typescript/deploy-ids";
+import { ATOMIC_MARKET_LISTING_HELPER_ID, POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import { getRoleAccess } from "../_shared/safe-role";
@@ -31,13 +31,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
-  const reservesSetupHelperDeployment = await deployments.get(RESERVES_SETUP_HELPER_ID);
-  const reservesSetupHelperAddress = reservesSetupHelperDeployment.address;
+  const atomicHelperDeployment = await deployments.get(ATOMIC_MARKET_LISTING_HELPER_ID);
+  const atomicHelperAddress = atomicHelperDeployment.address;
 
-  const riskAdminRole = await aclManager.RISK_ADMIN_ROLE();
-  const [helperHasRiskAdmin, riskAdminAccess] = await Promise.all([
-    aclManager.hasRole(riskAdminRole, reservesSetupHelperAddress),
+  const [riskAdminRole, assetListingAdminRole] = await Promise.all([aclManager.RISK_ADMIN_ROLE(), aclManager.ASSET_LISTING_ADMIN_ROLE()]);
+
+  const [helperHasRiskAdmin, helperHasAssetListingAdmin, riskAdminAccess, assetListingAdminAccess] = await Promise.all([
+    aclManager.hasRole(riskAdminRole, atomicHelperAddress),
+    aclManager.hasRole(assetListingAdminRole, atomicHelperAddress),
     getRoleAccess(aclManager, riskAdminRole, managerAddress),
+    getRoleAccess(aclManager, assetListingAdminRole, managerAddress),
   ]);
 
   if (!riskAdminAccess.canGrantRole) {
@@ -49,23 +52,44 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     );
   }
 
-  if (helperHasRiskAdmin) {
-    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe: helper already has RISK_ADMIN_ROLE");
+  if (!assetListingAdminAccess.canGrantRole) {
+    throw new Error(
+      [
+        `[role-check] ${managerAddress} cannot grant ASSET_LISTING_ADMIN_ROLE via ACLManager (${aclManagerAddress}).`,
+        `Missing admin role ${assetListingAdminAccess.adminRole}.`,
+      ].join(" "),
+    );
+  }
+
+  if (helperHasRiskAdmin && helperHasAssetListingAdmin) {
+    console.log("🔁 setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe: helper already has required listing roles");
     return true;
   }
 
-  const grantRiskAdminData = aclManager.interface.encodeFunctionData("addRiskAdmin", [reservesSetupHelperAddress]);
-  await executor.tryOrQueue(
-    async () => {
-      throw new Error("Direct execution disabled: queue Safe transaction instead.");
-    },
-    () => ({ to: aclManagerAddress, value: "0", data: grantRiskAdminData }),
-  );
+  if (!helperHasAssetListingAdmin) {
+    const grantAssetListingAdminData = aclManager.interface.encodeFunctionData("addAssetListingAdmin", [atomicHelperAddress]);
+    await executor.tryOrQueue(
+      async () => {
+        throw new Error("Direct execution disabled: queue Safe transaction instead.");
+      },
+      () => ({ to: aclManagerAddress, value: "0", data: grantAssetListingAdminData }),
+    );
+  }
 
-  const success = await executor.flush("Ethereum mainnet dLEND collateral reserves risk-admin grant");
+  if (!helperHasRiskAdmin) {
+    const grantRiskAdminData = aclManager.interface.encodeFunctionData("addRiskAdmin", [atomicHelperAddress]);
+    await executor.tryOrQueue(
+      async () => {
+        throw new Error("Direct execution disabled: queue Safe transaction instead.");
+      },
+      () => ({ to: aclManagerAddress, value: "0", data: grantRiskAdminData }),
+    );
+  }
+
+  const success = await executor.flush("Ethereum mainnet dLEND atomic listing helper role grants");
 
   if (!success) {
-    throw new Error("Failed to create Safe batch for collateral reserves risk-admin grant.");
+    throw new Error("Failed to create Safe batch for atomic listing helper role grants.");
   }
   console.log("🔁 setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe: ✅");
   return true;
@@ -76,8 +100,8 @@ func.dependencies = [
   "setup-ethereum-mainnet-new-listings-preflight",
   "setup-ethereum-mainnet-new-listings-role-grants-safe",
   POOL_ADDRESSES_PROVIDER_ID,
-  RESERVES_SETUP_HELPER_ID,
+  ATOMIC_MARKET_LISTING_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe-v1";
+func.id = "setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe-v2";
 
 export default func;

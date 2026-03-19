@@ -233,6 +233,24 @@ If you run `phase3` preflight without those acknowledgements, it should fail. Th
 - Repaying debt before eliminating future borrow paths
 - Unpausing `cbBTC` before the accounting path is patched
 - Treating restored dUSD solvency as equivalent to root-cause resolution
+- Listing or relisting a market directly into a live configuration instead of using the staged atomic enable flow
+
+## New Listing / Relisting Rule
+
+Any future market listing, relisting, or migrated replacement reserve should use the repo-native staged flow built around `AtomicMarketListingHelper`:
+
+1. initialize and immediately stage the reserve into a non-live posture
+2. seed the reserve above an explicit aToken floor
+3. atomically enable the market only after deliberate operator acknowledgements
+
+For as long as the broader accounting path remains under remediation, new listings should keep `flashLoanEnabled = false` by default and only override that intentionally.
+
+See also:
+
+- `contracts/dlend/core/deployments/AtomicMarketListingHelper.sol`
+- `docs/ethereum-mainnet-dlend-collateral-rollout.md`
+- `deploy/30_dlend_new_listings/02_setup_ethereum_mainnet_collateral_reserves_safe.ts`
+- `deploy/30_dlend_new_listings/02c_setup_ethereum_mainnet_collateral_reserves_config_safe.ts`
 
 ## Notes
 

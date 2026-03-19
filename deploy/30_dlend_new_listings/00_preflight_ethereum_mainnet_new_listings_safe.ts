@@ -4,6 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getConfig } from "../../config/config";
 import {
   ATOKEN_IMPL_ID,
+  ATOMIC_MARKET_LISTING_HELPER_ID,
   DETH_COLLATERAL_VAULT_CONTRACT_ID,
   DETH_REDEEMER_V2_CONTRACT_ID,
   DUSD_COLLATERAL_VAULT_CONTRACT_ID,
@@ -40,6 +41,7 @@ const REQUIRED_DEPLOYMENTS = [
   DETH_REDEEMER_V2_CONTRACT_ID,
   POOL_ADDRESSES_PROVIDER_ID,
   RESERVES_SETUP_HELPER_ID,
+  ATOMIC_MARKET_LISTING_HELPER_ID,
   TREASURY_PROXY_ID,
   ATOKEN_IMPL_ID,
   STABLE_DEBT_TOKEN_IMPL_ID,
@@ -70,6 +72,15 @@ const ROLLOUT_COLLATERAL_SYMBOLS = [
  */
 function addBlocker(blockers: string[], message: string): void {
   blockers.push(message);
+}
+
+/**
+ * Normalizes an address value for case-insensitive comparisons.
+ *
+ * @param value Address to normalize.
+ */
+function normalize(value: string): string {
+  return value.toLowerCase();
 }
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
@@ -159,6 +170,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const { address: dUSDRedeemerV2Address } = await deployments.get(DUSD_REDEEMER_V2_CONTRACT_ID);
   const { address: dETHRedeemerV2Address } = await deployments.get(DETH_REDEEMER_V2_CONTRACT_ID);
   const { address: addressProviderAddress } = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
+  const { address: atomicHelperAddress } = await deployments.get(ATOMIC_MARKET_LISTING_HELPER_ID);
+  const { address: legacyHelperAddress } = await deployments.get(RESERVES_SETUP_HELPER_ID);
 
   const usdAggregator = await ethers.getContractAt("OracleAggregatorV1_1", usdAggregatorAddress, signer);
   const usdPlainWrapper = await ethers.getContractAt("RedstoneChainlinkWrapperV1_1", usdPlainWrapperAddress, signer);
@@ -177,6 +190,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const dETHVault = await ethers.getContractAt("CollateralHolderVault", dETHVaultAddress, signer);
   const dUSDRedeemerV2 = await ethers.getContractAt("RedeemerV2", dUSDRedeemerV2Address, signer);
   const dETHRedeemerV2 = await ethers.getContractAt("RedeemerV2", dETHRedeemerV2Address, signer);
+  const atomicHelper = await ethers.getContractAt("AtomicMarketListingHelper", atomicHelperAddress, signer);
+  const legacyHelper = await ethers.getContractAt("ReservesSetupHelper", legacyHelperAddress, signer);
 
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderAddress, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
@@ -197,6 +212,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     poolAdminRole,
     assetListingAdminRole,
     riskAdminRole,
+    atomicHelperOwner,
+    legacyHelperOwner,
   ] = await Promise.all([
     usdAggregator.ORACLE_MANAGER_ROLE(),
     usdPlainWrapper.ORACLE_MANAGER_ROLE(),
@@ -212,6 +229,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     aclManager.POOL_ADMIN_ROLE(),
     aclManager.ASSET_LISTING_ADMIN_ROLE(),
     aclManager.RISK_ADMIN_ROLE(),
+    atomicHelper.owner(),
+    legacyHelper.owner(),
   ]);
 
   const roleChecks = [
@@ -236,10 +255,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     }
   }
 
-  const [poolAdminAccess, hasAssetListingAdmin, riskAdminAccess] = await Promise.all([
+  const [
+    poolAdminAccess,
+    hasAssetListingAdmin,
+    riskAdminAccess,
+    assetListingAccess,
+    legacyHelperHasRiskAdmin,
+    legacyHelperHasAssetListingAdmin,
+  ] = await Promise.all([
     getRoleAccess(aclManager, poolAdminRole, safeAddress),
     aclManager.hasRole(assetListingAdminRole, safeAddress),
     getRoleAccess(aclManager, riskAdminRole, safeAddress),
+    getRoleAccess(aclManager, assetListingAdminRole, safeAddress),
+    aclManager.hasRole(riskAdminRole, legacyHelperAddress),
+    aclManager.hasRole(assetListingAdminRole, legacyHelperAddress),
   ]);
 
   if (!poolAdminAccess.hasRole && !hasAssetListingAdmin && !poolAdminAccess.canGrantRole) {
@@ -251,6 +280,36 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   if (!riskAdminAccess.canGrantRole) {
     addBlocker(blockers, `[role-check] ${safeAddress} cannot grant RISK_ADMIN_ROLE on ACLManager (${aclManagerAddress}).`);
+  }
+
+  if (!assetListingAccess.canGrantRole && !poolAdminAccess.hasRole && !hasAssetListingAdmin) {
+    addBlocker(blockers, `[role-check] ${safeAddress} cannot grant ASSET_LISTING_ADMIN_ROLE on ACLManager (${aclManagerAddress}).`);
+  }
+
+  if (normalize(atomicHelperOwner) !== normalize(safeAddress)) {
+    addBlocker(
+      blockers,
+      `[ownership-check] ${ATOMIC_MARKET_LISTING_HELPER_ID} owner mismatch. helper=${atomicHelperAddress} owner=${atomicHelperOwner} expected=${safeAddress}.`,
+    );
+  }
+
+  if (normalize(legacyHelperOwner) !== normalize(safeAddress)) {
+    addBlocker(
+      blockers,
+      `[ownership-check] ${RESERVES_SETUP_HELPER_ID} owner mismatch. helper=${legacyHelperAddress} owner=${legacyHelperOwner} expected=${safeAddress}.`,
+    );
+  }
+
+  if (legacyHelperHasRiskAdmin || legacyHelperHasAssetListingAdmin) {
+    console.warn(
+      [
+        `⚠️ ${RESERVES_SETUP_HELPER_ID} still has listing roles on ACLManager.`,
+        `helper=${legacyHelperAddress}`,
+        `riskAdmin=${legacyHelperHasRiskAdmin}`,
+        `assetListingAdmin=${legacyHelperHasAssetListingAdmin}`,
+        "This does not block the rollout, but it weakens the repo-level requirement to use AtomicMarketListingHelper only.",
+      ].join(" "),
+    );
   }
 
   if (blockers.length > 0) {
