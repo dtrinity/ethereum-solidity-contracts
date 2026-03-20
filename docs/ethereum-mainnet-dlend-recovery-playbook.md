@@ -28,6 +28,7 @@ This document turns the March 17, 2026 recovery kit into repo-native operator st
   - `deploy/32_dlend_recovery_mainnet/01_prepare_ethereum_mainnet_dlend_recovery_safe.ts`
   - `deploy/32_dlend_recovery_mainnet/04_preflight_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
   - `deploy/32_dlend_recovery_mainnet/05_prepare_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
+  - cbBTC sanitize / delist (Phase 4b): `10_deploy_ethereum_mainnet_dlend_remediation_impls.ts`, `11_preflight_ethereum_mainnet_cbbtc_sanitize_safe.ts`, `12_prepare_ethereum_mainnet_cbbtc_sanitize_safe.ts`
 
 ## Current Verified State
 
@@ -181,6 +182,61 @@ The assertion pass checks:
 
 As of March 19, 2026 this assertion passes against live state with the full non-`cbBTC` reserve set.
 
+### Phase 4b. cbBTC sanitize and delist (patched Pool + `SanitizableAToken`)
+
+Run this **after** containment and attacker debt repayment when you are ready to permanently wind down the quarantined `cbBTC` reserve.
+
+**What the repo encodes**
+
+1. **Implementation deploy (deployer EOA, not the Safe)** — `FlashLoanLogic_Remediation` (patched premium routing), `PoolImpl_Remediation` (`L2Pool` linked to that library), `SanitizableAToken_cbBTC_Impl` (constructor receives the **Pool proxy** from `PoolAddressesProvider`, same pattern as `AToken`).
+2. **Safe batch** — optional `setPoolImpl` on `PoolAddressesProvider`, then `Pool.mintToTreasury([cbBTC])`, `PoolConfigurator.updateAToken` (metadata read from the live aToken proxy), `SanitizableAToken.forceBurnAllAndVerifyZero`, `SanitizableAToken.rescueAllUnderlying`, optional `setReserveActive(false)`, and `dropReserve` (skippable via env for dry rehearsal only).
+
+**Holder set**
+
+- Build `CBBTC_SANITIZE_HOLDERS_JSON` from `Transfer` logs on the cbBTC aToken proxy; it must be **exhaustive** for every address with non-zero balance **at execution time**, including treasury after `mintToTreasury`.
+- Preflight now models the `mintToTreasury([cbBTC])` step. If `accruedToTreasury > 0`, it requires treasury to appear in `CBBTC_SANITIZE_HOLDERS_JSON` and, by default, verifies `sum(balanceOf(holder)) == expected post-mint totalSupply()` (`CBBTC_SANITIZE_VALIDATE_HOLDER_SUM=true`).
+
+**Suggested commands**
+
+```bash
+# 1) Deploy new implementations (mainnet RPC + deployer key; does not use the Safe)
+npx hardhat deploy --network ethereum_mainnet --tags ethereum-mainnet-dlend-remediation-impls
+
+# 2) Preflight (Safe + reserve / debt checks)
+export USE_SAFE=true
+export CBBTC_SANITIZE_HOLDERS_JSON='["0x...","0x..."]'
+yarn recovery:safe:cbbtc-sanitize:preflight
+
+# 3) Safe transaction batch via GovernanceExecutor
+export CBBTC_SANITIZE_ACK=true
+export CBBTC_SANITIZE_RECOVERY_WALLET='0x...'
+yarn recovery:safe:cbbtc-sanitize:batch
+```
+
+**Environment reference**
+
+| Variable | Purpose |
+|----------|---------|
+| `REMEDIATION_SKIP_POOL_UPGRADE` | If `true`, omit `setPoolImpl` (Pool already patched). |
+| `REMEDIATION_POOL_IMPL_ADDRESS` | Override Pool implementation address instead of reading `PoolImpl_Remediation` from `deployments/`. |
+| `SANITIZABLE_ATOKEN_IMPL_ADDRESS` | Override `SanitizableAToken` implementation address. |
+| `CBBTC_SANITIZE_HOLDERS_JSON` | Exhaustive holder list (`address[]` JSON). |
+| `CBBTC_SANITIZE_RECOVERY_WALLET` | Recipient of `rescueAllUnderlying`. |
+| `CBBTC_SANITIZE_VALIDATE_HOLDER_SUM` | Default `true`; set `false` to skip sum-vs-`totalSupply` check in preflight. |
+| `CBBTC_SANITIZE_REQUIRE_ATTACKER_DEBT_ZERO` | Default `true`; requires attacker `dUSD` variable debt zero before batch. |
+| `CBBTC_SANITIZE_SKIP_DEACTIVATE` | Set `true` to skip `setReserveActive(cbBTC, false)` before `dropReserve`. |
+| `CBBTC_SANITIZE_SKIP_DROP_RESERVE` | Set `true` only for rehearsal — **not** for production completion. |
+
+**On-chain preconditions (enforced by `SanitizableAToken` and preflight)**
+
+`cbBTC` must remain paused, frozen, non-borrowable, stable borrowing off, flash loans off, both debt supplies zero. `mintToTreasury` in the batch clears reserve-level `accruedToTreasury` before burns, and the holder list must still be exhaustive after that mint.
+
+**Scripts**
+
+- `deploy/32_dlend_recovery_mainnet/10_deploy_ethereum_mainnet_dlend_remediation_impls.ts`
+- `deploy/32_dlend_recovery_mainnet/11_preflight_ethereum_mainnet_cbbtc_sanitize_safe.ts`
+- `deploy/32_dlend_recovery_mainnet/12_prepare_ethereum_mainnet_cbbtc_sanitize_safe.ts`
+
 ### Phase 5. Deliberate resume only after remediation
 
 The next step is no longer another containment action. It is a deliberate resume decision.
@@ -255,4 +311,4 @@ See also:
 ## Notes
 
 - These scripts intentionally separate operational repair from protocol patching.
-- Full closure still requires code-level hardening or a market migration/reset for `cbBTC`.
+- Permanent removal of the quarantined `cbBTC` reserve follows **Phase 4b** (implementation deploy + Safe batch). Treat **Phase 5** as unrelated market resume work once remediation and delisting decisions are complete.
