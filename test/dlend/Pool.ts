@@ -161,6 +161,26 @@ describe("dLEND Pool", () => {
       expect(totalDebtBase).to.equal(0);
       expect(availableBorrowsBase).to.be.gt(0);
     });
+
+    it("should allow pool admin to clear reserve bitmap state for a reserve", async () => {
+      const amount = ethers.parseUnits("100", 18);
+      const asset = await ethers.getContractAt("TestERC20", collateralAsset);
+      const reserveData = await pool.getReserveData(collateralAsset);
+      const collateralBit = 1n << BigInt(Number(reserveData.id) * 2 + 1);
+
+      await asset.transfer(user1Signer.address, amount);
+      await asset.connect(user1Signer).approve(await fixture.contracts.pool.getAddress(), amount);
+      await fixture.contracts.pool.connect(user1Signer).supply(collateralAsset, amount, await user1Signer.getAddress(), 0);
+      await fixture.contracts.pool.connect(user1Signer).setUserUseReserveAsCollateral(collateralAsset, true);
+
+      const before = await fixture.contracts.pool.getUserConfiguration(await user1Signer.getAddress());
+      expect((before.data & collateralBit) !== 0n).to.equal(true);
+
+      await fixture.contracts.pool.clearReserveUserConfiguration(collateralAsset, [await user1Signer.getAddress()]);
+
+      const after = await fixture.contracts.pool.getUserConfiguration(await user1Signer.getAddress());
+      expect(after.data & collateralBit).to.equal(0n);
+    });
   });
 
   describe("Borrow", () => {

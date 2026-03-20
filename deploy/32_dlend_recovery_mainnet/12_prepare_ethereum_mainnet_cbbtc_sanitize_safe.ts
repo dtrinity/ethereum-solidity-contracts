@@ -122,6 +122,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const sanitizableIface = new Interface(sanitizableArtifact.abi);
   await queueSafeCall(executor, aTokenAddress, sanitizableIface.encodeFunctionData("forceBurnAllAndVerifyZero", [holders]));
 
+  await queueSafeCall(
+    executor,
+    poolAddress,
+    pool.interface.encodeFunctionData("clearReserveUserConfiguration", [cbBtcAddress, holders]),
+  );
+
   await queueSafeCall(executor, aTokenAddress, sanitizableIface.encodeFunctionData("rescueAllUnderlying", [recoveryAddress]));
 
   if (!skipDeactivate) {
@@ -137,7 +143,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   const success = await executor.flush(
-    "Ethereum mainnet cbBTC sanitize: Pool upgrade (optional), mintToTreasury, SanitizableAToken upgrade, burn, rescue, drop",
+    "Ethereum mainnet cbBTC sanitize: Pool upgrade (optional), mintToTreasury, SanitizableAToken upgrade, burn, clear user config, rescue, drop",
   );
 
   if (!success) {

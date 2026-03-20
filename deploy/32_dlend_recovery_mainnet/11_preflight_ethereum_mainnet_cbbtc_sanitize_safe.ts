@@ -10,12 +10,13 @@ import { addBlocker, DEFAULT_CBBTC, getReserveConfig, normalizeAddress, parseAdd
 import { REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "./remediation_ids";
 
 const DEFAULT_ATTACKER = "0xbA5E1E36b0305772D35509c694782fB9118D4ecc";
+const EIP1967_IMPLEMENTATION_SLOT = "0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC";
 const RAY = 10n ** 27n;
 const ERC20_MIN_ABI = [
   "function balanceOf(address account) view returns (uint256)",
   "function decimals() view returns (uint8)",
   "function totalSupply() view returns (uint256)",
-] as const;
+];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
@@ -79,14 +80,52 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     addBlocker(blockers, `Safe ${safeAddress} must be pool admin for configurator and SanitizableAToken admin calls.`);
   }
 
-  if (!skipPoolUpgrade) {
-    try {
-      await deployments.get(REMEDIATION_POOL_IMPL_ID);
-    } catch {
+  let expectedPoolImplAddress: string | undefined;
+
+  try {
+    expectedPoolImplAddress = getAddress(process.env.REMEDIATION_POOL_IMPL_ADDRESS || (await deployments.get(REMEDIATION_POOL_IMPL_ID)).address);
+  } catch {
+    if (skipPoolUpgrade) {
+      addBlocker(
+        blockers,
+        `REMEDIATION_SKIP_POOL_UPGRADE=true requires the expected patched Pool implementation (${REMEDIATION_POOL_IMPL_ID}) to be deployed or REMEDIATION_POOL_IMPL_ADDRESS to be set.`,
+      );
+    } else {
       addBlocker(
         blockers,
         `Missing deployment artifact ${REMEDIATION_POOL_IMPL_ID}. Run tag ethereum-mainnet-dlend-remediation-impls first (or set REMEDIATION_POOL_IMPL_ADDRESS only for batch generation after manual deploy).`,
       );
+    }
+  }
+
+  if (!skipPoolUpgrade && !expectedPoolImplAddress) {
+    addBlocker(
+      blockers,
+      `Could not resolve the expected patched Pool implementation. Deploy ${REMEDIATION_POOL_IMPL_ID} or set REMEDIATION_POOL_IMPL_ADDRESS.`,
+    );
+  }
+
+  if (!skipPoolUpgrade) {
+    try {
+      const currentPoolImplStorage = await ethers.provider.getStorage(poolAddress, EIP1967_IMPLEMENTATION_SLOT);
+      const currentPoolImpl = getAddress(`0x${currentPoolImplStorage.slice(-40)}`);
+      console.log(`Pool proxy implementation: current=${currentPoolImpl} expected=${expectedPoolImplAddress ?? "unknown"}`);
+    } catch (error) {
+      addBlocker(blockers, `Unable to read current Pool proxy implementation from ${poolAddress}: ${String(error)}.`);
+    }
+  } else if (expectedPoolImplAddress) {
+    try {
+      const currentPoolImplStorage = await ethers.provider.getStorage(poolAddress, EIP1967_IMPLEMENTATION_SLOT);
+      const currentPoolImpl = getAddress(`0x${currentPoolImplStorage.slice(-40)}`);
+
+      if (normalizeAddress(currentPoolImpl) !== normalizeAddress(expectedPoolImplAddress)) {
+        addBlocker(
+          blockers,
+          `REMEDIATION_SKIP_POOL_UPGRADE=true but Pool proxy ${poolAddress} points to ${currentPoolImpl}, not patched impl ${expectedPoolImplAddress}.`,
+        );
+      }
+    } catch (error) {
+      addBlocker(blockers, `Unable to read current Pool proxy implementation from ${poolAddress}: ${String(error)}.`);
     }
   }
 
@@ -152,20 +191,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     [
       "function totalSupply() view returns (uint256)",
       "function balanceOf(address) view returns (uint256)",
+      "function scaledTotalSupply() view returns (uint256)",
+      "function scaledBalanceOf(address) view returns (uint256)",
       "function RESERVE_TREASURY_ADDRESS() view returns (address)",
     ],
     aTokenAddress,
     signer,
   );
-  const [totalSupply, treasuryRaw, normalizedIncome] = await Promise.all([
+  const [totalSupply, scaledTotalSupply, treasuryRaw, normalizedIncome] = await Promise.all([
     aToken.totalSupply(),
+    aToken.scaledTotalSupply(),
     aToken.RESERVE_TREASURY_ADDRESS(),
     pool.getReserveNormalizedIncome(cbBtcAddress),
   ]);
   const treasury = getAddress(treasuryRaw as string);
-  const treasuryMintAmount =
-    reserveData.accruedToTreasury === 0n ? 0n : (reserveData.accruedToTreasury * normalizedIncome + RAY / 2n) / RAY;
-  const expectedPostMintTotalSupply = totalSupply + treasuryMintAmount;
+  const currentTotalSupply = BigInt(totalSupply.toString());
+  const currentScaledTotalSupply = BigInt(scaledTotalSupply.toString());
+  const accruedToTreasuryScaled = BigInt(reserveData.accruedToTreasury.toString());
+  const currentNormalizedIncome = BigInt(normalizedIncome.toString());
+  const treasuryMintAmount = accruedToTreasuryScaled === 0n ? 0n : (accruedToTreasuryScaled * currentNormalizedIncome + RAY / 2n) / RAY;
+  const expectedPostMintTotalSupply = currentTotalSupply + treasuryMintAmount;
 
   if (totalSupply > 0n && holderCandidates.length === 0) {
     addBlocker(
@@ -182,23 +227,23 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   if (validateHolders && holderCandidates.length > 0 && expectedPostMintTotalSupply > 0n) {
-    let sum = 0n;
+    let scaledSum = 0n;
     const treasuryNormalized = normalizeAddress(treasury);
 
     for (const holder of holderCandidates) {
-      sum += await aToken.balanceOf(getAddress(holder));
+      scaledSum += await aToken.scaledBalanceOf(getAddress(holder));
 
       if (treasuryMintAmount > 0n && normalizeAddress(holder) === treasuryNormalized) {
-        sum += treasuryMintAmount;
+        scaledSum += accruedToTreasuryScaled;
       }
     }
 
-    const expectedHolderSum = expectedPostMintTotalSupply;
+    const expectedScaledHolderSum = currentScaledTotalSupply + accruedToTreasuryScaled;
 
-    if (sum !== expectedHolderSum) {
+    if (scaledSum !== expectedScaledHolderSum) {
       addBlocker(
         blockers,
-        `Holder set does not cover post-mint total supply: sum(balanceOf)=${sum.toString()} expectedAfterMintToTreasury=${expectedHolderSum.toString()}. Refresh CBBTC_SANITIZE_HOLDERS_JSON from Transfer logs and include treasury if mintToTreasury will materialize accrued fees.`,
+        `Holder set does not cover post-mint scaled supply: sum(scaledBalanceOf)+accruedToTreasury=${scaledSum.toString()} expected=${expectedScaledHolderSum.toString()}. Refresh CBBTC_SANITIZE_HOLDERS_JSON from Transfer logs and include treasury if mintToTreasury will materialize accrued fees.`,
       );
     }
   }
