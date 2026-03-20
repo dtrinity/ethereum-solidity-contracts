@@ -2,8 +2,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { BORROW_LOGIC_ID, POOL_ADDRESSES_PROVIDER_ID, POOL_IMPL_ID } from "../../typescript/deploy-ids";
+import { REMEDIATION_FLASH_LOAN_LOGIC_ID, REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "../../typescript/dlend/recovery_remediation_ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
-import { REMEDIATION_FLASH_LOAN_LOGIC_ID, REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "./remediation_ids";
 
 /* Deploy patched FlashLoanLogic, L2Pool implementation (linked to the new library),
  * and SanitizableAToken implementation for the cbBTC reserve wind-down.

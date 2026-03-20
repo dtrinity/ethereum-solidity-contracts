@@ -4,10 +4,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { POOL_ADDRESSES_PROVIDER_ID, POOL_CONFIGURATOR_PROXY_ID } from "../../typescript/deploy-ids";
+import { REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "../../typescript/dlend/recovery_remediation_ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import { DEFAULT_CBBTC, normalizeAddress, parseAddressListEnv, parseBooleanEnv, queueSafeCall } from "./common";
-import { REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "./remediation_ids";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {

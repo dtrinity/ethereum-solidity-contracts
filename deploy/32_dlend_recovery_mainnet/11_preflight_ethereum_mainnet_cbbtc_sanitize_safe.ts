@@ -4,10 +4,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
 import { DUSD_TOKEN_ID, POOL_ADDRESSES_PROVIDER_ID, POOL_CONFIGURATOR_PROXY_ID } from "../../typescript/deploy-ids";
+import { REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "../../typescript/dlend/recovery_remediation_ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import { addBlocker, DEFAULT_CBBTC, getReserveConfig, normalizeAddress, parseAddressListEnv, parseBooleanEnv } from "./common";
-import { REMEDIATION_POOL_IMPL_ID, SANITIZABLE_ATOKEN_IMPL_ID } from "./remediation_ids";
 
 const DEFAULT_ATTACKER = "0xbA5E1E36b0305772D35509c694782fB9118D4ecc";
 const EIP1967_IMPLEMENTATION_SLOT = "0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC";
