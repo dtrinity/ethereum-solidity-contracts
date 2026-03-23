@@ -39,7 +39,9 @@ contract SanitizableAToken is AToken {
      * @param holders Exhaustive list of all addresses with a non-zero aToken balance, including treasury if applicable.
      * @return totalBurned Visible-token amount burned across all holders.
      */
-    function forceBurnAllAndVerifyZero(address[] calldata holders) external onlyPoolAdmin returns (uint256 totalBurned) {
+    function forceBurnAllAndVerifyZero(
+        address[] calldata holders
+    ) external onlyPoolAdmin returns (uint256 totalBurned) {
         _requireReserveQuarantined();
         _requireZeroAccruedToTreasury();
 

@@ -83,7 +83,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   let expectedPoolImplAddress: string | undefined;
 
   try {
-    expectedPoolImplAddress = getAddress(process.env.REMEDIATION_POOL_IMPL_ADDRESS || (await deployments.get(REMEDIATION_POOL_IMPL_ID)).address);
+    expectedPoolImplAddress = getAddress(
+      process.env.REMEDIATION_POOL_IMPL_ADDRESS || (await deployments.get(REMEDIATION_POOL_IMPL_ID)).address,
+    );
   } catch {
     if (skipPoolUpgrade) {
       addBlocker(

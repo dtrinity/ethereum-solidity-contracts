@@ -122,11 +122,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const sanitizableIface = new Interface(sanitizableArtifact.abi);
   await queueSafeCall(executor, aTokenAddress, sanitizableIface.encodeFunctionData("forceBurnAllAndVerifyZero", [holders]));
 
-  await queueSafeCall(
-    executor,
-    poolAddress,
-    pool.interface.encodeFunctionData("clearReserveUserConfiguration", [cbBtcAddress, holders]),
-  );
+  await queueSafeCall(executor, poolAddress, pool.interface.encodeFunctionData("clearReserveUserConfiguration", [cbBtcAddress, holders]));
 
   await queueSafeCall(executor, aTokenAddress, sanitizableIface.encodeFunctionData("rescueAllUnderlying", [recoveryAddress]));
 
