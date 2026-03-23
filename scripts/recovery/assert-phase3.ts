@@ -39,6 +39,13 @@ async function main() {
     parseAddressListEnv("PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON").map((asset) => normalizeAddress(asset)),
   );
   const flashLoanReserves = new Set(parseAddressListEnv("PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON").map((asset) => normalizeAddress(asset)));
+  const allReserves = await pool.getReservesList();
+  const allReserveSet = new Set(
+    (allReserves as string[])
+      .filter((asset) => asset !== "0x0000000000000000000000000000000000000000")
+      .map((asset) => normalizeAddress(asset)),
+  );
+  const cbBtcListed = allReserveSet.has(normalizeAddress(CBBTC));
 
   if (resumeReserves.length === 0) {
     throw new Error("PHASE3_RESUME_RESERVES_JSON must contain at least one reserve to assert.");
@@ -57,26 +64,46 @@ async function main() {
     failures.push(`attacker dUSD variable debt is nonzero: ${attackerDebt.toString()}`);
   }
 
-  const cbBtcConfig = await decodeReserve(CBBTC);
+  if (cbBtcListed) {
+    const cbBtcConfig = await decodeReserve(CBBTC);
 
-  if (!cbBtcConfig.paused) {
-    failures.push("cbBTC is not paused");
+    if (!cbBtcConfig.paused) {
+      failures.push("cbBTC is not paused");
+    }
+
+    if (cbBtcConfig.borrowingEnabled) {
+      failures.push("cbBTC borrowing is enabled");
+    }
+
+    if (cbBtcConfig.stableRateBorrowingEnabled) {
+      failures.push("cbBTC stable-rate borrowing is enabled");
+    }
+
+    if (cbBtcConfig.flashLoanEnabled) {
+      failures.push("cbBTC flash loans are enabled");
+    }
+
+    if (REQUIRE_CBBTC_LTV_ZERO && cbBtcConfig.ltv !== 0) {
+      failures.push(`cbBTC LTV is ${cbBtcConfig.ltv} instead of 0`);
+    }
   }
 
-  if (cbBtcConfig.borrowingEnabled) {
-    failures.push("cbBTC borrowing is enabled");
+  const cbBtcNormalized = normalizeAddress(CBBTC);
+
+  if (resumeReserves.some((asset) => normalizeAddress(asset) === cbBtcNormalized)) {
+    failures.push("cbBTC must not be included in PHASE3_RESUME_RESERVES_JSON");
   }
 
-  if (cbBtcConfig.stableRateBorrowingEnabled) {
-    failures.push("cbBTC stable-rate borrowing is enabled");
+  if (borrowingReserves.has(cbBtcNormalized)) {
+    failures.push("cbBTC must not be included in PHASE3_ENABLE_BORROWING_RESERVES_JSON");
   }
 
-  if (cbBtcConfig.flashLoanEnabled) {
-    failures.push("cbBTC flash loans are enabled");
+  if (stableBorrowingReserves.has(cbBtcNormalized)) {
+    failures.push("cbBTC must not be included in PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON");
   }
 
-  if (REQUIRE_CBBTC_LTV_ZERO && cbBtcConfig.ltv !== 0) {
-    failures.push(`cbBTC LTV is ${cbBtcConfig.ltv} instead of 0`);
+  if (flashLoanReserves.has(cbBtcNormalized)) {
+    failures.push("cbBTC must not be included in PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON");
   }
 
   for (const asset of resumeReserves) {
@@ -121,6 +148,7 @@ async function main() {
       {
         checkedAt: new Date().toISOString(),
         attacker: ATTACKER,
+        cbBtcState: cbBtcListed ? "listed-quarantined" : "dropped",
         failures,
         warnings,
         status: failures.length === 0 ? "PASS" : "FAIL",

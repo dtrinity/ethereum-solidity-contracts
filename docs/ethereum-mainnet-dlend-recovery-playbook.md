@@ -1,314 +1,262 @@
-# Ethereum Mainnet dLEND Recovery Playbook
+# Ethereum Mainnet dLEND Recovery Continuation Playbook
+Date: 2026-03-23
 
-This document turns the March 17, 2026 recovery kit into repo-native operator steps for Ethereum mainnet.
+This is the continuation from the prior recovery playbook. It starts **after** the prior containment / repay work and covers the remainder of the rollout:
 
-## Goals
+1. upgrade dLEND to the minimal Pool remediation,
+2. sanitize and drop `cbBTC` in the same Safe batch,
+3. run final sanity checks from the new post-drop state,
+4. unfreeze the remaining markets in a controlled way.
 
-- preserve the current incident state
-- prevent a fresh borrow loop while selectively reopening only what is necessary
-- repay the attacker's dUSD variable debt from the recovery wallet
-- verify that reopening dUSD redemptions does not silently reopen the exploit path
+## Starting assumption
 
-## Key Rules
-
-- Keep `cbBTC` paused until the accounting path is patched or the market is migrated/reset.
-- Do not rely on `frozen` to disable flash loans. In this fork, flash loans are blocked by `paused` or `flashLoanEnabled = false`.
-- Treat economic repair and exploit neutralization as separate tasks.
-- Use private submission / bundle relays for the Safe batch and the repay transaction.
-
-## Repository Entry Points
-
-- Operator read/check scripts:
-  - `scripts/recovery/preflight-checks.ts`
-  - `scripts/recovery/repay-attacker-variable-debt.ts`
-  - `scripts/recovery/assert-post-repay.ts`
-  - `scripts/recovery/assert-phase3.ts`
-- Safe batch generation:
-  - `deploy/32_dlend_recovery_mainnet/00_preflight_ethereum_mainnet_dlend_recovery_safe.ts`
-  - `deploy/32_dlend_recovery_mainnet/01_prepare_ethereum_mainnet_dlend_recovery_safe.ts`
-  - `deploy/32_dlend_recovery_mainnet/04_preflight_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
-  - `deploy/32_dlend_recovery_mainnet/05_prepare_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
-  - cbBTC sanitize / delist (Phase 4b): `10_deploy_ethereum_mainnet_dlend_remediation_impls.ts`, `11_preflight_ethereum_mainnet_cbbtc_sanitize_safe.ts`, `12_prepare_ethereum_mainnet_cbbtc_sanitize_safe.ts`
-
-## Current Verified State
-
-Verified on March 19, 2026 after the repay and the next governance transition:
+Do not start this continuation unless the earlier recovery posture is already true:
 
 - attacker `dUSD` variable debt is `0`
-- every non-`cbBTC` reserve is `unpaused + frozen`
-- every non-`cbBTC` reserve has `borrowing = false`
-- every non-`cbBTC` reserve has `stable borrowing = false`
-- every non-`cbBTC` reserve has `flashLoanEnabled = false`
-- `cbBTC` remains `paused + frozen + non-borrowable + flash-loans-disabled + LTV = 0`
+- non-`cbBTC` reserves are in contained recovery posture
+- `cbBTC` is still quarantined (`paused + frozen + borrowing disabled + stable borrowing disabled + flash loans disabled`)
+- `cbBTC` holder set for sanitize is ready and exhaustive at execution time
 
-This means the protocol is now in a contained recovery posture:
+The incident root cause remains the same: thin-supply reserve accounting plus flash-loan-premium-driven `liquidityIndex` inflation. The public exploit path is only durably closed once the Pool remediation is live. The exploit position on `cbBTC` also remains economically abnormal until that reserve is explicitly retired. See `root-cause-preliminary-2026-03-17.md` and the existing repo recovery playbook for the rationale.
 
-- repayments work
-- withdrawals work
-- liquidations work
-- new supply is blocked by `frozen`
-- new borrowing is blocked
-- flash loans are blocked
+## One repo improvement before rollout
 
-## Suggested Sequence
+Apply the small compatibility patch in `dlend-phase3-cbbtc-drop-compat.patch` before starting.
 
-### Phase 0. Snapshot the live state
+Reason:
+
+- `deploy/32_dlend_recovery_mainnet/04_preflight_ethereum_mainnet_dlend_recovery_phase3_safe.ts`
+- `scripts/recovery/assert-phase3.ts`
+
+still assume `cbBTC` is listed and quarantined during Phase 3. If you drop `cbBTC` **before** Phase 3, those checks will fail even though the new state is the intended one.
+
+The patch makes Phase 3 accept either:
+
+- `cbBTC` still listed and quarantined, or
+- `cbBTC` already delisted
+
+while still forbidding `cbBTC` from every Phase 3 resume list.
+
+## Rollout plan
+
+## Phase A — Deploy remediation implementations
+
+This is the deployer-EOA step only. It does **not** change live Pool behavior yet.
 
 Run:
-
-```bash
-npx tsx scripts/recovery/preflight-checks.ts
-```
-
-Recommended env:
 
 ```bash
 export RPC_URL='https://ethereum-rpc.publicnode.com'
-export ATTACKER='0xbA5E1E36b0305772D35509c694782fB9118D4ecc'
-export RESERVES_JSON='["0x07fFf99e1664d9B116fbC158c0E99785F81cA236","0x8236a87084f8B84306f72007F36F2618A5634494","0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599","0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf","0x45804880De22913dAFE09f4980848ECE6EcbAf78","0xac3E018457B222d93114458476f3E3416Abbe38F","0xcf62F905562626CfcDD2261162a51fd02Fc9c5b6"]'
+export PRIVATE_KEY='0x...'
+
+yarn recovery:remediation:deploy-impls
 ```
 
-Record at minimum:
+Expected deployments:
 
-- reserve flags
-- liquidity index
-- aToken total supply
-- attacker dUSD variable debt
-- attacker account data
-- any reserve that is low-supply and still flash-loan-enabled
+- `FlashLoanLogic_Remediation`
+- `PoolImpl_Remediation`
+- `SanitizableAToken_cbBTC_Impl`
 
-### Phase 1. Generate the Safe batch
+The intended Pool change is still the minimal one:
 
-This repo-native flow uses Hardhat Deploy plus `GovernanceExecutor`.
+- remove supplier-side `liquidityIndex` inflation during flash-loan repayment
+- route the entire flash-loan premium to treasury accrual
 
-Set the reserve list that should enter recovery-safe mode:
+## Phase B — Preflight the combined Pool-upgrade + cbBTC-drop batch
+
+This batch is the main state transition. It will:
+
+1. upgrade the Pool proxy to the patched implementation,
+2. mint any pending `cbBTC` treasury accrual,
+3. upgrade only the `cbBTC` aToken proxy to `SanitizableAToken`,
+4. burn all remaining `cbBTC` aToken balances,
+5. clear user-config bitmap bits for those holders,
+6. rescue all underlying `cbBTC` to the designated recovery wallet,
+7. deactivate and drop the `cbBTC` reserve.
+
+Required env:
 
 ```bash
 export USE_SAFE='true'
-export RECOVERY_RESERVES_JSON='["0x07fFf99e1664d9B116fbC158c0E99785F81cA236","0xb419EcDd222981E7E54cEc316797eCb799c6AFdC","0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2","0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0","0xae78736Cd615f374D3085123A210448E74Fc6393","0x9D39A5DE30e57443BfF2A8307A4256c8797A3497","0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD","0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b","0x356B8d89c1e1239Cbbb9dE4815c39A1474d5BA7D"]'
-export RECOVERY_SET_CBBTC_LTV_ZERO='true'
-```
-
-Then run:
-
-```bash
-npx hardhat deploy --network ethereum_mainnet --tags setup-ethereum-mainnet-dlend-recovery-safe
-```
-
-The batch follows this ordering:
-
-- disable stable-rate borrowing
-- disable borrowing
-- disable flash loans
-- freeze
-- unpause
-
-Populate `RECOVERY_RESERVES_JSON` from the live preflight output, not from stale incident notes. As of March 18, 2026, the read-only snapshot still flags `dETH`, `WETH`, `wstETH`, `rETH`, `sUSDe`, `sUSDS`, `syrupUSDC`, and `syrupUSDT` as unpaused low-supply reserves with flash loans enabled, so they need explicit handling before Phase 3 can pass.
-
-For `cbBTC`, the batch instead:
-
-- keeps it paused
-- disables flash loans
-- disables borrowing
-- freezes it if needed
-- optionally sets `LTV = 0` while preserving liquidation threshold and bonus
-
-### Phase 2. Repay the attacker's dUSD variable debt
-
-Prerequisites:
-
-- `dUSD` unpaused
-- `dUSD` frozen
-- `dUSD` borrowing disabled
-- `dUSD` flash loans disabled
-- `cbBTC` still paused
-
-Run:
-
-```bash
-export PRIVATE_KEY='0x...'
-npx tsx scripts/recovery/repay-attacker-variable-debt.ts
-```
-
-The script uses the on-behalf-of repay pattern:
-
-- approve `MaxUint256`
-- call `repay(dUSD, MaxUint256 - 1, 2, attacker)`
-
-This avoids depending on a stale off-chain debt read.
-
-### Phase 3. Move all remaining non-cbBTC paused markets into frozen mode
-
-After the bad debt is repaid, the next operational step is to restore orderly withdrawals, repayments, and liquidations on every non-`cbBTC` market that is still fully paused.
-
-The repo now defaults this phase to:
-
-- discover every reserve that is currently `paused`
-- exclude `cbBTC`
-- exclude `dUSD` because it was already brought live in Phase 1
-- disable flash loans if still enabled
-- disable borrowing and stable borrowing if still enabled
-- freeze the reserve
-- unpause the reserve
-
-Use the packaged command if you want this default "all remaining paused non-cbBTC reserves" behavior:
-
-```bash
-export PK_MAINNET_DEPLOYER='0x...'
-yarn recovery:safe:phase2:all-paused:preflight
-yarn recovery:safe:phase2:all-paused:batch
-```
-
-The `all-paused` commands set `PHASE2_ALLOW_LOW_SUPPLY_RESERVES=true` intentionally, because the remaining paused markets are thin and the point of this phase is to move them into an explicitly safer `unpaused + frozen + flash-loans-disabled` posture.
-
-If you need a custom subset instead, provide `PHASE2_UNPAUSE_RESERVES_JSON` and use the base `recovery:safe:phase2:*` commands.
-
-### Phase 4. Assert the post-phase-2 state
-
-Run:
-
-```bash
-npx tsx scripts/recovery/assert-post-repay.ts
-```
-
-The assertion pass checks:
-
-- attacker dUSD variable debt is zero
-- attacker borrow capacity is zero or explicitly tolerated
-- `cbBTC` remains paused
-- `dUSD` is unpaused but frozen with borrowing and flash loans disabled
-- every non-`cbBTC` reserve is unpaused and frozen unless you intentionally provide a smaller `PHASE2_UNPAUSE_RESERVES_JSON` set
-- no unpaused reserve is both low-supply and flash-loan-enabled
-
-As of March 19, 2026 this assertion passes against live state with the full non-`cbBTC` reserve set.
-
-### Phase 4b. cbBTC sanitize and delist (patched Pool + `SanitizableAToken`)
-
-Run this **after** containment and attacker debt repayment when you are ready to permanently wind down the quarantined `cbBTC` reserve.
-
-**What the repo encodes**
-
-1. **Implementation deploy (deployer EOA, not the Safe)** — `FlashLoanLogic_Remediation` (patched premium routing), `PoolImpl_Remediation` (`L2Pool` linked to that library), `SanitizableAToken_cbBTC_Impl` (constructor receives the **Pool proxy** from `PoolAddressesProvider`, same pattern as `AToken`).
-2. **Safe batch** — optional `setPoolImpl` on `PoolAddressesProvider`, then `Pool.mintToTreasury([cbBTC])`, `PoolConfigurator.updateAToken` (metadata read from the live aToken proxy), `SanitizableAToken.forceBurnAllAndVerifyZero`, `SanitizableAToken.rescueAllUnderlying`, optional `setReserveActive(false)`, and `dropReserve` (skippable via env for dry rehearsal only).
-
-**Holder set**
-
-- Build `CBBTC_SANITIZE_HOLDERS_JSON` from `Transfer` logs on the cbBTC aToken proxy; it must be **exhaustive** for every address with non-zero balance **at execution time**, including treasury after `mintToTreasury`.
-- Preflight now models the `mintToTreasury([cbBTC])` step. If `accruedToTreasury > 0`, it requires treasury to appear in `CBBTC_SANITIZE_HOLDERS_JSON` and, by default, verifies `sum(balanceOf(holder)) == expected post-mint totalSupply()` (`CBBTC_SANITIZE_VALIDATE_HOLDER_SUM=true`).
-
-**Suggested commands**
-
-```bash
-# 1) Deploy new implementations (mainnet RPC + deployer key; does not use the Safe)
-npx hardhat deploy --network ethereum_mainnet --tags ethereum-mainnet-dlend-remediation-impls
-
-# 2) Preflight (Safe + reserve / debt checks)
-export USE_SAFE=true
-export CBBTC_SANITIZE_HOLDERS_JSON='["0x...","0x..."]'
-yarn recovery:safe:cbbtc-sanitize:preflight
-
-# 3) Safe transaction batch via GovernanceExecutor
-export CBBTC_SANITIZE_ACK=true
+export CBBTC_SANITIZE_ACK='true'
+export REMEDIATION_SKIP_POOL_UPGRADE='false'
 export CBBTC_SANITIZE_RECOVERY_WALLET='0x...'
+export CBBTC_SANITIZE_HOLDERS_JSON='["0x...","0x..."]'
+```
+
+Run:
+
+```bash
+yarn recovery:safe:cbbtc-sanitize:preflight
+```
+
+Preflight should pass all of these:
+
+- Safe has the needed roles / ownership
+- expected patched Pool implementation is available
+- `cbBTC` is still paused, frozen, non-borrowable, flash-loans-disabled
+- `cbBTC` stable debt and variable debt supply are zero
+- attacker `dUSD` variable debt is zero
+- holder set covers post-`mintToTreasury` scaled supply
+- treasury is included in the holder set if `mintToTreasury([cbBTC])` will mint to it
+
+If preflight fails on holder coverage, rebuild `CBBTC_SANITIZE_HOLDERS_JSON` from the `cbBTC` aToken `Transfer` history and re-run the preflight. Do not proceed on a guessed holder set.
+
+## Phase C — Execute the combined Safe batch
+
+Run:
+
+```bash
 yarn recovery:safe:cbbtc-sanitize:batch
 ```
 
-**Environment reference**
+Target batch order:
 
-| Variable | Purpose |
-|----------|---------|
-| `REMEDIATION_SKIP_POOL_UPGRADE` | If `true`, omit `setPoolImpl` (Pool already patched). |
-| `REMEDIATION_POOL_IMPL_ADDRESS` | Override Pool implementation address instead of reading `PoolImpl_Remediation` from `deployments/`. |
-| `SANITIZABLE_ATOKEN_IMPL_ADDRESS` | Override `SanitizableAToken` implementation address. |
-| `CBBTC_SANITIZE_HOLDERS_JSON` | Exhaustive holder list (`address[]` JSON). |
-| `CBBTC_SANITIZE_RECOVERY_WALLET` | Recipient of `rescueAllUnderlying`. |
-| `CBBTC_SANITIZE_VALIDATE_HOLDER_SUM` | Default `true`; set `false` to skip sum-vs-`totalSupply` check in preflight. |
-| `CBBTC_SANITIZE_REQUIRE_ATTACKER_DEBT_ZERO` | Default `true`; requires attacker `dUSD` variable debt zero before batch. |
-| `CBBTC_SANITIZE_SKIP_DEACTIVATE` | Set `true` to skip `setReserveActive(cbBTC, false)` before `dropReserve`. |
-| `CBBTC_SANITIZE_SKIP_DROP_RESERVE` | Set `true` only for rehearsal — **not** for production completion. |
+1. `PoolAddressesProvider.setPoolImpl(PoolImpl_Remediation)`
+2. `Pool.mintToTreasury([cbBTC])`
+3. `PoolConfigurator.updateAToken(cbBTC -> SanitizableAToken_cbBTC_Impl)`
+4. `SanitizableAToken.forceBurnAllAndVerifyZero(holders)`
+5. `Pool.clearReserveUserConfiguration(cbBTC, holders)`
+6. `SanitizableAToken.rescueAllUnderlying(recoveryWallet)`
+7. `PoolConfigurator.setReserveActive(cbBTC, false)`
+8. `PoolConfigurator.dropReserve(cbBTC)`
 
-**On-chain preconditions (enforced by `SanitizableAToken` and preflight)**
+Do not split this into separate Safe batches unless there is a hard operational reason. The point is to move directly from “quarantined toxic reserve” to “retired reserve on a patched Pool”.
 
-`cbBTC` must remain paused, frozen, non-borrowable, stable borrowing off, flash loans off, both debt supplies zero. `mintToTreasury` in the batch clears reserve-level `accruedToTreasury` before burns, and the holder list must still be exhaustive after that mint.
+## Phase D — Post-batch sanity checks
 
-**Scripts**
+Before any market unfreeze, verify the new post-drop state.
 
-- `deploy/32_dlend_recovery_mainnet/10_deploy_ethereum_mainnet_dlend_remediation_impls.ts`
-- `deploy/32_dlend_recovery_mainnet/11_preflight_ethereum_mainnet_cbbtc_sanitize_safe.ts`
-- `deploy/32_dlend_recovery_mainnet/12_prepare_ethereum_mainnet_cbbtc_sanitize_safe.ts`
+### D1. Pool proxy really points to the patched implementation
 
-### Phase 5. Deliberate resume only after remediation
+Check the Pool proxy EIP-1967 implementation slot against the deployed `PoolImpl_Remediation` address.
 
-The next step is no longer another containment action. It is a deliberate resume decision.
+Pseudocode:
 
-Use the `phase3` flow only after:
+```ts
+const slot = "0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC";
+const currentImpl = readStorage(provider, poolProxy, slot).slice(-40);
+assert(currentImpl == deployments["PoolImpl_Remediation"].address);
+```
 
-- code-level protections are deployed and reviewed
-- reserve-by-reserve health checks are complete
-- monitoring/alerting is live for the reopen window
+### D2. `cbBTC` is actually gone from the active reserve list
 
-The preflight enforces these acknowledgements:
+Read `Pool.getReservesList()` and verify `cbBTC` is absent.
 
-- `PHASE3_REMEDIATION_ACK=true`
-- `PHASE3_HEALTHCHECK_ACK=true`
-- `PHASE3_MONITORING_ACK=true`
-- `PHASE3_RESUME_RESERVES_JSON='[...]'`
+### D3. The rescue leg completed
 
-Optional resume controls:
+Verify:
 
-- `PHASE3_ENABLE_BORROWING_RESERVES_JSON='[...]'`
-- `PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON='[...]'`
-- `PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON='[...]'`
-- `PHASE3_ALLOW_FLASHLOANS=true` only if flash loans are intentionally being restored
-- `PHASE3_ALLOW_LOW_SUPPLY_RESUMES=true` only if you intentionally want to resume thin reserves
+- `CBBTC_SANITIZE_RECOVERY_WALLET` received the rescued `cbBTC` underlying
+- the live `cbBTC` aToken proxy has zero total supply
+- `forceBurnAllAndVerifyZero()` did not leave residual holders
 
-Suggested sequence:
+### D4. No unintended feature re-enable happened on surviving reserves
+
+For every active non-`cbBTC` reserve, verify:
+
+- `borrowingEnabled == false`
+- `stableRateBorrowingEnabled == false`
+- `flashLoanEnabled == false`
+
+This should still be true immediately after the sanitize batch. That batch should not touch the surviving reserves’ live posture.
+
+### D5. Attacker debt is still zero
+
+Verify the attacker’s `dUSD` variable debt is still zero.
+
+If any of D1–D5 fail, stop here. Do not enter the unfreeze phase.
+
+## Phase E — Controlled unfreeze of remaining markets
+
+This phase should only unfreeze / reopen supply-side usage first.
+
+Recommended first-live posture:
+
+- unpaused
+- unfrozen
+- borrowing still disabled
+- stable borrowing still disabled
+- flash loans still disabled
+
+That means:
+
+- `PHASE3_ENABLE_BORROWING_RESERVES_JSON='[]'`
+- `PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON='[]'`
+- `PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON='[]'`
+
+Set the mandatory acknowledgements:
 
 ```bash
-export PK_MAINNET_DEPLOYER='0x...'
 export PHASE3_REMEDIATION_ACK='true'
 export PHASE3_HEALTHCHECK_ACK='true'
 export PHASE3_MONITORING_ACK='true'
-export PHASE3_RESUME_RESERVES_JSON='["0x..."]'
-yarn recovery:safe:phase3:preflight
-yarn recovery:safe:phase3:batch
 ```
 
-Then validate the chosen resume set:
+Set the resume set to the active non-`cbBTC` reserves you actually want to unfreeze:
 
 ```bash
-export PHASE3_RESUME_RESERVES_JSON='["0x..."]'
+export PHASE3_RESUME_RESERVES_JSON='["0x...","0x..."]'
+export PHASE3_ENABLE_BORROWING_RESERVES_JSON='[]'
+export PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON='[]'
+export PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON='[]'
+```
+
+If some reserves are still thin, Phase 3 will warn or block unless you explicitly acknowledge it. For a supply-only unfreeze with borrowing/flash loans still disabled, using:
+
+```bash
+export PHASE3_ALLOW_LOW_SUPPLY_RESUMES='true'
+```
+
+is acceptable **only after** reserve-by-reserve review.
+
+Run:
+
+```bash
+yarn recovery:safe:phase3:preflight
+yarn recovery:safe:phase3:batch
 yarn recovery:assert:phase3
 ```
 
-If you run `phase3` preflight without those acknowledgements, it should fail. That failure is expected and is part of the guardrail.
+With the compatibility patch applied, the preflight and assert should accept the new state where `cbBTC` has already been dropped.
 
-## Failure Modes
+## Recommended first rollout shape
 
-- Unpausing a reserve before disabling flash loans
-- Repaying debt before eliminating future borrow paths
-- Unpausing `cbBTC` before the accounting path is patched
-- Treating restored dUSD solvency as equivalent to root-cause resolution
-- Listing or relisting a market directly into a live configuration instead of using the staged atomic enable flow
+The conservative rollout I would use is:
 
-## New Listing / Relisting Rule
+1. deploy remediation implementations
+2. combined Safe batch: upgrade Pool + sanitize/drop `cbBTC`
+3. post-batch sanity checks
+4. unfreeze surviving markets with:
+   - borrowing off
+   - stable borrowing off
+   - flash loans off
+5. observe
+6. handle any later borrowing / flash-loan reopen in a separate decision
 
-Any future market listing, relisting, or migrated replacement reserve should use the repo-native staged flow built around `AtomicMarketListingHelper`:
+## Abort conditions
 
-1. initialize and immediately stage the reserve into a non-live posture
-2. seed the reserve above an explicit aToken floor
-3. atomically enable the market only after deliberate operator acknowledgements
+Abort and remain in the contained posture if any of the following happen:
 
-For as long as the broader accounting path remains under remediation, new listings should keep `flashLoanEnabled = false` by default and only override that intentionally.
+- cbBTC sanitize preflight fails on holder coverage
+- Pool implementation check does not match the patched impl after the Safe batch
+- `cbBTC` still appears in `getReservesList()`
+- any surviving reserve has borrowing or flash loans unexpectedly enabled before unfreeze
+- attacker `dUSD` variable debt is nonzero
+- the patched Phase 3 preflight or assert fails
 
-See also:
+## Minimal operator note
 
-- `contracts/dlend/core/deployments/AtomicMarketListingHelper.sol`
-- `docs/ethereum-mainnet-dlend-collateral-rollout.md`
-- `deploy/30_dlend_new_listings/02_setup_ethereum_mainnet_collateral_reserves_safe.ts`
-- `deploy/30_dlend_new_listings/02c_setup_ethereum_mainnet_collateral_reserves_config_safe.ts`
+This continuation intentionally does **not** include:
 
-## Notes
+- bridge remediation
+- dSTAKE changes
+- a second-stage borrowing reopen
+- flash-loan re-enable
 
-- These scripts intentionally separate operational repair from protocol patching.
-- Permanent removal of the quarantined `cbBTC` reserve follows **Phase 4b** (implementation deploy + Safe batch). Treat **Phase 5** as unrelated market resume work once remediation and delisting decisions are complete.
+It is only the shortest safe path from the prior contained posture to:
+
+- patched dLEND core,
+- retired toxic `cbBTC` reserve,
+- surviving markets unpaused and unfrozen, but still not borrow/live-risk-opened.

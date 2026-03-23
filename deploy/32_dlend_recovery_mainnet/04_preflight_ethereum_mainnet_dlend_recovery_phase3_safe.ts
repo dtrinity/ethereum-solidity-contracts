@@ -92,13 +92,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
   const allReserves = await getPoolReserves(pool);
   const allReserveSet = new Set(allReserves.map((asset) => normalizeAddress(asset)));
+  const cbBtcListed = allReserveSet.has(normalizeAddress(cbBtcAddress));
 
   if (!allReserveSet.has(normalizeAddress(dUSDAddress))) {
     addBlocker(blockers, `dUSD reserve ${dUSDAddress} is not active in pool ${poolAddress}.`);
   }
 
-  if (!allReserveSet.has(normalizeAddress(cbBtcAddress))) {
-    addBlocker(blockers, `cbBTC reserve ${cbBtcAddress} is not active in pool ${poolAddress}.`);
+  if (!cbBtcListed) {
+    console.log(`cbBTC reserve ${cbBtcAddress} is not active in pool ${poolAddress}; Phase 3 will treat cbBTC as already delisted.`);
   }
 
   const listChecks = [
@@ -117,7 +118,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       }
 
       if (normalized === normalizeAddress(cbBtcAddress)) {
-        addBlocker(blockers, `${label} must not include cbBTC. cbBTC stays quarantined in Phase 3.`);
+        addBlocker(
+          blockers,
+          `${label} must not include cbBTC. In Phase 3, cbBTC is either already delisted or remains quarantined outside the resume set.`,
+        );
       }
     }
   }
@@ -166,22 +170,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     );
   }
 
-  const [dusdConfig, cbBtcConfig] = await Promise.all([getReserveConfig(pool, dUSDAddress), getReserveConfig(pool, cbBtcAddress)]);
+  const dusdConfig = await getReserveConfig(pool, dUSDAddress);
 
   if (dusdConfig.paused) {
     addBlocker(blockers, "dUSD is paused. Phase 3 assumes dUSD remained available in recovery mode.");
   }
 
-  if (!cbBtcConfig.paused) {
-    addBlocker(blockers, "cbBTC is not paused. Phase 3 expects cbBTC to remain quarantined.");
-  }
+  if (cbBtcListed) {
+    const cbBtcConfig = await getReserveConfig(pool, cbBtcAddress);
 
-  if (cbBtcConfig.borrowingEnabled || cbBtcConfig.stableRateBorrowingEnabled || cbBtcConfig.flashLoanEnabled) {
-    addBlocker(blockers, "cbBTC still has borrowing, stable borrowing, or flash loans enabled.");
-  }
+    if (!cbBtcConfig.paused) {
+      addBlocker(blockers, "cbBTC is not paused. Phase 3 expects cbBTC to remain quarantined until delisted.");
+    }
 
-  if (requireCbBtcLtvZero && cbBtcConfig.ltv !== 0n) {
-    addBlocker(blockers, `cbBTC LTV is ${cbBtcConfig.ltv.toString()} instead of 0.`);
+    if (cbBtcConfig.borrowingEnabled || cbBtcConfig.stableRateBorrowingEnabled || cbBtcConfig.flashLoanEnabled) {
+      addBlocker(blockers, "cbBTC still has borrowing, stable borrowing, or flash loans enabled.");
+    }
+
+    if (requireCbBtcLtvZero && cbBtcConfig.ltv !== 0n) {
+      addBlocker(blockers, `cbBTC LTV is ${cbBtcConfig.ltv.toString()} instead of 0.`);
+    }
   }
 
   for (const asset of resumeReserves) {
