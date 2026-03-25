@@ -117,6 +117,7 @@ describe("AtomicMarketListingHelper", () => {
         asset: collateralAsset,
         reserveFactor: beforeConfig.reserveFactor,
         supplyCap: beforeConfig.supplyCap,
+        debtCeiling: beforeConfig.debtCeiling,
       },
     ]);
 
@@ -193,6 +194,94 @@ describe("AtomicMarketListingHelper", () => {
     expect(await aToken.totalSupply()).to.equal(seedAmount);
   });
 
+  it("stages a nonzero debt ceiling before seed supply so isolated enable can complete", async () => {
+    const beforeConfig = await readConfig(collateralAsset);
+    const stagedDebtCeiling = 123n;
+    const seedAmount = ethers.parseUnits("2", await collateralToken.decimals());
+
+    await helper.stageReserves(await pool.getAddress(), await poolConfigurator.getAddress(), [
+      {
+        asset: collateralAsset,
+        reserveFactor: beforeConfig.reserveFactor,
+        supplyCap: beforeConfig.supplyCap,
+        debtCeiling: stagedDebtCeiling,
+      },
+    ]);
+
+    const stagedConfig = await readConfig(collateralAsset);
+    expect(stagedConfig.debtCeiling).to.equal(stagedDebtCeiling);
+
+    await collateralToken.transfer(user1Signer.address, seedAmount);
+    await collateralToken.connect(user1Signer).approve(await pool.getAddress(), seedAmount);
+    await pool.connect(user1Signer).supply(collateralAsset, seedAmount, user1Signer.address, 0);
+
+    await helper.enableReserves(await pool.getAddress(), await poolConfigurator.getAddress(), [
+      {
+        asset: collateralAsset,
+        baseLTV: beforeConfig.ltv,
+        liquidationThreshold: beforeConfig.liquidationThreshold,
+        liquidationBonus: beforeConfig.liquidationBonus,
+        reserveFactor: beforeConfig.reserveFactor,
+        borrowCap: beforeConfig.borrowCap,
+        supplyCap: beforeConfig.supplyCap,
+        debtCeiling: stagedDebtCeiling,
+        unbackedMintCap: beforeConfig.unbackedMintCap,
+        liquidationProtocolFee: beforeConfig.liquidationProtocolFee,
+        borrowableInIsolation: false,
+        borrowingEnabled: false,
+        stableBorrowingEnabled: false,
+        flashLoanEnabled: false,
+        minATokenSupply: seedAmount,
+      },
+    ]);
+
+    const enabledConfig = await readConfig(collateralAsset);
+    expect(enabledConfig.debtCeiling).to.equal(stagedDebtCeiling);
+  });
+
+  it("rejects enabling a seeded reserve with a new nonzero debt ceiling that was not staged", async () => {
+    const beforeConfig = await readConfig(collateralAsset);
+    const seedAmount = ethers.parseUnits("2", await collateralToken.decimals());
+    const requestedDebtCeiling = 321n;
+
+    await helper.stageReserves(await pool.getAddress(), await poolConfigurator.getAddress(), [
+      {
+        asset: collateralAsset,
+        reserveFactor: beforeConfig.reserveFactor,
+        supplyCap: beforeConfig.supplyCap,
+        debtCeiling: beforeConfig.debtCeiling,
+      },
+    ]);
+
+    await collateralToken.transfer(user1Signer.address, seedAmount);
+    await collateralToken.connect(user1Signer).approve(await pool.getAddress(), seedAmount);
+    await pool.connect(user1Signer).supply(collateralAsset, seedAmount, user1Signer.address, 0);
+
+    await expect(
+      helper.enableReserves(await pool.getAddress(), await poolConfigurator.getAddress(), [
+        {
+          asset: collateralAsset,
+          baseLTV: beforeConfig.ltv,
+          liquidationThreshold: beforeConfig.liquidationThreshold,
+          liquidationBonus: beforeConfig.liquidationBonus,
+          reserveFactor: beforeConfig.reserveFactor,
+          borrowCap: beforeConfig.borrowCap,
+          supplyCap: beforeConfig.supplyCap,
+          debtCeiling: requestedDebtCeiling,
+          unbackedMintCap: beforeConfig.unbackedMintCap,
+          liquidationProtocolFee: beforeConfig.liquidationProtocolFee,
+          borrowableInIsolation: false,
+          borrowingEnabled: false,
+          stableBorrowingEnabled: false,
+          flashLoanEnabled: false,
+          minATokenSupply: seedAmount,
+        },
+      ]),
+    )
+      .to.be.revertedWithCustomError(helper, "DebtCeilingMustBeStagedBeforeSeeding")
+      .withArgs(collateralAsset, seedAmount, 0n, requestedDebtCeiling);
+  });
+
   it("initializes and stages a brand-new reserve atomically", async () => {
     const existingReserveData = await pool.getReserveData(collateralAsset);
     const strategyAddress = existingReserveData.interestRateStrategyAddress;
@@ -226,6 +315,7 @@ describe("AtomicMarketListingHelper", () => {
         params: "0x10",
         reserveFactor: 1000n,
         supplyCap: 1000n,
+        debtCeiling: 456n,
       },
     ]);
 
@@ -245,5 +335,6 @@ describe("AtomicMarketListingHelper", () => {
     expect(newConfig.borrowCap).to.equal(0n);
     expect(newConfig.supplyCap).to.equal(1000n);
     expect(newConfig.reserveFactor).to.equal(1000n);
+    expect(newConfig.debtCeiling).to.equal(456n);
   });
 });

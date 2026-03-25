@@ -40,6 +40,7 @@ contract AtomicMarketListingHelper is Ownable {
         address asset;
         uint256 reserveFactor;
         uint256 supplyCap;
+        uint256 debtCeiling;
     }
 
     struct InitAndStageReserveInput {
@@ -60,6 +61,7 @@ contract AtomicMarketListingHelper is Ownable {
         bytes params;
         uint256 reserveFactor;
         uint256 supplyCap;
+        uint256 debtCeiling;
     }
 
     struct EnableReserveInput {
@@ -92,6 +94,12 @@ contract AtomicMarketListingHelper is Ownable {
     error StableBorrowingRequiresBorrowing(address asset);
     error MinATokenSupplyRequired(address asset);
     error InsufficientATokenSupply(address asset, uint256 currentATokenSupply, uint256 requiredATokenSupply);
+    error DebtCeilingMustBeStagedBeforeSeeding(
+        address asset,
+        uint256 currentATokenSupply,
+        uint256 currentDebtCeiling,
+        uint256 requestedDebtCeiling
+    );
 
     event ReserveStaged(address indexed asset, uint256 reserveFactor, uint256 supplyCap);
     event ReserveAtomicallyEnabled(
@@ -152,7 +160,8 @@ contract AtomicMarketListingHelper is Ownable {
             StageReserveInput memory stageInput = StageReserveInput({
                 asset: inputParams[i].underlyingAsset,
                 reserveFactor: inputParams[i].reserveFactor,
-                supplyCap: inputParams[i].supplyCap
+                supplyCap: inputParams[i].supplyCap,
+                debtCeiling: inputParams[i].debtCeiling
             });
 
             _stageReserve(pool, configurator, stageInput);
@@ -176,7 +185,8 @@ contract AtomicMarketListingHelper is Ownable {
             StageReserveInput memory stageInput = StageReserveInput({
                 asset: inputParams[i].asset,
                 reserveFactor: inputParams[i].reserveFactor,
-                supplyCap: inputParams[i].supplyCap
+                supplyCap: inputParams[i].supplyCap,
+                debtCeiling: inputParams[i].debtCeiling
             });
             _stageReserve(pool, configurator, stageInput);
         }
@@ -285,6 +295,10 @@ contract AtomicMarketListingHelper is Ownable {
             configurator.setSupplyCap(input.asset, input.supplyCap);
         }
 
+        if (currentConfig.getDebtCeiling() != input.debtCeiling) {
+            configurator.setDebtCeiling(input.asset, input.debtCeiling);
+        }
+
         if (currentReserveFactor != input.reserveFactor) {
             configurator.setReserveFactor(input.asset, input.reserveFactor);
         }
@@ -346,6 +360,16 @@ contract AtomicMarketListingHelper is Ownable {
             revert InsufficientATokenSupply(input.asset, currentATokenSupply, input.minATokenSupply);
         }
 
+        uint256 currentDebtCeiling = currentConfig.getDebtCeiling();
+        if (currentDebtCeiling == 0 && input.debtCeiling != 0 && currentATokenSupply != 0) {
+            revert DebtCeilingMustBeStagedBeforeSeeding(
+                input.asset,
+                currentATokenSupply,
+                currentDebtCeiling,
+                input.debtCeiling
+            );
+        }
+
         if (frozen) {
             configurator.setReserveFreeze(input.asset, false);
         }
@@ -362,7 +386,7 @@ contract AtomicMarketListingHelper is Ownable {
         configurator.setBorrowableInIsolation(input.asset, input.borrowableInIsolation);
         configurator.setUnbackedMintCap(input.asset, input.unbackedMintCap);
         configurator.setLiquidationProtocolFee(input.asset, input.liquidationProtocolFee);
-        if (currentConfig.getDebtCeiling() != input.debtCeiling) {
+        if (currentDebtCeiling != input.debtCeiling) {
             configurator.setDebtCeiling(input.asset, input.debtCeiling);
         }
 

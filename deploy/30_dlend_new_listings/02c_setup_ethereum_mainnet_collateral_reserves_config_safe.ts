@@ -254,6 +254,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const aToken = await ethers.getContractAt("IERC20", reserveData.aTokenAddress, signer);
     const aTokenSupply = await aToken.totalSupply();
 
+    if (currentConfig.debtCeiling === 0n && target.debtCeiling !== 0n && aTokenSupply !== 0n) {
+      throw new Error(
+        [
+          `[enable-check] Reserve ${symbol} was seeded before its nonzero debt ceiling was staged.`,
+          `currentDebtCeiling=${currentConfig.debtCeiling.toString()}`,
+          `requestedDebtCeiling=${target.debtCeiling.toString()}`,
+          `currentATokenSupply=${aTokenSupply.toString()}`,
+          "Re-stage or re-init the reserve with the final debt ceiling before seeding it.",
+        ].join(" "),
+      );
+    }
+
     if (aTokenSupply < minATokenSupply) {
       throw new Error(
         [

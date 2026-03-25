@@ -131,13 +131,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     const reserveData = await pool.getReserveData(tokenAddress);
     const reserveFactor = BigInt(reserveParams.reserveFactor);
     const supplyCap = BigInt(reserveParams.supplyCap);
+    const debtCeiling = BigInt(reserveParams.debtCeiling);
 
     if (normalize(reserveData.aTokenAddress) !== normalize(ZeroAddress)) {
       const currentConfig = await getDecodedReserveConfig(pool, tokenAddress);
       const aToken = await ethers.getContractAt("IERC20", reserveData.aTokenAddress, signer);
       const aTokenSupply = await aToken.totalSupply();
 
-      if (isReserveStaged(currentConfig) && currentConfig.reserveFactor === reserveFactor && currentConfig.supplyCap === supplyCap) {
+      if (
+        isReserveStaged(currentConfig) &&
+        currentConfig.reserveFactor === reserveFactor &&
+        currentConfig.supplyCap === supplyCap &&
+        currentConfig.debtCeiling === debtCeiling
+      ) {
         continue;
       }
 
@@ -165,6 +171,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
         asset: tokenAddress,
         reserveFactor,
         supplyCap,
+        debtCeiling,
       });
       continue;
     }
@@ -192,6 +199,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       params: "0x10",
       reserveFactor,
       supplyCap,
+      debtCeiling,
     });
   }
 
@@ -234,6 +242,6 @@ func.dependencies = [
   POOL_ADDRESSES_PROVIDER_ID,
   ATOMIC_MARKET_LISTING_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v3";
+func.id = "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v4";
 
 export default func;

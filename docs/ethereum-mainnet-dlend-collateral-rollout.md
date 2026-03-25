@@ -42,6 +42,7 @@ A staged reserve is deliberately **non-live**:
 - flash loans disabled
 - borrow cap forced to `0`
 - borrowable-in-isolation forced to `false`
+- final `debtCeiling` preconfigured while the reserve is still seedless
 - reserve left `active + unpaused + unfrozen` so it can be seeded safely
 
 ### Atomic enable gate
@@ -51,6 +52,7 @@ The enable step refuses to proceed unless:
 - the reserve is still in the staged posture
 - the reserve is active and unpaused
 - `aToken.totalSupply()` is at or above the explicit `minATokenSupply` value passed for that reserve
+- any nonzero `debtCeiling` was already staged before that seed supply existed
 
 ## Mainnet Script Order
 
