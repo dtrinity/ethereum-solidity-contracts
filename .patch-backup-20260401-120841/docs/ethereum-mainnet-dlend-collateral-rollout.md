@@ -164,7 +164,7 @@ The atomic enable script forces `flashLoanEnabled = false` unless:
 export NEW_LISTINGS_ALLOW_FLASHLOANS='true'
 ```
 
-That override exists because the current exploit class is specifically tied to thin-supply reserves plus fee-accrual paths. New listings should default to **no flash loans** until the broader accounting path has been remediated and reviewed. Fresh reserve setup should also preserve the per-reserve `flashLoanEnabled` flag instead of hard-forcing flash loans on during generic reserve configuration.
+That override exists because the current exploit class is specifically tied to thin-supply reserves plus fee-accrual paths. New listings should default to **no flash loans** until the broader accounting path has been remediated and reviewed.
 
 ## Safety Notes
 

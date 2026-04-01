@@ -40,9 +40,6 @@ type ReserveSnapshot = {
     lowSupply: boolean;
     dustFlashRisk: boolean;
     freezeDoesNotDisableFlashLoans: boolean;
-    lowSupplyCollateralRisk: boolean;
-    lowSupplyBorrowRisk: boolean;
-    lowSupplyLiveRisk: boolean;
   };
 };
 
@@ -85,9 +82,6 @@ async function main() {
         lowSupply,
         dustFlashRisk: !cfg.paused && cfg.flashLoanEnabled && lowSupply,
         freezeDoesNotDisableFlashLoans: cfg.frozen && !cfg.paused && cfg.flashLoanEnabled,
-        lowSupplyCollateralRisk: !cfg.paused && cfg.ltv !== 0 && lowSupply,
-        lowSupplyBorrowRisk: !cfg.paused && cfg.borrowingEnabled && lowSupply,
-        lowSupplyLiveRisk: !cfg.paused && lowSupply && (cfg.ltv !== 0 || cfg.borrowingEnabled || cfg.flashLoanEnabled),
       },
     });
   }
@@ -138,9 +132,6 @@ async function main() {
       frozenButFlashloanEnabled: reservesOut
         .filter((reserve) => reserve.warnings.freezeDoesNotDisableFlashLoans)
         .map((reserve) => reserve.symbol),
-      lowSupplyCollateralRisk: reservesOut.filter((reserve) => reserve.warnings.lowSupplyCollateralRisk).map((reserve) => reserve.symbol),
-      lowSupplyBorrowRisk: reservesOut.filter((reserve) => reserve.warnings.lowSupplyBorrowRisk).map((reserve) => reserve.symbol),
-      lowSupplyLiveRisk: reservesOut.filter((reserve) => reserve.warnings.lowSupplyLiveRisk).map((reserve) => reserve.symbol),
     },
   };
 

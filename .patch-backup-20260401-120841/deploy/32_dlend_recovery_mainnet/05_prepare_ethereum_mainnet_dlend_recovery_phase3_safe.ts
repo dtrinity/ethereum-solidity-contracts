@@ -14,9 +14,7 @@ import {
   normalizeAddress,
   parseAddressListEnv,
   parseBooleanEnv,
-  phase3SafePosture,
   queueReserveIntoResumeState,
-  queueReserveLtvZeroFloor,
 } from "./common";
 
 const DEFAULT_ATTACKER = "0xbA5E1E36b0305772D35509c694782fB9118D4ecc";
@@ -50,7 +48,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const borrowingReserveSet = new Set(borrowingReserves.map((asset) => normalizeAddress(asset)));
   const stableBorrowingReserveSet = new Set(stableBorrowingReserves.map((asset) => normalizeAddress(asset)));
   const flashLoanReserveSet = new Set(flashLoanReserves.map((asset) => normalizeAddress(asset)));
-  const { allowFlashLoans, allowBorrowingReenable, floorResumeLtvToZero, allowNonZeroLtvResumes } = phase3SafePosture;
+  const allowFlashLoans = parseBooleanEnv("PHASE3_ALLOW_FLASHLOANS", false);
   const allowLowSupplyResume = parseBooleanEnv("PHASE3_ALLOW_LOW_SUPPLY_RESUMES", false);
   const lowSupplyWarning = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
 
@@ -82,16 +80,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     throw new Error("PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON must be a subset of PHASE3_RESUME_RESERVES_JSON.");
   }
 
-  if (borrowingReserveSet.size > 0 && !allowBorrowingReenable) {
-    throw new Error(
-      "Borrowing restore is a later-stage reopen step. Set phase3SafePosture.allowBorrowingReenable = true in deploy/32_dlend_recovery_mainnet/common.ts before re-enabling borrowing in Phase 3.",
-    );
-  }
-
   if (flashLoanReserveSet.size > 0 && !allowFlashLoans) {
-    throw new Error(
-      "Flash loans are opt-in last. Set phase3SafePosture.allowFlashLoans = true in deploy/32_dlend_recovery_mainnet/common.ts before re-enabling them.",
-    );
+    throw new Error("Flash loans are opt-in last. Set PHASE3_ALLOW_FLASHLOANS=true before re-enabling them.");
   }
 
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
@@ -151,16 +141,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
     const normalized = normalizeAddress(asset);
     const current = await getReserveConfig(pool, asset);
-
-    if (!floorResumeLtvToZero && !allowNonZeroLtvResumes && current.ltv !== 0n) {
-      throw new Error(
-        `Reserve ${asset} still has LTV=${current.ltv.toString()}. Keep phase3SafePosture.floorResumeLtvToZero for the supply-only reopen, or set phase3SafePosture.allowNonZeroLtvResumes = true in deploy/32_dlend_recovery_mainnet/common.ts.`,
-      );
-    }
-
-    if (floorResumeLtvToZero) {
-      await queueReserveLtvZeroFloor(executor, poolConfigurator, poolConfiguratorAddress, asset, current);
-    }
 
     await queueReserveIntoResumeState(
       executor,

@@ -2,7 +2,6 @@ import "dotenv/config";
 
 import { Contract, formatUnits } from "ethers";
 
-import { phase3SafePosture } from "../../deploy/32_dlend_recovery_mainnet/common";
 import {
   aTokenAbi,
   createProvider,
@@ -24,7 +23,6 @@ const CBBTC = process.env.CBBTC || DEFAULT_CBBTC;
 const ATTACKER = process.env.ATTACKER || DEFAULT_ATTACKER;
 const LOW_SUPPLY_WARNING = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
 const REQUIRE_CBBTC_LTV_ZERO = parseBooleanEnv("REQUIRE_CBBTC_LTV_ZERO", true);
-const { requireResumeLtvZeroInAssert: REQUIRE_PHASE3_RESUME_LTV_ZERO } = phase3SafePosture;
 
 if (!POOL || !DUSD || !CBBTC || !ATTACKER) {
   throw new Error("Missing required addresses. Set POOL, DUSD, CBBTC, and ATTACKER.");
@@ -138,12 +136,6 @@ async function main() {
 
     if (config.flashLoanEnabled !== flashLoanReserves.has(normalized)) {
       failures.push(`${symbol} flash-loan flag does not match PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON`);
-    }
-
-    if (REQUIRE_PHASE3_RESUME_LTV_ZERO && config.ltv !== 0) {
-      failures.push(`${symbol} LTV is ${config.ltv} instead of 0 for the supply-only Phase 3 reopen`);
-    } else if (config.ltv !== 0) {
-      warnings.push(`${symbol} LTV is ${config.ltv}`);
     }
 
     if (flashLoanReserves.has(normalized) && totalSupplyFormatted <= LOW_SUPPLY_WARNING) {

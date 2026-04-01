@@ -15,7 +15,6 @@ import {
   normalizeAddress,
   parseAddressListEnv,
   parseBooleanEnv,
-  phase3SafePosture,
 } from "./common";
 
 const DEFAULT_ATTACKER = "0xbA5E1E36b0305772D35509c694782fB9118D4ecc";
@@ -46,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const borrowingReserves = parseAddressListEnv("PHASE3_ENABLE_BORROWING_RESERVES_JSON");
   const stableBorrowingReserves = parseAddressListEnv("PHASE3_ENABLE_STABLE_BORROWING_RESERVES_JSON");
   const flashLoanReserves = parseAddressListEnv("PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON");
-  const { allowFlashLoans, allowBorrowingReenable, floorResumeLtvToZero, allowNonZeroLtvResumes } = phase3SafePosture;
+  const allowFlashLoans = parseBooleanEnv("PHASE3_ALLOW_FLASHLOANS", false);
   const allowLowSupplyResume = parseBooleanEnv("PHASE3_ALLOW_LOW_SUPPLY_RESUMES", false);
   const lowSupplyWarning = Number(process.env.LOW_SUPPLY_WARNING ?? "10");
   const requireCbBtcLtvZero = parseBooleanEnv("REQUIRE_CBBTC_LTV_ZERO", true);
@@ -139,18 +138,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     addBlocker(blockers, "PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON must be a subset of PHASE3_RESUME_RESERVES_JSON.");
   }
 
-  if (borrowingReserves.length > 0 && !allowBorrowingReenable) {
-    addBlocker(
-      blockers,
-      "Borrowing restore is a later-stage reopen step. Set phase3SafePosture.allowBorrowingReenable = true in deploy/32_dlend_recovery_mainnet/common.ts before re-enabling borrowing in Phase 3.",
-    );
-  }
-
   if (flashLoanReserves.length > 0 && !allowFlashLoans) {
-    addBlocker(
-      blockers,
-      "Flash loans are opt-in last. Set phase3SafePosture.allowFlashLoans = true in deploy/32_dlend_recovery_mainnet/common.ts before re-enabling them.",
-    );
+    addBlocker(blockers, "Flash loans are opt-in last. Set PHASE3_ALLOW_FLASHLOANS=true before re-enabling them.");
   }
 
   const [isPoolAdmin, isRiskAdmin, isEmergencyAdmin] = await Promise.all([
@@ -204,7 +193,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   }
 
   for (const asset of resumeReserves) {
-    const [reserveData, currentConfig] = await Promise.all([pool.getReserveData(asset), getReserveConfig(pool, asset)]);
+    const reserveData = await pool.getReserveData(asset);
     const [assetToken, aToken] = await Promise.all([
       ethers.getContractAt(ERC20_MIN_ABI, asset, signer),
       ethers.getContractAt(["function totalSupply() view returns (uint256)"], reserveData.aTokenAddress, signer),
@@ -216,13 +205,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       addBlocker(
         blockers,
         `Phase 3 resume reserve ${asset} has low live aToken supply (${formattedSupply}). Keep thin reserves frozen unless you explicitly override PHASE3_ALLOW_LOW_SUPPLY_RESUMES=true.`,
-      );
-    }
-
-    if (!floorResumeLtvToZero && !allowNonZeroLtvResumes && currentConfig.ltv !== 0n) {
-      addBlocker(
-        blockers,
-        `Phase 3 resume reserve ${asset} still has LTV=${currentConfig.ltv.toString()}. Keep supply-only reopen posture (phase3SafePosture.floorResumeLtvToZero), or set phase3SafePosture.allowNonZeroLtvResumes = true in deploy/32_dlend_recovery_mainnet/common.ts.`,
       );
     }
   }

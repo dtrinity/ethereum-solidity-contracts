@@ -110,6 +110,7 @@ describe("AtomicMarketListingHelper", () => {
     const decimals = await collateralToken.decimals();
 
     expect(beforeConfig.ltv).to.be.gt(0n);
+    expect(beforeConfig.flashLoanEnabled).to.be.true;
 
     await helper.stageReserves(await pool.getAddress(), await poolConfigurator.getAddress(), [
       {

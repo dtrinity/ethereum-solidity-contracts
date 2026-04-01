@@ -4,23 +4,6 @@ import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
 export const DEFAULT_CBBTC = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
 
-/**
- * Phase 3 Safe batch and assert posture. Supply-only reopen by default.
- * Edit these flags in source when intentionally advancing stages (borrowing, nonzero-LTV resume, flash loans).
- */
-export const phase3SafePosture = {
-  /** Queue `configureReserveAsCollateral` with LTV 0 (preserving liquidation params) before resume. */
-  floorResumeLtvToZero: true,
-  /** Allow treating reserves with nonzero on-chain LTV as acceptable without flooring them first. */
-  allowNonZeroLtvResumes: false,
-  /** Allow non-empty `PHASE3_ENABLE_BORROWING_RESERVES_JSON`. */
-  allowBorrowingReenable: false,
-  /** Allow non-empty `PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON`. */
-  allowFlashLoans: false,
-  /** `recovery:assert:phase3` fails if a resumed reserve is not LTV 0. */
-  requireResumeLtvZeroInAssert: true,
-} as const;
-
 export type DecodedReserveConfig = {
   ltv: bigint;
   liquidationThreshold: bigint;
@@ -222,42 +205,6 @@ export async function queueSafeCall(executor: GovernanceExecutor, to: string, da
       throw new Error("Direct execution disabled: queue Safe transaction instead.");
     },
     () => ({ to, value: "0", data }),
-  );
-}
-
-/**
- * Queues a collateral configuration change that floors LTV to zero while preserving
- * the current liquidation threshold and liquidation bonus.
- *
- * This is the safe supply-only reopen posture for already-seeded surviving reserves:
- * disable new borrow power without disturbing legacy liquidation thresholds.
- *
- * @param executor Governance executor.
- * @param poolConfigurator PoolConfigurator contract.
- * @param poolConfiguratorAddress PoolConfigurator address.
- * @param asset Reserve asset.
- * @param current Current reserve config.
- */
-export async function queueReserveLtvZeroFloor(
-  executor: GovernanceExecutor,
-  poolConfigurator: Contract,
-  poolConfiguratorAddress: string,
-  asset: string,
-  current: DecodedReserveConfig,
-): Promise<void> {
-  if (current.ltv === 0n) {
-    return;
-  }
-
-  await queueSafeCall(
-    executor,
-    poolConfiguratorAddress,
-    poolConfigurator.interface.encodeFunctionData("configureReserveAsCollateral", [
-      asset,
-      0,
-      current.liquidationThreshold,
-      current.liquidationBonus,
-    ]),
   );
 }
 

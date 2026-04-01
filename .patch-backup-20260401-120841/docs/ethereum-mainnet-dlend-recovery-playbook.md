@@ -176,8 +176,6 @@ Recommended first-live posture:
 
 - unpaused
 - unfrozen
-- `LTV = 0` on the surviving reserves being reopened for reseed / supply-only usage
-- existing `liquidationThreshold` / `liquidationBonus` preserved on those surviving reserves
 - borrowing still disabled
 - stable borrowing still disabled
 - flash loans still disabled
@@ -195,18 +193,6 @@ export PHASE3_REMEDIATION_ACK='true'
 export PHASE3_HEALTHCHECK_ACK='true'
 export PHASE3_MONITORING_ACK='true'
 ```
-
-Phase 3 supply-only posture (floor LTV to 0, block borrowing / flash-loan JSON until you change source) lives in `phase3SafePosture` in `deploy/32_dlend_recovery_mainnet/common.ts`. For the first supply-only reopen, leave those flags at their defaults; when advancing stages, edit that object instead of using environment toggles.
-
-Reference — fields on `phase3SafePosture` (defaults are for supply-only reopen):
-
-| Field | Role |
-| --- | --- |
-| `floorResumeLtvToZero` | When true, the Phase 3 Safe batch queues `LTV = 0` before resume (liquidation threshold/bonus unchanged). |
-| `allowNonZeroLtvResumes` | When false, preflight/prepare block resuming a reserve that still has nonzero on-chain LTV unless you floor it. |
-| `allowBorrowingReenable` | When false, non-empty `PHASE3_ENABLE_BORROWING_RESERVES_JSON` is rejected. |
-| `allowFlashLoans` | When false, non-empty `PHASE3_ENABLE_FLASHLOAN_RESERVES_JSON` is rejected. |
-| `requireResumeLtvZeroInAssert` | When true, `yarn recovery:assert:phase3` fails if a resumed reserve is not `LTV = 0`. |
 
 Set the resume set to the active non-`cbBTC` reserves you actually want to unfreeze:
 
@@ -233,7 +219,7 @@ yarn recovery:safe:phase3:batch
 yarn recovery:assert:phase3
 ```
 
-With the compatibility patch applied, the preflight and assert should accept the new state where `cbBTC` has already been dropped. The Phase 3 batch floors resumed reserves to `LTV = 0` when `phase3SafePosture.floorResumeLtvToZero` is true in `deploy/32_dlend_recovery_mainnet/common.ts`.
+With the compatibility patch applied, the preflight and assert should accept the new state where `cbBTC` has already been dropped.
 
 ## Recommended first rollout shape
 

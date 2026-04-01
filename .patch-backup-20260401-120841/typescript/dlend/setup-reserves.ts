@@ -196,7 +196,7 @@ export async function setupNewReserves(hre: HardhatRuntimeEnvironment, reserveSy
       supplyCap: params.supplyCap,
       stableBorrowingEnabled: params.stableBorrowRateEnabled,
       borrowingEnabled: params.borrowingEnabled,
-      flashLoanEnabled: params.flashLoanEnabled,
+      flashLoanEnabled: true,
     });
     console.log(`  - Prepared config params for reserve ${symbol}`);
   }
