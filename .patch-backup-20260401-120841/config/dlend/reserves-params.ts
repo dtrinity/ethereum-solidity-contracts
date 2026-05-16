@@ -9,7 +9,7 @@ const baseReserveConfig: Pick<
   reserveDecimals: "18",
   debtCeiling: "0",
   borrowableIsolation: false,
-  flashLoanEnabled: false,
+  flashLoanEnabled: true,
   liquidationProtocolFee: "1000", // 10%
 };
 

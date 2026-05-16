@@ -1,58 +1,24 @@
-import { ZeroAddress } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import { getConfig } from "../../config/config";
-import { POOL_ADDRESSES_PROVIDER_ID, RESERVES_SETUP_HELPER_ID } from "../../typescript/deploy-ids";
+import { ATOMIC_MARKET_LISTING_HELPER_ID, POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
-
-const ROLLOUT_COLLATERAL_SYMBOLS = [
-  "WETH",
-  "wstETH",
-  "rETH",
-  "sfrxETH",
-  "sUSDe",
-  "sUSDS",
-  "syrupUSDC",
-  "syrupUSDT",
-  "sfrxUSD",
-  "LBTC",
-  "WBTC",
-  "cbBTC",
-  "PAXG",
-] as const;
-
-/**
- * Normalizes an address value for case-insensitive comparisons.
- *
- * @param value Address to normalize.
- */
-function normalize(value: string): string {
-  return value.toLowerCase();
-}
-
-/**
- * Resolves token addresses from config first, then from deployments as fallback.
- *
- * @param hre Hardhat runtime used for deployment lookups.
- * @param symbol Token symbol to resolve.
- * @param tokenMap Token address map from config.
- */
-async function resolveTokenAddress(
-  hre: HardhatRuntimeEnvironment,
-  symbol: string,
-  tokenMap: Record<string, string>,
-): Promise<string | null> {
-  const fromConfig = tokenMap[symbol];
-
-  if (fromConfig) {
-    return fromConfig;
-  }
-
-  const fallback = await hre.deployments.getOrNull(symbol);
-  return fallback?.address ?? null;
-}
+import {
+  assertReserveOracleReadiness,
+  buildExpectedOracleAssets,
+  chunkArray,
+  getDecodedReserveConfig,
+  isReserveStaged,
+  normalize,
+  normalizeSymbol,
+  parseBooleanEnv,
+  parseNormalizedBigIntMapEnv,
+  parseStringArrayEnv,
+  resolveTokenAddress,
+  ROLLOUT_COLLATERAL_SYMBOLS,
+} from "./common";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
@@ -69,6 +35,45 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
     throw new Error(`dLend configuration is required for network ${hre.network.name}`);
   }
 
+  if (!parseBooleanEnv("NEW_LISTINGS_ENABLE_ACK", false)) {
+    throw new Error("Set NEW_LISTINGS_ENABLE_ACK=true only when the selected staged markets are intentionally being made live.");
+  }
+
+  if (!parseBooleanEnv("NEW_LISTINGS_SEED_ACK", false)) {
+    throw new Error(
+      "Set NEW_LISTINGS_SEED_ACK=true only after the selected staged markets have been seeded above the required aToken floor.",
+    );
+  }
+
+  if (!parseBooleanEnv("NEW_LISTINGS_MONITORING_ACK", false)) {
+    throw new Error("Set NEW_LISTINGS_MONITORING_ACK=true only after monitoring/alerting is live for the new listing window.");
+  }
+
+  const requestedSymbolsRaw = parseStringArrayEnv("NEW_LISTINGS_ENABLE_SYMBOLS_JSON");
+
+  if (requestedSymbolsRaw.length === 0) {
+    throw new Error('Set NEW_LISTINGS_ENABLE_SYMBOLS_JSON=\'["WETH","wstETH"]\' with the staged reserves you intend to enable.');
+  }
+
+  const rolloutSymbols = ROLLOUT_COLLATERAL_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
+  const configuredSymbolsByNormalized = new Map(rolloutSymbols.map((symbol) => [normalizeSymbol(symbol), symbol] as const));
+  const selectedSymbols = requestedSymbolsRaw.map((requestedSymbol) => {
+    const resolved = configuredSymbolsByNormalized.get(normalizeSymbol(requestedSymbol));
+
+    if (!resolved) {
+      throw new Error(
+        [
+          `[config-check] ${requestedSymbol} is not part of the supported collateral rollout set.`,
+          `Allowed symbols: ${rolloutSymbols.join(", ")}`,
+        ].join(" "),
+      );
+    }
+
+    return resolved;
+  });
+
+  const minATokenSupplyBySymbol = parseNormalizedBigIntMapEnv("NEW_LISTINGS_MIN_ATOKEN_SUPPLY_JSON");
+  const allowFlashLoans = parseBooleanEnv("NEW_LISTINGS_ALLOW_FLASHLOANS", false);
   const executor = new GovernanceExecutor(hre, signer, config.safeConfig);
 
   if (!executor.useSafe) {
@@ -80,213 +85,216 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
   const poolConfiguratorAddress = await addressProvider.getPoolConfigurator();
-  const pool = await ethers.getContractAt("Pool", await addressProvider.getPool(), signer);
+  const poolAddress = await addressProvider.getPool();
+  const pool = await ethers.getContractAt("Pool", poolAddress, signer);
   const priceOracleAddress = await addressProvider.getPriceOracle();
   const priceOracle = await ethers.getContractAt("IAaveOracle", priceOracleAddress, signer);
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
   const managerAddress = config.safeConfig!.safeAddress;
 
-  const reservesSetupHelperDeployment = await deployments.get(RESERVES_SETUP_HELPER_ID);
-  const reservesSetupHelperAddress = reservesSetupHelperDeployment.address;
-  const reservesSetupHelper = await ethers.getContractAt("ReservesSetupHelper", reservesSetupHelperAddress, signer);
-  const reservesSetupHelperOwner = await reservesSetupHelper.owner();
+  const atomicHelperDeployment = await deployments.get(ATOMIC_MARKET_LISTING_HELPER_ID);
+  const atomicHelperAddress = atomicHelperDeployment.address;
+  const atomicHelper = await ethers.getContractAt("AtomicMarketListingHelper", atomicHelperAddress, signer);
+  const [atomicHelperOwner, riskAdminRole] = await Promise.all([atomicHelper.owner(), aclManager.RISK_ADMIN_ROLE()]);
+  const helperHasRiskAdmin = await aclManager.hasRole(riskAdminRole, atomicHelperAddress);
 
-  if (normalize(reservesSetupHelperOwner) !== normalize(managerAddress)) {
+  if (normalize(atomicHelperOwner) !== normalize(managerAddress)) {
     throw new Error(
       [
-        `[reserve-check] ReservesSetupHelper owner mismatch.`,
-        `helper=${reservesSetupHelperAddress}`,
-        `owner=${reservesSetupHelperOwner}`,
+        `[ownership-check] AtomicMarketListingHelper owner mismatch.`,
+        `helper=${atomicHelperAddress}`,
+        `owner=${atomicHelperOwner}`,
         `expected=${managerAddress}.`,
-        "Transfer helper ownership to the governance Safe before running collateral reserve config rollout.",
       ].join(" "),
     );
   }
-
-  const riskAdminRole = await aclManager.RISK_ADMIN_ROLE();
-  const helperHasRiskAdmin = await aclManager.hasRole(riskAdminRole, reservesSetupHelperAddress);
 
   if (!helperHasRiskAdmin) {
     throw new Error(
       [
-        `[role-check] ReservesSetupHelper is missing RISK_ADMIN_ROLE.`,
-        `helper=${reservesSetupHelperAddress}`,
+        `[role-check] AtomicMarketListingHelper is missing RISK_ADMIN_ROLE.`,
+        `helper=${atomicHelperAddress}`,
         `aclManager=${aclManagerAddress}`,
-        "Run and execute setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe before generating reserve config batch.",
+        "Run and execute setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe before generating the enable batch.",
       ].join(" "),
     );
   }
 
-  const rolloutSymbols = ROLLOUT_COLLATERAL_SYMBOLS.filter((symbol) => Boolean(config.dLend?.reservesConfig[symbol]));
   const verifiedOracleAssets = new Set<string>();
-  const expectedOracleAssets = new Set<string>();
+  const expectedOracleAssets = buildExpectedOracleAssets(config);
+  const enableInputParams: Array<Record<string, unknown>> = [];
 
-  for (const asset of Object.keys(config.oracleAggregators.USD.redstoneOracleAssets.plainRedstoneOracleWrappers ?? {})) {
-    expectedOracleAssets.add(normalize(asset));
-  }
-
-  for (const asset of Object.keys(config.oracleAggregators.USD.redstoneOracleAssets.redstoneOracleWrappersWithThresholding ?? {})) {
-    expectedOracleAssets.add(normalize(asset));
-  }
-
-  for (const [asset, compositeConfig] of Object.entries(
-    config.oracleAggregators.USD.redstoneOracleAssets.compositeRedstoneOracleWrappersWithThresholding ?? {},
-  )) {
-    expectedOracleAssets.add(normalize(asset));
-    expectedOracleAssets.add(normalize(compositeConfig.feedAsset));
-  }
-
-  for (const asset of Object.keys(config.oracleAggregators.USD.chainlinkErc4626OracleAssets ?? {})) {
-    expectedOracleAssets.add(normalize(asset));
-  }
-
-  for (const asset of Object.keys(config.oracleAggregators.ETH.redstoneOracleAssets.plainRedstoneOracleWrappers ?? {})) {
-    expectedOracleAssets.add(normalize(asset));
-  }
-
-  for (const asset of Object.keys(config.oracleAggregators.ETH.erc4626OracleAssets ?? {})) {
-    expectedOracleAssets.add(normalize(asset));
-  }
-
-  if (config.oracleAggregators.ETH.frxEthFundamentalOracle?.asset) {
-    expectedOracleAssets.add(normalize(config.oracleAggregators.ETH.frxEthFundamentalOracle.asset));
-  }
-
-  const assertReserveOracleReadiness = async (symbol: string, asset: string): Promise<void> => {
-    const normalizedAsset = normalize(asset);
-
-    if (verifiedOracleAssets.has(normalizedAsset)) {
-      return;
-    }
-
-    const assetSource = await priceOracle.getSourceOfAsset(asset);
-
-    if (normalize(assetSource) === normalize(ZeroAddress)) {
-      throw new Error(
-        [`[oracle-check] Missing price source for reserve ${symbol}.`, `asset=${asset}`, `oracle=${priceOracleAddress}`].join(" "),
-      );
-    }
-
-    const oracleAggregator = await ethers.getContractAt(["function assetOracles(address) view returns (address)"], assetSource, signer);
-    const mappedWrapper = await oracleAggregator.assetOracles(asset);
-
-    if (normalize(mappedWrapper) === normalize(ZeroAddress)) {
-      if (!expectedOracleAssets.has(normalizedAsset)) {
-        throw new Error(
-          [
-            `[oracle-check] Asset ${symbol} has no oracle wrapper configured in source aggregator.`,
-            `asset=${asset}`,
-            `source=${assetSource}`,
-            "Missing oracle rollout config entry for this reserve.",
-          ].join(" "),
-        );
-      }
-
-      throw new Error(
-        [
-          `[oracle-check] Asset ${symbol} wrapper is still missing from the source aggregator.`,
-          `asset=${asset}`,
-          `source=${assetSource}`,
-          "Execute the oracle rollout Safe batches before generating reserve config batch.",
-        ].join(" "),
-      );
-    }
-
-    let assetPrice: bigint;
-
-    try {
-      assetPrice = await priceOracle.getAssetPrice(asset);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        [
-          `[oracle-check] Price lookup reverted for reserve ${symbol}.`,
-          `asset=${asset}`,
-          `wrapper=${mappedWrapper}`,
-          `source=${assetSource}`,
-          `reason=${message.split("\n")[0]}`,
-        ].join(" "),
-      );
-    }
-
-    if (assetPrice <= 0n) {
-      throw new Error(
-        [
-          `[oracle-check] Non-positive price for reserve ${symbol}.`,
-          `asset=${asset}`,
-          `wrapper=${mappedWrapper}`,
-          `source=${assetSource}`,
-          `price=${assetPrice.toString()}`,
-        ].join(" "),
-      );
-    }
-
-    verifiedOracleAssets.add(normalizedAsset);
-  };
-
-  const reserveConfigInputParams: Array<Record<string, unknown>> = [];
-  const uninitializedSymbols: string[] = [];
-
-  for (const symbol of rolloutSymbols) {
+  for (const symbol of selectedSymbols) {
     const reserveParams = config.dLend.reservesConfig[symbol];
     const tokenAddress = await resolveTokenAddress(hre, symbol, config.tokenAddresses);
 
-    if (!reserveParams || !tokenAddress) {
+    if (!reserveParams) {
       continue;
     }
+
+    if (!tokenAddress) {
+      throw new Error(`[config-check] Missing token address for ${symbol}. Run preflight and fix the network config before enabling.`);
+    }
+
+    await assertReserveOracleReadiness({
+      hre,
+      signer,
+      priceOracleAddress,
+      priceOracle,
+      verifiedOracleAssets,
+      expectedOracleAssets,
+      symbol,
+      asset: tokenAddress,
+    });
 
     const reserveData = await pool.getReserveData(tokenAddress);
-    const initializedOnChain = normalize(reserveData.aTokenAddress) !== normalize(ZeroAddress);
 
-    if (!initializedOnChain) {
-      uninitializedSymbols.push(symbol);
+    if (normalize(reserveData.aTokenAddress) === normalize("0x0000000000000000000000000000000000000000")) {
+      throw new Error(
+        [
+          `[reserve-check] ${symbol} is not initialized on-chain yet.`,
+          "Execute the init+stage Safe batches first, wait for them to be mined, then rerun the enable step.",
+        ].join(" "),
+      );
+    }
+
+    const normalizedSymbol = normalizeSymbol(symbol);
+    const minATokenSupply = minATokenSupplyBySymbol[normalizedSymbol];
+
+    if (minATokenSupply === undefined) {
+      throw new Error(
+        [
+          `[seed-check] Missing min aToken supply for ${symbol}.`,
+          "Set NEW_LISTINGS_MIN_ATOKEN_SUPPLY_JSON with raw aToken units per selected symbol.",
+          "Example for 1 whole-token seed: 1e18 assets use 1000000000000000000, 8-decimal BTC assets use 100000000.",
+        ].join(" "),
+      );
+    }
+
+    if (minATokenSupply <= 0n) {
+      throw new Error(`[seed-check] NEW_LISTINGS_MIN_ATOKEN_SUPPLY_JSON must provide a positive raw aToken floor for ${symbol}.`);
+    }
+
+    const currentConfig = await getDecodedReserveConfig(pool, tokenAddress);
+    const flashLoanEnabled = allowFlashLoans ? reserveParams.flashLoanEnabled : false;
+
+    if (reserveParams.flashLoanEnabled && !allowFlashLoans) {
+      console.log(
+        `ℹ️ ${symbol}: flashLoanEnabled forced to false. Set NEW_LISTINGS_ALLOW_FLASHLOANS=true only after code-level protections are live.`,
+      );
+    }
+
+    const target = {
+      asset: tokenAddress,
+      baseLTV: BigInt(reserveParams.baseLTVAsCollateral),
+      liquidationThreshold: BigInt(reserveParams.liquidationThreshold),
+      liquidationBonus: BigInt(reserveParams.liquidationBonus),
+      reserveFactor: BigInt(reserveParams.reserveFactor),
+      borrowCap: BigInt(reserveParams.borrowCap),
+      supplyCap: BigInt(reserveParams.supplyCap),
+      debtCeiling: BigInt(reserveParams.debtCeiling),
+      unbackedMintCap: 0n,
+      liquidationProtocolFee: BigInt(reserveParams.liquidationProtocolFee ?? "0"),
+      borrowableInIsolation: reserveParams.borrowableIsolation,
+      borrowingEnabled: reserveParams.borrowingEnabled,
+      stableBorrowingEnabled: reserveParams.stableBorrowRateEnabled,
+      flashLoanEnabled,
+      minATokenSupply,
+    };
+
+    const alreadyEnabled =
+      currentConfig.active &&
+      !currentConfig.paused &&
+      !currentConfig.frozen &&
+      currentConfig.ltv === target.baseLTV &&
+      currentConfig.liquidationThreshold === target.liquidationThreshold &&
+      currentConfig.liquidationBonus === target.liquidationBonus &&
+      currentConfig.reserveFactor === target.reserveFactor &&
+      currentConfig.borrowCap === target.borrowCap &&
+      currentConfig.supplyCap === target.supplyCap &&
+      currentConfig.debtCeiling === target.debtCeiling &&
+      currentConfig.unbackedMintCap === target.unbackedMintCap &&
+      currentConfig.liquidationProtocolFee === target.liquidationProtocolFee &&
+      currentConfig.borrowableInIsolation === target.borrowableInIsolation &&
+      currentConfig.borrowingEnabled === target.borrowingEnabled &&
+      currentConfig.stableBorrowingEnabled === target.stableBorrowingEnabled &&
+      currentConfig.flashLoanEnabled === target.flashLoanEnabled;
+
+    if (alreadyEnabled) {
       continue;
     }
 
-    await assertReserveOracleReadiness(symbol, tokenAddress);
+    if (!currentConfig.active) {
+      throw new Error(`[enable-check] Reserve ${symbol} is inactive; manual review is required before enabling.`);
+    }
 
-    reserveConfigInputParams.push({
-      asset: tokenAddress,
-      baseLTV: reserveParams.baseLTVAsCollateral,
-      liquidationThreshold: reserveParams.liquidationThreshold,
-      liquidationBonus: reserveParams.liquidationBonus,
-      reserveFactor: reserveParams.reserveFactor,
-      borrowCap: reserveParams.borrowCap,
-      supplyCap: reserveParams.supplyCap,
-      stableBorrowingEnabled: reserveParams.stableBorrowRateEnabled,
-      borrowingEnabled: reserveParams.borrowingEnabled,
-      flashLoanEnabled: reserveParams.flashLoanEnabled,
-    });
+    if (currentConfig.paused) {
+      throw new Error(`[enable-check] Reserve ${symbol} is paused; manual review is required before enabling.`);
+    }
+
+    if (!isReserveStaged(currentConfig)) {
+      throw new Error(
+        [
+          `[enable-check] Reserve ${symbol} is not in the staged posture expected by AtomicMarketListingHelper.`,
+          `asset=${tokenAddress}`,
+          `ltv=${currentConfig.ltv.toString()}`,
+          `liqThreshold=${currentConfig.liquidationThreshold.toString()}`,
+          `liqBonus=${currentConfig.liquidationBonus.toString()}`,
+          `borrowing=${currentConfig.borrowingEnabled}`,
+          `stableBorrowing=${currentConfig.stableBorrowingEnabled}`,
+          `flashLoans=${currentConfig.flashLoanEnabled}`,
+          `borrowCap=${currentConfig.borrowCap.toString()}`,
+          `borrowableInIsolation=${currentConfig.borrowableInIsolation}`,
+          "Execute or re-run the stage flow before attempting to enable the market.",
+        ].join(" "),
+      );
+    }
+
+    const aToken = await ethers.getContractAt("IERC20", reserveData.aTokenAddress, signer);
+    const aTokenSupply = await aToken.totalSupply();
+
+    if (currentConfig.debtCeiling === 0n && target.debtCeiling !== 0n && aTokenSupply !== 0n) {
+      throw new Error(
+        [
+          `[enable-check] Reserve ${symbol} was seeded before its nonzero debt ceiling was staged.`,
+          `currentDebtCeiling=${currentConfig.debtCeiling.toString()}`,
+          `requestedDebtCeiling=${target.debtCeiling.toString()}`,
+          `currentATokenSupply=${aTokenSupply.toString()}`,
+          "Re-stage or re-init the reserve with the final debt ceiling before seeding it.",
+        ].join(" "),
+      );
+    }
+
+    if (aTokenSupply < minATokenSupply) {
+      throw new Error(
+        [
+          `[seed-check] ${symbol} is still below its required aToken floor.`,
+          `required=${minATokenSupply.toString()}`,
+          `current=${aTokenSupply.toString()}`,
+          `aToken=${reserveData.aTokenAddress}`,
+          "Seed the reserve first, then rerun the enable step.",
+        ].join(" "),
+      );
+    }
+
+    enableInputParams.push(target);
   }
 
-  if (uninitializedSymbols.length > 0) {
-    throw new Error(
-      [
-        `[reserve-check] Some collateral reserves are not initialized on-chain yet: ${uninitializedSymbols.join(", ")}.`,
-        "Execute setup-ethereum-mainnet-collateral-reserves-safe first, wait for it to be mined, then rerun this config step.",
-      ].join(" "),
-    );
-  }
-
-  if (reserveConfigInputParams.length > 0) {
-    const configureReservesData = reservesSetupHelper.interface.encodeFunctionData("configureReserves", [
-      poolConfiguratorAddress,
-      reserveConfigInputParams,
-    ]);
-
+  for (const enableChunk of chunkArray(enableInputParams, 4)) {
+    const data = atomicHelper.interface.encodeFunctionData("enableReserves", [poolAddress, poolConfiguratorAddress, enableChunk]);
     await executor.tryOrQueue(
       async () => {
         throw new Error("Direct execution disabled: queue Safe transaction instead.");
       },
-      () => ({ to: reservesSetupHelperAddress, value: "0", data: configureReservesData }),
+      () => ({ to: atomicHelperAddress, value: "0", data }),
     );
   }
 
-  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve config rollout");
+  const success = await executor.flush("Ethereum mainnet dLEND collateral reserve atomic enable rollout");
 
   if (!success) {
-    throw new Error("Failed to create Safe batch for collateral reserve config rollout.");
+    throw new Error("Failed to create Safe batch for collateral reserve atomic enable rollout.");
   }
   console.log("🔁 setup-ethereum-mainnet-collateral-reserves-config-safe: ✅");
   return true;
@@ -302,8 +310,8 @@ func.dependencies = [
   "setup-ethereum-mainnet-collateral-oracles-safe",
   "setup-ethereum-mainnet-eth-oracles-safe",
   POOL_ADDRESSES_PROVIDER_ID,
-  RESERVES_SETUP_HELPER_ID,
+  ATOMIC_MARKET_LISTING_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-config-safe-v4";
+func.id = "setup-ethereum-mainnet-collateral-reserves-config-safe-v5";
 
 export default func;

@@ -521,6 +521,15 @@ interface IPool {
     function dropReserve(address asset) external;
 
     /**
+     * @notice Clears reserve-specific user configuration bits for a list of users.
+     * @dev Intended for one-off admin cleanup before dropping a reserve whose balances were burned
+     *   outside the normal Pool supply/withdraw path.
+     * @param asset The reserve whose bitmap slot should be cleared.
+     * @param users Users whose borrowing and collateral bits should be reset for the reserve id.
+     */
+    function clearReserveUserConfiguration(address asset, address[] calldata users) external;
+
+    /**
      * @notice Updates the address of the interest rate strategy contract
      * @dev Only callable by the PoolConfigurator contract
      * @param asset The address of the underlying asset of the reserve

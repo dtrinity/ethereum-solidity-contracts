@@ -78,6 +78,7 @@ export const FLASH_LOAN_LOGIC_ID = "FlashLoanLogic";
 export const POOL_LOGIC_ID = "PoolLogic";
 export const CALLDATA_LOGIC_ID = "CalldataLogic";
 export const RESERVES_SETUP_HELPER_ID = "ReservesSetupHelper";
+export const ATOMIC_MARKET_LISTING_HELPER_ID = "AtomicMarketListingHelper";
 export const WALLET_BALANCE_PROVIDER_ID = "WalletBalanceProvider";
 export const UI_INCENTIVE_DATA_PROVIDER_ID = "UiIncentiveDataProviderV3";
 export const UI_POOL_DATA_PROVIDER_ID = "UiPoolDataProviderV3";

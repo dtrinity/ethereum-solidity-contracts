@@ -18,6 +18,7 @@
 pragma solidity ^0.8.20;
 
 import { VersionedInitializable } from "../libraries/aave-upgradeability/VersionedInitializable.sol";
+import { UserConfiguration } from "../libraries/configuration/UserConfiguration.sol";
 import { Errors } from "../libraries/helpers/Errors.sol";
 import { ReserveConfiguration } from "../libraries/configuration/ReserveConfiguration.sol";
 import { PoolLogic } from "../libraries/logic/PoolLogic.sol";
@@ -54,8 +55,9 @@ import { PoolStorage } from "./PoolStorage.sol";
  */
 contract Pool is VersionedInitializable, PoolStorage, IPool {
     using ReserveLogic for DataTypes.ReserveData;
+    using UserConfiguration for DataTypes.UserConfigurationMap;
 
-    uint256 public constant POOL_REVISION = 0x1;
+    uint256 public constant POOL_REVISION = 0x2;
     IPoolAddressesProvider public immutable ADDRESSES_PROVIDER;
 
     /**
@@ -592,6 +594,30 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     /// @inheritdoc IPool
     function dropReserve(address asset) external virtual override onlyPoolConfigurator {
         PoolLogic.executeDropReserve(_reserves, _reservesList, asset);
+    }
+
+    /// @inheritdoc IPool
+    function clearReserveUserConfiguration(
+        address asset,
+        address[] calldata users
+    ) external virtual override onlyPoolAdmin {
+        require(asset != address(0), Errors.ZERO_ADDRESS_NOT_VALID);
+
+        DataTypes.ReserveData storage reserve = _reserves[asset];
+        require(reserve.id != 0 || _reservesList[0] == asset, Errors.ASSET_NOT_LISTED);
+
+        uint256 reserveId = reserve.id;
+
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            if (user == address(0)) {
+                continue;
+            }
+
+            DataTypes.UserConfigurationMap storage userConfig = _usersConfig[user];
+            userConfig.setUsingAsCollateral(reserveId, false);
+            userConfig.setBorrowing(reserveId, false);
+        }
     }
 
     /// @inheritdoc IPool

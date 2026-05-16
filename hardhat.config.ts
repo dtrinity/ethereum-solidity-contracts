@@ -86,6 +86,17 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
+      // Stack too deep; compile with IR
+      "contracts/dlend/core/deployments/AtomicMarketListingHelper.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
       // RewardClaimable is part of the inheritance chain; compile with IR as well
       "contracts/vaults/rewards_claimable/RewardClaimable.sol": {
         version: "0.8.20",
