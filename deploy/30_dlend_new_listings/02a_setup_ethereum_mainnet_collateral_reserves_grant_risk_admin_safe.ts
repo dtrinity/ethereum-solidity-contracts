@@ -7,6 +7,8 @@ import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 import { getRoleAccess } from "../_shared/safe-role";
 
+const SECURITY_UPGRADE_POOL_REVISION = 0x2n;
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Promise<boolean> {
   if (isLocalNetwork(hre.network.name)) {
     console.log("🔁 setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe: local network detected – skipping");
@@ -29,6 +31,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
   const managerAddress = config.safeConfig!.safeAddress;
   const addressProviderDeployment = await deployments.get(POOL_ADDRESSES_PROVIDER_ID);
   const addressProvider = await ethers.getContractAt("PoolAddressesProvider", addressProviderDeployment.address, signer);
+  const poolAddress = await addressProvider.getPool();
+  const pool = await ethers.getContractAt("Pool", poolAddress, signer);
+  const currentRevision = await pool.POOL_REVISION();
+
+  if (currentRevision < SECURITY_UPGRADE_POOL_REVISION) {
+    console.warn(
+      `Pool upgrade not yet live. Current revision ${currentRevision.toString()} is below required revision ${SECURITY_UPGRADE_POOL_REVISION.toString()}; skipping AtomicMarketListingHelper role grants.`,
+    );
+    return false;
+  }
+
   const aclManagerAddress = await addressProvider.getACLManager();
   const aclManager = await ethers.getContractAt("ACLManager", aclManagerAddress, signer);
   const atomicHelperDeployment = await deployments.get(ATOMIC_MARKET_LISTING_HELPER_ID);
