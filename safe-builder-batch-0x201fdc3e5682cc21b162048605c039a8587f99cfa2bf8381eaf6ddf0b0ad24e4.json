@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1779326991644,
+  "meta": {
+    "name": "Ethereum mainnet dLEND atomic listing helper role grants (2 operations)",
+    "description": "Ethereum mainnet dLEND atomic listing helper role grants (2 operations)",
+    "txBuilderVersion": "export-1"
+  },
+  "transactions": [
+    {
+      "to": "0x80F7023e25a32E4A020ed71346c0f37C10589609",
+      "value": "0",
+      "data": "0x9a2b96f7000000000000000000000000e2fb25dba7be982c0b6a2c33e808c4dfc6a90fbc"
+    },
+    {
+      "to": "0x80F7023e25a32E4A020ed71346c0f37C10589609",
+      "value": "0",
+      "data": "0x5b9a94e4000000000000000000000000e2fb25dba7be982c0b6a2c33e808c4dfc6a90fbc"
+    }
+  ]
+}

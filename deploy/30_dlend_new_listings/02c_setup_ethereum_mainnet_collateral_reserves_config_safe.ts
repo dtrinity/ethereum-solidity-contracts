@@ -251,7 +251,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       );
     }
 
-    const aToken = await ethers.getContractAt("IERC20", reserveData.aTokenAddress, signer);
+    const aToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", reserveData.aTokenAddress, signer);
     const aTokenSupply = await aToken.totalSupply();
 
     if (currentConfig.debtCeiling === 0n && target.debtCeiling !== 0n && aTokenSupply !== 0n) {

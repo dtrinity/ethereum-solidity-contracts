@@ -79,6 +79,7 @@ export const POOL_LOGIC_ID = "PoolLogic";
 export const CALLDATA_LOGIC_ID = "CalldataLogic";
 export const RESERVES_SETUP_HELPER_ID = "ReservesSetupHelper";
 export const ATOMIC_MARKET_LISTING_HELPER_ID = "AtomicMarketListingHelper";
+export const DLEND_FREEZE_GUARDIAN_ID = "DlendFreezeGuardian";
 export const WALLET_BALANCE_PROVIDER_ID = "WalletBalanceProvider";
 export const UI_INCENTIVE_DATA_PROVIDER_ID = "UiIncentiveDataProviderV3";
 export const UI_POOL_DATA_PROVIDER_ID = "UiPoolDataProviderV3";

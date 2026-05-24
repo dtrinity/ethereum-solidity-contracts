@@ -22,6 +22,7 @@ import {
   INIT_BATCH_ONE_SYMBOLS,
   isReserveStaged,
   normalize,
+  parseBooleanEnv,
   resolveTokenAddress,
 } from "./common";
 
@@ -135,7 +136,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
 
     if (normalize(reserveData.aTokenAddress) !== normalize(ZeroAddress)) {
       const currentConfig = await getDecodedReserveConfig(pool, tokenAddress);
-      const aToken = await ethers.getContractAt("IERC20", reserveData.aTokenAddress, signer);
+      const aToken = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", reserveData.aTokenAddress, signer);
       const aTokenSupply = await aToken.totalSupply();
 
       if (
@@ -156,15 +157,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       }
 
       if (!isReserveStaged(currentConfig) && hasLiveMarketFeatures(currentConfig) && aTokenSupply > 0n) {
-        throw new Error(
-          [
-            `[stage-check] Reserve ${symbol} is already live with non-zero aToken supply and is not in the staged posture.`,
-            `asset=${tokenAddress}`,
-            `aToken=${reserveData.aTokenAddress}`,
-            `aTokenSupply=${aTokenSupply.toString()}`,
-            "Refusing to mutate a live market through the stage script.",
-          ].join(" "),
-        );
+        const liveMarketMessage = [
+          `[stage-check] Reserve ${symbol} is already live with non-zero aToken supply and is not in the staged posture.`,
+          `asset=${tokenAddress}`,
+          `aToken=${reserveData.aTokenAddress}`,
+          `aTokenSupply=${aTokenSupply.toString()}`,
+        ].join(" ");
+
+        if (parseBooleanEnv("NEW_LISTINGS_SKIP_LIVE_RESERVES", false)) {
+          console.log(`⏭️  ${liveMarketMessage} Skipping (NEW_LISTINGS_SKIP_LIVE_RESERVES=true).`);
+          continue;
+        }
+
+        throw new Error(`${liveMarketMessage} Refusing to mutate a live market through the stage script.`);
       }
 
       stageInputParams.push({

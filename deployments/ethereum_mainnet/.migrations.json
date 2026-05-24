@@ -82,5 +82,12 @@
   "setup-ethereum-mainnet-dstake-dlend-role-grants-safe": 1773299081,
   "setup-ethereum-mainnet-dstake-dlend-safe": 1773299360,
   "setup-ethereum-mainnet-dstake-dlend-revoke-roles-safe": 1773299962,
-  "point-usd-oracle-aggregator-for-usd": 1773307474
+  "point-usd-oracle-aggregator-for-usd": 1773307474,
+  "ethereum-mainnet-dlend-remediation-impls": 1778989664,
+  "ethereum-mainnet-cbbtc-sanitize-preflight": 1778990213,
+  "ethereum-mainnet-cbbtc-sanitize-safe": 1778990958,
+  "dLend:PoolConfigurator:v2": 1779326989,
+  "setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe-v2": 1779326991,
+  "setup-ethereum-mainnet-collateral-reserves-safe-v9": 1779550096,
+  "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v4": 1779551257
 }
