@@ -13,6 +13,19 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 
+/** Treat blank .env placeholders as unset (dotenv sets "" not undefined). */
+function resolveRpcUrl(explicit: string | undefined, alchemyUrl: string | undefined, fallback: string): string {
+  const trimmed = explicit?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  const alchemyKey = process.env.ALCHEMY_API_KEY?.trim();
+  if (alchemyKey && alchemyUrl) {
+    return `${alchemyUrl}${alchemyKey}`;
+  }
+  return fallback;
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Wrapper function to add a delay to transactions
@@ -184,14 +197,22 @@ const config: HardhatUserConfig = {
     },
     ethereum_testnet: {
       // Sepolia testnet
-      url: `https://sepolia.gateway.tenderly.co`,
+      url: resolveRpcUrl(
+        process.env.ETHEREUM_TESTNET_RPC_URL,
+        "https://eth-sepolia.g.alchemy.com/v2/",
+        "https://sepolia.gateway.tenderly.co",
+      ),
       chainId: 11155111,
       deploy: ["deploy-mocks", "deploy"],
       saveDeployments: true,
       accounts: getEnvPrivateKeys("ethereum_testnet"),
     },
     ethereum_mainnet: {
-      url: "https://ethereum-rpc.publicnode.com",
+      url: resolveRpcUrl(
+        process.env.ETHEREUM_MAINNET_RPC_URL,
+        "https://eth-mainnet.g.alchemy.com/v2/",
+        "https://ethereum-rpc.publicnode.com",
+      ),
       chainId: 1,
       deploy: ["deploy"], // NOTE: DO NOT DEPLOY mocks
       saveDeployments: true,

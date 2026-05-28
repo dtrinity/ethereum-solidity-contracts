@@ -4,6 +4,7 @@ import { Command } from "commander";
 import * as readline from "readline";
 
 import { logger } from "../../lib/logger";
+import { waitForTxReceipt } from "../../lib/transactions";
 import { scanRolesAndOwnership } from "../../lib/roles/scan";
 import { loadRoleManifest, resolveRoleManifest } from "../../lib/roles/manifest";
 import { prepareContractPlans, isDeploymentExcluded } from "../../lib/roles/planner";
@@ -232,7 +233,9 @@ async function main(): Promise<void> {
         }
 
         const tx = await contract.transferOwnership(target.newOwner);
-        const receipt = await tx.wait();
+        const receipt = await waitForTxReceipt(tx, {
+          onRetry: (message) => logger.warn(`  ${message}`),
+        });
         const txHash = receipt?.hash ?? tx.hash ?? "unknown";
         logger.info(`  ✅ Transaction hash: ${txHash}`);
         executed.push(target);
