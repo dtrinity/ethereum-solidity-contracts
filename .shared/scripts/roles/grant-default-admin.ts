@@ -85,6 +85,7 @@ async function main(): Promise<void> {
       hre,
       deployer: manifest.deployer,
       governanceMultisig: manifest.governance,
+      timelock: manifest.timelock,
       deploymentsPath: options.deploymentsDir,
       logger: (message: string) => logger.info(message),
     });
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
       manifest,
       rolesByDeployment,
       ownableByDeployment: new Map(),
+      proxyAdminByDeployment: new Map(),
     });
 
     const actionable: GrantTarget[] = [];
@@ -130,7 +132,7 @@ async function main(): Promise<void> {
       const deployerHasAdmin = rolesInfo.rolesHeldByDeployer.some(
         (role) => role.hash.toLowerCase() === defaultAdminRoleHash.toLowerCase(),
       );
-      const governanceHasAdmin = rolesInfo.governanceHasDefaultAdmin;
+      const governedHasAdmin = rolesInfo.governedHasDefaultAdmin;
 
       const target: GrantTarget = {
         deployment: plan.deployment,
@@ -141,7 +143,7 @@ async function main(): Promise<void> {
         rolesInfo,
       };
 
-      if (governanceHasAdmin) {
+      if (governedHasAdmin) {
         skippedExisting.push({
           deployment: target.deployment,
           contractName,

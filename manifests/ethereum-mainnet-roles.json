@@ -3,19 +3,25 @@
   "network": "ethereum_mainnet",
   "deployer": "0x0f5e3D9AEe7Ab5fDa909Af1ef147D98a7f4B3022",
   "governance": "0xE83c188a7BE46B90715C757A06cF917175f30262",
+  "timelock": "0x18CB0EB73D953eD20F2157ce6bDE2A85E30e681B",
   "defaults": {
     "ownable": {
-      "newOwner": "{{governance}}",
+      "newOwner": "{{timelock}}",
       "execution": "direct"
     },
     "defaultAdmin": {
-      "newAdmin": "{{governance}}",
+      "newAdmin": "{{timelock}}",
       "grantExecution": "direct"
+    },
+    "proxyAdmin": {
+      "newAdmin": "{{timelock}}",
+      "execution": "direct"
     }
   },
   "autoInclude": {
     "ownable": true,
-    "defaultAdmin": true
+    "defaultAdmin": true,
+    "proxyAdmin": true
   },
   "exclusions": [
     {

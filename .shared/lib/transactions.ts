@@ -1,30 +1,34 @@
-import type { ContractTransactionResponse, TransactionReceipt } from "ethers";
+export interface WaitForTxReceiptOptions {
+  readonly confirmations?: number;
+  readonly onRetry?: (message: string) => void;
+  readonly maxAttempts?: number;
+}
 
 /**
- * Wait for a transaction receipt. Falls back to provider.waitForTransaction when
- * tx.wait() fails on flaky public RPCs (Hardhat HH110 / truncated JSON-RPC bodies).
+ * Waits for a transaction receipt with optional retries when the RPC drops the pending tx.
  */
 export async function waitForTxReceipt(
-  tx: ContractTransactionResponse,
-  options?: {
-    confirmations?: number;
-    timeoutMs?: number;
-    onRetry?: (message: string) => void;
-  },
-): Promise<TransactionReceipt | null> {
-  const confirmations = options?.confirmations ?? 1;
-  const timeoutMs = options?.timeoutMs ?? 180_000;
-  const onRetry = options?.onRetry;
+  tx: { hash: string; wait: (confirmations?: number) => Promise<{ hash: string } | null> },
+  options: WaitForTxReceiptOptions = {},
+): Promise<{ hash: string } | null> {
+  const confirmations = options.confirmations ?? 1;
+  const maxAttempts = options.maxAttempts ?? 3;
+  const onRetry = options.onRetry;
 
-  try {
-    return await tx.wait(confirmations);
-  } catch (error) {
-    const hash = tx.hash;
-    if (!hash || !tx.provider) {
-      throw error;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await tx.wait(confirmations);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxAttempts) {
+        break;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      onRetry?.(`Receipt wait failed (attempt ${attempt}/${maxAttempts}): ${message}`);
     }
-    const message = error instanceof Error ? error.message : String(error);
-    onRetry?.(`tx.wait() failed (${message}); polling receipt for ${hash}...`);
-    return tx.provider.waitForTransaction(hash, confirmations, timeoutMs);
   }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
