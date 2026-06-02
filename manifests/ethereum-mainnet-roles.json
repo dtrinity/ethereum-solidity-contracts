@@ -54,7 +54,7 @@
   "overrides": [],
   "safe": {
     "safeAddress": "0xE83c188a7BE46B90715C757A06cF917175f30262",
-    "threshold": 2,
+    "threshold": 3,
     "chainId": 1,
     "description": "Our Safe"
   },
