@@ -13,16 +13,26 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { getEnvPrivateKeys } from "./typescript/hardhat/named-accounts";
 
-/** Treat blank .env placeholders as unset (dotenv sets "" not undefined). */
+/**
+ * Treat blank .env placeholders as unset (dotenv sets "" not undefined).
+ *
+ * @param explicit
+ * @param alchemyUrl
+ * @param fallback
+ */
 function resolveRpcUrl(explicit: string | undefined, alchemyUrl: string | undefined, fallback: string): string {
   const trimmed = explicit?.trim();
+
   if (trimmed) {
     return trimmed;
   }
+
   const alchemyKey = process.env.ALCHEMY_API_KEY?.trim();
+
   if (alchemyKey && alchemyUrl) {
     return `${alchemyUrl}${alchemyKey}`;
   }
+
   return fallback;
 }
 
