@@ -97,7 +97,9 @@ describe("DlendFreezeGuardian", () => {
   });
 
   it("rejects zero addresses", async () => {
-    await expect(guardian.connect(freezeMultisigSigner).freezeReserve(ethers.ZeroAddress))
-      .to.be.revertedWithCustomError(guardian, "ZeroAddress");
+    await expect(guardian.connect(freezeMultisigSigner).freezeReserve(ethers.ZeroAddress)).to.be.revertedWithCustomError(
+      guardian,
+      "ZeroAddress",
+    );
   });
 });

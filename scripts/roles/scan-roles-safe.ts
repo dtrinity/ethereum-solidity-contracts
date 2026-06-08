@@ -28,7 +28,9 @@ async function main() {
     }
   }
 
-  console.log(`\nSafe holds ${totalSafePairs} role/contract pairs across ${result.rolesContracts.filter((c) => c.rolesHeldByGovernance.length > 0).length} AC contracts.`);
+  console.log(
+    `\nSafe holds ${totalSafePairs} role/contract pairs across ${result.rolesContracts.filter((c) => c.rolesHeldByGovernance.length > 0).length} AC contracts.`,
+  );
 
   // Also list AC contracts where the Safe holds NO roles at all
   console.log("\n=== AC contracts where Safe holds NO roles ===");

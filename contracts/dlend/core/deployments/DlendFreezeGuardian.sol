@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
-import {IPoolConfigurator} from "../interfaces/IPoolConfigurator.sol";
+import { IPoolAddressesProvider } from "../interfaces/IPoolAddressesProvider.sol";
+import { IPoolConfigurator } from "../interfaces/IPoolConfigurator.sol";
 
 /**
  * @title DlendFreezeGuardian

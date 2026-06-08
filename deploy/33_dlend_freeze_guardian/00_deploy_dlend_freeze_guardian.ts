@@ -5,6 +5,12 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { DLEND_FREEZE_GUARDIAN_ID, POOL_ADDRESSES_PROVIDER_ID } from "../../typescript/deploy-ids";
 import { isLocalNetwork } from "../../typescript/hardhat/deploy";
 
+/**
+ * Resolves the freeze guardian owner address for the current network.
+ *
+ * @param hre Hardhat runtime environment.
+ * @param deployer Named deployer address.
+ */
 function resolveFreezeGuardianOwner(hre: HardhatRuntimeEnvironment, deployer: string): string {
   const configuredOwner = process.env.DLEND_FREEZE_GUARDIAN_MULTISIG;
 
