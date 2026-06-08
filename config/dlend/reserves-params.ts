@@ -83,9 +83,9 @@ export const strategySUSDE: IReserveParams = buildCollateralStrategy({
 
 export const strategySUSDS: IReserveParams = buildCollateralStrategy({
   supplyCap: "500000",
-  baseLTVAsCollateral: "7500",
-  liquidationThreshold: "7800",
-  liquidationBonus: "10450",
+  baseLTVAsCollateral: "7200",
+  liquidationThreshold: "7500",
+  liquidationBonus: "10850",
   strategy: rateStrategyHighLiquidityStable,
 });
 
@@ -93,7 +93,7 @@ export const strategySYRUPUSDC: IReserveParams = buildCollateralStrategy({
   supplyCap: "500000",
   baseLTVAsCollateral: "7200",
   liquidationThreshold: "7500",
-  liquidationBonus: "10600",
+  liquidationBonus: "10850",
   strategy: rateStrategyHighLiquidityStable,
 });
 
@@ -101,7 +101,7 @@ export const strategySYRUPUSDT: IReserveParams = buildCollateralStrategy({
   supplyCap: "500000",
   baseLTVAsCollateral: "7200",
   liquidationThreshold: "7500",
-  liquidationBonus: "10600",
+  liquidationBonus: "10850",
   strategy: rateStrategyHighLiquidityStable,
 });
 
@@ -109,7 +109,7 @@ export const strategySFRXUSD: IReserveParams = buildCollateralStrategy({
   supplyCap: "500000",
   baseLTVAsCollateral: "7200",
   liquidationThreshold: "7500",
-  liquidationBonus: "10600",
+  liquidationBonus: "10850",
   strategy: rateStrategyHighLiquidityStable,
 });
 

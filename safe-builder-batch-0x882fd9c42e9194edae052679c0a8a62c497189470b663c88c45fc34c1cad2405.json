@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1779670464659,
+  "meta": {
+    "name": "Ethereum mainnet dLEND dUSD unfreeze (3 operations)",
+    "description": "Ethereum mainnet dLEND dUSD unfreeze (3 operations)",
+    "txBuilderVersion": "export-1"
+  },
+  "transactions": [
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x96e957c400000000000000000000000007fff99e1664d9b116fbc158c0e99785f81ca2360000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x682cf26400000000000000000000000007fff99e1664d9b116fbc158c0e99785f81ca2360000000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x4b4e675300000000000000000000000007fff99e1664d9b116fbc158c0e99785f81ca23600000000000000000000000000000000000000000000000000000000000003e8"
+    }
+  ]
+}

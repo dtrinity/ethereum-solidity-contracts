@@ -225,6 +225,30 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment): Pr
       continue;
     }
 
+    // Reserves that already have collateral parameters set (nonzero LTV, liquidation
+    // threshold, or liquidation bonus) cannot go through the atomic enable path:
+    // AtomicMarketListingHelper._enableReserve reverts with ReserveCollateralAlreadyEnabled.
+    // This covers BOTH frozen legacy collateral reserves AND supply-only reserves (LTV floored
+    // to 0 but liquidation threshold/bonus retained, frozen=false). Remove them from the enable
+    // batch instead of throwing, so the staged reserves that ARE eligible still get processed.
+    const collateralConfigured =
+      currentConfig.ltv !== 0n || currentConfig.liquidationThreshold !== 0n || currentConfig.liquidationBonus !== 0n;
+
+    if (collateralConfigured) {
+      console.log(
+        [
+          `ℹ️ ${symbol}: already collateral-configured (frozen=${currentConfig.frozen}) — removed from the atomic enable batch.`,
+          "Collateral parameters are already set, so the staged-enable path does not apply",
+          "(AtomicMarketListingHelper would revert ReserveCollateralAlreadyEnabled).",
+          `ltv=${currentConfig.ltv.toString()}`,
+          `liqThreshold=${currentConfig.liquidationThreshold.toString()}`,
+          `liqBonus=${currentConfig.liquidationBonus.toString()}`,
+          "Use the dedicated unfreeze/reconfigure flow if you intend to (re)configure it as live collateral.",
+        ].join(" "),
+      );
+      continue;
+    }
+
     if (!currentConfig.active) {
       throw new Error(`[enable-check] Reserve ${symbol} is inactive; manual review is required before enabling.`);
     }
@@ -312,6 +336,6 @@ func.dependencies = [
   POOL_ADDRESSES_PROVIDER_ID,
   ATOMIC_MARKET_LISTING_HELPER_ID,
 ];
-func.id = "setup-ethereum-mainnet-collateral-reserves-config-safe-v5";
+func.id = "setup-ethereum-mainnet-collateral-reserves-config-safe-v7";
 
 export default func;

@@ -89,5 +89,16 @@
   "dLend:PoolConfigurator:v2": 1779326989,
   "setup-ethereum-mainnet-collateral-reserves-grant-risk-admin-safe-v2": 1779326991,
   "setup-ethereum-mainnet-collateral-reserves-safe-v9": 1779550096,
-  "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v4": 1779551257
+  "setup-ethereum-mainnet-collateral-reserves-init-batch-2-safe-v4": 1779551257,
+  "setup-ethereum-mainnet-collateral-reserves-supply-only-safe-v1": 1779613165,
+  "setup-ethereum-mainnet-collateral-reserves-config-safe-v6": 1779665561,
+  "setup-ethereum-mainnet-collateral-reserves-promote-safe-v1": 1779666658,
+  "setup-ethereum-mainnet-collateral-reserves-config-safe-v7": 1779666863,
+  "setup-ethereum-mainnet-collateral-reserves-unfreeze-safe-v1": 1779667218,
+  "setup-ethereum-mainnet-dusd-unfreeze-safe-v1": 1779670464,
+  "setup-ethereum-mainnet-reserve-params-timelock-safe-v1": 1779760899,
+  "setup-ethereum-mainnet-reserve-params-timelock-safe-v2": 1779934435,
+  "setup-ethereum-mainnet-admin-handover-safe-v1": 1779937138,
+  "setup-ethereum-mainnet-admin-handover-safe-v2": 1779938402,
+  "setup-ethereum-mainnet-admin-handover-safe-v3": 1779944378
 }

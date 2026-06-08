@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1779944378666,
+  "meta": {
+    "name": "dLEND admin handover E: ACL DEFAULT_ADMIN_ROLE revoke (FINAL) (1 operations)",
+    "description": "dLEND admin handover E: ACL DEFAULT_ADMIN_ROLE revoke (FINAL) (1 operations)",
+    "txBuilderVersion": "export-1"
+  },
+  "transactions": [
+    {
+      "to": "0x80F7023e25a32E4A020ed71346c0f37C10589609",
+      "value": "0",
+      "data": "0xd547741f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e83c188a7be46b90715c757a06cf917175f30262"
+    }
+  ]
+}

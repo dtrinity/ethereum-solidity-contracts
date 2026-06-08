@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1779667218351,
+  "meta": {
+    "name": "Ethereum mainnet dLEND frozen collateral reserve unfreeze (4 operations)",
+    "description": "Ethereum mainnet dLEND frozen collateral reserve unfreeze (4 operations)",
+    "txBuilderVersion": "export-1"
+  },
+  "transactions": [
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x96e957c4000000000000000000000000ac3e018457b222d93114458476f3e3416abbe38f0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x96e957c4000000000000000000000000cf62f905562626cfcdd2261162a51fd02fc9c5b60000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x96e957c40000000000000000000000002260fac5e5542a773aa44fbcfedf7c193bc2c5990000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "to": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a",
+      "value": "0",
+      "data": "0x96e957c400000000000000000000000045804880de22913dafe09f4980848ece6ecbaf780000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}
