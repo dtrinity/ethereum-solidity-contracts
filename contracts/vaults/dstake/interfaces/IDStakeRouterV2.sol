@@ -78,6 +78,9 @@ interface IDStakeRouterV2 {
     ) external returns (uint256 netAssets, uint256 fee, uint256 sharesBurned);
 
     // --- Maintenance ---
+    /// @notice Adds backing for existing holders without minting outer shares.
+    function compoundDeposit(uint256 assets) external returns (address strategyShare, uint256 strategyShares);
+
     function reinvestFees() external returns (uint256 amountReinvested, uint256 incentivePaid);
 
     function setReinvestIncentive(uint256 newIncentiveBps) external;

@@ -8,5 +8,17 @@
   "idleVault": "0x78a4DAD0AC32c80Da6eF60a366b1C035145380bc",
   "timelock": "0x18CB0EB73D953eD20F2157ce6bDE2A85E30e681B",
   "governanceSafe": "0xE83c188a7BE46B90715C757A06cF917175f30262",
-  "emergencySafe": "0x04401537CA997a43EBCFEc8194c7e88c7ee79804"
+  "emergencySafe": "0x04401537CA997a43EBCFEc8194c7e88c7ee79804",
+  "retirement": {
+    "reviewed": false,
+    "evidence": "REQUIRED: block-pinned complete role and claimer inventory; do not copy historical addresses blindly.",
+    "callers": [],
+    "extraAdapters": [],
+    "claimers": []
+  },
+  "rounding": {
+    "reviewed": false,
+    "operationLoss": "1",
+    "strategies": []
+  }
 }

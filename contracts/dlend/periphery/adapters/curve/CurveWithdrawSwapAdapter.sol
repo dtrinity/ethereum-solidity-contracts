@@ -69,6 +69,8 @@ contract CurveWithdrawSwapAdapter is BaseCurveSellAdapter, ReentrancyGuard, ICur
         WithdrawSwapParams memory withdrawSwapParams,
         PermitInput memory permitInput
     ) external nonReentrant {
+        _requireUser(withdrawSwapParams.user);
+
         // pulls liquidity asset from the user and withdraw
         _pullATokenAndWithdraw(
             withdrawSwapParams.oldAsset,

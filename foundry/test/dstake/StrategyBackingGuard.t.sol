@@ -15,22 +15,11 @@ contract StrategyBackingGuardHarness {
 
 contract StrategyBackingGuardTest is Test {
     StrategyBackingGuardHarness private guard;
-    function setUp() public {
-        guard = new StrategyBackingGuardHarness();
-    }
+    function setUp() public { guard = new StrategyBackingGuardHarness(); }
 
     function testFuzz_PositiveCreditRequiresPositiveBacking(uint128 amount, uint128 beforeValue) public {
         amount = uint128(bound(amount, 1, type(uint128).max));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                StrategyBackingGuard.StrategyBackingLoss.selector,
-                address(0),
-                uint8(0),
-                uint256(beforeValue),
-                uint256(beforeValue),
-                uint256(amount)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(StrategyBackingGuard.StrategyBackingLoss.selector, address(0), uint8(0), uint256(beforeValue), uint256(beforeValue), uint256(amount)));
         guard.increase(beforeValue, beforeValue, amount);
     }
 
@@ -46,11 +35,8 @@ contract StrategyBackingGuardTest is Test {
 
     function testFuzz_WithdrawalMustPreserveUnpaidBacking(uint128 loss, uint128 received) public {
         bool expected = loss <= received || uint256(loss) - received <= 1;
-        try guard.withdrawal(loss, 0, received) {
-            assertTrue(expected);
-        } catch {
-            assertFalse(expected);
-        }
+        try guard.withdrawal(loss, 0, received) { assertTrue(expected); }
+        catch { assertFalse(expected); }
     }
 
     function test_MaxValueDoesNotOverflowToleranceArithmetic() public {
@@ -60,7 +46,6 @@ contract StrategyBackingGuardTest is Test {
 
     function test_OneUnitOfLostBackingIsTheAbsoluteLimit() public {
         guard.increase(100, 199, 100);
-        vm.expectRevert();
-        guard.increase(100, 198, 100);
+        vm.expectRevert(); guard.increase(100, 198, 100);
     }
 }

@@ -8,6 +8,14 @@ import { canonical, digest, validateInventory, migrationCalls, assertMigrationPl
 const address = (n) => `0x${n.toString(16).padStart(40, "0")}`;
 function fixture() {
   const c = { chainId: 1, oldRouter: address(1), token: address(2), collateral: address(3), asset: address(4), timelock: address(5) };
+  c.retirement = {
+    reviewed: true,
+    evidence: "Synthetic empty test inventory; no live deployment claim.",
+    callers: [],
+    extraAdapters: [],
+    claimers: [],
+  };
+  c.rounding = { reviewed: true, operationLoss: "1", strategies: [] };
   const d = { router: address(6), guard: address(7) };
   const v = {
     vault: address(8),

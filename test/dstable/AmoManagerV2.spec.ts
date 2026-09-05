@@ -693,7 +693,7 @@ function runTestsForDStable(
                 const amoWalletSigner = await hre.ethers.getSigner(amoWallet);
 
                 // Borrow collateral first
-                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount);
+                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount, 0);
 
                 // Simulate front-run permit execution by pre-approving the manager
                 await collateralToken.connect(amoWalletSigner).approve(await amoManagerV2.getAddress(), amount);
@@ -720,7 +720,7 @@ function runTestsForDStable(
                 const amoManagerSigner = await hre.ethers.getSigner(amoWallet);
                 const amoWalletSigner = await hre.ethers.getSigner(amoWallet);
 
-                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount);
+                await amoManagerV2.connect(amoManagerSigner).borrowTo(amoWallet, await collateralToken.getAddress(), amount, 0);
 
                 // Ensure allowance is zero so the contract attempts permit
                 await collateralToken.connect(amoWalletSigner).approve(await amoManagerV2.getAddress(), 0);

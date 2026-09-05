@@ -54,6 +54,14 @@ abstract contract BaseCurveSwapAdapter is Ownable, IBaseCurveAdapter {
         POOL = IPool(pool);
     }
 
+    error UnauthorizedUser(address caller, address suppliedUser);
+
+    /// @dev An ERC20 approval/permit is not consent to an arbitrary caller's trade.
+    ///      Relayers require a separately designed, fully bound signed intent.
+    function _requireUser(address suppliedUser) internal view {
+        if (suppliedUser != msg.sender) revert UnauthorizedUser(msg.sender, suppliedUser);
+    }
+
     /**
      * @dev Get the vToken, sToken and aToken associated to the asset
      * @param asset The address of the asset

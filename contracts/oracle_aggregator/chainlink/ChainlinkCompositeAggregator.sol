@@ -53,6 +53,7 @@ contract ChainlinkCompositeAggregator is AggregatorV3Interface, ThresholdingUtil
 
     /// @notice Error thrown when price is stale
     error PriceIsStale();
+    error InvalidFeedTimestamp(address feed, uint256 updatedAt);
 
     /// @notice Error thrown when a feed address is zero
     error ZeroFeedAddress();
@@ -124,17 +125,13 @@ contract ChainlinkCompositeAggregator is AggregatorV3Interface, ThresholdingUtil
 
         ) = sourceFeed2.latestRoundData();
 
-        // Check if prices are stale
-        if (
-            updatedAt1 + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit <= block.timestamp ||
-            updatedAt2 + CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit <= block.timestamp
-        ) {
-            revert PriceIsStale();
-        }
+        _validateTimestamp(address(sourceFeed1), updatedAt1);
+        _validateTimestamp(address(sourceFeed2), updatedAt2);
 
-        // Use the latest timestamp from both feeds
-        uint256 latestUpdatedAt = updatedAt1 > updatedAt2 ? updatedAt1 : updatedAt2;
-        uint256 latestStartedAt = startedAt1 > startedAt2 ? startedAt1 : startedAt2;
+        // A composite cannot be fresher than its oldest price dependency.
+        // These timestamps are conservative metadata, not synchronized feed rounds.
+        uint256 oldestUpdatedAt = updatedAt1 < updatedAt2 ? updatedAt1 : updatedAt2;
+        uint256 oldestStartedAt = startedAt1 < startedAt2 ? startedAt1 : startedAt2;
 
         // Calculate composite price using the same logic as Redstone wrapper
         uint256 compositePrice = _calculateCompositePrice(answer1, answer2);
@@ -142,10 +139,16 @@ contract ChainlinkCompositeAggregator is AggregatorV3Interface, ThresholdingUtil
         return (
             roundId1, // Use the first feed's round ID
             int256(compositePrice),
-            latestStartedAt,
-            latestUpdatedAt,
+            oldestStartedAt,
+            oldestUpdatedAt,
             answeredInRound1 // Use the first feed's answeredInRound
         );
+    }
+
+    function _validateTimestamp(address feed, uint256 timestamp) private view {
+        if (timestamp == 0 || timestamp > block.timestamp) revert InvalidFeedTimestamp(feed, timestamp);
+        // Subtraction after range checking avoids timestamp-addition overflow.
+        if (block.timestamp - timestamp >= CHAINLINK_HEARTBEAT + heartbeatStaleTimeLimit) revert PriceIsStale();
     }
 
     /**

@@ -16,14 +16,14 @@ Do not interpret offline model tests or source-pattern checks as substitutes.
 
 ## Executed checks
 
-| Check                                                           | Result              | Scope and limitation                                                                                                                                                                                   |
-| --------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Node `--test scripts/incident-2026-09-05/policy.test.mjs`       | 49 passed; 0 failed | Pure policy, arithmetic-model and CLI refusal tests; no EVM and no RPC. Includes 20,000 deterministic model cases inside one test, not 20,000 independent contract tests.                              |
-| Source guardrails, `node scripts/incident-2026-09-05/check.mjs` | Passed              | Checks required call sites, pause guards, whole-position checks, absolute tolerance, module generation, and absence of direct adapter movement calls outside the guard. Not Solidity parsing or proof. |
-| JavaScript syntax, `node --check`                               | Passed              | All four new `.mjs` files.                                                                                                                                                                             |
-| Shell syntax, `bash -n .../validate.sh`                         | Passed              | Syntax only, not full release-script execution.                                                                                                                                                        |
-| TypeScript 5.8.3 `transpileModule` diagnostics                  | Passed              | Four changed/new TS files: Hardhat config, fixture, core regressions and migration regressions. No dependency resolution or semantic type checking.                                                    |
-| `git diff --check`                                              | Passed              | Whitespace/conflict-marker check; patch application is checked separately when packaging.                                                                                                              |
+| Check | Result | Scope and limitation |
+| --- | --- | --- |
+| Node `--test scripts/incident-2026-09-05/policy.test.mjs` | 49 passed; 0 failed | Pure policy, arithmetic-model and CLI refusal tests; no EVM and no RPC. Includes 20,000 deterministic model cases inside one test, not 20,000 independent contract tests. |
+| Source guardrails, `node scripts/incident-2026-09-05/check.mjs` | Passed | Checks required call sites, pause guards, whole-position checks, absolute tolerance, module generation, and absence of direct adapter movement calls outside the guard. Not Solidity parsing or proof. |
+| JavaScript syntax, `node --check` | Passed | All four new `.mjs` files. |
+| Shell syntax, `bash -n .../validate.sh` | Passed | Syntax only, not full release-script execution. |
+| TypeScript 5.8.3 `transpileModule` diagnostics | Passed | Four changed/new TS files: Hardhat config, fixture, core regressions and migration regressions. No dependency resolution or semantic type checking. |
+| `git diff --check` | Passed | Whitespace/conflict-marker check; patch application is checked separately when packaging. |
 
 The captured Node test log is `validation/offline-tests.tap`. Its 49 tests are
 **not** the Solidity tests described below. The validation JSON distinguishes
@@ -82,16 +82,16 @@ The pack requests tests that fail on the old implementation and pass after the
 fix. **That EVM RED/GREEN cycle has not been measured here.** The following are
 expected to expose the old behavior based on source inspection:
 
-| New assertion                                                         | Expected pre-fix failure                                                                       |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Zero and tiny inner-share rejection through all nominal-credit routes | Old code checks quantities, not sufficient whole-position backing.                             |
-| Healthy/bad and duplicate-loss routes                                 | Old code has no per-position economic check or aggregate one-unit loss bound.                  |
-| Legacy Idle donation rejection                                        | Empty collateral-owned position can remain valueless while old code credits nominal input.     |
-| Reinvestment, sweep and rebalance conservation                        | Old paths can move value using nominal/share-return assumptions without the new checks.        |
-| Withdrawal-report mismatch with preexisting router cash               | Old code can accept the adapter's returned amount without comparing actual new receipts.       |
-| Withdrawal-induced loss to remaining holders                          | Old code does not enforce the full-position debit bound.                                       |
-| Standard withdrawal surplus stays in router                           | Old standard path can pay net proceeds exceeding the expected net amount priced into the burn. |
-| Paused privileged sweep/rebalance rejection                           | Old wrappers do not have the new pause requirement.                                            |
+| New assertion | Expected pre-fix failure |
+| --- | --- |
+| Zero and tiny inner-share rejection through all nominal-credit routes | Old code checks quantities, not sufficient whole-position backing. |
+| Healthy/bad and duplicate-loss routes | Old code has no per-position economic check or aggregate one-unit loss bound. |
+| Legacy Idle donation rejection | Empty collateral-owned position can remain valueless while old code credits nominal input. |
+| Reinvestment, sweep and rebalance conservation | Old paths can move value using nominal/share-return assumptions without the new checks. |
+| Withdrawal-report mismatch with preexisting router cash | Old code can accept the adapter's returned amount without comparing actual new receipts. |
+| Withdrawal-induced loss to remaining holders | Old code does not enforce the full-position debit bound. |
+| Standard withdrawal surplus stays in router | Old standard path can pay net proceeds exceeding the expected net amount priced into the burn. |
+| Paused privileged sweep/rebalance rejection | Old wrappers do not have the new pause requirement. |
 
 Positive compatibility tests (already-owned position, one-unit tolerance,
 cap/status semantics, allowance cleanup) are **not** all expected to be RED on the

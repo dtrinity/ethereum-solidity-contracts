@@ -58,13 +58,13 @@ contains(body(governance, "sweepSurplus").body, "StrategyBackingGuard.deposit", 
 contains(body(rebalance, "_rebalanceStrategiesByShares").body, "StrategyBackingGuard.withdraw", "rebalance debit");
 contains(body(rebalance, "_rebalanceStrategiesByShares").body, "StrategyBackingGuard.deposit", "rebalance credit");
 contains(body(router, "handleWithdraw").body, "netAssets = expectedNetAssets", "standard withdrawal payout cap");
-contains(library, "MAX_ROUNDING_LOSS = 1", "absolute smallest-unit tolerance");
+contains(library, "MAX_ROUNDING_LOSS = 1", "default smallest-unit tolerance");
 check(!library.includes("dustTolerance"), "Configurable dust must not relax public-flow conservation.");
 contains(library, "previewRedeem(p.shares)", "whole existing + new strategy position");
 contains(library, "strategyShareValueInDStable(vault, p.shares)", "adapter-accounting check");
-contains(body(library, "assertIncrease").body, "increase == 0", "positive credit cannot have zero gain");
-contains(body(library, "withdraw").body, "received != reported", "actual withdrawal cash delta");
-contains(read(`${core}DStakeRouterV2Storage.sol`), "storage:2:backing-conservation", "new module compatibility generation");
+contains(library, "increase == 0", "positive credit cannot have zero gain");
+contains(library, "received != reported", "actual withdrawal cash delta");
+contains(read(`${core}DStakeRouterV2Storage.sol`), "storage:3:bounded-rounding-and-compounding", "new module compatibility generation");
 contains(read(`${core}incident/DStakeRouterV2Incident.sol`), "_pause();", "constructor pause");
 console.log("PASS: source-level incident guardrails (not Solidity compilation or EVM execution).");
 

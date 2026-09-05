@@ -35,19 +35,16 @@ describe("Router backing conservation — incident regression", function () {
   it("protects solverDepositShares, which also pulls underlying assets", async function () {
     const f = await fixture();
     await f.vault.configure(2, 99, 0, 0);
-    await expect(f.router.connect(f.user).solverDepositShares([f.vault.target], [1n], 0, f.user.address)).to.be.revertedWithCustomError(
-      f.router,
-      "StrategyBackingLoss",
-    );
+    await expect(f.router.connect(f.user).solverDepositShares([f.vault.target], [1n], 0, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
   });
 
   it("does not let a healthy leg hide an insufficiently backed leg", async function () {
     const f = await fixture();
     const bad = await f.addVault(false, 0);
     await bad.vault.configure(2, 99, 0, 0);
-    await expect(
-      f.router.connect(f.user).solverDepositAssets([f.vault.target, bad.vault.target], [100n, 100n], 0, f.user.address),
-    ).to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
+    await expect(f.router.connect(f.user).solverDepositAssets([f.vault.target, bad.vault.target], [100n, 100n], 0, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
     expect(await f.token.totalSupply()).to.equal(0);
     expect(await f.vault.balanceOf(f.collateral.target)).to.equal(0);
   });
@@ -55,9 +52,8 @@ describe("Router backing conservation — incident regression", function () {
   it("bounds rounding loss once per entire operation, including duplicate vault legs", async function () {
     const f = await fixture();
     await f.vault.configure(0, 1, 0, 0);
-    await expect(
-      f.router.connect(f.user).solverDepositAssets([f.vault.target, f.vault.target], [100n, 100n], 0, f.user.address),
-    ).to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
+    await expect(f.router.connect(f.user).solverDepositAssets([f.vault.target, f.vault.target], [100n, 100n], 0, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
   });
 
   it("allows one smallest asset unit of nonzero attributable-backing rounding loss", async function () {
@@ -120,10 +116,8 @@ describe("Router backing conservation — incident regression", function () {
       await f.deposit(1_000n);
       const bad = await f.addVault(false, 0);
       await bad.vault.configure(2, 99, 0, 0);
-      await expect(f.router[entry](f.vault.target, bad.vault.target, 100n, 0)).to.be.revertedWithCustomError(
-        f.router,
-        "StrategyBackingLoss",
-      );
+      await expect(f.router[entry](f.vault.target, bad.vault.target, 100n, 0))
+        .to.be.revertedWithCustomError(f.router, "StrategyBackingLoss");
     });
   }
 
@@ -132,9 +126,8 @@ describe("Router backing conservation — incident regression", function () {
     await f.deposit(1_000n);
     await f.asset.transfer(f.router.target, 100n);
     await f.vault.configure(0, 0, 0, 50);
-    await expect(
-      f.router.connect(f.user).solverWithdrawAssets([f.vault.target], [100n], ethers.MaxUint256, f.user.address, f.user.address),
-    ).to.be.revertedWithCustomError(f.router, "WithdrawalAssetsMismatch");
+    await expect(f.router.connect(f.user).solverWithdrawAssets([f.vault.target], [100n], ethers.MaxUint256, f.user.address, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "WithdrawalAssetsMismatch");
   });
 
   it("checks actual cash in standard withdrawals before it can consume old router cash", async function () {
@@ -142,29 +135,24 @@ describe("Router backing conservation — incident regression", function () {
     await f.deposit(1_000n);
     await f.asset.transfer(f.router.target, 100n);
     await f.vault.configure(0, 0, 0, 50);
-    await expect(f.token.connect(f.user).withdraw(100n, f.user.address, f.user.address)).to.be.revertedWithCustomError(
-      f.router,
-      "WithdrawalAssetsMismatch",
-    );
+    await expect(f.token.connect(f.user).withdraw(100n, f.user.address, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "WithdrawalAssetsMismatch");
   });
 
   it("checks actual cash in solverWithdrawShares too", async function () {
     const f = await fixture();
     await f.deposit(1_000n);
     await f.vault.configure(0, 0, 0, 50);
-    await expect(
-      f.router.connect(f.user).solverWithdrawShares([f.vault.target], [100n], ethers.MaxUint256, f.user.address, f.user.address),
-    ).to.be.revertedWithCustomError(f.router, "WithdrawalAssetsMismatch");
+    await expect(f.router.connect(f.user).solverWithdrawShares([f.vault.target], [100n], ethers.MaxUint256, f.user.address, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "WithdrawalAssetsMismatch");
   });
 
   it("rejects withdrawal-induced loss to the remaining strategy position", async function () {
     const f = await fixture();
     await f.deposit(1_000n);
     await f.vault.configure(0, 0, 50, 0);
-    await expect(f.token.connect(f.user).withdraw(100n, f.user.address, f.user.address)).to.be.revertedWithCustomError(
-      f.router,
-      "StrategyWithdrawalLoss",
-    );
+    await expect(f.token.connect(f.user).withdraw(100n, f.user.address, f.user.address))
+      .to.be.revertedWithCustomError(f.router, "StrategyWithdrawalLoss");
   });
 
   it("retains withdrawal rounding surplus instead of paying unpriced assets to the user", async function () {
@@ -201,10 +189,8 @@ describe("Router backing conservation — incident regression", function () {
     const f = await fixture();
     await f.router.pause();
     await expect(f.router.sweepSurplus(0)).to.be.revertedWithCustomError(f.router, "EnforcedPause");
-    await expect(f.router.rebalanceStrategiesByShares(f.vault.target, f.vault.target, 1, 0)).to.be.revertedWithCustomError(
-      f.router,
-      "EnforcedPause",
-    );
+    await expect(f.router.rebalanceStrategiesByShares(f.vault.target, f.vault.target, 1, 0))
+      .to.be.revertedWithCustomError(f.router, "EnforcedPause");
   });
 
   it("cleans allowances after successful deposits and withdrawals", async function () {

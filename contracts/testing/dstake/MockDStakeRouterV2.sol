@@ -118,6 +118,11 @@ contract MockDStakeRouterV2 is IDStakeRouterV2, SupportsWithdrawalFee {
         defaultStrategyShare = share;
     }
 
+    function compoundDeposit(uint256) external pure override returns (address, uint256) {
+        // This token-routing mock deliberately does not model reward settlement.
+        revert MockRouterNotImplemented();
+    }
+
     function handleDeposit(address, uint256 assets, uint256, address) external override onlyDStakeToken {
         if (assets > 0) {
             asset.safeTransferFrom(msg.sender, address(this), assets);

@@ -10,9 +10,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 
 contract IncidentMintableERC20 is ERC20 {
     constructor() ERC20("Incident Test Asset", "ITA") {}
-    function mint(address receiver, uint256 amount) external {
-        _mint(receiver, amount);
-    }
+    function mint(address receiver, uint256 amount) external { _mint(receiver, amount); }
 }
 
 /**
@@ -53,13 +51,7 @@ contract IncidentAccountingVault is ERC4626 {
         if (depositLoss != 0) IERC20(asset()).safeTransfer(address(0xdead), depositLoss);
     }
 
-    function _withdraw(
-        address caller,
-        address receiver,
-        address owner,
-        uint256 assets,
-        uint256 shares
-    ) internal override {
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares) internal override {
         super._withdraw(caller, receiver, owner, assets, shares);
         if (withdrawalLoss != 0) IERC20(asset()).safeTransfer(address(0xdead), withdrawalLoss);
     }
@@ -69,13 +61,11 @@ contract IncidentAccountingVault is ERC4626 {
     }
 }
 
+
 contract IncidentLegacyModuleMetadata {
     address private immutable token;
     address private immutable collateral;
-    constructor(address token_, address collateral_) {
-        token = token_;
-        collateral = collateral_;
-    }
+    constructor(address token_, address collateral_) { token = token_; collateral = collateral_; }
     function moduleMetadata() external view returns (bytes32, address, address) {
         return (keccak256("dtrinity.dstake.router.v2.storage:1"), token, collateral);
     }

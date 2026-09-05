@@ -12,7 +12,7 @@ const roleNames = [
 ];
 const role = (name: string) => (name === "DEFAULT_ADMIN_ROLE" ? ethers.ZeroHash : ethers.id(name));
 
-async function migrationFixture() {
+async function migrationFixture(withRetirement = false) {
   const f = await backingFixture();
   await f.deposit(1_000n);
   await f.router.pause();
@@ -28,12 +28,39 @@ async function migrationFixture() {
   for (const name of roleNames) await replacement.grantRole(role(name), tl.target);
   for (const name of [...roleNames].reverse()) await replacement.revokeRole(role(name), f.admin.address);
   for (const component of [f.token, f.collateral, f.adapter]) await component.grantRole(ethers.ZeroHash, tl.target);
+  const oldCaller = await (await ethers.getContractFactory("FollowupCurvePoolSentinel")).deploy();
+  const rewards: any = await (await ethers.getContractFactory("FollowupRewardsController")).deploy(f.asset.target);
+  if (withRetirement) {
+    await f.adapter.setAuthorizedCaller(oldCaller.target, true);
+    await f.adapter.grantRole(ethers.ZeroHash, oldCaller.target);
+    await f.collateral.grantRole(ethers.ZeroHash, oldCaller.target);
+    await f.collateral.grantRole(ethers.id("ROUTER_ROLE"), oldCaller.target);
+    await rewards.setClaimer(f.vault.target, oldCaller.target);
+  }
   const guard: any = await (
     await ethers.getContractFactory("DStakeRouterMigrationGuard")
-  ).deploy(tl.target, f.token.target, f.collateral.target, f.router.target, replacement.target, f.admin.address);
+  ).deploy(
+    tl.target,
+    f.token.target,
+    f.collateral.target,
+    f.router.target,
+    replacement.target,
+    f.admin.address,
+    withRetirement ? [oldCaller.target] : [],
+    [f.adapter.target],
+    withRetirement ? [[rewards.target, f.vault.target]] : [],
+  );
   const call = (c: any, method: string, args: any[] = []) => ({ target: c.target, data: c.interface.encodeFunctionData(method, args) });
   const calls = [
     call(guard, "begin"),
+    ...(withRetirement
+      ? [
+          call(f.adapter, "setAuthorizedCaller", [oldCaller.target, false]),
+          call(f.adapter, "revokeRole", [ethers.ZeroHash, oldCaller.target]),
+          call(f.collateral, "revokeRole", [ethers.ZeroHash, oldCaller.target]),
+          call(f.collateral, "revokeRole", [ethers.id("ROUTER_ROLE"), oldCaller.target]),
+        ]
+      : []),
     call(f.adapter, "setAuthorizedCaller", [replacement.target, true]),
     call(f.collateral, "setRouter", [replacement.target]),
     call(f.token, "migrateCore", [replacement.target, f.collateral.target]),
@@ -53,7 +80,7 @@ async function migrationFixture() {
     await network.provider.send("evm_mine");
     return () => tl.executeBatch(...args);
   }
-  return { ...f, tl, replacement, guard, calls, schedule };
+  return { ...f, tl, replacement, guard, oldCaller, rewards, calls, schedule };
 }
 
 describe("Incident router replacement — atomic governance migration", function () {
@@ -61,7 +88,7 @@ describe("Incident router replacement — atomic governance migration", function
     const f = await backingFixture();
     const router: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
     expect(await router.paused()).to.equal(true);
-    expect(await router.BACKING_GUARD_VERSION()).to.equal(2);
+    expect(await router.BACKING_GUARD_VERSION()).to.equal(3);
   });
 
   it("rejects old-generation delegatecall module metadata", async function () {
@@ -123,6 +150,35 @@ describe("Incident router replacement — atomic governance migration", function
     const execute = await f.schedule();
     await expect(execute()).to.be.reverted;
     expect(await f.guard.phase()).to.equal(0);
+  });
+
+  it("requires legacy independent claimer retirement, not just adapter revocation", async function () {
+    const f = await migrationFixture(true);
+    const execute = await f.schedule();
+    await expect(execute()).to.be.reverted;
+    expect(await f.guard.phase()).to.equal(0);
+    expect(await f.token.router()).to.equal(f.router.target);
+    expect(await f.adapter.hasRole(ethers.id("AUTHORIZED_CALLER_ROLE"), f.oldCaller.target)).to.equal(true);
+  });
+
+  it("verifies independent retirement after the separately governed claimer precondition", async function () {
+    const f = await migrationFixture(true);
+    await f.rewards.setClaimer(f.vault.target, ethers.ZeroAddress);
+    const execute = await f.schedule();
+    await execute();
+    expect(await f.guard.phase()).to.equal(2);
+    expect(await f.adapter.hasRole(ethers.ZeroHash, f.oldCaller.target)).to.equal(false);
+    expect(await f.collateral.hasRole(ethers.id("ROUTER_ROLE"), f.oldCaller.target)).to.equal(false);
+  });
+
+  it("rolls back if a legacy adapter admin remains able to reauthorize itself", async function () {
+    const f = await migrationFixture(true);
+    await f.rewards.setClaimer(f.vault.target, ethers.ZeroAddress);
+    const revoke = f.adapter.interface.encodeFunctionData("revokeRole", [ethers.ZeroHash, f.oldCaller.target]);
+    const execute = await f.schedule(f.calls.filter((x) => x.data !== revoke));
+    await expect(execute()).to.be.reverted;
+    expect(await f.guard.phase()).to.equal(0);
+    expect(await f.token.router()).to.equal(f.router.target);
   });
 
   it("cannot be started by an unprivileged sender", async function () {

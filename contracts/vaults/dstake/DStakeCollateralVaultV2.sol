@@ -140,10 +140,10 @@ contract DStakeCollateralVaultV2 is IDStakeCollateralVaultV2, AccessControl, Ree
      */
     function removeSupportedStrategyShare(address strategyShare) external onlyRole(ROUTER_ROLE) {
         if (!_isSupported(strategyShare)) revert StrategyShareNotSupported(strategyShare);
-        // NOTE: Previously this function reverted if the vault still held a
-        // non-zero balance of the share, causing a griefing / DoS vector:
-        // anyone could deposit 1 wei of the token to block removal. The
-        // check has been removed so governance can always delist a share.
+        // Eligibility is a router status, not accounting membership. Material
+        // backing must stay in NAV. Router governance has a paused, explicitly
+        // bounded dust-disposal path to avoid one-unit donation grief.
+        if (IERC20(strategyShare).balanceOf(address(this)) != 0) revert NonZeroBalance(strategyShare);
 
         _supportedStrategyShares.remove(strategyShare);
         emit StrategyShareRemoved(strategyShare);
