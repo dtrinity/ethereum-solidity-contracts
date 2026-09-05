@@ -83,6 +83,8 @@ contract CurveLiquiditySwapAdapter is
         LiquiditySwapParams memory liquiditySwapParams,
         PermitInput memory collateralATokenPermit
     ) external nonReentrant {
+        _requireUser(liquiditySwapParams.user);
+
         // true if flashloan is needed to swap liquidity
         if (!liquiditySwapParams.withFlashLoan) {
             _swapAndDeposit(liquiditySwapParams, collateralATokenPermit);

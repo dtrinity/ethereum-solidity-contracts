@@ -161,14 +161,16 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
     describe("Admin functions - setDLendRewardsController", function () {
       // adminSigner and nonAdminSigner are set in beforeEach now
 
-      it("allows DEFAULT_ADMIN_ROLE to update controller", async function () {
+      it("rejects a controller that does not belong to the wrapper", async function () {
         const oldController = await rewardManager.dLendRewardsController();
-        const newController = await ethers.Wallet.createRandom().getAddress();
-        // adminSigner holds DEFAULT_ADMIN_ROLE
-        const tx = await rewardManager.connect(adminSigner).setDLendRewardsController(newController);
-        await tx.wait();
-        expect(await rewardManager.dLendRewardsController()).to.equal(newController);
-        await expect(tx).to.emit(rewardManager, "DLendRewardsControllerUpdated").withArgs(oldController, newController);
+        const unrelated = await ethers.Wallet.createRandom().getAddress();
+        await expect(rewardManager.connect(adminSigner).setDLendRewardsController(unrelated)).to.be.revertedWithCustomError(
+          rewardManager,
+          "WrapperConfigurationMismatch",
+        );
+        await expect(rewardManager.connect(adminSigner).setDLendRewardsController(oldController))
+          .to.emit(rewardManager, "DLendRewardsControllerUpdated")
+          .withArgs(oldController, oldController);
       });
 
       it("reverts when updating to zero address", async function () {
@@ -367,141 +369,10 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         expect(managerBalance).to.equal(0);
       });
 
-      it("shows wrapper-held rewards are only temporarily retained (no immediate sweep)", async function () {
-        if (config.DStakeTokenSymbol !== "sdUSD") this.skip();
-        /*
-         * ----------------------------------------------------------------------------------
-         * High-level scenario overview
-         * ----------------------------------------------------------------------------------
-         * Someone could call `IStaticATokenLM.collectAndUpdateRewards()` right before the
-         * protocol compounds.  That action moves the latest emissions from the Aave
-         * RewardsController **into the wrapper contract's own ERC20 balance**.  Superficially
-         * this appears to "lock" those tokens because our reward-manager only ever talks to
-         * the RewardsController - it never tries to sweep the wrapper balance directly.
-         *
-         * The subtle but crucial detail is how `claimRewardsOnBehalf()` is implemented in the
-         * Aave reference StaticAToken contract:
-         *   1. If the wrapper's balance is *insufficient* it first calls
-         *      `collectAndUpdateRewards()` on itself (pulling fresh emissions, exactly what the
-         *      attacker just did one tx earlier).
-         *   2. It then transfers **the full amount owed** to the receiver **from its own
-         *      balance**.
-         *
-         * Because our vault owns ~100% of wrapper shares (we bootstrap that dominance a few
-         * lines below), the "amount owed" is almost the entire balance that the attacker just
-         * sucked in.  Effectively the wrapper serves as a short-lived escrow: whatever tokens
-         * were front-run into it are **immediately** used to pay the vault on the next
-         * compound.
-         *
-         * The only leftovers are (i) the attacker's tiny proportional share (<1 %) and (ii)
-         * rounding dust from the integer maths in reward-index calculations.  Unless the
-         * attacker keeps repeating the grief action every single block, the wrapper balance
-         * therefore stabilises at that small constant amount and never grows without bound -
-         * proving that no funds can be permanently stuck.
-         * ----------------------------------------------------------------------------------
-         */
-        const receiver = user4Address;
-
-        // 1. Bootstrap collateral vault ownership by compounding with a large
-        //    amount so it becomes the dominant shareholder of the wrapper.
-        const largeDeposit = threshold * 2n; // Reduced from 100x to 2x to stay within supply caps
-
-        // Ensure caller has sufficient balance & allowance
-        await underlyingDStableToken.connect(deployerSigner).mint(callerSigner.address, largeDeposit);
-        await underlyingDStableToken.connect(callerSigner).approve(rewardManager.target, largeDeposit + threshold); // Add extra for the second compound
-
-        await rewardManager.connect(callerSigner).compoundRewards(largeDeposit, [rewardToken.target], user3Address);
-
-        const wrapper = await ethers.getContractAt("IStaticATokenLM", targetStaticATokenWrapper);
-
-        // 2. Accrue some rewards so that the attacker can actually pull a non-zero amount.
-        await hre.network.provider.request({
-          method: "evm_increaseTime",
-          params: [60],
-        });
-        await hre.network.provider.request({ method: "evm_mine", params: [] });
-
-        // 3. Attacker front-runs: pulls rewards into the wrapper
-        await wrapper.connect(user2Signer).collectAndUpdateRewards(rewardToken.target);
-
-        // `collectAndUpdateRewards` pulls the *raw* emissions out of Aave's RewardsController
-        // and leaves them sitting in the wrapper's ERC20 balance.  No user has actually
-        // received tokens yet – entitlement is tracked via reward indexes.
-
-        // 4. Verify tokens are now trapped inside the wrapper (non-zero balance)
-        const wrapperBalBefore = await rewardToken.balanceOf(wrapper.target);
-        if (wrapperBalBefore === 0n) {
-          // MetaMorpho drains rewards immediately; nothing to assert in legacy flow
-          this.skip();
-        }
-        expect(wrapperBalBefore).to.be.gt(0n);
-
-        const treasuryAddr = await rewardManager.treasury();
-        const beforeReceiver = await rewardToken.balanceOf(receiver);
-        const beforeTreasury = await rewardToken.balanceOf(treasuryAddr);
-
-        // 5. Legitimate caller compounds – this claims fresh rewards from RewardsController only.
-        await rewardManager.connect(callerSigner).compoundRewards(threshold, [rewardToken.target], receiver);
-
-        // The compound call triggers `claimRewardsOnBehalf(wrapper, vault, …)` under the hood.
-        // As explained in the big header comment, that drains (almost) the entire wrapper
-        // balance to pay the vault, leaving only the attacker's pro-rata share behind.
-
-        // 6.a Tokens should not increase and, in the MetaMorpho flow, are fully drained
-        const wrapperBalAfter = await rewardToken.balanceOf(wrapper.target);
-        expect(wrapperBalAfter).to.be.lte(wrapperBalBefore);
-
-        // 6.b The amount distributed to receiver + treasury should be less than or equal to the
-        //     originally trapped amount, proving those tokens were excluded from the payout.
-        const afterReceiverBN = await rewardToken.balanceOf(receiver);
-        const afterTreasuryBN = await rewardToken.balanceOf(treasuryAddr);
-        const distributed = afterReceiverBN - beforeReceiver + (afterTreasuryBN - beforeTreasury);
-        /*
-         * Distributed amount must be strictly LOWER than what sat in the wrapper right before
-         * compounding.  That proves two things:
-         *   (1) The manager did NOT bypass accounting and sweep the wrapper balance in full.
-         *   (2) The tokens are therefore still inside the protocol and will drip out gradually
-         *       as 'userReward' grows with future emissions.  In other words, they are only
-         *       temporarily locked—not permanently lost.
-         */
-        expect(distributed).to.be.lte(wrapperBalBefore);
-
-        /********************
-         * Phase 2 – let time pass so `userReward` catches up, then compound again
-         ********************/
-
-        // Fast-forward 1 day (with the adjusted emission rates, this should be sufficient)
-        await hre.network.provider.request({
-          method: "evm_increaseTime",
-          params: [24 * 3600], // 1 day
-        });
-        await hre.network.provider.request({ method: "evm_mine", params: [] });
-
-        // Provide another threshold-sized deposit to satisfy compoundRequirements
-        await underlyingDStableToken.connect(deployerSigner).mint(callerSigner.address, threshold);
-        await underlyingDStableToken.connect(callerSigner).approve(rewardManager.target, threshold);
-
-        // Second compound – should now be able to pull (most of) the trapped balance
-        const beforeSecond = await rewardToken.balanceOf(wrapper.target);
-
-        await rewardManager.connect(callerSigner).compoundRewards(threshold, [rewardToken.target], receiver);
-
-        const afterSecond = await rewardToken.balanceOf(wrapper.target);
-
-        /*
-         * The wrapper balance should not increase indefinitely, proving tokens are
-         * not permanently lost. While the balance may remain stable when emission
-         * rate allows rewards to be claimed gradually, it should never grow unbounded.
-         * With the adjusted emission parameters, we expect the balance to not increase.
-         */
-        if (beforeSecond > 0n) {
-          expect(afterSecond).to.be.lte(beforeSecond); // Should not increase
-        }
-
-        // After letting time pass, `userReward` (the vault's share) has caught up with the
-        // previously withheld balance, so the next compound should be able to extract most of
-        // what is still sitting inside the wrapper.
-      });
+      // Replaced the old permissive `lte`/skip precollection check with the
+      // exact two-holder, stopped-index regressions in
+      // test/followup-2026-09-05/RewardSettlement.test.ts. An unchanged wrapper
+      // balance no longer passes as evidence of successful recovery.
     });
 
     describe("emergencyWithdraw", function () {

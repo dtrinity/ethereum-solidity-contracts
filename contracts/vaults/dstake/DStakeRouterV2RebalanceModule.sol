@@ -142,14 +142,16 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
             fromStrategyShare,
             fromAdapterAddress,
             _collateralVault,
-            fromShareAmount
+            fromShareAmount,
+            strategyRoundingLoss(fromStrategyShare)
         );
         uint256 resultingToShareAmount = StrategyBackingGuard.deposit(
             _dStable,
             toStrategyShare,
             toAdapterAddress,
             _collateralVault,
-            receivedDStable
+            receivedDStable,
+            strategyRoundingLoss(toStrategyShare)
         );
         if (resultingToShareAmount < minToShareAmount) {
             revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);

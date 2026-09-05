@@ -159,7 +159,9 @@ abstract contract RewardClaimable is AccessControl, ReentrancyGuard {
      * @param amount The amount to compound
      * @param rewardTokens The reward tokens to claim
      * @param receiver The address to receive the compounded rewards
-     * @dev Temporarily restricted to REWARDS_MANAGER_ROLE while permissionless settlement is redesigned
+     * @dev The generic implementation is role-gated. dSTAKE intentionally overrides
+     *      this policy in DStakeRewardManagerBase with a permissionless fixed-threshold
+     *      auction, independent pause and invariant-enforced backing contribution.
      */
     function compoundRewards(
         uint256 amount,

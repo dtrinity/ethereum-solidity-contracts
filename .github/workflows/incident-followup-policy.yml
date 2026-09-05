@@ -1,0 +1,21 @@
+name: Incident Follow-up Policy (not EVM validation)
+on:
+  pull_request:
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run source tripwires and offline models
+        run: bash scripts/followup-2026-09-05/validate.sh --offline
+      # This intentionally installs no packages and uses no chain credentials.
+      # Full compilation, runtime-size checks, EVM/fuzz and pinned-fork tests are
+      # separate required release gates; this job does not certify deployment.

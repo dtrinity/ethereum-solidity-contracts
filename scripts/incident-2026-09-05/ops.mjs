@@ -18,6 +18,7 @@ import {
   assertMigrationPlan,
   isLocalUrl,
 } from "./policy.mjs";
+import { retirementAdapters, validateRetirement } from "./policy.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../..");
@@ -28,7 +29,7 @@ const ARTIFACTS = {
   guard: ["incident/DStakeRouterMigrationGuard.sol", "DStakeRouterMigrationGuard"],
 };
 const ABI = {
-  access: ["function hasRole(bytes32,address) view returns(bool)"],
+  access: ["function hasRole(bytes32,address) view returns(bool)", "function revokeRole(bytes32,address)"],
   asset: [
     "function balanceOf(address) view returns(uint256)",
     "function allowance(address,address) view returns(uint256)",
@@ -82,9 +83,18 @@ const ABI = {
     "function governanceModule() view returns(address)",
     "function rebalanceModule() view returns(address)",
     "function BACKING_GUARD_VERSION() view returns(uint256)",
+    "function operationRoundingLoss() view returns(uint256)",
+    "function strategyRoundingLoss(address) view returns(uint256)",
   ],
+  emission: [
+    "function setClaimer(address,address)",
+    "function owner() view returns(address)",
+    "function getRewardsController() view returns(address)",
+  ],
+  rewardsController: ["function getClaimer(address) view returns(address)"],
   module: ["function moduleMetadata() view returns(bytes32,address,address)"],
   guard: [
+    "function retirementConfigHash() view returns(bytes32)",
     "function begin()",
     "function finish()",
     "function phase() view returns(uint8)",
@@ -376,7 +386,20 @@ async function deploymentPlan(c, s, provider, deployer) {
   for (const key of names) {
     const a = artifact(key);
     builds[key] = a.buildDigest;
-    const args = key === "guard" ? [c.timelock, c.token, c.collateral, c.oldRouter, addresses.router, deployer] : [c.token, c.collateral];
+    const args =
+      key === "guard"
+        ? [
+            c.timelock,
+            c.token,
+            c.collateral,
+            c.oldRouter,
+            addresses.router,
+            deployer,
+            c.retirement.callers,
+            retirementAdapters(c, s),
+            c.retirement.claimers.map((q) => [q.controller, q.user]),
+          ]
+        : [c.token, c.collateral];
     const factory = new E.ContractFactory(a.abi, a.bytecode);
     const tx = await factory.getDeployTransaction(...args);
     check((tx.data.length - 2) / 2 <= 49_152, "Initcode exceeds EIP-3860 size limit.");
@@ -388,6 +411,8 @@ async function deploymentPlan(c, s, provider, deployer) {
   add("setRebalanceModule", [addresses.rebalance]);
   add("setMaxVaultCount", [s.maxVaults]);
   add("setVaultConfigs", [s.configs.map((v) => [v.vault, v.adapter, v.targetBps, 1])]); // Suspended, INCLUDING Idle
+  add("setOperationRoundingLoss", [c.rounding.operationLoss]);
+  for (const v of c.rounding.strategies) add("setStrategyRoundingLoss", [v.vault, v.loss]);
   add("setWithdrawalFee", [s.fee]);
   add("setReinvestIncentive", [s.incentive]);
   add("setDustTolerance", [s.dust]);
@@ -399,6 +424,7 @@ async function deploymentPlan(c, s, provider, deployer) {
 
 async function deploy(c, s, provider, options, out) {
   validateInventory(c, s);
+  await verifyRetirementInputs(c, s, provider);
   const plan = await deploymentPlan(c, s, provider, options.deployer);
   const review = digest(plan);
   write(path.join(out, "deployment-plan.json"), { ...plan, reviewSha256: review });
@@ -513,7 +539,7 @@ async function verifyReplacement(c, d, provider, migrated) {
   }
   const r = contract(d.router, "router", provider);
   check(await r.paused(), "Replacement router is not paused.");
-  check((await r.BACKING_GUARD_VERSION()) === 2n, "Unexpected guard version.");
+  check((await r.BACKING_GUARD_VERSION()) === 3n, "Unexpected guard version.");
   check(
     sameAddress(await r.dStakeToken(), c.token) && sameAddress(await r.collateralVault(), c.collateral),
     "Replacement immutable anchors mismatch.",
@@ -522,7 +548,7 @@ async function verifyReplacement(c, d, provider, migrated) {
     sameAddress(await r.governanceModule(), d.governance) && sameAddress(await r.rebalanceModule(), d.rebalance),
     "Replacement module pointers mismatch.",
   );
-  const expectedFingerprint = E.id("dtrinity.dstake.router.v2.storage:2:backing-conservation");
+  const expectedFingerprint = E.id("dtrinity.dstake.router.v2.storage:3:bounded-rounding-and-compounding");
   for (const module of [d.governance, d.rebalance]) {
     const [fp, token, vault] = await contract(module, "module", provider).moduleMetadata();
     check(fp === expectedFingerprint && sameAddress(token, c.token) && sameAddress(vault, c.collateral), "Module metadata mismatch.");
@@ -533,6 +559,12 @@ async function verifyReplacement(c, d, provider, migrated) {
   }
   check(await r.hasRole(role("DSTAKE_TOKEN_ROLE"), c.token), "Token router role is missing.");
   check(!(await r.hasRole(role("DSTAKE_TOKEN_ROLE"), d.deployer)), "Deployer must not hold the token callback role.");
+  check(
+    String(await r.operationRoundingLoss()) === c.rounding.operationLoss,
+    "Operation rounding policy differs from reviewed configuration.",
+  );
+  for (const v of c.rounding.strategies)
+    check(String(await r.strategyRoundingLoss(v.vault)) === v.loss, "Strategy rounding policy mismatch.");
   const guard = contract(d.guard, "guard", provider);
   for (const [getter, expected] of Object.entries({
     oldRouter: c.oldRouter,
@@ -551,6 +583,8 @@ async function verifyReplacement(c, d, provider, migrated) {
   for (let i = 0; i < count; i++) {
     const v = await r.getVaultConfigByIndex(i);
     check(Number(v.status) === 1, "A replacement strategy is not suspended.");
+    const expectedLoss = c.rounding.strategies.find((x) => sameAddress(x.vault, v.strategyVault))?.loss ?? "1";
+    check(String(await r.strategyRoundingLoss(v.strategyVault)) === expectedLoss, "Unexpected unreviewed per-strategy rounding policy.");
     if (migrated) {
       const adapter = contract(v.adapter, "adapter", provider);
       check(await adapter.hasRole(role("AUTHORIZED_CALLER_ROLE"), d.router), "New adapter caller role missing.");
@@ -567,11 +601,100 @@ async function verifyReplacement(c, d, provider, migrated) {
       "Custody roles not migrated.",
     );
     check(await contract(c.oldRouter, "router", provider).paused(), "Legacy router no longer paused.");
+    const adapters = new Set(c.retirement.extraAdapters.map(lower));
+    for (let i = 0; i < count; i++) adapters.add(lower((await r.getVaultConfigByIndex(i)).adapter));
+    for (const caller of c.retirement.callers) {
+      for (const address of adapters)
+        for (const name of ["DEFAULT_ADMIN_ROLE", "AUTHORIZED_CALLER_ROLE"]) {
+          check(
+            !(await contract(address, "adapter", provider).hasRole(role(name), caller)),
+            "Retired independent adapter capability has reappeared.",
+          );
+        }
+      for (const name of ["DEFAULT_ADMIN_ROLE", "ROUTER_ROLE"])
+        check(!(await cv.hasRole(role(name), caller)), "Retired custody capability has reappeared.");
+    }
+    for (const q of c.retirement.claimers)
+      check(
+        sameAddress(await contract(q.controller, "rewardsController", provider).getClaimer(q.user), ZERO),
+        "Legacy claimer is not zero. Run this isolation check BEFORE later reward activation.",
+      );
+  }
+}
+
+async function verifyRetirementInputs(c, s, provider) {
+  validateRetirement(c);
+  const tag = { blockTag: s.blockNumber };
+  for (const caller of c.retirement.callers) {
+    check((await provider.getCode(caller, s.blockNumber)) !== "0x", "Retired caller has no code; reconcile the inventory.");
+    // Recognize the concrete historical dLEND manager when its getters exist.
+    // Both wrong-layer wrapper and correct holder mappings must be reconciled.
+    const legacy = new E.Contract(
+      caller,
+      [
+        "function targetStaticATokenWrapper() view returns(address)",
+        "function dLendRewardsController() view returns(address)",
+        "function dStakeCollateralVault() view returns(address)",
+      ],
+      provider,
+    );
+    let wrapper;
+    try {
+      wrapper = await legacy.targetStaticATokenWrapper(tag);
+    } catch (error) {
+      if (error?.code !== "CALL_EXCEPTION") throw error; // do not hide RPC failures
+    }
+    if (wrapper && !sameAddress(wrapper, ZERO)) {
+      const controller = await legacy.dLendRewardsController(tag);
+      check(
+        sameAddress(await legacy.dStakeCollateralVault(tag), c.collateral),
+        "Legacy reward manager belongs to another collateral vault.",
+      );
+      for (const user of [wrapper, c.collateral]) {
+        check(
+          c.retirement.claimers.some((q) => sameAddress(q.controller, controller) && sameAddress(q.user, user)),
+          "Legacy dLEND wrapper AND collateral-holder claimer entries are required.",
+        );
+      }
+    }
+  }
+  const adapters = retirementAdapters(c, s);
+  check(adapters.length <= 100, "Combined historical/current adapter inventory exceeds guard bounds.");
+  for (const address of adapters) {
+    const a = contract(address, "adapter", provider);
+    check(await a.hasRole(role("DEFAULT_ADMIN_ROLE"), c.timelock, tag), "Timelock cannot retire every adapter capability.");
+    check(sameAddress(await a.collateralVault(tag), c.collateral), "Retirement adapter points to another collateral vault.");
+  }
+  for (const q of c.retirement.claimers) {
+    const e = contract(q.emissionManager, "emission", provider);
+    check(sameAddress(await e.getRewardsController(tag), q.controller), "EmissionManager/controller mismatch.");
+    const actual = await contract(q.controller, "rewardsController", provider).getClaimer(q.user, tag);
+    if (q.preconditionOnly) {
+      check(sameAddress(actual, ZERO), "Separately governed claimer revocation has not been executed.");
+    } else {
+      check(
+        sameAddress(await e.owner(tag), c.timelock),
+        "EmissionManager not owned by timelock: execute the reviewed revocation separately and mark preconditionOnly.",
+      );
+      check(
+        sameAddress(actual, ZERO) || c.retirement.callers.some((x) => sameAddress(x, actual)),
+        "Unrecognized existing claimer: do not overwrite another manager.",
+      );
+    }
   }
 }
 
 async function migration(c, s, d, provider, out) {
   validateInventory(c, s, true);
+  await verifyRetirementInputs(c, s, provider);
+  const encodedRetirement = E.AbiCoder.defaultAbiCoder().encode(
+    ["address[]", "address[]", "tuple(address controller,address user)[]"],
+    [c.retirement.callers, retirementAdapters(c, s), c.retirement.claimers.map((q) => [q.controller, q.user])],
+  );
+  check(
+    (await contract(d.guard, "guard", provider).retirementConfigHash()) === E.keccak256(encodedRetirement),
+    "Retirement inventory differs from immutable guard configuration.",
+  );
   check(d.complete, "Replacement deployment/bootstrap did not complete.");
   await verifyReplacement(c, d, provider, false);
   const newRouter = contract(d.router, "router", provider);
@@ -600,7 +723,13 @@ async function migration(c, s, d, provider, out) {
   check((await contract(d.guard, "guard", provider).phase()) === 0n, "Migration guard has already been used.");
   const semantic = migrationCalls(c, d, s);
   assertMigrationPlan(semantic, c, d, s);
-  const calls = semantic.map((x) => ({ to: x.to, data: new E.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args) }));
+  const calls = semantic.map((x) => ({
+    to: x.to,
+    data: new E.Interface(ABI[x.contract]).encodeFunctionData(
+      x.method,
+      x.args.map((a) => (a === "ROUTER_ROLE" ? role("ROUTER_ROLE") : a)),
+    ),
+  }));
   const op = await operation(c, provider, calls, "migration");
   const plan = { format: 1, config: c, deployment: d, inventory: s, semantic, operation: op, requiresLegacyPause: true, noReopening: true };
   plan.reviewSha256 = digest(plan);
@@ -620,7 +749,12 @@ async function simulate(plan, provider, options, out) {
   const { reviewSha256, ...body } = plan;
   check(digest(body) === reviewSha256, "Saved migration plan checksum mismatch.");
   assertMigrationPlan(plan.semantic, plan.config, plan.deployment, plan.inventory);
-  const encoded = plan.semantic.map((x) => new E.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args));
+  const encoded = plan.semantic.map((x) =>
+    new E.Interface(ABI[x.contract]).encodeFunctionData(
+      x.method,
+      x.args.map((a) => (a === "ROUTER_ROLE" ? role("ROUTER_ROLE") : a)),
+    ),
+  );
   check(canonical(encoded) === canonical(plan.operation.datas), "Encoded calls differ from semantic plan.");
   check(canonical(plan.semantic.map((x) => x.to)) === canonical(plan.operation.targets), "Encoded targets differ from semantic plan.");
   check(

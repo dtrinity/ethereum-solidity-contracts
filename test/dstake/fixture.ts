@@ -268,15 +268,17 @@ export async function executeSetupDLendRewards(
   const adminAddr = namedAccounts.user1 || namedAccounts.deployer;
 
   // Get DStakeRewardManagerDLend related contracts
-  const rewardManagerDeployment = await deployments.get(`DStakeRewardManagerDLend_${config.DStakeTokenSymbol}`);
+  const rewardManagerDeployment = await deployments.get(`DStakeRewardManagerDLend_SettlementV2_${config.DStakeTokenSymbol}`);
   const rewardManager = await ethers.getContractAt("DStakeRewardManagerDLend", rewardManagerDeployment.address);
-  await ensureAdapterAuthorizedCaller(ethers, dStakeBase.adapterAddress, rewardManager.target, signer);
 
   // Grant test admin (user1) the necessary roles on rewardManager for test operations
   const defaultAdminRole = await rewardManager.DEFAULT_ADMIN_ROLE();
   const rewardsManagerRole = await rewardManager.REWARDS_MANAGER_ROLE();
   await ensureRole(rewardManager, defaultAdminRole, adminAddr, signer);
   await ensureRole(rewardManager, rewardsManagerRole, adminAddr, signer);
+
+  await ensureRole(rewardManager, await rewardManager.COMPOUND_PAUSER_ROLE(), adminAddr, signer);
+  if (await rewardManager.paused()) await rewardManager.connect(await ethers.getSigner(adminAddr)).unpauseCompounding();
 
   const targetStaticATokenWrapper = await rewardManager.targetStaticATokenWrapper();
   const dLendAssetToClaimFor = await rewardManager.dLendAssetToClaimFor();
@@ -321,6 +323,11 @@ export async function executeSetupDLendRewards(
   } catch (error: any) {
     console.warn(`⚠️ Skipping configureAssets for ${config.DStakeTokenSymbol}: ${error.message ?? error}`);
   }
+
+  // Register the newly configured emission token before holders accrue/claim it.
+  const rewardWrapper = await ethers.getContractAt("IStaticATokenLM", targetStaticATokenWrapper);
+  await rewardWrapper.refreshRewardTokens();
+  await emissionManager.connect(signer).setClaimer(dStakeBase.collateralVault.target, rewardManager.target);
 
   // Cast to ERC20 for token operations
   const rewardTokenERC20 = rewardToken as unknown as ERC20;

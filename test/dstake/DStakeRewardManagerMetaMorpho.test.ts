@@ -76,14 +76,14 @@ describe("DStakeRewardManagerMetaMorpho", function () {
 
     // Grant ROUTER_ROLE to the router
     const ROUTER_ROLE = await collateralVault.ROUTER_ROLE();
-    await collateralVault.grantRole(ROUTER_ROLE, router.target);
+    await collateralVault.setRouter(router.target);
 
     // Deploy adapter
     const AdapterFactory = await ethers.getContractFactory("MetaMorphoConversionAdapter");
     adapter = await AdapterFactory.deploy(dStable.target, metaMorphoVault.target, collateralVault.target, owner.address);
 
     // Configure router
-    await router.addAdapter(metaMorphoVault.target, adapter.target);
+    await router["addVaultConfig(address,address,uint256,uint8)"](metaMorphoVault.target, adapter.target, 1_000_000, 0);
     await router.setDefaultDepositStrategyShare(metaMorphoVault.target);
 
     // Deploy reward manager
@@ -103,8 +103,8 @@ describe("DStakeRewardManagerMetaMorpho", function () {
     REWARDS_MANAGER_ROLE = await rewardManager.REWARDS_MANAGER_ROLE();
     await rewardManager.grantRole(REWARDS_MANAGER_ROLE, manager.address);
 
-    // Allow the reward manager to interact with the adapter just like the deploy flow does.
-    await adapter.connect(owner).setAuthorizedCaller(rewardManager.target, true);
+    await adapter.connect(owner).setAuthorizedCaller(router.target, true);
+    await rewardManager.unpauseCompounding();
 
     // Setup: Mint tokens and set up initial state
     await dStable.mint(user.address, ethers.parseEther("10000"));
@@ -412,13 +412,14 @@ describe("DStakeRewardManagerMetaMorpho", function () {
       await rewardManager.grantRole(REWARDS_MANAGER_ROLE, user.address);
     });
 
-    it("should revert when caller lacks rewards manager role", async function () {
+    it("should remain permissionless when caller lacks the configuration role", async function () {
       await rewardManager.connect(owner).revokeRole(REWARDS_MANAGER_ROLE, user.address);
       const compoundAmount = ethers.parseEther("50");
-
-      await expect(
-        rewardManager.connect(user).compoundRewards(compoundAmount, [rewardToken.target], user.address),
-      ).to.be.revertedWithCustomError(rewardManager, "AccessControlUnauthorizedAccount");
+      await dStable.connect(user).approve(rewardManager.target, compoundAmount);
+      await expect(rewardManager.connect(user).compoundRewards(compoundAmount, [rewardToken.target], user.address)).to.emit(
+        rewardManager,
+        "RewardCompounded",
+      );
     });
 
     it("should compound rewards with claimed tokens", async function () {
@@ -437,8 +438,8 @@ describe("DStakeRewardManagerMetaMorpho", function () {
       // Check treasury fee (5% of the actual claimed amount)
       // We only have 100 tokens in the reward manager, even if we request more
       const actualClaimed = ethers.parseEther("100");
-      // 500 BPS = 5%, so 5% of 100 = 5
-      const expectedFee = (actualClaimed * BigInt(500)) / BigInt(10000);
+      // Protocol precision is 1,000,000 = 100%; use the contract fee calculation.
+      const expectedFee = await rewardManager.getTreasuryFee(actualClaimed);
       const treasuryBalanceAfter = await rewardToken.balanceOf(treasury.address);
       expect(treasuryBalanceAfter - treasuryBalanceBefore).to.equal(expectedFee);
 
@@ -587,7 +588,7 @@ describe("DStakeRewardManagerMetaMorpho", function () {
 
       await expect(
         rewardManager.connect(user).compoundRewards(compoundAmount, [rewardToken.target], user.address),
-      ).to.be.revertedWithCustomError(rewardManager, "DefaultDepositAssetNotSet");
+      ).to.be.revertedWithCustomError(router, "DefaultDepositStrategyShareNotSet");
     });
 
     it("should clear approvals after processing", async function () {
@@ -597,7 +598,7 @@ describe("DStakeRewardManagerMetaMorpho", function () {
       await rewardManager.connect(user).compoundRewards(compoundAmount, [rewardToken.target], user.address);
 
       // Check approval was cleared
-      const allowance = await dStable.allowance(rewardManager.target, adapter.target);
+      const allowance = await dStable.allowance(rewardManager.target, router.target);
       expect(allowance).to.equal(0);
     });
   });
