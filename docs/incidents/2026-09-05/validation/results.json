@@ -1,0 +1,74 @@
+{
+  "review_date": "2026-09-05",
+  "source_revision_from_pack": "d3103f8807a0abb23277b79dc136d002b57a6687",
+  "status": "engineering_pr_candidate_not_deployment_approval",
+  "checks": {
+    "offline_node_policy_and_model_tests": {
+      "status": "passed",
+      "tests": 49,
+      "failures": 0,
+      "evm": false
+    },
+    "source_guardrails": {
+      "status": "passed",
+      "solidity_compilation": false
+    },
+    "javascript_syntax": {
+      "status": "passed",
+      "files": 4
+    },
+    "shell_syntax": {
+      "status": "passed"
+    },
+    "typescript_transpile_syntax": {
+      "status": "passed",
+      "files": 4,
+      "typescript_version": "5.8.3",
+      "semantic_type_check": false
+    },
+    "solidity_compilation": {
+      "status": "not_run"
+    },
+    "runtime_and_initcode_sizes": {
+      "status": "not_run"
+    },
+    "hardhat_new_core_integration": {
+      "status": "not_run",
+      "written_cases": 25
+    },
+    "hardhat_new_migration_integration": {
+      "status": "not_run",
+      "written_cases": 8
+    },
+    "foundry_new_library": {
+      "status": "not_run",
+      "written_functions": 5,
+      "fuzz_functions": 3
+    },
+    "existing_regression_suites": {
+      "status": "not_run"
+    },
+    "baseline_evm_red_green_comparison": {
+      "status": "not_run"
+    },
+    "production_runtime_source_match": {
+      "status": "not_run"
+    },
+    "mainnet_fork_rehearsal": {
+      "status": "not_run"
+    },
+    "live_transactions": {
+      "status": "not_run",
+      "broadcast_count": 0
+    },
+    "git_diff_whitespace": {
+      "status": "passed"
+    }
+  },
+  "blockers": [
+    "Selected source tree is not a bootable full checkout.",
+    "Pinned dependency/shared-tooling/Foundry installations and Solidity/EVM toolchain are unavailable.",
+    "Package/network access unavailable; no live Ethereum RPC or production fork was used."
+  ],
+  "reopening_approved": false
+}

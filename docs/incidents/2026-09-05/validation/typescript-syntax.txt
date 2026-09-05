@@ -1,0 +1,5 @@
+PASS syntax only: hardhat.config.ts
+PASS syntax only: test/incident-2026-09-05/fixture.ts
+PASS syntax only: test/dstake/RouterBackingConservation.test.ts
+PASS syntax only: test/dstake/RouterIncidentMigration.test.ts
+TypeScript 5.8.3; no dependency resolution or semantic type checking performed.

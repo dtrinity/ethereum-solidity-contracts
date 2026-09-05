@@ -11,6 +11,7 @@ import { IDStakeRouterV2 } from "./interfaces/IDStakeRouterV2.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
 import { IDStakeCollateralVaultV2 } from "./interfaces/IDStakeCollateralVaultV2.sol";
 import { DeterministicVaultSelector } from "./libraries/DeterministicVaultSelector.sol";
+import { StrategyBackingGuard } from "./libraries/StrategyBackingGuard.sol";
 import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { WithdrawalFeeMath } from "../../common/WithdrawalFeeMath.sol";
@@ -92,6 +93,15 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     error ModuleStorageMismatch(bytes32 expected, bytes32 actual);
     error ModuleTokenMismatch(address expected, address actual);
     error ModuleCollateralVaultMismatch(address expected, address actual);
+
+    // Mirrored library errors keep the router ABI usable by existing clients.
+    error StrategyBackingLoss(address vault, uint8 measure, uint256 beforeValue, uint256 afterValue, uint256 requiredIncrease);
+    error StrategyWithdrawalLoss(address vault, uint8 measure, uint256 valueLost, uint256 assetsReceived);
+    error AssetBalanceMismatch(uint256 expected, uint256 actual);
+    error WithdrawalAssetsMismatch(uint256 reported, uint256 actual);
+    error ZeroWithdrawalAssets();
+
+    uint256 public constant BACKING_GUARD_VERSION = 2;
 
     // --- Roles ---
     bytes32 public constant DSTAKE_TOKEN_ROLE = keccak256("DSTAKE_TOKEN_ROLE");
@@ -460,8 +470,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
         _enforceDepositCap(assets);
 
-        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), assets);
+        uint256 backingBefore = totalManagedAssets();
+        StrategyBackingGuard.pull(_dStable, msg.sender, assets);
         address targetVault = _depositToAutoVault(assets);
+        StrategyBackingGuard.assertIncrease(address(0), 2, backingBefore, totalManagedAssets(), assets);
         emit RouterDepositRouted(initiator, receiver, targetVault, assets, shares);
     }
 
@@ -493,6 +505,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert WithdrawalShortfall(expectedNetAssets, netAssets);
         }
 
+        if (netAssets > expectedNetAssets) {
+            fee += netAssets - expectedNetAssets;
+            netAssets = expectedNetAssets;
+        }
         IERC20(_dStable).safeTransfer(receiver, netAssets);
 
         address[] memory vaultArray = new address[](1);
@@ -535,7 +551,8 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert SharesBelowMinimum(sharesMinted, minShares);
         }
 
-        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
+        uint256 backingBefore = totalManagedAssets();
+        StrategyBackingGuard.pull(_dStable, msg.sender, totalAssets);
 
         uint256 vaultCount = vaults.length;
         for (uint256 i; i < vaultCount; ) {
@@ -548,6 +565,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             }
         }
 
+        StrategyBackingGuard.assertIncrease(address(0), 2, backingBefore, totalManagedAssets(), totalAssets);
         _token().mintForRouter(msg.sender, receiver, totalAssets, sharesMinted);
 
         emit StrategyDepositRouted(vaults, assets, totalAssets);
@@ -594,7 +612,8 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert SharesBelowMinimum(sharesMinted, minShares);
         }
 
-        IERC20(_dStable).safeTransferFrom(msg.sender, address(this), totalAssets);
+        uint256 backingBefore = totalManagedAssets();
+        StrategyBackingGuard.pull(_dStable, msg.sender, totalAssets);
 
         for (uint256 i; i < vaultCount; ) {
             uint256 shareAmount = shares[i];
@@ -610,6 +629,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             }
         }
 
+        StrategyBackingGuard.assertIncrease(address(0), 2, backingBefore, totalManagedAssets(), totalAssets);
         _token().mintForRouter(msg.sender, receiver, totalAssets, sharesMinted);
 
         emit StrategyDepositRouted(vaults, assetAmounts, totalAssets);
@@ -668,7 +688,9 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert SharesExceedMaxRedeem(sharesBurned, maxShares);
         }
 
+        uint256 backingBefore = totalManagedAssets();
         uint256 grossWithdrawn = _executeGrossWithdrawals(vaults, grossRequests);
+        StrategyBackingGuard.assertWithdrawal(address(0), 2, backingBefore, totalManagedAssets(), 0);
 
         fee = _calculateFee(grossWithdrawn);
         netAssets = grossWithdrawn - fee;
@@ -727,7 +749,9 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert SharesExceedMaxRedeem(sharesBurned, maxShares);
         }
 
+        uint256 backingBefore = totalManagedAssets();
         uint256 grossWithdrawn = _executeWithdrawShares(vaults, strategyShares);
+        StrategyBackingGuard.assertWithdrawal(address(0), 2, backingBefore, totalManagedAssets(), 0);
 
         fee = _calculateFee(grossWithdrawn);
         netAssets = grossWithdrawn - fee;
@@ -811,8 +835,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         address,
         uint256,
         uint256
-    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
+    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant whenNotPaused {
+        uint256 backingBefore = totalManagedAssets();
         _delegateToModule(rebalanceModule);
+        StrategyBackingGuard.assertWithdrawal(address(0), 2, backingBefore, totalManagedAssets(), 0);
     }
 
     function rebalanceStrategiesBySharesViaExternalLiquidity(
@@ -820,8 +846,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         address,
         uint256,
         uint256
-    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
+    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant whenNotPaused {
+        uint256 backingBefore = totalManagedAssets();
         _delegateToModule(rebalanceModule);
+        StrategyBackingGuard.assertWithdrawal(address(0), 2, backingBefore, totalManagedAssets(), 0);
     }
 
     function rebalanceStrategiesByValue(
@@ -829,8 +857,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         address,
         uint256,
         uint256
-    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant {
+    ) external onlyRole(STRATEGY_REBALANCER_ROLE) nonReentrant whenNotPaused {
+        uint256 backingBefore = totalManagedAssets();
         _delegateToModule(rebalanceModule);
+        StrategyBackingGuard.assertWithdrawal(address(0), 2, backingBefore, totalManagedAssets(), 0);
     }
 
     // --- Adapter Management ---
@@ -855,7 +885,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
         _delegateToModule(governanceModule);
     }
 
-    function sweepSurplus(uint256) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+    function sweepSurplus(uint256) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant whenNotPaused {
         _delegateToModule(governanceModule);
     }
 
@@ -1003,32 +1033,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
         address adapterAddress = _strategyShareToAdapter[vault];
         if (adapterAddress == address(0)) revert AdapterNotFound(vault);
-        IDStableConversionAdapterV2 adapter = IDStableConversionAdapterV2(adapterAddress);
-
-        (address vaultExpected, uint256 expectedShares) = adapter.previewDepositIntoStrategy(dStableAmount);
-        if (vaultExpected != vault) revert AdapterAssetMismatch(adapterAddress, vault, vaultExpected);
-
-        uint256 beforeBal = IERC20(vault).balanceOf(address(_collateralVault));
-
-        IERC20(_dStable).forceApprove(adapterAddress, dStableAmount);
-        (address actualVault, uint256 reportedShares) = adapter.depositIntoStrategy(dStableAmount);
-        if (actualVault != vault) {
-            revert AdapterAssetMismatch(adapterAddress, vault, actualVault);
-        }
-
-        uint256 afterBal = IERC20(vault).balanceOf(address(_collateralVault));
-        actualShares = afterBal - beforeBal;
-
-        if (actualShares < expectedShares) {
-            revert SlippageCheckFailed(vault, actualShares, expectedShares);
-        }
-
-        if (actualShares != reportedShares) {
-            revert AdapterSharesMismatch(actualShares, reportedShares);
-        }
-
-        IERC20(_dStable).forceApprove(adapterAddress, 0);
-        return actualShares;
+        return StrategyBackingGuard.deposit(_dStable, vault, adapterAddress, _collateralVault, dStableAmount);
     }
 
     function _vaultCanSatisfyWithdrawal(address vault, uint256 dStableAmount) internal view returns (bool) {
@@ -1059,7 +1064,6 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
         address adapter = _strategyShareToAdapter[vault];
         if (adapter == address(0)) revert AdapterNotFound(vault);
-        IDStableConversionAdapterV2 conversionAdapter = IDStableConversionAdapterV2(adapter);
 
         // Determine how many strategy shares correspond to the requested _dStable amount
         uint256 strategyShareAmount = IERC4626(vault).previewWithdraw(dStableAmount);
@@ -1071,15 +1075,10 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert NoLiquidityAvailable();
         }
 
-        _collateralVault.transferStrategyShares(vault, strategyShareAmount, address(this));
-        IERC20(vault).forceApprove(adapter, strategyShareAmount);
-
-        receivedDStable = conversionAdapter.withdrawFromStrategy(strategyShareAmount);
+        receivedDStable = StrategyBackingGuard.withdraw(_dStable, vault, adapter, _collateralVault, strategyShareAmount);
         if (receivedDStable < dStableAmount) {
             revert SlippageCheckFailed(vault, receivedDStable, dStableAmount);
         }
-
-        IERC20(vault).forceApprove(adapter, 0);
         return receivedDStable;
     }
 
@@ -1095,23 +1094,11 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
         address adapter = _strategyShareToAdapter[vault];
         if (adapter == address(0)) revert AdapterNotFound(vault);
-        IDStableConversionAdapterV2 conversionAdapter = IDStableConversionAdapterV2(adapter);
 
         uint256 availableShares = IERC20(vault).balanceOf(address(_collateralVault));
         if (shares > availableShares) revert NoLiquidityAvailable();
 
-        _collateralVault.transferStrategyShares(vault, shares, address(this));
-        IERC20(vault).forceApprove(adapter, shares);
-
-        try conversionAdapter.withdrawFromStrategy(shares) returns (uint256 redeemed) {
-            receivedDStable = redeemed;
-            IERC20(vault).forceApprove(adapter, 0);
-        } catch {
-            // No cleanup needed before revert; state will roll back
-            revert ShareWithdrawalConversionFailed();
-        }
-
-        return receivedDStable;
+        return StrategyBackingGuard.withdraw(_dStable, vault, adapter, _collateralVault, shares);
     }
 
     function _executeGrossWithdrawals(

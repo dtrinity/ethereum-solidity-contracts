@@ -1,0 +1,1 @@
+PASS: source-level incident guardrails (not Solidity compilation or EVM execution).

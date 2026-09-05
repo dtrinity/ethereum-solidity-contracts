@@ -9,6 +9,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AllocationCalculator } from "./libraries/AllocationCalculator.sol";
 import { BasisPointConstants } from "../../common/BasisPointConstants.sol";
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
+import { StrategyBackingGuard } from "./libraries/StrategyBackingGuard.sol";
 import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
 import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 
@@ -187,12 +188,8 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
             revert VaultNotActive(strategyShare);
         }
 
-        IERC20(_dStable).forceApprove(adapterAddress, amountToSweep);
-        (address mintedShare, ) = adapter.depositIntoStrategy(amountToSweep);
-        if (mintedShare != strategyShare) revert AdapterAssetMismatch(adapterAddress, strategyShare, mintedShare);
-        IERC20(_dStable).forceApprove(adapterAddress, 0);
-
-        emit SurplusSwept(amountToSweep, mintedShare);
+        StrategyBackingGuard.deposit(_dStable, strategyShare, adapterAddress, _collateralVault, amountToSweep);
+        emit SurplusSwept(amountToSweep, strategyShare);
     }
 
     function setVaultConfigs(VaultConfig[] calldata configs) external {

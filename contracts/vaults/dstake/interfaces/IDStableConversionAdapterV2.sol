@@ -11,6 +11,12 @@ pragma solidity ^0.8.20;
  *      shares before calling upstream withdraws, and rely on preview/rate helpers so wrapper supply cannot diverge from
  *      the underlying balance. See `WrappedDLendInvariant.test.ts` for the regression harness new adapters should copy.
  */
+// Integration invariant: matching preview / actual / reported share counts is
+// necessary but not sufficient. Routers check the change in the collateral
+// vault's complete strategy position against the actual underlying movement.
+// Withdrawal return values MUST equal the caller's actual asset balance increase.
+// Valuations still require a reviewed, honest ERC4626 implementation; neither an
+// adapter nor its vault's preview is an independent oracle for a malicious vault.
 interface IDStableConversionAdapterV2 {
     /**
      * @notice Converts a specified amount of the stable asset into the specific `strategyShare`

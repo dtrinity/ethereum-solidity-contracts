@@ -1,0 +1,304 @@
+TAP version 13
+# Subtest: planner: accepts a complete zero-movement migration inventory
+ok 1 - planner: accepts a complete zero-movement migration inventory
+  ---
+  duration_ms: 1.914205
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong chain
+ok 2 - planner: rejects wrong chain
+  ---
+  duration_ms: 0.317418
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong token pointer
+ok 3 - planner: rejects wrong token pointer
+  ---
+  duration_ms: 0.11274
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong collateral pointer
+ok 4 - planner: rejects wrong collateral pointer
+  ---
+  duration_ms: 0.09277
+  type: 'test'
+  ...
+# Subtest: planner: rejects missing custody-admin authority
+ok 5 - planner: rejects missing custody-admin authority
+  ---
+  duration_ms: 0.095274
+  type: 'test'
+  ...
+# Subtest: planner: rejects missing proposer
+ok 6 - planner: rejects missing proposer
+  ---
+  duration_ms: 0.103386
+  type: 'test'
+  ...
+# Subtest: planner: rejects missing executor
+ok 7 - planner: rejects missing executor
+  ---
+  duration_ms: 0.084668
+  type: 'test'
+  ...
+# Subtest: planner: rejects missing adapter authority
+ok 8 - planner: rejects missing adapter authority
+  ---
+  duration_ms: 0.097477
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong underlying
+ok 9 - planner: rejects wrong underlying
+  ---
+  duration_ms: 0.319011
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong collateral underlying
+ok 10 - planner: rejects wrong collateral underlying
+  ---
+  duration_ms: 0.336437
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong collateral token
+ok 11 - planner: rejects wrong collateral token
+  ---
+  duration_ms: 0.148263
+  type: 'test'
+  ...
+# Subtest: planner: rejects adapter routes to another collateral vault
+ok 12 - planner: rejects adapter routes to another collateral vault
+  ---
+  duration_ms: 0.096947
+  type: 'test'
+  ...
+# Subtest: planner: rejects missing supported position
+ok 13 - planner: rejects missing supported position
+  ---
+  duration_ms: 0.113741
+  type: 'test'
+  ...
+# Subtest: planner: rejects duplicate strategy
+ok 14 - planner: rejects duplicate strategy
+  ---
+  duration_ms: 0.069244
+  type: 'test'
+  ...
+# Subtest: planner: rejects wrong allocation scale
+ok 15 - planner: rejects wrong allocation scale
+  ---
+  duration_ms: 0.0663
+  type: 'test'
+  ...
+# Subtest: planner: rejects nonzero shortfall
+ok 16 - planner: rejects nonzero shortfall
+  ---
+  duration_ms: 0.067371
+  type: 'test'
+  ...
+# Subtest: planner: rejects legacy cash
+ok 17 - planner: rejects legacy cash
+  ---
+  duration_ms: 0.080552
+  type: 'test'
+  ...
+# Subtest: planner: rejects legacy allowance
+ok 18 - planner: rejects legacy allowance
+  ---
+  duration_ms: 0.065399
+  type: 'test'
+  ...
+# Subtest: planner: rejects uncopyable existing cap
+ok 19 - planner: rejects uncopyable existing cap
+  ---
+  duration_ms: 0.074953
+  type: 'test'
+  ...
+# Subtest: planner: cap zero is unlimited, not closed
+ok 20 - planner: cap zero is unlimited, not closed
+  ---
+  duration_ms: 0.092739
+  type: 'test'
+  ...
+# Subtest: planner: emits guard begin / authorize / pointers / retire / finish in one batch
+ok 21 - planner: emits guard begin / authorize / pointers / retire / finish in one batch
+  ---
+  duration_ms: 0.903732
+  type: 'test'
+  ...
+# Subtest: planner: rejects omitted final guard
+ok 22 - planner: rejects omitted final guard
+  ---
+  duration_ms: 0.154052
+  type: 'test'
+  ...
+# Subtest: planner: rejects omitted legacy revocation
+ok 23 - planner: rejects omitted legacy revocation
+  ---
+  duration_ms: 0.665433
+  type: 'test'
+  ...
+# Subtest: planner: rejects changed pointer ordering
+ok 24 - planner: rejects changed pointer ordering
+  ---
+  duration_ms: 0.162034
+  type: 'test'
+  ...
+# Subtest: planner: rejects automatic reopening
+ok 25 - planner: rejects automatic reopening
+  ---
+  duration_ms: 0.120783
+  type: 'test'
+  ...
+# Subtest: canonical digest: key order cannot change the review digest
+ok 26 - canonical digest: key order cannot change the review digest
+  ---
+  duration_ms: 0.500544
+  type: 'test'
+  ...
+# Subtest: canonical digest: an edited amount changes the review digest
+ok 27 - canonical digest: an edited amount changes the review digest
+  ---
+  duration_ms: 0.105589
+  type: 'test'
+  ...
+# Subtest: canonical encoding: uint256 strings retain full precision
+ok 28 - canonical encoding: uint256 strings retain full precision
+  ---
+  duration_ms: 0.084447
+  type: 'test'
+  ...
+# Subtest: fork URL accepts loopback http://localhost:8545
+ok 29 - fork URL accepts loopback http://localhost:8545
+  ---
+  duration_ms: 0.092209
+  type: 'test'
+  ...
+# Subtest: fork URL accepts loopback http://127.0.0.1:8545
+ok 30 - fork URL accepts loopback http://127.0.0.1:8545
+  ---
+  duration_ms: 0.100411
+  type: 'test'
+  ...
+# Subtest: fork URL accepts loopback http://[::1]:8545
+ok 31 - fork URL accepts loopback http://[::1]:8545
+  ---
+  duration_ms: 0.05301
+  type: 'test'
+  ...
+# Subtest: fork URL rejects non-loopback or non-HTTP provider
+ok 32 - fork URL rejects non-loopback or non-HTTP provider
+  ---
+  duration_ms: 0.057276
+  type: 'test'
+  ...
+# Subtest: fork URL rejects non-loopback or non-HTTP provider
+ok 33 - fork URL rejects non-loopback or non-HTTP provider
+  ---
+  duration_ms: 0.037496
+  type: 'test'
+  ...
+# Subtest: fork URL rejects non-loopback or non-HTTP provider
+ok 34 - fork URL rejects non-loopback or non-HTTP provider
+  ---
+  duration_ms: 0.03315
+  type: 'test'
+  ...
+# Subtest: fork URL rejects non-loopback or non-HTTP provider
+ok 35 - fork URL rejects non-loopback or non-HTTP provider
+  ---
+  duration_ms: 0.064878
+  type: 'test'
+  ...
+# Subtest: fork URL rejects non-loopback or non-HTTP provider
+ok 36 - fork URL rejects non-loopback or non-HTTP provider
+  ---
+  duration_ms: 0.057426
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: plan --broadcast
+ok 37 - CLI refuses unsafe flags before loading a wallet: plan --broadcast
+  ---
+  duration_ms: 31.463355
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: deploy --execute
+ok 38 - CLI refuses unsafe flags before loading a wallet: deploy --execute
+  ---
+  duration_ms: 32.739848
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: deploy --broadcast --dry-run
+ok 39 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --dry-run
+  ---
+  duration_ms: 33.687576
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: deploy --broadcast --local-fork
+ok 40 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --local-fork
+  ---
+  duration_ms: 31.980704
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: verify --execute --local-fork
+ok 41 - CLI refuses unsafe flags before loading a wallet: verify --execute --local-fork
+  ---
+  duration_ms: 30.966986
+  type: 'test'
+  ...
+# Subtest: MODEL: zero-share agreement does not justify nominal credit
+ok 42 - MODEL: zero-share agreement does not justify nominal credit
+  ---
+  duration_ms: 0.127913
+  type: 'test'
+  ...
+# Subtest: MODEL: tiny nonzero share agreement does not justify nominal credit
+ok 43 - MODEL: tiny nonzero share agreement does not justify nominal credit
+  ---
+  duration_ms: 0.067782
+  type: 'test'
+  ...
+# Subtest: MODEL: existing position appreciation is attributable backing despite zero new shares
+ok 44 - MODEL: existing position appreciation is attributable backing despite zero new shares
+  ---
+  duration_ms: 0.061312
+  type: 'test'
+  ...
+# Subtest: MODEL: tolerance never allows a positive one-unit claim with zero backing
+ok 45 - MODEL: tolerance never allows a positive one-unit claim with zero backing
+  ---
+  duration_ms: 0.064938
+  type: 'test'
+  ...
+# Subtest: MODEL: per-operation check prevents accumulating a loss tolerance across legs
+ok 46 - MODEL: per-operation check prevents accumulating a loss tolerance across legs
+  ---
+  duration_ms: 0.062434
+  type: 'test'
+  ...
+# Subtest: MODEL: unpriced withdrawal surplus must be retained
+ok 47 - MODEL: unpriced withdrawal surplus must be retained
+  ---
+  duration_ms: 0.063025
+  type: 'test'
+  ...
+# Subtest: MODEL: subtraction-based tolerance is valid at uint256 maximum
+ok 48 - MODEL: subtraction-based tolerance is valid at uint256 maximum
+  ---
+  duration_ms: 0.17895
+  type: 'test'
+  ...
+# Subtest: MODEL: 20,000 deterministic generated conservation cases
+ok 49 - MODEL: 20,000 deterministic generated conservation cases
+  ---
+  duration_ms: 6.75505
+  type: 'test'
+  ...
+1..49
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 251.993278
