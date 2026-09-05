@@ -15,24 +15,39 @@ const library = clean(read(`${core}libraries/StrategyBackingGuard.sol`));
 function body(source, name) {
   const start = source.indexOf(`function ${name}(`);
   check(start >= 0, `Missing function ${name}`);
-  const open = source.indexOf("{", start); let depth = 1, i = open + 1;
-  for (; i < source.length && depth; i++) { if (source[i] === "{") depth++; if (source[i] === "}") depth--; }
+  const open = source.indexOf("{", start);
+  let depth = 1,
+    i = open + 1;
+  for (; i < source.length && depth; i++) {
+    if (source[i] === "{") depth++;
+    if (source[i] === "}") depth--;
+  }
   check(depth === 0, `Unbalanced function ${name}`);
   return { declaration: source.slice(start, open), body: source.slice(open + 1, i - 1) };
 }
 const contains = (text, needle, label) => check(text.includes(needle), `Missing guard: ${label}`);
-for (const [label, source] of [["router", router], ["governance", governance], ["rebalance", rebalance]]) {
-  check(!/\.depositIntoStrategy\s*\(/.test(source) && !/\.withdrawFromStrategy\s*\(/.test(source), `Unchecked adapter state-changing call in ${label}`);
+for (const [label, source] of [
+  ["router", router],
+  ["governance", governance],
+  ["rebalance", rebalance],
+]) {
+  check(
+    !/\.depositIntoStrategy\s*\(/.test(source) && !/\.withdrawFromStrategy\s*\(/.test(source),
+    `Unchecked adapter state-changing call in ${label}`,
+  );
 }
 for (const name of ["handleDeposit", "solverDepositAssets", "solverDepositShares"]) {
   const f = body(router, name).body;
   contains(f, "StrategyBackingGuard.pull", `${name} actual input`);
   contains(f, "StrategyBackingGuard.assertIncrease", `${name} operation-wide backing`);
-  if (name !== "handleDeposit") check(f.indexOf("StrategyBackingGuard.assertIncrease") < f.indexOf("mintForRouter"), `${name} must check BEFORE outer mint`);
+  if (name !== "handleDeposit")
+    check(f.indexOf("StrategyBackingGuard.assertIncrease") < f.indexOf("mintForRouter"), `${name} must check BEFORE outer mint`);
 }
 contains(body(router, "_depositToVaultAtomically").body, "StrategyBackingGuard.deposit", "shared deposit primitive");
-for (const name of ["_withdrawFromVaultAtomically", "_withdrawSharesFromVaultAtomically"]) contains(body(router, name).body, "StrategyBackingGuard.withdraw", name);
-for (const name of ["solverWithdrawAssets", "solverWithdrawShares"]) contains(body(router, name).body, "StrategyBackingGuard.assertWithdrawal", `${name} aggregate loss bound`);
+for (const name of ["_withdrawFromVaultAtomically", "_withdrawSharesFromVaultAtomically"])
+  contains(body(router, name).body, "StrategyBackingGuard.withdraw", name);
+for (const name of ["solverWithdrawAssets", "solverWithdrawShares"])
+  contains(body(router, name).body, "StrategyBackingGuard.assertWithdrawal", `${name} aggregate loss bound`);
 for (const name of ["rebalanceStrategiesByShares", "rebalanceStrategiesBySharesViaExternalLiquidity", "rebalanceStrategiesByValue"]) {
   const f = body(router, name);
   contains(f.declaration, "whenNotPaused", `${name} pause`);

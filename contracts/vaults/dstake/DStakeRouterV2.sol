@@ -95,7 +95,13 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     error ModuleCollateralVaultMismatch(address expected, address actual);
 
     // Mirrored library errors keep the router ABI usable by existing clients.
-    error StrategyBackingLoss(address vault, uint8 measure, uint256 beforeValue, uint256 afterValue, uint256 requiredIncrease);
+    error StrategyBackingLoss(
+        address vault,
+        uint8 measure,
+        uint256 beforeValue,
+        uint256 afterValue,
+        uint256 requiredIncrease
+    );
     error StrategyWithdrawalLoss(address vault, uint8 measure, uint256 valueLost, uint256 assetsReceived);
     error AssetBalanceMismatch(uint256 expected, uint256 actual);
     error WithdrawalAssetsMismatch(uint256 reported, uint256 actual);
@@ -1075,7 +1081,13 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
             revert NoLiquidityAvailable();
         }
 
-        receivedDStable = StrategyBackingGuard.withdraw(_dStable, vault, adapter, _collateralVault, strategyShareAmount);
+        receivedDStable = StrategyBackingGuard.withdraw(
+            _dStable,
+            vault,
+            adapter,
+            _collateralVault,
+            strategyShareAmount
+        );
         if (receivedDStable < dStableAmount) {
             revert SlippageCheckFailed(vault, receivedDStable, dStableAmount);
         }

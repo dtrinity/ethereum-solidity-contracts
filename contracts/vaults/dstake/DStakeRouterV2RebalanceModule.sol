@@ -138,10 +138,18 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
             return;
         }
         uint256 receivedDStable = StrategyBackingGuard.withdraw(
-            _dStable, fromStrategyShare, fromAdapterAddress, _collateralVault, fromShareAmount
+            _dStable,
+            fromStrategyShare,
+            fromAdapterAddress,
+            _collateralVault,
+            fromShareAmount
         );
         uint256 resultingToShareAmount = StrategyBackingGuard.deposit(
-            _dStable, toStrategyShare, toAdapterAddress, _collateralVault, receivedDStable
+            _dStable,
+            toStrategyShare,
+            toAdapterAddress,
+            _collateralVault,
+            receivedDStable
         );
         if (resultingToShareAmount < minToShareAmount) {
             revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);

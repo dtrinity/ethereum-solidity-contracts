@@ -342,7 +342,9 @@ describe("DStakeRouterV2 solver routes", function () {
 
         await expect(
           router.connect(solver).solverWithdrawShares(plan.vaults, withdrawalShares, ethers.MaxUint256, solver.address, solver.address),
-        ).to.be.revertedWithCustomError(router, "ShareWithdrawalConversionFailed");
+        )
+          .to.be.revertedWithCustomError(adapter, "AdapterForcedFailure")
+          .withArgs("withdraw");
       });
 
       it("withdraws by net assets and enforces solver max share burn", async function () {

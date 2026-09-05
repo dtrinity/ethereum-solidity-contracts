@@ -25,7 +25,7 @@ its **entire collateral-owned strategy position**, both through the strategy's
 redemption quote and the adapter's accounting value. Matching inner preview,
 actual and reported share quantities is no longer sufficient to credit nominal
 assets. A positive deposit with no added backing is rejected. A deposit issuing
-zero *new* inner shares can still pass when already-owned shares gain enough
+zero _new_ inner shares can still pass when already-owned shares gain enough
 backing. The loss tolerance is one smallest underlying asset unit, bounded again
 across each public multi-leg operation, not a percentage and not `dustTolerance`.
 

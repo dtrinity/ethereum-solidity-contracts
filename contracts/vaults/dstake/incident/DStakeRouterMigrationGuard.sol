@@ -51,7 +51,12 @@ contract DStakeRouterMigrationGuard {
     bytes32 private constant AUTHORIZED = keccak256("AUTHORIZED_CALLER_ROLE");
     bytes32 private constant ROUTER_ROLE = keccak256("ROUTER_ROLE");
 
-    event MigrationVerified(address indexed previousRouter, address indexed replacementRouter, uint256 assets, uint256 supply);
+    event MigrationVerified(
+        address indexed previousRouter,
+        address indexed replacementRouter,
+        uint256 assets,
+        uint256 supply
+    );
 
     constructor(address timelock_, address token_, address collateral_, address old_, address new_, address deployer_) {
         require(timelock_ != address(0) && token_ != address(0) && collateral_ != address(0), "zero anchor");
@@ -79,7 +84,10 @@ contract DStakeRouterMigrationGuard {
         _check(IMigrationToken(token).collateralVault() == collateral, "token-vault");
         _check(address(newRouter).codehash == replacementCodeHash, "replacement-code");
         _check(newRouter.BACKING_GUARD_VERSION() == 2, "guard-version");
-        _check(newRouter.dStakeToken() == token && address(newRouter.collateralVault()) == collateral, "new-immutables");
+        _check(
+            newRouter.dStakeToken() == token && address(newRouter.collateralVault()) == collateral,
+            "new-immutables"
+        );
         _check(oldRouter.currentShortfall() == 0 && newRouter.currentShortfall() == 0, "shortfall-not-zero");
         address asset = IMigrationToken(token).asset();
         _check(IMigrationCollateral(collateral).dStakeToken() == token, "vault-token");
@@ -127,9 +135,13 @@ contract DStakeRouterMigrationGuard {
             _check(IAccessControl(adapter).hasRole(AUTHORIZED, address(newRouter)), "new-adapter-caller");
         }
         bytes32[7] memory roles = [
-            ADMIN, keccak256("ADAPTER_MANAGER_ROLE"), keccak256("CONFIG_MANAGER_ROLE"),
-            keccak256("VAULT_MANAGER_ROLE"), keccak256("PAUSER_ROLE"),
-            keccak256("STRATEGY_REBALANCER_ROLE"), keccak256("DSTAKE_TOKEN_ROLE")
+            ADMIN,
+            keccak256("ADAPTER_MANAGER_ROLE"),
+            keccak256("CONFIG_MANAGER_ROLE"),
+            keccak256("VAULT_MANAGER_ROLE"),
+            keccak256("PAUSER_ROLE"),
+            keccak256("STRATEGY_REBALANCER_ROLE"),
+            keccak256("DSTAKE_TOKEN_ROLE")
         ];
         for (uint256 i; i < roles.length; ++i) {
             _check(!newRouter.hasRole(roles[i], retiredDeployer), "deployer-authority");

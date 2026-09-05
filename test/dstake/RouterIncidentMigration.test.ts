@@ -2,14 +2,23 @@ import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { backingFixture } from "../incident-2026-09-05/fixture";
 
-const roleNames = ["DEFAULT_ADMIN_ROLE", "ADAPTER_MANAGER_ROLE", "CONFIG_MANAGER_ROLE", "VAULT_MANAGER_ROLE", "PAUSER_ROLE", "STRATEGY_REBALANCER_ROLE"];
-const role = (name: string) => name === "DEFAULT_ADMIN_ROLE" ? ethers.ZeroHash : ethers.id(name);
+const roleNames = [
+  "DEFAULT_ADMIN_ROLE",
+  "ADAPTER_MANAGER_ROLE",
+  "CONFIG_MANAGER_ROLE",
+  "VAULT_MANAGER_ROLE",
+  "PAUSER_ROLE",
+  "STRATEGY_REBALANCER_ROLE",
+];
+const role = (name: string) => (name === "DEFAULT_ADMIN_ROLE" ? ethers.ZeroHash : ethers.id(name));
 
 async function migrationFixture() {
   const f = await backingFixture();
   await f.deposit(1_000n);
   await f.router.pause();
-  const tl: any = await (await ethers.getContractFactory("TimelockController")).deploy(60, [f.admin.address], [f.admin.address], f.admin.address);
+  const tl: any = await (
+    await ethers.getContractFactory("TimelockController")
+  ).deploy(60, [f.admin.address], [f.admin.address], f.admin.address);
   const replacement: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
   const gov = await (await ethers.getContractFactory("DStakeRouterV2GovernanceModule")).deploy(f.token.target, f.collateral.target);
   const reb = await (await ethers.getContractFactory("DStakeRouterV2RebalanceModule")).deploy(f.token.target, f.collateral.target);
@@ -19,9 +28,9 @@ async function migrationFixture() {
   for (const name of roleNames) await replacement.grantRole(role(name), tl.target);
   for (const name of [...roleNames].reverse()) await replacement.revokeRole(role(name), f.admin.address);
   for (const component of [f.token, f.collateral, f.adapter]) await component.grantRole(ethers.ZeroHash, tl.target);
-  const guard: any = await (await ethers.getContractFactory("DStakeRouterMigrationGuard")).deploy(
-    tl.target, f.token.target, f.collateral.target, f.router.target, replacement.target, f.admin.address,
-  );
+  const guard: any = await (
+    await ethers.getContractFactory("DStakeRouterMigrationGuard")
+  ).deploy(tl.target, f.token.target, f.collateral.target, f.router.target, replacement.target, f.admin.address);
   const call = (c: any, method: string, args: any[] = []) => ({ target: c.target, data: c.interface.encodeFunctionData(method, args) });
   const calls = [
     call(guard, "begin"),
@@ -32,7 +41,13 @@ async function migrationFixture() {
     call(guard, "finish"),
   ];
   async function schedule(batch = calls) {
-    const args = [batch.map((x) => x.target), batch.map(() => 0), batch.map((x) => x.data), ethers.ZeroHash, ethers.id("local incident migration test")];
+    const args = [
+      batch.map((x) => x.target),
+      batch.map(() => 0),
+      batch.map((x) => x.data),
+      ethers.ZeroHash,
+      ethers.id("local incident migration test"),
+    ];
     await tl.scheduleBatch(...args, 60);
     await network.provider.send("evm_increaseTime", [61]);
     await network.provider.send("evm_mine");
@@ -57,7 +72,11 @@ describe("Incident router replacement — atomic governance migration", function
 
   it("migrates without moving holdings or changing backing/supply and leaves everything isolated", async function () {
     const f = await migrationFixture();
-    const before = { assets: await f.token.totalAssets(), supply: await f.token.totalSupply(), shares: await f.vault.balanceOf(f.collateral.target) };
+    const before = {
+      assets: await f.token.totalAssets(),
+      supply: await f.token.totalSupply(),
+      shares: await f.vault.balanceOf(f.collateral.target),
+    };
     const execute = await f.schedule();
     await execute();
     expect(await f.guard.phase()).to.equal(2);

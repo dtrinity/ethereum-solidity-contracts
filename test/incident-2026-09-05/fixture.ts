@@ -6,7 +6,9 @@ export async function backingFixture() {
   const asset: any = await (await ethers.getContractFactory("IncidentMintableERC20")).deploy();
   const tokenFactory = await ethers.getContractFactory("DStakeTokenV2");
   const impl = await tokenFactory.deploy();
-  const proxy = await (await ethers.getContractFactory("ERC1967Proxy")).deploy(
+  const proxy = await (
+    await ethers.getContractFactory("ERC1967Proxy")
+  ).deploy(
     impl.target,
     tokenFactory.interface.encodeFunctionData("initialize", [asset.target, "Test sdUSD", "TSD", admin.address, admin.address]),
   );
@@ -26,9 +28,13 @@ export async function backingFixture() {
 
   async function addVault(idle = false, weight = 1_000_000) {
     const vault: any = idle
-      ? await (await ethers.getContractFactory("DStakeIdleVault")).deploy(asset.target, "Legacy Idle", "LIDLE", admin.address, admin.address)
+      ? await (
+          await ethers.getContractFactory("DStakeIdleVault")
+        ).deploy(asset.target, "Legacy Idle", "LIDLE", admin.address, admin.address)
       : await (await ethers.getContractFactory("IncidentAccountingVault")).deploy(asset.target);
-    const adapter: any = await (await ethers.getContractFactory("GenericERC4626ConversionAdapter")).deploy(asset.target, vault.target, collateral.target);
+    const adapter: any = await (
+      await ethers.getContractFactory("GenericERC4626ConversionAdapter")
+    ).deploy(asset.target, vault.target, collateral.target);
     await adapter.setAuthorizedCaller(router.target, true);
     await router["addVaultConfig(address,address,uint256,uint8)"](vault.target, adapter.target, weight, 0);
     return { vault, adapter };

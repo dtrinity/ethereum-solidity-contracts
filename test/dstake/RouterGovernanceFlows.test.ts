@@ -320,13 +320,18 @@ describe("DStakeRouterV2 governance flows", function () {
         const activeVaults = await router.getActiveVaultsForDeposits();
         expect(activeVaults).to.include(toggledVault);
 
-        const fromBalance = await shareBalance(activeVault);
+        const fromVault = activeVault;
+        const toVaultConfig = multiVault.vaults.find((vault) => vault.strategyVault.toLowerCase() !== fromVault.toLowerCase());
+        if (!toVaultConfig) {
+          throw new Error("missing destination vault after status flips");
+        }
+        const toVault = toVaultConfig.strategyVault;
+
+        const fromBalance = await shareBalance(fromVault);
         const moveAmount = fromBalance / 4n;
-        const receipt = await (
-          await router.connect(governance).rebalanceStrategiesByShares(activeVault, toggledVault, moveAmount, 1n)
-        ).wait();
+        const receipt = await (await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, moveAmount, 1n)).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
-        expect(event?.args?.toStrategyShare).to.equal(toggledVault);
+        expect(event?.args?.toStrategyShare).to.equal(toVault);
       });
     });
   });
