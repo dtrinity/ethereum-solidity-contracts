@@ -145,12 +145,6 @@ for (const [name, mutate] of [
     },
   ],
   [
-    "legacy cash",
-    (s) => {
-      s.routerCash = "1";
-    },
-  ],
-  [
     "legacy allowance",
     (s) => {
       s.tokenAllowance = "1";
@@ -180,17 +174,29 @@ test("planner: emits guard begin / authorize / pointers / retire / finish in one
   const calls = migrationCalls(c, d, s);
   assert.deepEqual(
     calls.map((x) => x.method),
-    ["begin", "setAuthorizedCaller", "setRouter", "migrateCore", "setAuthorizedCaller", "finish"],
+    [
+      "unpause",
+      "reinvestFees",
+      "pause",
+      "rescuePausedCash",
+      "begin",
+      "setAuthorizedCaller",
+      "setRouter",
+      "migrateCore",
+      "setAuthorizedCaller",
+      "finish",
+    ],
   );
   assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
 });
 for (const [name, mutate] of [
   ["omitted final guard", (xs) => xs.slice(0, -1)],
-  ["omitted legacy revocation", (xs) => xs.filter((_, i) => i !== 4)],
+  ["omitted legacy revocation", (xs) => xs.filter((x) => !(x.method === "setAuthorizedCaller" && x.args[0] === address(1)))],
   [
     "changed pointer ordering",
     (xs) => {
-      [xs[2], xs[3]] = [xs[3], xs[2]];
+      const i = xs.findIndex((x) => x.method === "setRouter");
+      [xs[i], xs[i + 1]] = [xs[i + 1], xs[i]];
       return xs;
     },
   ],

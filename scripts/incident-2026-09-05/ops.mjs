@@ -67,6 +67,9 @@ const ABI = {
   router: [
     "function paused() view returns(bool)",
     "function pause()",
+    "function unpause()",
+    "function reinvestFees() returns(uint256,uint256)",
+    "function rescuePausedCash()",
     "function dStakeToken() view returns(address)",
     "function collateralVault() view returns(address)",
     "function totalManagedAssets() view returns(uint256)",
@@ -763,10 +766,7 @@ async function migration(c, s, d, provider, out) {
   })) {
     check(String(await newRouter[getter]()) === expected, "Replacement economic settings differ from the fresh legacy snapshot.");
   }
-  check(
-    (await contract(c.asset, "asset", provider).balanceOf(d.router)) === 0n,
-    "Replacement router has unexpected cash; reconcile before migration.",
-  );
+  // Replacement idle dUSD is skimmed to the Timelock in the same batch via rescuePausedCash.
   check((await contract(d.guard, "guard", provider).phase()) === 0n, "Migration guard has already been used.");
   const semantic = migrationCalls(c, d, s);
   assertMigrationPlan(semantic, c, d, s);

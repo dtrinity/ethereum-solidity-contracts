@@ -121,10 +121,6 @@ export function validateInventory(c, s, migration = false) {
     "Existing cap is below current NAV; setDepositCap cannot clone it. Review an explicit governance adjustment.",
   );
   if (migration) {
-    check(
-      BigInt(s.routerCash) === 0n,
-      "Legacy router has cash. This zero-movement migration must not strand it. Reconcile and separately review its disposition.",
-    );
     check(BigInt(s.tokenAllowance) === 0n, "Token still has a nonzero allowance to the legacy router.");
   }
 }
@@ -133,6 +129,10 @@ export function validateInventory(c, s, migration = false) {
 export function migrationCalls(c, replacement, inventory) {
   const adapters = [...new Set(inventory.configs.map((v) => lower(v.adapter)))];
   return [
+    { to: c.oldRouter, contract: "router", method: "unpause", args: [] },
+    { to: c.oldRouter, contract: "router", method: "reinvestFees", args: [] },
+    { to: c.oldRouter, contract: "router", method: "pause", args: [] },
+    { to: replacement.router, contract: "router", method: "rescuePausedCash", args: [] },
     { to: replacement.guard, contract: "guard", method: "begin", args: [] },
     ...c.retirement.callers.flatMap((caller) => [
       ...retirementAdapters(c, inventory).flatMap((to) => [
@@ -165,7 +165,11 @@ export function assertMigrationPlan(calls, c, replacement, inventory) {
     "Migration call sequence was modified or is incomplete.",
   );
   check(
-    !calls.some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method)),
+    calls[0]?.method === "unpause" && sameAddress(calls[0].to, c.oldRouter),
+    "Legacy cash skim must start with a paired old-router unpause.",
+  );
+  check(
+    !calls.slice(1).some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method)),
     "Unsafe reopening/upgrade/asset-removal call in migration batch.",
   );
 }

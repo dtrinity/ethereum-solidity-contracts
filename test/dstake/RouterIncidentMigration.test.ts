@@ -136,6 +136,35 @@ describe("Incident router replacement — atomic governance migration", function
     expect(await f.token.router()).to.equal(f.router.target);
   });
 
+  it("skims unsolicited dUSD off both paused routers inside the same batch", async function () {
+    const f = await migrationFixture();
+    await f.router.grantRole(ethers.ZeroHash, f.tl.target);
+    await f.router.grantRole(role("PAUSER_ROLE"), f.tl.target);
+    await f.asset.transfer(f.router.target, 1);
+    await f.asset.transfer(f.replacement.target, 1);
+    const call = (c: any, method: string, args: any[] = []) => ({
+      target: c.target,
+      data: c.interface.encodeFunctionData(method, args),
+    });
+    const execute = await f.schedule([
+      call(f.router, "unpause"),
+      call(f.router, "reinvestFees"),
+      call(f.router, "pause"),
+      call(f.replacement, "rescuePausedCash"),
+      ...f.calls,
+    ]);
+    const beforeShares = await f.vault.balanceOf(f.collateral.target);
+    await execute();
+    expect(await f.guard.phase()).to.equal(2);
+    expect(await f.asset.balanceOf(f.router.target)).to.equal(0n);
+    expect(await f.asset.balanceOf(f.replacement.target)).to.equal(0n);
+    expect(await f.asset.balanceOf(f.tl.target)).to.equal(1n);
+    expect(await f.vault.balanceOf(f.collateral.target)).to.be.gt(beforeShares);
+    expect(await f.token.router()).to.equal(f.replacement.target);
+    expect(await f.replacement.paused()).to.equal(true);
+    expect(await f.router.paused()).to.equal(true);
+  });
+
   it("does not silently forgive outstanding settlement shortfall", async function () {
     const f = await migrationFixture();
     await f.router.recordShortfall(1);

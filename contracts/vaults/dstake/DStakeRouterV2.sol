@@ -150,6 +150,7 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     event DefaultDepositStrategyShareSet(address indexed strategyShare);
     event DustToleranceSet(uint256 newDustTolerance);
     event SurplusSwept(uint256 amount, address vaultAsset);
+    event PausedCashRescued(address indexed recipient, uint256 amount);
     event StrategyDepositRouted(address[] selectedVaults, uint256[] depositAmounts, uint256 totalDStableAmount);
     event StrategyWithdrawalRouted(address[] selectedVaults, uint256[] withdrawalAmounts, uint256 totalDStableAmount);
     event RouterSolverDeposit(
@@ -1066,6 +1067,17 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
 
     function unpause() external onlyRole(PAUSER_ROLE) {
         _unpause();
+    }
+
+    /// @notice Pulls idle dUSD to the caller while paused. Used to clear CREATE-window
+    ///         donations on a replacement router before migration begin(). No-op if empty.
+    function rescuePausedCash() external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant whenPaused {
+        uint256 amount = IERC20(_dStable).balanceOf(address(this));
+        if (amount == 0) {
+            return;
+        }
+        IERC20(_dStable).safeTransfer(_msgSender(), amount);
+        emit PausedCashRescued(_msgSender(), amount);
     }
 
     // --- View Functions ---

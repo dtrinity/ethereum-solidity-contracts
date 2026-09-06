@@ -132,7 +132,8 @@ test("retirement includes historical adapters, adapter admin, custody and upstre
     s = { configs: [{ adapter: A(80) }] },
     d = { router: A(81), guard: A(82) };
   const calls = migrationCalls(c, d, s);
-  assert.equal(calls[0].method, "begin");
+  assert.equal(calls[0].method, "unpause");
+  assert.equal(calls[4].method, "begin");
   assert.equal(calls.at(-1).method, "finish");
   assert.equal(retirementAdapters(c, s).length, 2);
   assert(calls.some((x) => x.to === A(91) && x.method === "revokeRole" && x.args[0] === ZERO_HASH));
