@@ -129,6 +129,8 @@ Options:
   --local-fork           Require localhost URL, chain 31337, hardhat_metadata.
   --execute              Explicit local-fork deployment or simulation (never live governance).
   --dry-run              Explicit read-only mode, incompatible with write flags.
+  --max-fee-gwei N       EIP-1559 maxFeePerGas cap. Required for --broadcast. Aborts if the network is more expensive (wait).
+  --priority-gwei N      EIP-1559 maxPriorityFeePerGas (default 0.05). Must be <= max fee.
 
 No command signs, submits, or executes a LIVE Safe/timelock governance operation.
 DEPLOYER_PK is read only by an explicitly approved LIVE deployment.
@@ -148,6 +150,8 @@ function parse(argv) {
     "execute",
     "dry-run",
     "local-fork",
+    "max-fee-gwei",
+    "priority-gwei",
   ]);
   const flags = new Set(["broadcast", "execute", "dry-run", "local-fork"]);
   const options = {};
@@ -168,7 +172,36 @@ function parse(argv) {
   check(!options.execute || ["deploy", "simulate"].includes(command), "Execute is supported only for local-fork rehearsal.");
   check(!options.execute || options["local-fork"], "Execute requires --local-fork.");
   check(!(options.broadcast && options["local-fork"]), "Use --execute for a local fork, not --broadcast.");
+  check(
+    !options.broadcast || options["max-fee-gwei"],
+    "Live broadcast requires --max-fee-gwei so the deployer waits instead of overpaying.",
+  );
   return { command, options };
+}
+
+function parseGwei(raw, label) {
+  check(typeof raw === "string" && /^[0-9]+(\.[0-9]{1,9})?$/.test(raw), `Invalid ${label}.`);
+  const wei = E.parseUnits(raw, "gwei");
+  check(wei > 0n, `${label} must be positive.`);
+  return wei;
+}
+
+async function liveFeeOverrides(provider, options) {
+  const maxFee = parseGwei(options["max-fee-gwei"], "--max-fee-gwei");
+  const priority = parseGwei(options["priority-gwei"] || "0.05", "--priority-gwei");
+  check(priority <= maxFee, "--priority-gwei must not exceed --max-fee-gwei.");
+  const fees = await provider.getFeeData();
+  const networkMax = fees.maxFeePerGas ?? fees.gasPrice;
+  check(networkMax, "Provider did not return fee data.");
+  if (networkMax > maxFee) {
+    fail(
+      `Network max fee ${E.formatUnits(networkMax, "gwei")} gwei exceeds --max-fee-gwei ${E.formatUnits(maxFee, "gwei")}. Wait for cheaper gas; refusing to overpay.`,
+    );
+  }
+  console.log(
+    `Using EIP-1559 fees: maxFeePerGas=${E.formatUnits(maxFee, "gwei")} gwei, priority=${E.formatUnits(priority, "gwei")} gwei (network ~${E.formatUnits(networkMax, "gwei")} gwei).`,
+  );
+  return { maxFeePerGas: maxFee, maxPriorityFeePerGas: priority, type: 2 };
 }
 function readJson(file) {
   try {
@@ -406,6 +439,13 @@ async function deploy(c, s, provider, options, out) {
   console.log(
     `Prepared ${plan.transactions.length} transactions. No existing protocol authority or pointer is changed by this deployment.`,
   );
+  if (options["max-fee-gwei"] && E) {
+    const cap = parseGwei(options["max-fee-gwei"], "--max-fee-gwei");
+    const guess = 13_500_000n;
+    console.log(
+      `At --max-fee-gwei ${options["max-fee-gwei"]}, ~13.5M gas would cost at most ${E.formatEther(guess * cap)} ETH (upper bound, not an estimate).`,
+    );
+  }
   if (!options.broadcast && !options.execute) return;
   check(options["review-sha256"] === review, "Review digest mismatch; inspect the new dry-run plan before signing.");
   let signer;
@@ -418,6 +458,7 @@ async function deploy(c, s, provider, options, out) {
     signer = new E.Wallet(process.env.DEPLOYER_PK, provider);
     check(sameAddress(await signer.getAddress(), options.deployer), "Signing account differs from reviewed deployer.");
   }
+  const fee = options.broadcast ? await liveFeeOverrides(provider, options) : {};
   const journal = {
     ...plan.addresses,
     deployer: options.deployer,
@@ -432,7 +473,13 @@ async function deploy(c, s, provider, options, out) {
   try {
     for (let i = 0; i < plan.transactions.length; i++) {
       const tx = plan.transactions[i];
-      const response = await signer.sendTransaction({ to: tx.to, data: tx.data, value: 0n, nonce: plan.startNonce + i });
+      const response = await signer.sendTransaction({
+        to: tx.to,
+        data: tx.data,
+        value: 0n,
+        nonce: plan.startNonce + i,
+        ...fee,
+      });
       const receipt = await response.wait(1);
       check(
         receipt && receipt.status === 1,

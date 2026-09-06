@@ -121,7 +121,8 @@ node scripts/incident-2026-09-05/ops.mjs deploy \
 # Review hashes, source/build inputs, CREATE nonces, calldata, and gas estimates.
 # DEPLOYER_PK must already be supplied securely in the environment.
 node scripts/incident-2026-09-05/ops.mjs deploy \
-  --broadcast --rpc-env ETHEREUM_RPC_URL --deployer "$DEPLOYER_ADDRESS" \
+  --broadcast --max-fee-gwei 2 --priority-gwei 0.05 \
+  --rpc-env ETHEREUM_RPC_URL --deployer "$DEPLOYER_ADDRESS" \
   --review-sha256 "$REVIEWED_DEPLOYMENT_SHA256" --out /tmp/dstake-ir-live
 ```
 
@@ -129,7 +130,7 @@ No write happens without an explicit write flag and the exact current deployment
 review digest. A different nonce/build/configuration changes that digest. Live
 `--broadcast` is supported ONLY for replacement creation and replacement bootstrap.
 There is no live governance execution mode. The deployer must match the reviewed
-address. Check gas funding separately; default provider estimates/fees apply.
+address. Check gas funding separately. Live `--broadcast` requires `--max-fee-gwei`; if the network is more expensive the script waits (aborts) instead of overpaying.
 
 The bootstrap sets the two new modules, copies economic settings and target
 weights, makes every strategy Suspended, grants the Timelock the six privileged

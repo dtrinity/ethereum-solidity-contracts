@@ -216,6 +216,7 @@ for (const value of [
 const here = path.dirname(fileURLToPath(import.meta.url));
 for (const args of [
   ["plan", "--broadcast"],
+  ["deploy", "--broadcast"],
   ["deploy", "--execute"],
   ["deploy", "--broadcast", "--dry-run"],
   ["deploy", "--broadcast", "--local-fork"],
