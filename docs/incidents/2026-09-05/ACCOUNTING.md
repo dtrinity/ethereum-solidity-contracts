@@ -52,7 +52,7 @@ healthy strategy cannot subsidize a bad leg.
 A successful withdrawal requires an actual positive increase in `R`'s underlying
 balance, exactly matching the adapter's return. Any decrease in each whole-position
 valuation must be no greater than those received assets plus one raw unit. Both
-solver withdrawal operations also check aggregate managed value *before* the
+solver withdrawal operations also check aggregate managed value _before_ the
 customer payout; this bounds cumulative multi-leg rounding loss. Existing router
 cash cannot masquerade as new withdrawal proceeds.
 
@@ -126,6 +126,7 @@ proposed execution block. If a strategy cannot satisfy the invariant, keep it
 isolated or design an explicitly reviewed credit-from-measured-backing route.
 
 Public references informing these distinctions (not evidence of this incident):
+
 - ERC-4626 specification and preview/oracle cautions: https://eips.ethereum.org/EIPS/eip-4626
 - OpenZeppelin ERC-4626 implementation interface: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC4626
 

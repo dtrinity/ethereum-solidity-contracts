@@ -297,39 +297,13 @@ DSTAKE_CONFIGS.forEach((config: DStakeFixtureConfig) => {
         expect(deltaReceiver).to.equal(rawClaimed - expectedFee);
       });
 
-      it("Successfully claims multiple reward tokens", async function () {
+      it("rejects duplicate reward tokens", async function () {
         if (config.DStakeTokenSymbol !== "sdUSD") this.skip();
         const receiver = user4Address;
-        // Convert balances to numbers for test assertions - removed, using BigInt directly
-        const beforeReceiverRawMulti = await rewardToken.balanceOf(receiver);
-        const beforeTreasuryRawMulti = await rewardToken.balanceOf(treasuryAddr);
 
-        // Fast-forward time to accrue rewards
-        await hre.network.provider.request({
-          method: "evm_increaseTime",
-          params: [50],
-        });
-        await hre.network.provider.request({ method: "evm_mine", params: [] });
-
-        await rewardManager.connect(callerSigner).compoundRewards(
-          threshold,
-          [rewardToken.target, rewardToken.target], // Claiming the same token twice
-          receiver,
-        );
-
-        const afterReceiverRawMulti = await rewardToken.balanceOf(receiver);
-        const afterTreasuryRawMulti = await rewardToken.balanceOf(treasuryAddr);
-
-        // Compute actual deltas for multiple claims
-        const deltaReceiverMulti = afterReceiverRawMulti - beforeReceiverRawMulti;
-        const deltaTreasuryMulti = afterTreasuryRawMulti - beforeTreasuryRawMulti;
-        const rawClaimedMulti = deltaReceiverMulti + deltaTreasuryMulti;
-        // Compute expected fee via on-chain logic
-        const expectedFeeMulti = await rewardManager.getTreasuryFee(rawClaimedMulti);
-
-        // Treasury should receive the fee, receiver the remainder
-        expect(deltaTreasuryMulti).to.equal(expectedFeeMulti);
-        expect(deltaReceiverMulti).to.equal(rawClaimedMulti - expectedFeeMulti);
+        await expect(rewardManager.connect(callerSigner).compoundRewards(threshold, [rewardToken.target, rewardToken.target], receiver))
+          .to.be.revertedWithCustomError(rewardManager, "DuplicateRewardToken")
+          .withArgs(rewardToken.target);
       });
 
       // Tests for exchange asset deposit processing
