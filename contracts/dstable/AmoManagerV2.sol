@@ -287,6 +287,12 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
         uint256 amount,
         uint256 maxDebtBurned
     ) public onlyRole(AMO_DECREASE_ROLE) nonReentrant {
+        _repayFrom(wallet, asset, amount, maxDebtBurned);
+    }
+
+    // Private implementation: both public repayment paths enforce their own role
+    // and enter nonReentrant exactly once. Never call one guarded entry from another.
+    function _repayFrom(address wallet, address asset, uint256 amount, uint256 maxDebtBurned) private {
         // Validate inputs
         if (!_allowedAmoWallets.contains(wallet)) {
             revert UnsupportedAmoWallet(wallet);
@@ -351,7 +357,7 @@ contract AmoManagerV2 is OracleAware, ReentrancyGuard {
                 }
             }
         }
-        repayFrom(wallet, asset, amount, maxDebtBurned);
+        _repayFrom(wallet, asset, amount, maxDebtBurned);
     }
 
     /* Helper Functions */

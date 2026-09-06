@@ -18,13 +18,17 @@ import { IDStakeCollateralVaultV2 } from "../interfaces/IDStakeCollateralVaultV2
  *      Trust boundary: these checks still require an honest, reviewed strategy
  *      valuation implementation. They are not an oracle for a malicious vault,
  *      a guarantee of immediate liquidity, or a cure for external NAV manipulation.
- *      The tolerance is ONE smallest underlying-token unit, not one token, not
- *      basis points, and deliberately independent of configurable dustTolerance.
+ *      The default is ONE smallest underlying-token unit. Explicit strategy and
+ *      operation policies may allow up to SIXTEEN units, never basis points, and
+ *      deliberately independent of configurable dustTolerance or share prices.
  */
 library StrategyBackingGuard {
     using SafeERC20 for IERC20;
 
     uint256 internal constant MAX_ROUNDING_LOSS = 1;
+    uint256 internal constant HARD_ROUNDING_LOSS_LIMIT = 16;
+
+    error InvalidRoundingLoss(uint256 allowedLoss);
 
     error StrategyBackingLoss(
         address vault,
@@ -69,6 +73,18 @@ library StrategyBackingGuard {
         IDStakeCollateralVaultV2 collateral,
         uint256 assets
     ) internal returns (uint256 actualShares) {
+        return deposit(asset, vault, adapterAddress, collateral, assets, MAX_ROUNDING_LOSS);
+    }
+
+    function deposit(
+        address asset,
+        address vault,
+        address adapterAddress,
+        IDStakeCollateralVaultV2 collateral,
+        uint256 assets,
+        uint256 allowedLoss
+    ) internal returns (uint256 actualShares) {
+        _validateRoundingLoss(allowedLoss);
         Position memory beforePosition = position(asset, vault, adapterAddress, address(collateral));
         IDStableConversionAdapterV2 adapter = IDStableConversionAdapterV2(adapterAddress);
         (address expectedVault, uint256 expectedShares) = adapter.previewDepositIntoStrategy(assets);
@@ -86,8 +102,8 @@ library StrategyBackingGuard {
 
         uint256 spent = beforePosition.cash >= afterPosition.cash ? beforePosition.cash - afterPosition.cash : 0;
         if (spent != assets) revert AssetBalanceMismatch(assets, spent);
-        assertIncrease(vault, 0, beforePosition.redeemable, afterPosition.redeemable, assets);
-        assertIncrease(vault, 1, beforePosition.reported, afterPosition.reported, assets);
+        assertIncrease(vault, 0, beforePosition.redeemable, afterPosition.redeemable, assets, allowedLoss);
+        assertIncrease(vault, 1, beforePosition.reported, afterPosition.reported, assets, allowedLoss);
         // Intentionally no unconditional actualShares != 0 requirement: existing
         // collateral-owned shares may receive the entire, sufficient NAV increase.
     }
@@ -99,6 +115,18 @@ library StrategyBackingGuard {
         IDStakeCollateralVaultV2 collateral,
         uint256 shares
     ) internal returns (uint256 received) {
+        return withdraw(asset, vault, adapterAddress, collateral, shares, MAX_ROUNDING_LOSS);
+    }
+
+    function withdraw(
+        address asset,
+        address vault,
+        address adapterAddress,
+        IDStakeCollateralVaultV2 collateral,
+        uint256 shares,
+        uint256 allowedLoss
+    ) internal returns (uint256 received) {
+        _validateRoundingLoss(allowedLoss);
         Position memory beforePosition = position(asset, vault, adapterAddress, address(collateral));
         collateral.transferStrategyShares(vault, shares, address(this));
         IERC20(vault).forceApprove(adapterAddress, shares);
@@ -109,8 +137,8 @@ library StrategyBackingGuard {
         received = afterPosition.cash >= beforePosition.cash ? afterPosition.cash - beforePosition.cash : 0;
         if (received != reported) revert WithdrawalAssetsMismatch(reported, received);
         if (received == 0) revert ZeroWithdrawalAssets();
-        assertWithdrawal(vault, 0, beforePosition.redeemable, afterPosition.redeemable, received);
-        assertWithdrawal(vault, 1, beforePosition.reported, afterPosition.reported, received);
+        assertWithdrawal(vault, 0, beforePosition.redeemable, afterPosition.redeemable, received, allowedLoss);
+        assertWithdrawal(vault, 1, beforePosition.reported, afterPosition.reported, received, allowedLoss);
     }
 
     function pull(address asset, address from, uint256 assets) internal {
@@ -127,10 +155,22 @@ library StrategyBackingGuard {
         uint256 afterValue,
         uint256 requiredIncrease
     ) internal pure {
+        assertIncrease(vault, measure, beforeValue, afterValue, requiredIncrease, MAX_ROUNDING_LOSS);
+    }
+
+    function assertIncrease(
+        address vault,
+        uint8 measure,
+        uint256 beforeValue,
+        uint256 afterValue,
+        uint256 requiredIncrease,
+        uint256 allowedLoss
+    ) internal pure {
+        _validateRoundingLoss(allowedLoss);
         uint256 increase = afterValue > beforeValue ? afterValue - beforeValue : 0;
         // Never allow a positive nominal credit with NO new backing, including
         // one-unit deposits. Subtraction avoids overflowing afterValue + tolerance.
-        if (increase == 0 || (increase < requiredIncrease && requiredIncrease - increase > MAX_ROUNDING_LOSS)) {
+        if (increase == 0 || (increase < requiredIncrease && requiredIncrease - increase > allowedLoss)) {
             revert StrategyBackingLoss(vault, measure, beforeValue, afterValue, requiredIncrease);
         }
     }
@@ -142,9 +182,25 @@ library StrategyBackingGuard {
         uint256 afterValue,
         uint256 received
     ) internal pure {
+        assertWithdrawal(vault, measure, beforeValue, afterValue, received, MAX_ROUNDING_LOSS);
+    }
+
+    function assertWithdrawal(
+        address vault,
+        uint8 measure,
+        uint256 beforeValue,
+        uint256 afterValue,
+        uint256 received,
+        uint256 allowedLoss
+    ) internal pure {
+        _validateRoundingLoss(allowedLoss);
         uint256 lost = beforeValue > afterValue ? beforeValue - afterValue : 0;
-        if (lost > received && lost - received > MAX_ROUNDING_LOSS) {
+        if (lost > received && lost - received > allowedLoss) {
             revert StrategyWithdrawalLoss(vault, measure, lost, received);
         }
+    }
+
+    function _validateRoundingLoss(uint256 allowedLoss) private pure {
+        if (allowedLoss > HARD_ROUNDING_LOSS_LIMIT) revert InvalidRoundingLoss(allowedLoss);
     }
 }

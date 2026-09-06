@@ -80,6 +80,8 @@ contract CurveRepayAdapter is BaseCurveBuyAdapter, ReentrancyGuard, IAaveFlashLo
         RepayParams memory repayParams,
         PermitInput memory collateralATokenPermit
     ) external nonReentrant {
+        _requireUser(repayParams.user);
+
         // Refresh the debt amount to repay
         repayParams.debtRepayAmount = _getDebtRepayAmount(
             IERC20(repayParams.debtRepayAsset),

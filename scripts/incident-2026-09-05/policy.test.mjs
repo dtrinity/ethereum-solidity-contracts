@@ -8,6 +8,14 @@ import { canonical, digest, validateInventory, migrationCalls, assertMigrationPl
 const address = (n) => `0x${n.toString(16).padStart(40, "0")}`;
 function fixture() {
   const c = { chainId: 1, oldRouter: address(1), token: address(2), collateral: address(3), asset: address(4), timelock: address(5) };
+  c.retirement = {
+    reviewed: true,
+    evidence: "Synthetic empty test inventory; no live deployment claim.",
+    callers: [],
+    extraAdapters: [],
+    claimers: [],
+  };
+  c.rounding = { reviewed: true, operationLoss: "1", strategies: [] };
   const d = { router: address(6), guard: address(7) };
   const v = {
     vault: address(8),
@@ -137,12 +145,6 @@ for (const [name, mutate] of [
     },
   ],
   [
-    "legacy cash",
-    (s) => {
-      s.routerCash = "1";
-    },
-  ],
-  [
     "legacy allowance",
     (s) => {
       s.tokenAllowance = "1";
@@ -172,17 +174,29 @@ test("planner: emits guard begin / authorize / pointers / retire / finish in one
   const calls = migrationCalls(c, d, s);
   assert.deepEqual(
     calls.map((x) => x.method),
-    ["begin", "setAuthorizedCaller", "setRouter", "migrateCore", "setAuthorizedCaller", "finish"],
+    [
+      "unpause",
+      "reinvestFees",
+      "pause",
+      "rescuePausedCash",
+      "begin",
+      "setAuthorizedCaller",
+      "setRouter",
+      "migrateCore",
+      "setAuthorizedCaller",
+      "finish",
+    ],
   );
   assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
 });
 for (const [name, mutate] of [
   ["omitted final guard", (xs) => xs.slice(0, -1)],
-  ["omitted legacy revocation", (xs) => xs.filter((_, i) => i !== 4)],
+  ["omitted legacy revocation", (xs) => xs.filter((x) => !(x.method === "setAuthorizedCaller" && x.args[0] === address(1)))],
   [
     "changed pointer ordering",
     (xs) => {
-      [xs[2], xs[3]] = [xs[3], xs[2]];
+      const i = xs.findIndex((x) => x.method === "setRouter");
+      [xs[i], xs[i + 1]] = [xs[i + 1], xs[i]];
       return xs;
     },
   ],

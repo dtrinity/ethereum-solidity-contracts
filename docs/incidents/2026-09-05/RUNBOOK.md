@@ -1,5 +1,7 @@
 # Operator runbook — paused Ethereum sdUSD router replacement
 
+> **Follow-up amendment:** Before using this historical runbook, read `docs/security/2026-09-05-followup/DEPLOYMENT.md` and `AGENT_HANDOFF.md`. The follow-up requires fresh generation-3 router/modules, explicit rounding review and legacy reward-capability retirement. Old plan hashes, constructor arguments and generation-2 components are not reusable. No reopening approval is implied.
+
 ## Preconditions
 
 Use the full repository at the supplied base, or consciously rebase and re-review.

@@ -61,11 +61,24 @@ abstract contract DStakeRouterV2Storage is AccessControl, ReentrancyGuard, Pausa
     address public governanceModule;
     address public rebalanceModule;
 
+    // Append-only: replacement routers and their modules MUST share this layout.
+    // Zero encoding means the historical default of one underlying base unit.
+    mapping(address => uint256) internal _strategyRoundingLossPlusOne;
+    uint256 public operationRoundingLoss;
+
+    function strategyRoundingLoss(address strategyShare) public view returns (uint256) {
+        uint256 encoded = _strategyRoundingLossPlusOne[strategyShare];
+        return encoded == 0 ? 1 : encoded - 1;
+    }
+
+    // Hard absolute safety ceiling, never a percentage or donation-derived quote.
+    uint256 public constant MAX_ACCOUNTING_ROUNDING_LOSS = 16;
+
     // --- Constants ---
     uint256 public constant MAX_REINVEST_INCENTIVE_BPS = BasisPointConstants.ONE_PERCENT_BPS * 20;
     uint256 public constant MAX_WITHDRAWAL_FEE_BPS = BasisPointConstants.ONE_PERCENT_BPS;
     bytes32 internal constant STORAGE_FINGERPRINT =
-        keccak256("dtrinity.dstake.router.v2.storage:2:backing-conservation");
+        keccak256("dtrinity.dstake.router.v2.storage:3:bounded-rounding-and-compounding");
 
     constructor(address dStakeToken_, address collateralVault_) {
         if (dStakeToken_ == address(0) || collateralVault_ == address(0)) {
@@ -82,6 +95,7 @@ abstract contract DStakeRouterV2Storage is AccessControl, ReentrancyGuard, Pausa
 
         // Defaults mirror the original router constructor.
         dustTolerance = 1;
+        operationRoundingLoss = 1;
         maxVaultCount = 10;
     }
 }

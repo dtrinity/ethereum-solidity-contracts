@@ -261,40 +261,23 @@ describe("DStakeRouterV2 governance flows", function () {
         await expectNavInvariant(navBefore);
       });
 
-      it("removes an adapter with dust and restores NAV after reconfiguration", async function () {
-        const depositReceipt = await depositThroughRouter(toUnits("420"));
-        const depositEvent = parseRouterEvent(depositReceipt, "RouterDepositRouted");
-        const targetVault = depositEvent?.args?.strategyVault as string;
-        expect(targetVault, "target vault").to.be.a("string");
-        const targetConfig = multiVault.vaults.find((vault) => vault.strategyVault === targetVault)!;
-        const alternateVault = multiVault.vaults.find((vault) => vault.strategyVault !== targetVault)!;
-
-        const primaryBalance = await shareBalance(targetVault);
-        await router.connect(governance).rebalanceStrategiesByShares(targetVault, alternateVault.strategyVault, primaryBalance / 3n, 1n);
-
-        const navBeforeRemoval = await dStakeToken.totalAssets();
+      it("does not delist a funded suspended strategy or hide its NAV", async function () {
+        const receipt = await depositThroughRouter(toUnits("420"));
+        const event = parseRouterEvent(receipt, "RouterDepositRouted");
+        const targetVault = event?.args?.strategyVault as string;
+        expect(targetVault).to.be.a("string");
         const adapterAddress = await router.strategyShareToAdapter(targetVault);
-
         await router.connect(governance).suspendVaultForRemoval(targetVault);
-        expect(await shareBalance(targetVault)).to.be.gt(0n);
-        await router.connect(governance).removeAdapter(targetVault);
-        expect(await router.strategyShareToAdapter(targetVault)).to.equal(ethers.ZeroAddress);
-
-        await router.connect(governance).setVaultStatus(targetVault, VAULT_STATUS.Active);
-        await expect(
-          router.connect(governance).rebalanceStrategiesByShares(alternateVault.strategyVault, targetVault, 1n, 1n),
-        ).to.be.revertedWithCustomError(router, "AdapterNotFound");
-
-        await router.connect(governance).addAdapter(targetVault, adapterAddress);
-        await router.connect(governance).updateVaultConfig({
-          strategyVault: targetVault,
-          adapter: adapterAddress,
-          targetBps: targetConfig.targetBps,
-          status: VAULT_STATUS.Active,
-        });
-
-        const navAfterRestore = await dStakeToken.totalAssets();
-        expect(absBigInt(navAfterRestore - navBeforeRemoval)).to.be.lte(MAX_NAV_DRIFT);
+        const held = await shareBalance(targetVault);
+        expect(held).to.be.gt(0n);
+        const before = await dStakeToken.totalAssets();
+        const module = await ethers.getContractAt("DStakeRouterV2GovernanceModule", await router.governanceModule());
+        await expect(router.connect(governance).removeAdapter(targetVault))
+          .to.be.revertedWithCustomError(module, "FundedStrategyCannotBeRemoved")
+          .withArgs(targetVault, held);
+        expect(await router.strategyShareToAdapter(targetVault)).to.equal(adapterAddress);
+        expect(await shareBalance(targetVault)).to.equal(held);
+        expect(absBigInt((await dStakeToken.totalAssets()) - before)).to.be.lte(MAX_NAV_DRIFT);
       });
 
       it("keeps routing coherent when vault status flips rapidly", async function () {
@@ -321,17 +304,17 @@ describe("DStakeRouterV2 governance flows", function () {
         expect(activeVaults).to.include(toggledVault);
 
         const fromVault = activeVault;
-        const toVaultConfig = multiVault.vaults.find((vault) => vault.strategyVault.toLowerCase() !== fromVault.toLowerCase());
-        if (!toVaultConfig) {
+        const destVaultConfig = multiVault.vaults.find((vault) => vault.strategyVault.toLowerCase() !== fromVault.toLowerCase());
+        if (!destVaultConfig) {
           throw new Error("missing destination vault after status flips");
         }
-        const toVault = toVaultConfig.strategyVault;
+        const destVault = destVaultConfig.strategyVault;
 
         const fromBalance = await shareBalance(fromVault);
         const moveAmount = fromBalance / 4n;
-        const receipt = await (await router.connect(governance).rebalanceStrategiesByShares(fromVault, toVault, moveAmount, 1n)).wait();
+        const receipt = await (await router.connect(governance).rebalanceStrategiesByShares(fromVault, destVault, moveAmount, 1n)).wait();
         const event = parseRouterEvent(receipt, "StrategySharesExchanged");
-        expect(event?.args?.toStrategyShare).to.equal(toVault);
+        expect(event?.args?.toStrategyShare).to.equal(destVault);
       });
     });
   });

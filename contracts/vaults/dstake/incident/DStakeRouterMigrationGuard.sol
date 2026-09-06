@@ -6,6 +6,10 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 import { DStakeRouterV2 } from "../DStakeRouterV2.sol";
 import { DStakeRouterV2Storage } from "../DStakeRouterV2Storage.sol";
 
+interface IMigrationRewardsController {
+    function getClaimer(address user) external view returns (address);
+}
+
 interface IMigrationToken {
     function router() external view returns (address);
     function collateralVault() external view returns (address);
@@ -41,6 +45,17 @@ contract DStakeRouterMigrationGuard {
     DStakeRouterV2 public immutable newRouter;
     bytes32 public immutable replacementCodeHash;
 
+    // Explicit, reviewed retirement inventory. This does not enumerate roles;
+    // deployment tooling must discover ALL authorized legacy callers first.
+    struct ClaimerRevocation {
+        address controller;
+        address user;
+    }
+    address[] private retiredCallers;
+    address[] private retirementAdapters;
+    ClaimerRevocation[] private claimerRevocations;
+    bytes32 public immutable retirementConfigHash;
+
     uint8 public phase; // 0 unused, 1 begin executed, 2 migration verified
     uint256 private startingAssets;
     uint256 private startingSupply;
@@ -58,7 +73,17 @@ contract DStakeRouterMigrationGuard {
         uint256 supply
     );
 
-    constructor(address timelock_, address token_, address collateral_, address old_, address new_, address deployer_) {
+    constructor(
+        address timelock_,
+        address token_,
+        address collateral_,
+        address old_,
+        address new_,
+        address deployer_,
+        address[] memory retiredCallers_,
+        address[] memory retirementAdapters_,
+        ClaimerRevocation[] memory claimers_
+    ) {
         require(timelock_ != address(0) && token_ != address(0) && collateral_ != address(0), "zero anchor");
         require(old_ != new_ && old_.code.length != 0 && new_.code.length != 0, "invalid routers");
         require(deployer_ != address(0) && deployer_ != timelock_, "invalid deployer");
@@ -69,6 +94,27 @@ contract DStakeRouterMigrationGuard {
         newRouter = DStakeRouterV2(new_);
         retiredDeployer = deployer_;
         replacementCodeHash = new_.codehash;
+        require(
+            retiredCallers_.length <= 32 && retirementAdapters_.length <= 100 && claimers_.length <= 64,
+            "inventory too large"
+        );
+        for (uint256 i; i < retiredCallers_.length; ++i) {
+            address caller = retiredCallers_[i];
+            require(
+                caller.code.length != 0 && caller != new_ && caller != old_ && caller != timelock_,
+                "bad retired caller"
+            );
+            retiredCallers.push(caller);
+        }
+        for (uint256 i; i < retirementAdapters_.length; ++i) {
+            require(retirementAdapters_[i].code.length != 0, "bad retirement adapter");
+            retirementAdapters.push(retirementAdapters_[i]);
+        }
+        for (uint256 i; i < claimers_.length; ++i) {
+            require(claimers_[i].controller.code.length != 0 && claimers_[i].user != address(0), "bad claimer check");
+            claimerRevocations.push(claimers_[i]);
+        }
+        retirementConfigHash = keccak256(abi.encode(retiredCallers_, retirementAdapters_, claimers_));
     }
 
     modifier onlyTimelock() {
@@ -83,7 +129,7 @@ contract DStakeRouterMigrationGuard {
         _check(IMigrationCollateral(collateral).router() == address(oldRouter), "old-vault-pointer");
         _check(IMigrationToken(token).collateralVault() == collateral, "token-vault");
         _check(address(newRouter).codehash == replacementCodeHash, "replacement-code");
-        _check(newRouter.BACKING_GUARD_VERSION() == 2, "guard-version");
+        _check(newRouter.BACKING_GUARD_VERSION() == 3, "guard-version");
         _check(
             newRouter.dStakeToken() == token && address(newRouter.collateralVault()) == collateral,
             "new-immutables"
@@ -148,6 +194,26 @@ contract DStakeRouterMigrationGuard {
             if (i != roles.length - 1) _check(newRouter.hasRole(roles[i], timelock), "timelock-authority");
         }
         _check(newRouter.hasRole(keccak256("DSTAKE_TOKEN_ROLE"), token), "token-role");
+        // Retire independent reward-manager capabilities, not only the router.
+        // Replacement reward managers are deployed/authorized SEPARATELY, paused,
+        // after this zero-value-movement retirement. No reward is claimed here.
+        for (uint256 i; i < retiredCallers.length; ++i) {
+            address caller = retiredCallers[i];
+            _check(!IAccessControl(collateral).hasRole(ROUTER_ROLE, caller), "retired-custody-role");
+            _check(!IAccessControl(collateral).hasRole(ADMIN, caller), "retired-custody-admin");
+            for (uint256 j; j < retirementAdapters.length; ++j) {
+                IAccessControl adapter = IAccessControl(retirementAdapters[j]);
+                _check(!adapter.hasRole(AUTHORIZED, caller), "retired-reward-caller");
+                _check(!adapter.hasRole(ADMIN, caller), "retired-adapter-admin");
+            }
+        }
+        for (uint256 i; i < claimerRevocations.length; ++i) {
+            ClaimerRevocation memory item = claimerRevocations[i];
+            _check(
+                IMigrationRewardsController(item.controller).getClaimer(item.user) == address(0),
+                "legacy-reward-claimer"
+            );
+        }
         phase = 2;
         emit MigrationVerified(address(oldRouter), address(newRouter), startingAssets, startingSupply);
     }

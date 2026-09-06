@@ -57,7 +57,20 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
     error VaultMustBeSuspended(address vault);
     error VaultTargetNotZero(address vault, uint256 targetBps);
 
+    error InvalidAccountingRoundingLoss(uint256 value);
+    error FundedStrategyCannotBeRemoved(address strategyShare, uint256 shares);
+    error StrategyDustTooValuable(address strategyShare, uint256 reportedValue, uint256 redeemableValue);
+
     // --- Events ---
+    event StrategyRoundingLossSet(address indexed strategyShare, uint256 allowedLoss);
+    event OperationRoundingLossSet(uint256 allowedLoss);
+    event RetiredStrategyDustDisposed(
+        address indexed strategyShare,
+        address indexed recipient,
+        uint256 shares,
+        uint256 value
+    );
+
     event AdapterSet(address indexed strategyShare, address adapterAddress);
     event AdapterRemoved(address indexed strategyShare, address adapterAddress);
     event DefaultDepositStrategyShareSet(address indexed strategyShare);
@@ -85,6 +98,48 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
     }
 
     // --- Governance entry points (delegate-called) ---
+
+    function setStrategyRoundingLoss(address strategyShare, uint256 allowedLoss) external {
+        if (!vaultExists[strategyShare]) revert VaultNotFound(strategyShare);
+        if (allowedLoss > MAX_ACCOUNTING_ROUNDING_LOSS) revert InvalidAccountingRoundingLoss(allowedLoss);
+        _strategyRoundingLossPlusOne[strategyShare] = allowedLoss + 1;
+        emit StrategyRoundingLossSet(strategyShare, allowedLoss);
+    }
+
+    function setOperationRoundingLoss(uint256 allowedLoss) external {
+        if (allowedLoss > MAX_ACCOUNTING_ROUNDING_LOSS) revert InvalidAccountingRoundingLoss(allowedLoss);
+        operationRoundingLoss = allowedLoss;
+        emit OperationRoundingLossSet(allowedLoss);
+    }
+
+    /**
+     * @notice Explicit one-base-unit dust disposal while paused; does not write off material backing.
+     * @dev Batch atomically with removeVault/removeAdapter to avoid donation front-running.
+     *      Suspended funded strategies otherwise remain in NAV. The recipient is the
+     *      authorized caller (normally the Timelock), NOT an unreviewed arbitrary address.
+     */
+    function disposeRetiredStrategyDust(address strategyShare) external {
+        VaultConfig memory config = _getVaultConfig(strategyShare);
+        if (config.status != VaultStatus.Suspended) revert VaultMustBeSuspended(strategyShare);
+        if (config.targetBps != 0) revert VaultTargetNotZero(strategyShare, config.targetBps);
+        uint256 balance = IERC20(strategyShare).balanceOf(address(_collateralVault));
+        if (balance == 0) return;
+        uint256 reported = IDStableConversionAdapterV2(config.adapter).strategyShareValueInDStable(
+            strategyShare,
+            balance
+        );
+        uint256 redeemable = IERC4626(strategyShare).previewRedeem(balance);
+        if (reported > 1 || redeemable > 1) revert StrategyDustTooValuable(strategyShare, reported, redeemable);
+        _collateralVault.transferStrategyShares(strategyShare, balance, msg.sender);
+        uint256 remaining = IERC20(strategyShare).balanceOf(address(_collateralVault));
+        if (remaining != 0) revert FundedStrategyCannotBeRemoved(strategyShare, remaining);
+        emit RetiredStrategyDustDisposed(
+            strategyShare,
+            msg.sender,
+            balance,
+            reported > redeemable ? reported : redeemable
+        );
+    }
 
     function setReinvestIncentive(uint256 newIncentiveBps) external {
         if (newIncentiveBps > MAX_REINVEST_INCENTIVE_BPS) {
@@ -188,7 +243,23 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
             revert VaultNotActive(strategyShare);
         }
 
-        StrategyBackingGuard.deposit(_dStable, strategyShare, adapterAddress, _collateralVault, amountToSweep);
+        uint256 backingBefore = _totalManagedAssets();
+        StrategyBackingGuard.deposit(
+            _dStable,
+            strategyShare,
+            adapterAddress,
+            _collateralVault,
+            amountToSweep,
+            strategyRoundingLoss(strategyShare)
+        );
+        StrategyBackingGuard.assertWithdrawal(
+            address(0),
+            2,
+            backingBefore,
+            _totalManagedAssets(),
+            0,
+            operationRoundingLoss
+        );
         emit SurplusSwept(amountToSweep, strategyShare);
     }
 
@@ -205,7 +276,28 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
             revert TotalAllocationInvalid(totalTargetBps);
         }
 
-        _clearVaultConfigs();
+        // Retain accounting membership for every kept position. The previous
+        // clear-and-readd implementation transiently delisted all funded assets.
+        // Remove only omitted strategies; funded omissions fail before any loss.
+        uint256 cursor;
+        while (cursor < vaultConfigs.length) {
+            address previousVault = vaultConfigs[cursor].strategyVault;
+            bool retained;
+            for (uint256 j; j < configCount; ++j) {
+                if (configs[j].strategyVault == previousVault) {
+                    retained = true;
+                    break;
+                }
+            }
+            if (retained) ++cursor;
+            else _removeVault(previousVault);
+        }
+        // Rebuild ordered configuration only, preserving adapters and NAV membership.
+        for (uint256 i; i < vaultConfigs.length; ++i) {
+            delete vaultToIndex[vaultConfigs[i].strategyVault];
+            delete vaultExists[vaultConfigs[i].strategyVault];
+        }
+        delete vaultConfigs;
         for (uint256 i; i < configCount; ) {
             _addVaultConfig(configs[i]);
             unchecked {
@@ -319,6 +411,10 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
             }
         }
 
+        // Enforced here as well as in new collateral deployments: the live
+        // non-upgradeable collateral vault does not contain this check yet.
+        uint256 heldShares = IERC20(strategyShare).balanceOf(address(_collateralVault));
+        if (heldShares != 0) revert FundedStrategyCannotBeRemoved(strategyShare, heldShares);
         _collateralVault.removeSupportedStrategyShare(strategyShare);
 
         if (_defaultDepositStrategyShare == strategyShare) {
@@ -326,6 +422,7 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
         }
 
         delete _strategyShareToAdapter[strategyShare];
+        delete _strategyRoundingLossPlusOne[strategyShare];
 
         if (vaultExists[strategyShare]) {
             vaultConfigs[vaultToIndex[strategyShare]].adapter = address(0);
@@ -415,21 +512,6 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
         delete vaultExists[vault];
 
         emit VaultConfigRemoved(vault);
-    }
-
-    function _clearVaultConfigs() internal {
-        uint256 configCount = vaultConfigs.length;
-        for (uint256 i; i < configCount; ) {
-            address vault = vaultConfigs[i].strategyVault;
-            _suspendVaultForRemoval(vault);
-            _removeAdapter(vault);
-            delete vaultToIndex[vault];
-            delete vaultExists[vault];
-            unchecked {
-                ++i;
-            }
-        }
-        delete vaultConfigs;
     }
 
     function _syncAdapter(address strategyShare, address adapterAddress) internal {

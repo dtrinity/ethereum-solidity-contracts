@@ -19,44 +19,13 @@ import {
 } from "../../typescript/deploy-ids";
 import { GovernanceExecutor } from "../../typescript/hardhat/governance";
 
-const ADAPTER_ACCESS_ABI = ["function setAuthorizedCaller(address caller, bool authorized) external"];
 const ACCESS_CONTROL_ABI = [
   "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
   "function REWARDS_MANAGER_ROLE() view returns (bytes32)",
+  "function COMPOUND_PAUSER_ROLE() view returns (bytes32)",
   "function hasRole(bytes32 role, address account) view returns (bool)",
   "function grantRole(bytes32 role, address account) external",
 ];
-
-/**
- * Authorizes reward managers to pull rewards from adapters when both addresses are valid.
- *
- * @param adapterAddress Address of adapter contract managing authorized callers.
- * @param caller Reward manager or router address that should be granted access.
- * @param signer Signer capable of executing the authorization transaction.
- * @param manualActions Collector for manual follow-ups if authorization cannot be performed.
- */
-async function ensureAdapterAuthorizedCaller(
-  adapterAddress: string,
-  caller: string,
-  signer: Awaited<ReturnType<typeof ethers.getSigner>>,
-  manualActions: string[],
-): Promise<void> {
-  if (!adapterAddress || adapterAddress === ethers.ZeroAddress || !caller || caller === ethers.ZeroAddress) {
-    return;
-  }
-
-  const adapter = await ethers.getContractAt(ADAPTER_ACCESS_ABI, adapterAddress, signer);
-
-  try {
-    const tx = await adapter.setAuthorizedCaller(caller, true);
-    await tx.wait();
-  } catch (error) {
-    manualActions.push(`Adapter (${adapterAddress}).setAuthorizedCaller(${caller}, true)`);
-    console.warn(
-      `⚠️  Unable to authorize caller ${caller} on adapter ${adapterAddress}: ${error instanceof Error ? error.message : error}`,
-    );
-  }
-}
 
 /**
  * Grants a reward-manager role to the configured address when it is not already present.
@@ -70,7 +39,7 @@ async function ensureAdapterAuthorizedCaller(
  */
 async function ensureRewardManagerRole(params: {
   rewardManagerAddress: string;
-  roleName: "DEFAULT_ADMIN_ROLE" | "REWARDS_MANAGER_ROLE";
+  roleName: "DEFAULT_ADMIN_ROLE" | "REWARDS_MANAGER_ROLE" | "COMPOUND_PAUSER_ROLE";
   account: string;
   signer: Awaited<ReturnType<typeof ethers.getSigner>>;
   manualActions: string[];
@@ -102,6 +71,11 @@ async function ensureRewardManagerRole(params: {
 }
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  if (hre.network.live) {
+    throw new Error(
+      "Live reward replacement requires scripts/followup-2026-09-05/reward-ops.mjs; this generic deployment is local/test-only.",
+    );
+  }
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -308,7 +282,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       rewardManagerConfig.initialExchangeThreshold,
     ];
 
-    const rewardManagerDeploymentName = `DStakeRewardManagerDLend_${instanceKey}`;
+    const rewardManagerDeploymentName = `DStakeRewardManagerDLend_SettlementV2_${instanceKey}`;
     const deployment = await deploy(rewardManagerDeploymentName, {
       from: deployer,
       contract: "DStakeRewardManagerDLend",
@@ -349,20 +323,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const emissionOwner = await emissionManager.owner();
     const rewardsController = await emissionManager.getRewardsController();
     const rewardsControllerContract = RewardsControllerFactory.connect(rewardsController, deployerSigner);
-    const existingClaimer = await rewardsControllerContract.getClaimer(targetStaticATokenWrapperAddress);
+    const existingClaimer = await rewardsControllerContract.getClaimer(dStakeCollateralVaultAddress);
     const needsClaimerUpdate = existingClaimer.toLowerCase() !== deployment.address.toLowerCase();
 
     if (needsClaimerUpdate) {
-      const setClaimerData = emissionManager.interface.encodeFunctionData("setClaimer", [
-        targetStaticATokenWrapperAddress,
-        deployment.address,
-      ]);
+      const setClaimerData = emissionManager.interface.encodeFunctionData("setClaimer", [dStakeCollateralVaultAddress, deployment.address]);
       const completedOrQueued = await executor.tryOrQueue(
         async () => {
           if (emissionOwner.toLowerCase() !== deployer.toLowerCase()) {
             throw new Error(`Deployer ${deployer} is not EmissionManager owner ${emissionOwner}`);
           }
-          const tx = await emissionManager.connect(deployerSigner).setClaimer(targetStaticATokenWrapperAddress, deployment.address);
+          const tx = await emissionManager.connect(deployerSigner).setClaimer(dStakeCollateralVaultAddress, deployment.address);
           await tx.wait();
         },
         () => ({ to: emissionManagerDeployment.address, value: "0", data: setClaimerData }),
@@ -370,30 +341,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
       if (!completedOrQueued && !executor.useSafe) {
         manualActions.push(
-          `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${targetStaticATokenWrapperAddress}, ${deployment.address})`,
+          `EmissionManager (${emissionManagerDeployment.address}).setClaimer(${dStakeCollateralVaultAddress}, ${deployment.address})`,
         );
       }
     }
 
-    // Authorize the rewards manager contract as an adapter caller (contract-to-contract auth).
-    if (deployment.address) {
-      const routerContract = await ethers.getContractAt("DStakeRouterV2", dStakeRouterAddress);
-
-      // Authorize for the managed strategy share adapter
-      const managedAdapterAddress = await routerContract.strategyShareToAdapter(targetStaticATokenWrapperAddress);
-      await ensureAdapterAuthorizedCaller(managedAdapterAddress, deployment.address, deployerSigner, manualActions);
-
-      // Also authorize for the default deposit strategy adapter if different (e.g., Idle Vault)
-      // This is required because the manager compounds by depositing into the default strategy.
-      const defaultStrategyShare = await routerContract.defaultDepositStrategyShare();
-
-      if (defaultStrategyShare !== ethers.ZeroAddress && defaultStrategyShare !== targetStaticATokenWrapperAddress) {
-        const defaultAdapterAddress = await routerContract.strategyShareToAdapter(defaultStrategyShare);
-        await ensureAdapterAuthorizedCaller(defaultAdapterAddress, deployment.address, deployerSigner, manualActions);
-      }
-
-      console.log(`    Deployed DStakeRewardManagerDLend for ${instanceKey}.`);
-    }
+    // Managers use router.compoundDeposit and must NEVER receive adapter roles.
+    await ensureRewardManagerRole({
+      rewardManagerAddress: deployment.address,
+      roleName: "COMPOUND_PAUSER_ROLE",
+      account: rewardManagerAdmin,
+      signer: deployerSigner,
+      manualActions,
+    });
+    // Deliberately leave auctions paused. Local fixtures explicitly open them;
+    // production uses the separate reviewed deployment and activation plans.
   }
 
   const flushed = await executor.flush("Ethereum mainnet dSTAKE dLEND reward manager claimer setup");
@@ -414,9 +376,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 // Define tags and dependencies
-func.tags = ["dStakeDLendRewards", "dStake"];
+func.tags = ["dStakeDLendRewards", "dStakeRewards", "dStake"];
 func.dependencies = ["dStakeConfigure"];
 
 // Mark as executed once.
-func.id = "dstake_dlend_rewards";
+func.id = "dstake_dlend_rewards_settlement_v2";
 func.runAtTheEnd = true;

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { RewardClaimable } from "../../rewards_claimable/RewardClaimable.sol";
-import { DStakeRouterV2 } from "../DStakeRouterV2.sol";
-import { IDStakeCollateralVaultV2 } from "../interfaces/IDStakeCollateralVaultV2.sol";
-import { IDStableConversionAdapterV2 } from "../interfaces/IDStableConversionAdapterV2.sol";
+import { DStakeRewardManagerBase } from "./DStakeRewardManagerBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -52,12 +49,10 @@ interface IMetaMorpho is IERC4626 {
  *      Note: Unlike dLEND which has on-chain reward accrual, MetaMorpho relies on
  *      off-chain computation and API integration for reward distribution.
  */
-contract DStakeRewardManagerMetaMorpho is RewardClaimable {
+contract DStakeRewardManagerMetaMorpho is DStakeRewardManagerBase {
     using SafeERC20 for IERC20;
 
     // --- State ---
-    address public immutable dStakeCollateralVault;
-    DStakeRouterV2 public immutable dStakeRouter;
     IMetaMorpho public immutable metaMorphoVault;
     IUniversalRewardsDistributor public urd; // Can be updated by admin
 
@@ -72,11 +67,6 @@ contract DStakeRewardManagerMetaMorpho is RewardClaimable {
     event URDUpdated(address oldURD, address newURD);
     event RewardsSkimmed(address indexed token, uint256 amount);
     event RewardsClaimed(address indexed token, uint256 amount);
-    event ExchangeAssetProcessed(
-        address indexed strategyShare,
-        uint256 strategyShareAmount,
-        uint256 dStableCompoundedAmount
-    );
     event EmergencyWithdraw(address indexed token, uint256 amount, address indexed recipient);
 
     // --- Errors ---
@@ -102,8 +92,9 @@ contract DStakeRewardManagerMetaMorpho is RewardClaimable {
         uint256 _initialTreasuryFeeBps,
         uint256 _initialExchangeThreshold
     )
-        RewardClaimable(
-            IDStakeCollateralVaultV2(_dStakeCollateralVault).dStable(), // exchangeAsset is dStable
+        DStakeRewardManagerBase(
+            _dStakeCollateralVault,
+            _dStakeRouter,
             _treasury,
             _maxTreasuryFeeBps,
             _initialTreasuryFeeBps,
@@ -117,8 +108,6 @@ contract DStakeRewardManagerMetaMorpho is RewardClaimable {
             revert InvalidRouter();
         }
 
-        dStakeCollateralVault = _dStakeCollateralVault;
-        dStakeRouter = DStakeRouterV2(_dStakeRouter);
         metaMorphoVault = IMetaMorpho(_metaMorphoVault);
 
         if (_urd != address(0)) {
@@ -188,7 +177,7 @@ contract DStakeRewardManagerMetaMorpho is RewardClaimable {
      * @dev Claim data must be obtained from Morpho Rewards API
      * @dev Claims rewards to this contract for processing and distribution
      */
-    function claimRewardsFromURD(ClaimData[] calldata claimData) external onlyRole(REWARDS_MANAGER_ROLE) {
+    function claimRewardsFromURD(ClaimData[] calldata claimData) external onlyRole(REWARDS_MANAGER_ROLE) nonReentrant {
         if (address(urd) == address(0)) {
             revert InvalidURD();
         }
@@ -246,58 +235,12 @@ contract DStakeRewardManagerMetaMorpho is RewardClaimable {
     }
 
     /**
-     * @notice Processes the exchange asset (dStable) and compounds it into the vault
-     * @param exchangeAmountIn The amount of dStable to compound
-     */
-    function _processExchangeAssetDeposit(uint256 exchangeAmountIn) internal override {
-        // Get the router's default deposit strategy share
-        address defaultStrategyShare = dStakeRouter.defaultDepositStrategyShare();
-        if (defaultStrategyShare == address(0)) {
-            revert DefaultDepositAssetNotSet();
-        }
-
-        // Get the adapter for the default strategy share
-        address adapter = dStakeRouter.strategyShareToAdapter(defaultStrategyShare);
-        if (adapter == address(0)) {
-            revert AdapterNotSetForDefaultAsset();
-        }
-
-        // Approve adapter to spend dStable
-        IERC20(exchangeAsset).forceApprove(adapter, exchangeAmountIn);
-
-        // Check collateral vault balance before conversion
-        uint256 balanceBefore = IERC20(defaultStrategyShare).balanceOf(dStakeCollateralVault);
-
-        // Convert dStable to strategy share via adapter
-        (address returnedStrategyShare, uint256 strategyShareAmount) = IDStableConversionAdapterV2(adapter)
-            .depositIntoStrategy(exchangeAmountIn);
-
-        // Verify the adapter returned the expected strategy share
-        if (returnedStrategyShare != defaultStrategyShare) {
-            revert AdapterReturnedUnexpectedAsset(defaultStrategyShare, returnedStrategyShare);
-        }
-
-        // Verify that the collateral vault actually received the expected assets
-        uint256 balanceAfter = IERC20(defaultStrategyShare).balanceOf(dStakeCollateralVault);
-        uint256 actualReceived = balanceAfter - balanceBefore;
-        if (actualReceived < strategyShareAmount) {
-            revert InsufficientAssetsReceived(strategyShareAmount, actualReceived);
-        }
-
-        // Emit event for tracking (use actualReceived for accuracy)
-        emit ExchangeAssetProcessed(defaultStrategyShare, actualReceived, exchangeAmountIn);
-
-        // Clear any remaining approval now that the transfer has completed
-        IERC20(exchangeAsset).forceApprove(adapter, 0);
-    }
-
-    /**
      * @notice Emergency function to recover stuck tokens
      * @param token The token to recover
      * @param amount The amount to recover
      * @dev Only callable by admin
      */
-    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function emergencyWithdraw(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         if (treasury == address(0)) {
             revert ZeroAddress();
         }

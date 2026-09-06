@@ -63,7 +63,10 @@ contract RouterGovernanceInvariant is Test {
 
         router = new DStakeRouterV2(address(dStakeToken), address(collateralVault));
 
-        DStakeRouterV2GovernanceModule governanceModule = new DStakeRouterV2GovernanceModule(address(dStakeToken), address(collateralVault));
+        DStakeRouterV2GovernanceModule governanceModule = new DStakeRouterV2GovernanceModule(
+            address(dStakeToken),
+            address(collateralVault)
+        );
         router.setGovernanceModule(address(governanceModule));
 
         dStakeToken.setRouter(address(router));
@@ -265,7 +268,21 @@ contract RouterGovernanceInvariant is Test {
         if (adapter == address(0)) {
             return;
         }
-        router.removeAdapter(target);
+        uint256 held = IERC20(target).balanceOf(address(collateralVault));
+        if (held != 0) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    DStakeRouterV2GovernanceModule.FundedStrategyCannotBeRemoved.selector,
+                    target,
+                    held
+                )
+            );
+            router.removeAdapter(target);
+            assertEq(router.strategyShareToAdapter(target), adapter);
+            assertEq(IERC20(target).balanceOf(address(collateralVault)), held);
+        } else {
+            router.removeAdapter(target);
+        }
         _ensureDefaultVaultHealthy();
     }
 
@@ -302,7 +319,9 @@ contract RouterGovernanceInvariant is Test {
             address vault = router.getVaultConfigByIndex(i).strategyVault;
             VaultState storage state = _vaultState(vault);
 
-            DStakeRouterV2Storage.VaultStatus status = DStakeRouterV2Storage.VaultStatus(uint8(uint256(keccak256(abi.encode(seed, i))) % 3));
+            DStakeRouterV2Storage.VaultStatus status = DStakeRouterV2Storage.VaultStatus(
+                uint8(uint256(keccak256(abi.encode(seed, i))) % 3)
+            );
             uint256 target = 0;
             if (status == DStakeRouterV2Storage.VaultStatus.Active) {
                 lastActiveIndex = i;
@@ -542,7 +561,9 @@ contract RouterGovernanceInvariant is Test {
         if (deposits) {
             return cfg.status == DStakeRouterV2Storage.VaultStatus.Active && cfg.targetBps > 0;
         }
-        return cfg.status == DStakeRouterV2Storage.VaultStatus.Active || cfg.status == DStakeRouterV2Storage.VaultStatus.Impaired;
+        return
+            cfg.status == DStakeRouterV2Storage.VaultStatus.Active ||
+            cfg.status == DStakeRouterV2Storage.VaultStatus.Impaired;
     }
 
     function _distributeAmounts(uint256 seed, uint256 amount, uint256 count) internal pure returns (uint256[] memory) {
