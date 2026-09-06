@@ -109,6 +109,24 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
+      // Incident replacements and both delegatecall modules must use the same
+      // compiler pipeline as the router; deployment tooling checks build-info.
+      "contracts/vaults/dstake/DStakeRouterV2GovernanceModule.sol": {
+        version: "0.8.20",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      "contracts/vaults/dstake/DStakeRouterV2RebalanceModule.sol": {
+        version: "0.8.20",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      "contracts/vaults/dstake/incident/DStakeRouterV2Incident.sol": {
+        version: "0.8.20",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      "contracts/vaults/dstake/incident/DStakeRouterMigrationGuard.sol": {
+        version: "0.8.20",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
       // RewardClaimable is part of the inheritance chain; compile with IR as well
       "contracts/vaults/rewards_claimable/RewardClaimable.sol": {
         version: "0.8.20",

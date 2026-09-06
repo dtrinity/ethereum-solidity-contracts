@@ -2,11 +2,10 @@
 pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IDStableConversionAdapterV2 } from "./interfaces/IDStableConversionAdapterV2.sol";
+import { StrategyBackingGuard } from "./libraries/StrategyBackingGuard.sol";
 import { DStakeRouterV2Storage } from "./DStakeRouterV2Storage.sol";
 import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 
@@ -17,9 +16,6 @@ import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
  *      are executed through delegatecall from the router, which enforces access control.
  */
 contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2Module {
-    using SafeERC20 for IERC20;
-    using Math for uint256;
-
     // --- Errors (mirrors router) ---
     error AdapterNotFound(address strategyShare);
     error ZeroPreviewWithdrawAmount(address strategyShare);
@@ -48,15 +44,6 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
         uint256 amount,
         address indexed initiator
     );
-
-    struct ExchangeLocals {
-        address fromAdapterAddress;
-        address toAdapterAddress;
-        IDStableConversionAdapterV2 fromAdapter;
-        IDStableConversionAdapterV2 toAdapter;
-        uint256 dStableValueIn;
-        uint256 calculatedToStrategyShareAmount;
-    }
 
     constructor(address dStakeToken_, address collateralVault_) DStakeRouterV2Storage(dStakeToken_, collateralVault_) {}
 
@@ -89,84 +76,7 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
     ) external {
         if (fromShareAmount == 0) revert ZeroInputDStableValue(fromStrategyShare, 0);
         if (fromStrategyShare == address(0) || toStrategyShare == address(0)) revert ZeroAddress();
-
-        ExchangeLocals memory locals;
-        locals.fromAdapterAddress = _strategyShareToAdapter[fromStrategyShare];
-        locals.toAdapterAddress = _strategyShareToAdapter[toStrategyShare];
-
-        if (locals.fromAdapterAddress == address(0)) revert AdapterNotFound(fromStrategyShare);
-        if (locals.toAdapterAddress == address(0)) revert AdapterNotFound(toStrategyShare);
-
-        VaultConfig memory fromConfig = _getVaultConfig(fromStrategyShare);
-        if (!_isVaultStatusEligible(fromConfig.status, OperationType.WITHDRAWAL)) {
-            revert VaultNotActive(fromStrategyShare);
-        }
-
-        VaultConfig memory toConfig = _getVaultConfig(toStrategyShare);
-        if (!_isVaultStatusEligible(toConfig.status, OperationType.DEPOSIT)) {
-            revert VaultNotActive(toStrategyShare);
-        }
-
-        locals.fromAdapter = IDStableConversionAdapterV2(locals.fromAdapterAddress);
-        locals.toAdapter = IDStableConversionAdapterV2(locals.toAdapterAddress);
-
-        locals.dStableValueIn = locals.fromAdapter.previewWithdrawFromStrategy(fromShareAmount);
-        if (locals.dStableValueIn == 0) revert ZeroInputDStableValue(fromStrategyShare, fromShareAmount);
-
-        (address expectedToShare, uint256 tmpToAmount) = locals.toAdapter.previewDepositIntoStrategy(
-            locals.dStableValueIn
-        );
-        if (expectedToShare != toStrategyShare)
-            revert AdapterAssetMismatch(locals.toAdapterAddress, toStrategyShare, expectedToShare);
-        locals.calculatedToStrategyShareAmount = tmpToAmount;
-
-        if (locals.calculatedToStrategyShareAmount < minToShareAmount) {
-            revert SlippageCheckFailed(toStrategyShare, locals.calculatedToStrategyShareAmount, minToShareAmount);
-        }
-
-        _collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
-        IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, fromShareAmount);
-        uint256 receivedDStable = locals.fromAdapter.withdrawFromStrategy(fromShareAmount);
-        IERC20(fromStrategyShare).forceApprove(locals.fromAdapterAddress, 0);
-
-        IERC20(_dStable).forceApprove(locals.toAdapterAddress, receivedDStable);
-        (address actualToStrategyShare, uint256 resultingToShareAmount) = locals.toAdapter.depositIntoStrategy(
-            receivedDStable
-        );
-        if (actualToStrategyShare != toStrategyShare)
-            revert AdapterAssetMismatch(locals.toAdapterAddress, toStrategyShare, actualToStrategyShare);
-
-        {
-            uint256 previewValue = locals.toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
-            uint256 dustAdjusted = locals.dStableValueIn > dustTolerance ? locals.dStableValueIn - dustTolerance : 0;
-            if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(_dStable, previewValue, dustAdjusted);
-            }
-        }
-
-        if (resultingToShareAmount < minToShareAmount) {
-            uint256 shareShortfall = minToShareAmount - resultingToShareAmount;
-            uint256 shortfallValue = shareShortfall.mulDiv(
-                locals.dStableValueIn,
-                locals.calculatedToStrategyShareAmount,
-                Math.Rounding.Ceil
-            );
-
-            if (shortfallValue > dustTolerance) {
-                revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);
-            }
-        }
-
-        IERC20(_dStable).forceApprove(locals.toAdapterAddress, 0);
-
-        emit StrategySharesExchanged(
-            fromStrategyShare,
-            toStrategyShare,
-            fromShareAmount,
-            resultingToShareAmount,
-            locals.dStableValueIn,
-            msg.sender
-        );
+        _rebalanceStrategiesByShares(fromStrategyShare, toStrategyShare, fromShareAmount, minToShareAmount);
     }
 
     function rebalanceStrategiesByValue(
@@ -202,6 +112,7 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
         uint256 fromShareAmount,
         uint256 minToShareAmount
     ) internal {
+        if (fromStrategyShare == toStrategyShare) revert InvalidVaultConfig();
         address fromAdapterAddress = _strategyShareToAdapter[fromStrategyShare];
         address toAdapterAddress = _strategyShareToAdapter[toStrategyShare];
         if (fromAdapterAddress == address(0)) revert AdapterNotFound(fromStrategyShare);
@@ -218,38 +129,30 @@ contract DStakeRouterV2RebalanceModule is DStakeRouterV2Storage, IDStakeRouterV2
         }
 
         IDStableConversionAdapterV2 fromAdapter = IDStableConversionAdapterV2(fromAdapterAddress);
-        IDStableConversionAdapterV2 toAdapter = IDStableConversionAdapterV2(toAdapterAddress);
 
         uint256 dStableAmountEquivalent = fromAdapter.previewWithdrawFromStrategy(fromShareAmount);
         if (dStableAmountEquivalent <= dustTolerance) {
+            if (minToShareAmount != 0) {
+                revert SlippageCheckFailed(toStrategyShare, 0, minToShareAmount);
+            }
             return;
         }
-        _collateralVault.transferStrategyShares(fromStrategyShare, fromShareAmount, address(this));
-
-        IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, fromShareAmount);
-        uint256 receivedDStable = fromAdapter.withdrawFromStrategy(fromShareAmount);
-        IERC20(fromStrategyShare).forceApprove(fromAdapterAddress, 0);
-
-        IERC20(_dStable).forceApprove(toAdapterAddress, receivedDStable);
-        (address actualToStrategyShare, uint256 resultingToShareAmount) = toAdapter.depositIntoStrategy(
+        uint256 receivedDStable = StrategyBackingGuard.withdraw(
+            _dStable,
+            fromStrategyShare,
+            fromAdapterAddress,
+            _collateralVault,
+            fromShareAmount
+        );
+        uint256 resultingToShareAmount = StrategyBackingGuard.deposit(
+            _dStable,
+            toStrategyShare,
+            toAdapterAddress,
+            _collateralVault,
             receivedDStable
         );
-        if (actualToStrategyShare != toStrategyShare) {
-            revert AdapterAssetMismatch(toAdapterAddress, toStrategyShare, actualToStrategyShare);
-        }
         if (resultingToShareAmount < minToShareAmount) {
             revert SlippageCheckFailed(toStrategyShare, resultingToShareAmount, minToShareAmount);
-        }
-        IERC20(_dStable).forceApprove(toAdapterAddress, 0);
-
-        {
-            uint256 previewValue = toAdapter.previewWithdrawFromStrategy(resultingToShareAmount);
-            uint256 dustAdjusted = dStableAmountEquivalent > dustTolerance
-                ? dStableAmountEquivalent - dustTolerance
-                : 0;
-            if (previewValue < dustAdjusted) {
-                revert SlippageCheckFailed(_dStable, previewValue, dustAdjusted);
-            }
         }
 
         emit StrategySharesExchanged(

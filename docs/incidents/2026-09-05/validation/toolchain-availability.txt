@@ -1,0 +1,11 @@
+Toolchain availability; not a compilation/test execution result.
+v22.16.0
+ethers: not installed in selected checkout
+hardhat: not installed in selected checkout
+solc: not installed in selected checkout
+forge: not on PATH
+solc: not on PATH
+yarn.lock: absent
+.shared: absent
+node_modules: absent
+foundry/lib/forge-std: absent
