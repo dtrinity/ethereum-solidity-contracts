@@ -1,304 +1,574 @@
 TAP version 13
-# Subtest: planner: accepts a complete zero-movement migration inventory
-ok 1 - planner: accepts a complete zero-movement migration inventory
+# Subtest: reviewed permissionless reward deployment manifest accepts valid configuration
+ok 1 - reviewed permissionless reward deployment manifest accepts valid configuration
   ---
-  duration_ms: 1.914205
+  duration_ms: 1.857551
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses unreviewed
+ok 2 - reward manifest refuses unreviewed
+  ---
+  duration_ms: 0.235589
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses no evidence
+ok 3 - reward manifest refuses no evidence
+  ---
+  duration_ms: 0.085912
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses old deployment name
+ok 4 - reward manifest refuses old deployment name
+  ---
+  duration_ms: 0.102889
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses zero threshold
+ok 5 - reward manifest refuses zero threshold
+  ---
+  duration_ms: 0.091143
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses negative threshold
+ok 6 - reward manifest refuses negative threshold
+  ---
+  duration_ms: 0.108618
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses decimal threshold
+ok 7 - reward manifest refuses decimal threshold
+  ---
+  duration_ms: 0.095756
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses fee above ceiling
+ok 8 - reward manifest refuses fee above ceiling
+  ---
+  duration_ms: 0.09303
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses ceiling above 100%
+ok 9 - reward manifest refuses ceiling above 100%
+  ---
+  duration_ms: 0.224048
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses missing wrapper
+ok 10 - reward manifest refuses missing wrapper
+  ---
+  duration_ms: 0.339062
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses missing controller
+ok 11 - reward manifest refuses missing controller
+  ---
+  duration_ms: 0.202768
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses unreviewed retirement
+ok 12 - reward manifest refuses unreviewed retirement
+  ---
+  duration_ms: 0.100274
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses deployer retains admin
+ok 13 - reward manifest refuses deployer retains admin
+  ---
+  duration_ms: 0.128068
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses deployer retains pause
+ok 14 - reward manifest refuses deployer retains pause
+  ---
+  duration_ms: 0.085404
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses unversioned identity
+ok 15 - reward manifest refuses unversioned identity
+  ---
+  duration_ms: 0.084922
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses unknown kind
+ok 16 - reward manifest refuses unknown kind
+  ---
+  duration_ms: 0.072919
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses unknown chain
+ok 17 - reward manifest refuses unknown chain
+  ---
+  duration_ms: 0.077546
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses negative nonce
+ok 18 - reward manifest refuses negative nonce
+  ---
+  duration_ms: 0.095358
+  type: 'test'
+  ...
+# Subtest: reward manifest refuses floating nonce
+ok 19 - reward manifest refuses floating nonce
+  ---
+  duration_ms: 0.096739
+  type: 'test'
+  ...
+# Subtest: MetaMorpho deployment requires independent reward attribution review
+ok 20 - MetaMorpho deployment requires independent reward attribution review
+  ---
+  duration_ms: 0.168015
+  type: 'test'
+  ...
+# Subtest: bootstrap keeps compounding permissionless and retires deployer admin last
+ok 21 - bootstrap keeps compounding permissionless and retires deployer admin last
+  ---
+  duration_ms: 0.638322
+  type: 'test'
+  ...
+# Subtest: explicit bounded rounding policy accepts 0 base units
+ok 22 - explicit bounded rounding policy accepts 0 base units
+  ---
+  duration_ms: 0.267073
+  type: 'test'
+  ...
+# Subtest: explicit bounded rounding policy accepts 1 base units
+ok 23 - explicit bounded rounding policy accepts 1 base units
+  ---
+  duration_ms: 0.070349
+  type: 'test'
+  ...
+# Subtest: explicit bounded rounding policy accepts 2 base units
+ok 24 - explicit bounded rounding policy accepts 2 base units
+  ---
+  duration_ms: 0.093147
+  type: 'test'
+  ...
+# Subtest: explicit bounded rounding policy accepts 16 base units
+ok 25 - explicit bounded rounding policy accepts 16 base units
+  ---
+  duration_ms: 0.055683
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance "17"
+ok 26 - rejects invalid rounding allowance "17"
+  ---
+  duration_ms: 0.104291
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance "1000000"
+ok 27 - rejects invalid rounding allowance "1000000"
+  ---
+  duration_ms: 0.050042
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance "-1"
+ok 28 - rejects invalid rounding allowance "-1"
+  ---
+  duration_ms: 0.040328
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance "0.5"
+ok 29 - rejects invalid rounding allowance "0.5"
+  ---
+  duration_ms: 0.148542
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance "02"
+ok 30 - rejects invalid rounding allowance "02"
+  ---
+  duration_ms: 0.067362
+  type: 'test'
+  ...
+# Subtest: rejects invalid rounding allowance 2
+ok 31 - rejects invalid rounding allowance 2
+  ---
+  duration_ms: 0.049384
+  type: 'test'
+  ...
+# Subtest: blocks rounding without explicit review
+ok 32 - blocks rounding without explicit review
+  ---
+  duration_ms: 0.108849
+  type: 'test'
+  ...
+# Subtest: blocks retirement without explicit review
+ok 33 - blocks retirement without explicit review
+  ---
+  duration_ms: 0.036894
+  type: 'test'
+  ...
+# Subtest: per-strategy allowance cannot exceed reviewed aggregate bootstrap budget
+ok 34 - per-strategy allowance cannot exceed reviewed aggregate bootstrap budget
+  ---
+  duration_ms: 0.083122
+  type: 'test'
+  ...
+# Subtest: retirement includes historical adapters, adapter admin, custody and upstream claims
+ok 35 - retirement includes historical adapters, adapter admin, custody and upstream claims
+  ---
+  duration_ms: 2.281654
+  type: 'test'
+  ...
+# Subtest: separate emission-owner revocation is a checked precondition, not an unauthorized timelock call
+ok 36 - separate emission-owner revocation is a checked precondition, not an unauthorized timelock call
+  ---
+  duration_ms: 0.209958
+  type: 'test'
+  ...
+# Subtest: manifest digest changes with threshold, role or wrapper identity
+ok 37 - manifest digest changes with threshold, role or wrapper identity
+  ---
+  duration_ms: 0.739118
+  type: 'test'
+  ...
+# Subtest: exact real-wrapper conversion counterexample: one unit fails, two units suffice
+ok 38 - exact real-wrapper conversion counterexample: one unit fails, two units suffice
+  ---
+  duration_ms: 0.125892
+  type: 'test'
+  ...
+# Subtest: repeating the same leg must not multiply the aggregate allowance
+ok 39 - repeating the same leg must not multiply the aggregate allowance
+  ---
+  duration_ms: 0.08454
+  type: 'test'
+  ...
+# Subtest: fixed-index arithmetic bound across deterministic fractional residues
+ok 40 - fixed-index arithmetic bound across deterministic fractional residues
+  ---
+  duration_ms: 7.059676
+  type: 'test'
+  ...
+# Subtest: bounded rounding never excuses zero added backing
+ok 41 - bounded rounding never excuses zero added backing
+  ---
+  duration_ms: 0.119898
+  type: 'test'
+  ...
+# Subtest: two-holder fixed-index entitlement and fixed-threshold auction model
+ok 42 - two-holder fixed-index entitlement and fixed-threshold auction model
+  ---
+  duration_ms: 0.062329
+  type: 'test'
+  ...
+# Subtest: source-level invariants remain installed
+ok 43 - source-level invariants remain installed
+  ---
+  duration_ms: 27.165131
+  type: 'test'
+  ...
+# Subtest: planner: accepts a complete zero-movement migration inventory
+ok 44 - planner: accepts a complete zero-movement migration inventory
+  ---
+  duration_ms: 1.966762
   type: 'test'
   ...
 # Subtest: planner: rejects wrong chain
-ok 2 - planner: rejects wrong chain
+ok 45 - planner: rejects wrong chain
   ---
-  duration_ms: 0.317418
+  duration_ms: 0.295901
   type: 'test'
   ...
 # Subtest: planner: rejects wrong token pointer
-ok 3 - planner: rejects wrong token pointer
+ok 46 - planner: rejects wrong token pointer
   ---
-  duration_ms: 0.11274
+  duration_ms: 0.10701
   type: 'test'
   ...
 # Subtest: planner: rejects wrong collateral pointer
-ok 4 - planner: rejects wrong collateral pointer
+ok 47 - planner: rejects wrong collateral pointer
   ---
-  duration_ms: 0.09277
+  duration_ms: 0.089954
   type: 'test'
   ...
 # Subtest: planner: rejects missing custody-admin authority
-ok 5 - planner: rejects missing custody-admin authority
+ok 48 - planner: rejects missing custody-admin authority
   ---
-  duration_ms: 0.095274
+  duration_ms: 0.084941
   type: 'test'
   ...
 # Subtest: planner: rejects missing proposer
-ok 6 - planner: rejects missing proposer
+ok 49 - planner: rejects missing proposer
   ---
-  duration_ms: 0.103386
+  duration_ms: 0.086418
   type: 'test'
   ...
 # Subtest: planner: rejects missing executor
-ok 7 - planner: rejects missing executor
+ok 50 - planner: rejects missing executor
   ---
-  duration_ms: 0.084668
+  duration_ms: 0.131666
   type: 'test'
   ...
 # Subtest: planner: rejects missing adapter authority
-ok 8 - planner: rejects missing adapter authority
+ok 51 - planner: rejects missing adapter authority
   ---
-  duration_ms: 0.097477
+  duration_ms: 0.099853
   type: 'test'
   ...
 # Subtest: planner: rejects wrong underlying
-ok 9 - planner: rejects wrong underlying
+ok 52 - planner: rejects wrong underlying
   ---
-  duration_ms: 0.319011
+  duration_ms: 0.250128
   type: 'test'
   ...
 # Subtest: planner: rejects wrong collateral underlying
-ok 10 - planner: rejects wrong collateral underlying
+ok 53 - planner: rejects wrong collateral underlying
   ---
-  duration_ms: 0.336437
+  duration_ms: 0.294923
   type: 'test'
   ...
 # Subtest: planner: rejects wrong collateral token
-ok 11 - planner: rejects wrong collateral token
+ok 54 - planner: rejects wrong collateral token
   ---
-  duration_ms: 0.148263
+  duration_ms: 0.121847
   type: 'test'
   ...
 # Subtest: planner: rejects adapter routes to another collateral vault
-ok 12 - planner: rejects adapter routes to another collateral vault
+ok 55 - planner: rejects adapter routes to another collateral vault
   ---
-  duration_ms: 0.096947
+  duration_ms: 0.077758
   type: 'test'
   ...
 # Subtest: planner: rejects missing supported position
-ok 13 - planner: rejects missing supported position
+ok 56 - planner: rejects missing supported position
   ---
-  duration_ms: 0.113741
+  duration_ms: 0.056698
   type: 'test'
   ...
 # Subtest: planner: rejects duplicate strategy
-ok 14 - planner: rejects duplicate strategy
+ok 57 - planner: rejects duplicate strategy
   ---
-  duration_ms: 0.069244
+  duration_ms: 0.047294
   type: 'test'
   ...
 # Subtest: planner: rejects wrong allocation scale
-ok 15 - planner: rejects wrong allocation scale
+ok 58 - planner: rejects wrong allocation scale
   ---
-  duration_ms: 0.0663
+  duration_ms: 0.045787
   type: 'test'
   ...
 # Subtest: planner: rejects nonzero shortfall
-ok 16 - planner: rejects nonzero shortfall
+ok 59 - planner: rejects nonzero shortfall
   ---
-  duration_ms: 0.067371
-  type: 'test'
-  ...
-# Subtest: planner: rejects legacy cash
-ok 17 - planner: rejects legacy cash
-  ---
-  duration_ms: 0.080552
+  duration_ms: 0.062752
   type: 'test'
   ...
 # Subtest: planner: rejects legacy allowance
-ok 18 - planner: rejects legacy allowance
+ok 60 - planner: rejects legacy allowance
   ---
-  duration_ms: 0.065399
+  duration_ms: 0.054177
   type: 'test'
   ...
 # Subtest: planner: rejects uncopyable existing cap
-ok 19 - planner: rejects uncopyable existing cap
+ok 61 - planner: rejects uncopyable existing cap
   ---
-  duration_ms: 0.074953
+  duration_ms: 0.047582
   type: 'test'
   ...
 # Subtest: planner: cap zero is unlimited, not closed
-ok 20 - planner: cap zero is unlimited, not closed
+ok 62 - planner: cap zero is unlimited, not closed
   ---
-  duration_ms: 0.092739
+  duration_ms: 0.080008
   type: 'test'
   ...
-# Subtest: planner: emits guard begin / authorize / pointers / retire / finish in one batch
-ok 21 - planner: emits guard begin / authorize / pointers / retire / finish in one batch
+# Subtest: planner: always handles cash donated after planning before pointer changes
+ok 63 - planner: always handles cash donated after planning before pointer changes
   ---
-  duration_ms: 0.903732
+  duration_ms: 0.799733
+  type: 'test'
+  ...
+# Subtest: planner: uses the same guarded cash sequence when inventory already reports cash
+ok 64 - planner: uses the same guarded cash sequence when inventory already reports cash
+  ---
+  duration_ms: 0.642722
   type: 'test'
   ...
 # Subtest: planner: rejects omitted final guard
-ok 22 - planner: rejects omitted final guard
+ok 65 - planner: rejects omitted final guard
   ---
-  duration_ms: 0.154052
+  duration_ms: 0.159488
+  type: 'test'
+  ...
+# Subtest: planner: rejects omitted unconditional cash handling
+ok 66 - planner: rejects omitted unconditional cash handling
+  ---
+  duration_ms: 0.17301
   type: 'test'
   ...
 # Subtest: planner: rejects omitted legacy revocation
-ok 23 - planner: rejects omitted legacy revocation
+ok 67 - planner: rejects omitted legacy revocation
   ---
-  duration_ms: 0.665433
+  duration_ms: 0.150927
   type: 'test'
   ...
 # Subtest: planner: rejects changed pointer ordering
-ok 24 - planner: rejects changed pointer ordering
+ok 68 - planner: rejects changed pointer ordering
   ---
-  duration_ms: 0.162034
+  duration_ms: 0.117263
   type: 'test'
   ...
 # Subtest: planner: rejects automatic reopening
-ok 25 - planner: rejects automatic reopening
+ok 69 - planner: rejects automatic reopening
   ---
-  duration_ms: 0.120783
+  duration_ms: 0.087075
   type: 'test'
   ...
 # Subtest: canonical digest: key order cannot change the review digest
-ok 26 - canonical digest: key order cannot change the review digest
+ok 70 - canonical digest: key order cannot change the review digest
   ---
-  duration_ms: 0.500544
+  duration_ms: 0.348413
   type: 'test'
   ...
 # Subtest: canonical digest: an edited amount changes the review digest
-ok 27 - canonical digest: an edited amount changes the review digest
+ok 71 - canonical digest: an edited amount changes the review digest
   ---
-  duration_ms: 0.105589
+  duration_ms: 0.078559
   type: 'test'
   ...
 # Subtest: canonical encoding: uint256 strings retain full precision
-ok 28 - canonical encoding: uint256 strings retain full precision
+ok 72 - canonical encoding: uint256 strings retain full precision
   ---
-  duration_ms: 0.084447
+  duration_ms: 0.05078
   type: 'test'
   ...
 # Subtest: fork URL accepts loopback http://localhost:8545
-ok 29 - fork URL accepts loopback http://localhost:8545
+ok 73 - fork URL accepts loopback http://localhost:8545
   ---
-  duration_ms: 0.092209
+  duration_ms: 0.074155
   type: 'test'
   ...
 # Subtest: fork URL accepts loopback http://127.0.0.1:8545
-ok 30 - fork URL accepts loopback http://127.0.0.1:8545
+ok 74 - fork URL accepts loopback http://127.0.0.1:8545
   ---
-  duration_ms: 0.100411
+  duration_ms: 0.030425
   type: 'test'
   ...
 # Subtest: fork URL accepts loopback http://[::1]:8545
-ok 31 - fork URL accepts loopback http://[::1]:8545
+ok 75 - fork URL accepts loopback http://[::1]:8545
   ---
-  duration_ms: 0.05301
+  duration_ms: 0.025995
   type: 'test'
   ...
 # Subtest: fork URL rejects non-loopback or non-HTTP provider
-ok 32 - fork URL rejects non-loopback or non-HTTP provider
+ok 76 - fork URL rejects non-loopback or non-HTTP provider
   ---
-  duration_ms: 0.057276
+  duration_ms: 0.040622
   type: 'test'
   ...
 # Subtest: fork URL rejects non-loopback or non-HTTP provider
-ok 33 - fork URL rejects non-loopback or non-HTTP provider
+ok 77 - fork URL rejects non-loopback or non-HTTP provider
   ---
-  duration_ms: 0.037496
+  duration_ms: 0.037195
   type: 'test'
   ...
 # Subtest: fork URL rejects non-loopback or non-HTTP provider
-ok 34 - fork URL rejects non-loopback or non-HTTP provider
+ok 78 - fork URL rejects non-loopback or non-HTTP provider
   ---
-  duration_ms: 0.03315
+  duration_ms: 0.066316
   type: 'test'
   ...
 # Subtest: fork URL rejects non-loopback or non-HTTP provider
-ok 35 - fork URL rejects non-loopback or non-HTTP provider
+ok 79 - fork URL rejects non-loopback or non-HTTP provider
   ---
-  duration_ms: 0.064878
+  duration_ms: 0.032718
   type: 'test'
   ...
 # Subtest: fork URL rejects non-loopback or non-HTTP provider
-ok 36 - fork URL rejects non-loopback or non-HTTP provider
+ok 80 - fork URL rejects non-loopback or non-HTTP provider
   ---
-  duration_ms: 0.057426
+  duration_ms: 0.039541
   type: 'test'
   ...
 # Subtest: CLI refuses unsafe flags before loading a wallet: plan --broadcast
-ok 37 - CLI refuses unsafe flags before loading a wallet: plan --broadcast
+ok 81 - CLI refuses unsafe flags before loading a wallet: plan --broadcast
   ---
-  duration_ms: 31.463355
+  duration_ms: 29.094745
+  type: 'test'
+  ...
+# Subtest: CLI refuses unsafe flags before loading a wallet: deploy --broadcast
+ok 82 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast
+  ---
+  duration_ms: 25.917189
   type: 'test'
   ...
 # Subtest: CLI refuses unsafe flags before loading a wallet: deploy --execute
-ok 38 - CLI refuses unsafe flags before loading a wallet: deploy --execute
+ok 83 - CLI refuses unsafe flags before loading a wallet: deploy --execute
   ---
-  duration_ms: 32.739848
+  duration_ms: 24.510424
   type: 'test'
   ...
 # Subtest: CLI refuses unsafe flags before loading a wallet: deploy --broadcast --dry-run
-ok 39 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --dry-run
+ok 84 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --dry-run
   ---
-  duration_ms: 33.687576
+  duration_ms: 23.403642
   type: 'test'
   ...
 # Subtest: CLI refuses unsafe flags before loading a wallet: deploy --broadcast --local-fork
-ok 40 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --local-fork
+ok 85 - CLI refuses unsafe flags before loading a wallet: deploy --broadcast --local-fork
   ---
-  duration_ms: 31.980704
+  duration_ms: 23.384737
   type: 'test'
   ...
 # Subtest: CLI refuses unsafe flags before loading a wallet: verify --execute --local-fork
-ok 41 - CLI refuses unsafe flags before loading a wallet: verify --execute --local-fork
+ok 86 - CLI refuses unsafe flags before loading a wallet: verify --execute --local-fork
   ---
-  duration_ms: 30.966986
+  duration_ms: 26.936204
   type: 'test'
   ...
 # Subtest: MODEL: zero-share agreement does not justify nominal credit
-ok 42 - MODEL: zero-share agreement does not justify nominal credit
+ok 87 - MODEL: zero-share agreement does not justify nominal credit
   ---
-  duration_ms: 0.127913
+  duration_ms: 0.132566
   type: 'test'
   ...
 # Subtest: MODEL: tiny nonzero share agreement does not justify nominal credit
-ok 43 - MODEL: tiny nonzero share agreement does not justify nominal credit
+ok 88 - MODEL: tiny nonzero share agreement does not justify nominal credit
   ---
-  duration_ms: 0.067782
+  duration_ms: 0.055407
   type: 'test'
   ...
 # Subtest: MODEL: existing position appreciation is attributable backing despite zero new shares
-ok 44 - MODEL: existing position appreciation is attributable backing despite zero new shares
+ok 89 - MODEL: existing position appreciation is attributable backing despite zero new shares
   ---
-  duration_ms: 0.061312
+  duration_ms: 0.045322
   type: 'test'
   ...
 # Subtest: MODEL: tolerance never allows a positive one-unit claim with zero backing
-ok 45 - MODEL: tolerance never allows a positive one-unit claim with zero backing
+ok 90 - MODEL: tolerance never allows a positive one-unit claim with zero backing
   ---
-  duration_ms: 0.064938
+  duration_ms: 0.224963
   type: 'test'
   ...
 # Subtest: MODEL: per-operation check prevents accumulating a loss tolerance across legs
-ok 46 - MODEL: per-operation check prevents accumulating a loss tolerance across legs
+ok 91 - MODEL: per-operation check prevents accumulating a loss tolerance across legs
   ---
-  duration_ms: 0.062434
+  duration_ms: 0.063304
   type: 'test'
   ...
 # Subtest: MODEL: unpriced withdrawal surplus must be retained
-ok 47 - MODEL: unpriced withdrawal surplus must be retained
+ok 92 - MODEL: unpriced withdrawal surplus must be retained
   ---
-  duration_ms: 0.063025
+  duration_ms: 0.047004
   type: 'test'
   ...
 # Subtest: MODEL: subtraction-based tolerance is valid at uint256 maximum
-ok 48 - MODEL: subtraction-based tolerance is valid at uint256 maximum
+ok 93 - MODEL: subtraction-based tolerance is valid at uint256 maximum
   ---
-  duration_ms: 0.17895
+  duration_ms: 0.060424
   type: 'test'
   ...
 # Subtest: MODEL: 20,000 deterministic generated conservation cases
-ok 49 - MODEL: 20,000 deterministic generated conservation cases
+ok 94 - MODEL: 20,000 deterministic generated conservation cases
   ---
-  duration_ms: 6.75505
+  duration_ms: 6.114832
   type: 'test'
   ...
-1..49
-# tests 49
+1..94
+# tests 94
 # suites 0
-# pass 49
+# pass 94
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 251.993278
+# duration_ms 231.073862

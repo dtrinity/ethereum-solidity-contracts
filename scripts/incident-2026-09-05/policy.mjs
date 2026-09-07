@@ -129,11 +129,12 @@ export function validateInventory(c, s, migration = false) {
 export function migrationCalls(c, replacement, inventory) {
   const adapters = [...new Set(inventory.configs.map((v) => lower(v.adapter)))];
   return [
+    { to: replacement.router, contract: "router", method: "rescuePausedCash", args: [] },
+    { to: replacement.guard, contract: "guard", method: "begin", args: [] },
     { to: c.oldRouter, contract: "router", method: "unpause", args: [] },
     { to: c.oldRouter, contract: "router", method: "reinvestFees", args: [] },
     { to: c.oldRouter, contract: "router", method: "pause", args: [] },
-    { to: replacement.router, contract: "router", method: "rescuePausedCash", args: [] },
-    { to: replacement.guard, contract: "guard", method: "begin", args: [] },
+    { to: replacement.guard, contract: "guard", method: "verifyLegacyCashHandled", args: [] },
     ...c.retirement.callers.flatMap((caller) => [
       ...retirementAdapters(c, inventory).flatMap((to) => [
         { to, contract: "adapter", method: "setAuthorizedCaller", args: [caller, false] },
@@ -164,12 +165,14 @@ export function assertMigrationPlan(calls, c, replacement, inventory) {
     canonical(calls) === canonical(migrationCalls(c, replacement, inventory)),
     "Migration call sequence was modified or is incomplete.",
   );
+  check(calls[0]?.method === "rescuePausedCash", "Replacement cash rescue must occur before migration begin.");
+  check(calls[1]?.method === "begin", "Migration guard must snapshot backing before legacy cash handling.");
+  const cashVerified = calls.findIndex((x) => x.method === "verifyLegacyCashHandled");
+  check(cashVerified >= 2, "Legacy cash handling must be verified before migration.");
   check(
-    calls[0]?.method === "unpause" && sameAddress(calls[0].to, c.oldRouter),
-    "Legacy cash skim must start with a paired old-router unpause.",
-  );
-  check(
-    !calls.slice(1).some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method)),
+    !calls
+      .slice(cashVerified + 1)
+      .some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method)),
     "Unsafe reopening/upgrade/asset-removal call in migration batch.",
   );
 }

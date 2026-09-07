@@ -60,6 +60,8 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
     error InvalidAccountingRoundingLoss(uint256 value);
     error FundedStrategyCannotBeRemoved(address strategyShare, uint256 shares);
     error StrategyDustTooValuable(address strategyShare, uint256 reportedValue, uint256 redeemableValue);
+    error FundedStrategyAdapterReplacement(address strategyShare, address currentAdapter, address replacementAdapter);
+    error StrategyShareAccountingNotSynchronized(address strategyShare);
 
     // --- Events ---
     event StrategyRoundingLossSet(address indexed strategyShare, uint256 allowedLoss);
@@ -390,7 +392,7 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
             vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
         }
 
-        try _collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
+        _ensureAccountingMembership(strategyShare);
 
         emit AdapterSet(strategyShare, adapterAddress);
     }
@@ -529,16 +531,35 @@ contract DStakeRouterV2GovernanceModule is DStakeRouterV2Storage, IDStakeRouterV
                 revert AdapterAssetMismatch(adapterAddress, strategyShare, adapterStrategyShare);
             }
 
+            if (currentAdapter != adapterAddress) {
+                uint256 heldShares = IERC20(strategyShare).balanceOf(address(_collateralVault));
+                if (heldShares != 0) {
+                    revert FundedStrategyAdapterReplacement(strategyShare, currentAdapter, adapterAddress);
+                }
+            }
+
             _strategyShareToAdapter[strategyShare] = adapterAddress;
             if (vaultExists[strategyShare]) {
                 vaultConfigs[vaultToIndex[strategyShare]].adapter = adapterAddress;
             }
-            try _collateralVault.addSupportedStrategyShare(strategyShare) {} catch {}
+            _ensureAccountingMembership(strategyShare);
             emit AdapterSet(strategyShare, adapterAddress);
             return;
         }
 
         _addAdapter(strategyShare, adapterAddress);
+    }
+
+    function _ensureAccountingMembership(address strategyShare) internal {
+        try _collateralVault.addSupportedStrategyShare(strategyShare) {
+            return;
+        } catch {
+            address[] memory supported = _collateralVault.getSupportedStrategyShares();
+            for (uint256 i; i < supported.length; ++i) {
+                if (supported[i] == strategyShare) return;
+            }
+            revert StrategyShareAccountingNotSynchronized(strategyShare);
+        }
     }
 
     function _getVaultConfig(address vault) internal view returns (VaultConfig memory config) {

@@ -4,6 +4,11 @@ pragma solidity ^0.8.20;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IDStakeCollateralVaultV2 } from "vaults/dstake/interfaces/IDStakeCollateralVaultV2.sol";
+import { IDStableConversionAdapterV2 } from "vaults/dstake/interfaces/IDStableConversionAdapterV2.sol";
+
+interface IInvariantAdapterProvider {
+    function strategyShareToAdapter(address strategyShare) external view returns (address);
+}
 
 /// @notice Lightweight collateral vault used in invariants to emulate strategy share custody.
 contract InvariantDStakeCollateralVault is IDStakeCollateralVaultV2 {
@@ -16,12 +21,14 @@ contract InvariantDStakeCollateralVault is IDStakeCollateralVaultV2 {
     address private _router;
 
     uint256 private _totalValue;
+    bool private _liveValuation;
     address[] private _supportedShares;
     mapping(address => bool) private _isSupported;
 
     error NotOwner();
     error NotRouter();
     error ShareNotSupported(address share);
+    error AdapterValuationUnavailable(address share);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -47,6 +54,10 @@ contract InvariantDStakeCollateralVault is IDStakeCollateralVaultV2 {
 
     function setTotalValue(uint256 newValue) external onlyOwner {
         _totalValue = newValue;
+    }
+
+    function setLiveValuation(bool enabled) external onlyOwner {
+        _liveValuation = enabled;
     }
 
     function addSupportedStrategyShare(address share) external onlyOwner {
@@ -87,7 +98,19 @@ contract InvariantDStakeCollateralVault is IDStakeCollateralVaultV2 {
     }
 
     function totalValueInDStable() external view override returns (uint256) {
-        return _totalValue;
+        if (!_liveValuation) return _totalValue;
+
+        uint256 totalValue;
+        for (uint256 i = 0; i < _supportedShares.length; i++) {
+            address share = _supportedShares[i];
+            uint256 balance = IERC20(share).balanceOf(address(this));
+            if (balance == 0) continue;
+
+            address adapter = IInvariantAdapterProvider(_router).strategyShareToAdapter(share);
+            if (adapter == address(0)) revert AdapterValuationUnavailable(share);
+            totalValue += IDStableConversionAdapterV2(adapter).strategyShareValueInDStable(share, balance);
+        }
+        return totalValue;
     }
 
     function dStakeToken() external view override returns (address) {

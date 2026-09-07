@@ -27,11 +27,11 @@ interface IMigrationCollateral {
 
 /**
  * @notice Transaction-boundary assertions for an ATOMIC timelock executeBatch.
- * @dev Grants NO authority and moves NO assets. Place begin() first and finish()
- *      last in the SAME executeBatch. Any failure rolls back the entire batch.
- *      Never schedule these calls as independently executable operations.
- *      Deliberately blocks nonzero legacy cash/shortfall; this is a zero-movement
- *      router replacement, not a mechanism for forgiving losses or stranding cash.
+ * @dev Grants NO authority and moves NO assets. Place begin() before any legacy-cash
+ *      handling and finish() last in the SAME executeBatch. Any failure rolls back
+ *      the entire batch. Never schedule these calls as independently executable
+ *      operations. Nonzero legacy cash must be reinvested with zero incentive and
+ *      verified against the begin() snapshot; nonzero shortfall remains blocked.
  */
 contract DStakeRouterMigrationGuard {
     error MigrationCheckFailed(bytes32 check);
@@ -57,6 +57,8 @@ contract DStakeRouterMigrationGuard {
     bytes32 public immutable retirementConfigHash;
 
     uint8 public phase; // 0 unused, 1 begin executed, 2 migration verified
+    bool public legacyCashHandled;
+    uint256 public startingLegacyCash;
     uint256 private startingAssets;
     uint256 private startingSupply;
     address[] private shares;
@@ -138,7 +140,10 @@ contract DStakeRouterMigrationGuard {
         address asset = IMigrationToken(token).asset();
         _check(IMigrationCollateral(collateral).dStakeToken() == token, "vault-token");
         _check(IMigrationCollateral(collateral).dStable() == asset, "vault-asset");
-        _check(IERC20(asset).balanceOf(address(oldRouter)) == 0, "legacy-cash-not-zero");
+        startingLegacyCash = IERC20(asset).balanceOf(address(oldRouter));
+        if (startingLegacyCash != 0) {
+            _check(oldRouter.reinvestIncentiveBps() == 0, "legacy-cash-incentive");
+        }
         _check(IERC20(asset).allowance(token, address(oldRouter)) == 0, "legacy-allowance");
         _check(IERC20(asset).balanceOf(address(newRouter)) == 0, "new-cash-not-zero");
         _check(newRouter.withdrawalFeeBps() == oldRouter.withdrawalFeeBps(), "fee");
@@ -165,8 +170,22 @@ contract DStakeRouterMigrationGuard {
         phase = 1;
     }
 
+    function verifyLegacyCashHandled() external onlyTimelock {
+        _check(phase == 1 && !legacyCashHandled, "cash-phase");
+        _check(oldRouter.paused(), "old-router-paused");
+        address asset = IMigrationToken(token).asset();
+        _check(IERC20(asset).balanceOf(address(oldRouter)) == 0, "legacy-cash-not-zero");
+        _check(IMigrationToken(token).totalSupply() == startingSupply, "cash-supply-changed");
+        _check(IMigrationToken(token).totalAssets() == startingAssets, "cash-backing-changed");
+        for (uint256 i; i < shares.length; ++i) {
+            balances[i] = IERC20(shares[i]).balanceOf(collateral);
+        }
+        legacyCashHandled = true;
+    }
+
     function finish() external onlyTimelock {
         _check(phase == 1, "phase");
+        _check(legacyCashHandled, "legacy-cash-unverified");
         _check(oldRouter.paused() && newRouter.paused(), "both-paused");
         _check(IMigrationToken(token).router() == address(newRouter), "new-token-pointer");
         _check(IMigrationCollateral(collateral).router() == address(newRouter), "new-vault-pointer");

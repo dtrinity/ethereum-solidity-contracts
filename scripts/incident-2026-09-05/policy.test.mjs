@@ -169,17 +169,18 @@ test("planner: cap zero is unlimited, not closed", () => {
   s.managed = "100000000000000000000000";
   assert.doesNotThrow(() => validateInventory(c, s, true));
 });
-test("planner: emits guard begin / authorize / pointers / retire / finish in one batch", () => {
+test("planner: always handles cash donated after planning before pointer changes", () => {
   const { c, d, s } = fixture();
   const calls = migrationCalls(c, d, s);
   assert.deepEqual(
     calls.map((x) => x.method),
     [
+      "rescuePausedCash",
+      "begin",
       "unpause",
       "reinvestFees",
       "pause",
-      "rescuePausedCash",
-      "begin",
+      "verifyLegacyCashHandled",
       "setAuthorizedCaller",
       "setRouter",
       "migrateCore",
@@ -189,8 +190,20 @@ test("planner: emits guard begin / authorize / pointers / retire / finish in one
   );
   assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
 });
+
+test("planner: uses the same guarded cash sequence when inventory already reports cash", () => {
+  const { c, d, s } = fixture();
+  s.routerCash = "100";
+  const calls = migrationCalls(c, d, s);
+  assert.deepEqual(
+    calls.slice(0, 7).map((x) => x.method),
+    ["rescuePausedCash", "begin", "unpause", "reinvestFees", "pause", "verifyLegacyCashHandled", "setAuthorizedCaller"],
+  );
+  assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
+});
 for (const [name, mutate] of [
   ["omitted final guard", (xs) => xs.slice(0, -1)],
+  ["omitted unconditional cash handling", (xs) => xs.filter((x) => x.method !== "reinvestFees")],
   ["omitted legacy revocation", (xs) => xs.filter((x) => !(x.method === "setAuthorizedCaller" && x.args[0] === address(1)))],
   [
     "changed pointer ordering",

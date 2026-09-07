@@ -73,6 +73,19 @@ describe("Follow-up: bounded honest rounding", function () {
 });
 
 describe("Follow-up: strategy eligibility is not NAV membership", function () {
+  it("rejects replacing the adapter for a funded strategy", async function () {
+    const f = await backingFixture();
+    await f.deposit(1_000n);
+    const replacementAdapter: any = await (
+      await ethers.getContractFactory("GenericERC4626ConversionAdapter")
+    ).deploy(f.asset.target, f.vault.target, f.collateral.target);
+
+    await expect(
+      f.router["updateVaultConfig(address,address,uint256,uint8)"](f.vault.target, replacementAdapter.target, 1_000_000, 0),
+    ).to.be.revertedWithCustomError(f.router, "FundedStrategyAdapterReplacement");
+    expect(await f.router.strategyShareToAdapter(f.vault.target)).to.equal(f.adapter.target);
+  });
+
   it("preserves funded NAV during config replacement and suspension", async function () {
     const f = await backingFixture();
     await f.deposit(1_000n);

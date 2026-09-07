@@ -60,11 +60,12 @@ If the EmissionManager is owned by the same Timelock, claimer zeroing is include
 
 The core batch is:
 
-1. On-chain begin assertions: old/new routers paused, anchored correctly, no legacy cash/shortfall/allowance, exact holdings/config continuity.
-2. Revoke listed old managers' adapter AUTHORIZED_CALLER_ROLE and admin, plus collateral ROUTER_ROLE and admin, across current and explicitly listed historical adapters.
-3. Zero listed legacy reward claimers (or verify separately executed zero preconditions).
-4. Authorize the new router, switch token/collateral pointers, revoke old router adapter authorization.
-5. Finish assertions, including retired manager capabilities and zero claimers. Failure rolls back the entire batch.
+1. Rescue only pre-activation replacement-router cash, then `guard.begin()` snapshots backing while both routers are paused.
+2. Atomically unpause/reinvest/pause the legacy router with zero incentive even when planning-time cash is zero, so later donations are handled; `verifyLegacyCashHandled()` requires zero remaining cash and exact supply/backing conservation before migration continues.
+3. Revoke listed old managers' adapter AUTHORIZED_CALLER_ROLE and admin, plus collateral ROUTER_ROLE and admin, across current and explicitly listed historical adapters.
+4. Zero listed legacy reward claimers (or verify separately executed zero preconditions).
+5. Authorize the new router, switch token/collateral pointers, revoke old router adapter authorization.
+6. Finish assertions, including retired manager capabilities and zero claimers. Failure rolls back the entire batch.
 
 No replacement reward manager is authorized in that batch. No reward claim, principal transfer, shortfall forgiveness, dUSD/router unpause, dLEND unfreeze or Curve LP restoration is included. The retirement list is hashed into the immutable migration guard; changing it requires a new reviewed guard/deployment plan, not silently editing the saved plan.
 

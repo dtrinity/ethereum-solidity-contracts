@@ -76,6 +76,11 @@ contract RouterFeeInvariant is Test {
 
         router.setDefaultDepositStrategyShare(address(vaultStates[0].share));
 
+        // The production collateral vault values live holdings during each router
+        // operation. Cached test totals would make the backing guard observe zero
+        // attributable backing until the harness's post-call sync.
+        collateralVault.setLiveValuation(true);
+
         _ensureSolverApproval();
 
         _seedInitialLiquidity();
