@@ -91,6 +91,35 @@ async function migrationFixture(withRetirement = false) {
 }
 
 describe("Incident router replacement — atomic governance migration", function () {
+  it("encodes every containment variant using the CLI ABI", async function () {
+    const { ABI } = await importOps("scripts/incident-2026-09-05/ops.mjs");
+    const { migrationCalls } = await importOps("scripts/incident-2026-09-05/policy.mjs");
+    const f = await migrationFixture();
+    for (const paused of [false, true])
+      for (const assetPaused of [false, true])
+        for (const frozen of [false, true]) {
+          const calls = migrationCalls(
+            {
+              oldRouter: f.router.target,
+              token: f.token.target,
+              collateral: f.collateral.target,
+              asset: f.asset.target,
+              retirement: { callers: [], claimers: [] },
+            },
+            { router: f.replacement.target, guard: f.guard.target },
+            {
+              paused,
+              assetPaused,
+              authority: { assetPauser: true },
+              dlend: { configurator: f.other.address, poolAdmin: true, frozen },
+              configs: [{ adapter: f.adapter.target }],
+            },
+          );
+          for (const x of calls)
+            expect(new ethers.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args)).to.match(/^0x[0-9a-f]+$/);
+        }
+  });
+
   it("creates the replacement already paused", async function () {
     const f = await backingFixture();
     const router: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
