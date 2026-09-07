@@ -92,6 +92,7 @@ export const ABI = {
     "function getVaultCount() view returns(uint256)",
     "function getVaultConfigByIndex(uint256) view returns(tuple(address strategyVault,address adapter,uint256 targetBps,uint8 status))",
     "function strategyShareToAdapter(address) view returns(address)",
+    "function setVaultConfigs(tuple(address strategyVault,address adapter,uint256 targetBps,uint8 status)[])",
     "function governanceModule() view returns(address)",
     "function rebalanceModule() view returns(address)",
     "function BACKING_GUARD_VERSION() view returns(uint256)",

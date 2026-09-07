@@ -51,6 +51,7 @@ function fixture() {
     "emissionManager",
     "oldRouter",
   ].forEach((k, i) => (c[k] = A(i + 1)));
+  c.idleVault = A(80);
   return c;
 }
 test("reviewed permissionless reward deployment manifest accepts valid configuration", () =>
@@ -129,13 +130,13 @@ test("per-strategy allowance cannot exceed reviewed aggregate bootstrap budget",
 });
 test("retirement includes historical adapters, adapter admin, custody and upstream claims", () => {
   const c = fixture(),
-    s = { configs: [{ adapter: A(80) }], routerCash: "0", paused: true, assetPaused: false, dlend: { frozen: false } },
+    s = { configs: [{ vault: A(80), adapter: A(80) }], routerCash: "0", paused: true, assetPaused: false },
     d = { router: A(81), guard: A(82) };
   const calls = migrationCalls(c, d, s);
   assert.equal(calls[0].method, "rescuePausedCash");
   assert.equal(calls[1].method, "begin");
   assert.equal(calls[2].method, "unpause");
-  assert.equal(calls[5].method, "verifyLegacyCashHandled");
+  assert.equal(calls[6].method, "verifyLegacyCashHandled");
   assert.equal(calls.at(-1).method, "finish");
   assert.equal(retirementAdapters(c, s).length, 2);
   assert(calls.some((x) => x.to === A(91) && x.method === "revokeRole" && x.args[0] === ZERO_HASH));
@@ -158,11 +159,10 @@ test("separate emission-owner revocation is a checked precondition, not an unaut
     c,
     { router: A(81), guard: A(82) },
     {
-      configs: [{ adapter: A(80) }],
+      configs: [{ vault: A(80), adapter: A(80) }],
       routerCash: "0",
       paused: true,
       assetPaused: false,
-      dlend: { frozen: false },
     },
   );
   assert(!calls.some((x) => x.method === "setClaimer"));

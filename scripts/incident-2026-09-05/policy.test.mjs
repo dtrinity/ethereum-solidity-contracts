@@ -7,7 +7,15 @@ import { canonical, digest, validateInventory, migrationCalls, assertMigrationPl
 
 const address = (n) => `0x${n.toString(16).padStart(40, "0")}`;
 function fixture() {
-  const c = { chainId: 1, oldRouter: address(1), token: address(2), collateral: address(3), asset: address(4), timelock: address(5) };
+  const c = {
+    chainId: 1,
+    oldRouter: address(1),
+    token: address(2),
+    collateral: address(3),
+    asset: address(4),
+    timelock: address(5),
+    idleVault: address(8),
+  };
   c.retirement = {
     reviewed: true,
     evidence: "Synthetic empty test inventory; no live deployment claim.",
@@ -57,23 +65,26 @@ test("planner: accepts a complete zero-movement migration inventory", () => {
   assert.doesNotThrow(() => validateInventory(c, s, true));
 });
 
-test("planner: compresses live containment and frozen-reserve cash handling into one batch", () => {
+test("planner: compresses live containment and Idle leftover-cash handling into one batch", () => {
   const { c, d, s } = fixture();
   s.paused = false;
   s.assetPaused = true;
   s.authority.assetPauser = true;
-  s.dlend = { configurator: address(10), poolAdmin: true, frozen: true };
   const calls = migrationCalls(c, d, s);
-  assert.deepEqual(calls.slice(0, 11), [
+  assert.deepEqual(calls.slice(0, 10), [
     { to: d.router, contract: "router", method: "rescuePausedCash", args: [] },
     { to: c.oldRouter, contract: "router", method: "pause", args: [] },
     { to: d.guard, contract: "guard", method: "begin", args: [] },
     { to: c.asset, contract: "asset", method: "unpause", args: [] },
-    { to: address(10), contract: "configurator", method: "setReserveFreeze", args: [c.asset, false] },
     { to: c.oldRouter, contract: "router", method: "unpause", args: [] },
+    {
+      to: c.oldRouter,
+      contract: "router",
+      method: "setVaultConfigs",
+      args: [[[s.configs[0].vault, s.configs[0].adapter, "1000000", 0]]],
+    },
     { to: c.oldRouter, contract: "router", method: "reinvestFees", args: [] },
     { to: c.oldRouter, contract: "router", method: "pause", args: [] },
-    { to: address(10), contract: "configurator", method: "setReserveFreeze", args: [c.asset, true] },
     { to: c.asset, contract: "asset", method: "pause", args: [] },
     { to: d.guard, contract: "guard", method: "verifyLegacyCashHandled", args: [] },
   ]);
@@ -81,63 +92,53 @@ test("planner: compresses live containment and frozen-reserve cash handling into
 });
 
 for (const paused of [false, true])
-  for (const assetPaused of [false, true])
-    for (const frozen of [false, true]) {
-      test(`planner: restores inventory containment (old=${paused}, asset=${assetPaused}, frozen=${frozen})`, () => {
-        const { c, d, s } = fixture();
-        Object.assign(s, { paused, assetPaused });
-        s.authority.assetPauser = true;
-        s.dlend.frozen = frozen;
-        const calls = migrationCalls(c, d, s);
-        assert.equal(calls[paused ? 1 : 2].method, "begin");
-        assert.equal(calls.filter((x) => x.to === c.oldRouter && x.method === "pause").length, paused ? 1 : 2);
-        assert.deepEqual(
-          calls.filter((x) => x.to === c.asset).map((x) => x.method),
-          assetPaused ? ["unpause", "pause"] : [],
-        );
-        assert.deepEqual(
-          calls.filter((x) => x.method === "setReserveFreeze").map((x) => x.args),
-          frozen
-            ? [
-                [c.asset, false],
-                [c.asset, true],
-              ]
-            : [],
-        );
+  for (const assetPaused of [false, true]) {
+    test(`planner: restores inventory containment (old=${paused}, asset=${assetPaused})`, () => {
+      const { c, d, s } = fixture();
+      Object.assign(s, { paused, assetPaused });
+      s.authority.assetPauser = true;
+      const calls = migrationCalls(c, d, s);
+      assert.equal(calls[paused ? 1 : 2].method, "begin");
+      assert.equal(calls.filter((x) => x.to === c.oldRouter && x.method === "pause").length, paused ? 1 : 2);
+      assert.deepEqual(
+        calls.filter((x) => x.to === c.asset).map((x) => x.method),
+        assetPaused ? ["unpause", "pause"] : [],
+      );
+      assert.equal(calls.filter((x) => x.method === "setReserveFreeze").length, 0);
+      const retarget = calls.find((x) => x.method === "setVaultConfigs");
+      assert.equal(retarget.args[0][0][0], c.idleVault);
+      assert.equal(retarget.args[0][0][2], "1000000");
+      assert.equal(retarget.args[0][0][3], 0);
 
-        assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
-        const verified = calls.findIndex((x) => x.method === "verifyLegacyCashHandled");
-        for (let i = 0; i <= verified; i++) {
-          assert.throws(() =>
-            assertMigrationPlan(
-              calls.filter((_, j) => j !== i),
-              c,
-              d,
-              s,
-            ),
-          );
-        }
-        for (const extra of [
-          { to: d.router, contract: "router", method: "unpause", args: [] },
-          { to: c.asset, contract: "asset", method: "unpause", args: [] },
-          { to: s.dlend.configurator, contract: "configurator", method: "setReserveFreeze", args: [c.asset, false] },
-        ]) {
-          assert.throws(() => assertMigrationPlan([...calls.slice(0, verified + 1), extra, ...calls.slice(verified + 1)], c, d, s));
-        }
-      });
-    }
+      assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
+      const verified = calls.findIndex((x) => x.method === "verifyLegacyCashHandled");
+      for (let i = 0; i <= verified; i++) {
+        assert.throws(() =>
+          assertMigrationPlan(
+            calls.filter((_, j) => j !== i),
+            c,
+            d,
+            s,
+          ),
+        );
+      }
+      for (const extra of [
+        { to: d.router, contract: "router", method: "unpause", args: [] },
+        { to: c.asset, contract: "asset", method: "unpause", args: [] },
+        { to: address(10), contract: "configurator", method: "setReserveFreeze", args: [c.asset, false] },
+      ]) {
+        assert.throws(() => assertMigrationPlan([...calls.slice(0, verified + 1), extra, ...calls.slice(verified + 1)], c, d, s));
+      }
+    });
+  }
 
 test("planner: rejects missing cash-path authority and unknown containment instead of guessing", () => {
   const { c, d, s } = fixture();
   s.assetPaused = true;
   assert.throws(() => migrationCalls(c, d, s), /PAUSER/);
   s.authority.assetPauser = true;
-  s.dlend.frozen = true;
-  s.dlend.poolAdmin = false;
-  assert.throws(() => migrationCalls(c, d, s), /PoolAdmin/);
-  s.dlend.poolAdmin = true;
-  s.dlend.configurator = address(0);
-  assert.throws(() => migrationCalls(c, d, s), /PoolConfigurator/);
+  const missingIdle = { ...c, idleVault: address(99) };
+  assert.throws(() => migrationCalls(missingIdle, d, s), /Idle vault/);
   delete s.paused;
   assert.throws(() => migrationCalls(c, d, s), /pause state/);
 });
@@ -266,6 +267,7 @@ test("planner: always handles cash donated after planning before pointer changes
       "rescuePausedCash",
       "begin",
       "unpause",
+      "setVaultConfigs",
       "reinvestFees",
       "pause",
       "verifyLegacyCashHandled",
@@ -284,8 +286,8 @@ test("planner: uses the same guarded cash sequence when inventory already report
   s.routerCash = "100";
   const calls = migrationCalls(c, d, s);
   assert.deepEqual(
-    calls.slice(0, 7).map((x) => x.method),
-    ["rescuePausedCash", "begin", "unpause", "reinvestFees", "pause", "verifyLegacyCashHandled", "setAuthorizedCaller"],
+    calls.slice(0, 8).map((x) => x.method),
+    ["rescuePausedCash", "begin", "unpause", "setVaultConfigs", "reinvestFees", "pause", "verifyLegacyCashHandled", "setAuthorizedCaller"],
   );
   assert.doesNotThrow(() => assertMigrationPlan(calls, c, d, s));
 });

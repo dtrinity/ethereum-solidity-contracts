@@ -96,28 +96,26 @@ describe("Incident router replacement — atomic governance migration", function
     const { migrationCalls } = await importOps("scripts/incident-2026-09-05/policy.mjs");
     const f = await migrationFixture();
     for (const paused of [false, true])
-      for (const assetPaused of [false, true])
-        for (const frozen of [false, true]) {
-          const calls = migrationCalls(
-            {
-              oldRouter: f.router.target,
-              token: f.token.target,
-              collateral: f.collateral.target,
-              asset: f.asset.target,
-              retirement: { callers: [], claimers: [] },
-            },
-            { router: f.replacement.target, guard: f.guard.target },
-            {
-              paused,
-              assetPaused,
-              authority: { assetPauser: true },
-              dlend: { configurator: f.other.address, poolAdmin: true, frozen },
-              configs: [{ adapter: f.adapter.target }],
-            },
-          );
-          for (const x of calls)
-            expect(new ethers.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args)).to.match(/^0x[0-9a-f]+$/);
-        }
+      for (const assetPaused of [false, true]) {
+        const calls = migrationCalls(
+          {
+            oldRouter: f.router.target,
+            token: f.token.target,
+            collateral: f.collateral.target,
+            asset: f.asset.target,
+            idleVault: f.vault.target,
+            retirement: { callers: [], claimers: [] },
+          },
+          { router: f.replacement.target, guard: f.guard.target },
+          {
+            paused,
+            assetPaused,
+            authority: { assetPauser: true },
+            configs: [{ vault: f.vault.target, adapter: f.adapter.target }],
+          },
+        );
+        for (const x of calls) expect(new ethers.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args)).to.match(/^0x[0-9a-f]+$/);
+      }
   });
 
   it("creates the replacement already paused", async function () {
@@ -334,7 +332,7 @@ describe("Incident router replacement — atomic governance migration", function
 (process.env.MIGRATION_FORK_RPC_URL ? describe : describe.skip)("Compressed migration — pinned Ethereum integration", function () {
   this.timeout(600_000);
 
-  it("preserves holder cash through dUSD unpause and PoolAdmin unfreeze, then restores containment in one batch", async function () {
+  it("parks leftover cash in Idle without unfreezing dLEND, then restores containment in one batch", async function () {
     expect(network.name).to.equal("hardhat");
     try {
       await network.provider.send("hardhat_reset", [
@@ -425,7 +423,7 @@ describe("Incident router replacement — atomic governance migration", function
       for (const omit of [
         (x: any, i: number) => i === 1, // old frozen plan lacked the initial router pause
         (x: any) => x.contract === "asset" && x.method === "unpause",
-        (x: any) => x.method === "setReserveFreeze" && x.args[1] === false,
+        (x: any) => x.method === "setVaultConfigs",
       ]) {
         const snapshot = await network.provider.send("evm_snapshot");
         const run = await execute(semantic.filter((x: any, i: number) => !omit(x, i)));
@@ -440,17 +438,15 @@ describe("Incident router replacement — atomic governance migration", function
       const safeCash = await asset.balanceOf(anchors.governanceSafe);
       const timelockCash = await asset.balanceOf(anchors.timelock);
       const supply = await token.totalSupply();
-      // Adjacent accrued-index state cannot conserve backing exactly. Never widen the guard.
+      const idle = s.configs.find((v: any) => v.vault.toLowerCase() === anchors.idleVault.toLowerCase());
+      const idleSharesBefore = await get(anchors.idleVault, "strategy").balanceOf(anchors.collateral);
+      // Idle has no floating dLEND index; delay+2 must still conserve backing. Never widen the guard.
       const snapshot = await network.provider.send("evm_snapshot");
-      const roundingFailure = await execute(semantic, 2);
-      await expect(roundingFailure())
-        .to.be.revertedWithCustomError(guard, "MigrationCheckFailed")
-        .withArgs(ethers.encodeBytes32String("cash-backing-changed"));
-      expect(await guard.phase()).to.equal(0);
-      expect(await token.router()).to.equal(anchors.oldRouter);
-      expect(await asset.balanceOf(anchors.oldRouter)).to.equal(cash);
-      expect(await asset.paused()).to.equal(true);
-      expect(await old.paused()).to.equal(false);
+      const later = await execute(semantic, 2);
+      await later();
+      expect(await guard.phase()).to.equal(2);
+      expect(await token.totalSupply()).to.equal(supply);
+      expect(await asset.balanceOf(anchors.oldRouter)).to.equal(0n);
       expect(Boolean((await pool.getConfiguration(anchors.asset)).data & (1n << 57n))).to.equal(true);
       await network.provider.send("evm_revert", [snapshot]);
       const run = await execute(semantic);
@@ -467,6 +463,8 @@ describe("Incident router replacement — atomic governance migration", function
       expect(await asset.paused()).to.equal(true);
       expect(Boolean((await pool.getConfiguration(anchors.asset)).data & (1n << 57n))).to.equal(true);
       expect(await replacement.paused()).to.equal(true);
+      expect(idle).to.not.equal(undefined);
+      expect(await get(anchors.idleVault, "strategy").balanceOf(anchors.collateral)).to.be.gt(idleSharesBefore);
       for (const v of s.configs) {
         const cloned = await replacement.getVaultConfig(v.vault);
         expect(cloned.targetBps).to.equal(BigInt(v.targetBps));
