@@ -1,0 +1,45 @@
+{
+  "blockNumber": 25927742,
+  "blockHash": "0x72ce9550b64039b5a1f4dab7ac87370eb3eead16098a4b9ae609a0876d6e4843",
+  "chainId": 1,
+  "complete": true,
+  "codeSizes": {
+    "router": 24036,
+    "governance": 13368,
+    "rebalance": 7467,
+    "guard": 14008
+  },
+  "routerPaused": true,
+  "roles": {
+    "DEFAULT_ADMIN_ROLE": {
+      "timelock": true,
+      "deployer": false
+    },
+    "ADAPTER_MANAGER_ROLE": {
+      "timelock": true,
+      "deployer": false
+    },
+    "CONFIG_MANAGER_ROLE": {
+      "timelock": true,
+      "deployer": false
+    },
+    "VAULT_MANAGER_ROLE": {
+      "timelock": true,
+      "deployer": false
+    },
+    "PAUSER_ROLE": {
+      "timelock": true,
+      "deployer": false
+    },
+    "STRATEGY_REBALANCER_ROLE": {
+      "timelock": true,
+      "deployer": false
+    }
+  },
+  "tokenRouter": "0xdD26C236ec95d03DDf3cB67b7f54864719E9Be5a",
+  "all25ReceiptsVerified": true,
+  "totalGasCostETH": "0.001650026940532334",
+  "timelockPoolAdmin": true,
+  "acl": "0x80F7023e25a32E4A020ed71346c0f37C10589609",
+  "configurator": "0x464792C57aEc24C32AfFDe65e6990F2a89695b2a"
+}

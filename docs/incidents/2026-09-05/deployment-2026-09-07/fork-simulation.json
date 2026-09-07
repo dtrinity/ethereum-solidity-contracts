@@ -1,0 +1,14 @@
+{
+  "reviewSha256": "fbb59adfa9a5ebf392c81d6961790b16cb0f758d2314e4c0339ae9d303510164",
+  "passed": true,
+  "executionHash": "0x889bcf0283eeca5a433709362f402bae6fa146aa172d5309682b61b7f66cdc90",
+  "beforeScheduling": {
+    "assets": "480558080087695779649062",
+    "supply": "471436318993797389541522"
+  },
+  "afterExecution": {
+    "assets": "480599263592683826599948",
+    "supply": "471436318993797389541522"
+  },
+  "note": "Assets may accrue during timelock delay. The on-chain guard checked EXACT equality across the migration transaction itself. Fork is reverted after this check; this is not a reopening approval."
+}
