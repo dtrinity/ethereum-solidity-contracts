@@ -1,6 +1,6 @@
 {
   "chainId": 1,
-  "sourceRevision": "d3103f8807a0abb23277b79dc136d002b57a6687",
+  "sourceRevision": "6c22da3c6e802459e40ccc777e52b6724f34f625",
   "token": "0x7CB20517776636eD76b68EdB3D99DCce356ABf02",
   "asset": "0x07fFf99e1664d9B116fbC158c0E99785F81cA236",
   "collateral": "0x4aCBcFa29fb085097c5f31783403EF7A7930F6Fe",
@@ -10,14 +10,25 @@
   "governanceSafe": "0xE83c188a7BE46B90715C757A06cF917175f30262",
   "emergencySafe": "0x04401537CA997a43EBCFEc8194c7e88c7ee79804",
   "retirement": {
-    "reviewed": false,
-    "evidence": "REQUIRED: block-pinned complete role and claimer inventory; do not copy historical addresses blindly.",
-    "callers": [],
+    "reviewed": true,
+    "evidence": "Closed-world hasRole/getClaimer/owner at Ethereum block 25923038 hash 0xc772ebadf2aae72ccd57a2b4f995d662021fc32c9d575f7085ab3cdc9e4106bb. Adapter admins=Timelock only among scanned set. AUTHORIZED_CALLER on Idle+dLEND adapters=old router + DStakeRewardManagerDLend_sdUSD 0x5D5543e671652a5871331d28357064CAc02A9e7e only. Collateral admin=Timelock, ROUTER_ROLE=old router. EmissionManager owner=Timelock. getClaimer(wrapper)=manager; getClaimer(collateral)=0. Scanned also gov/emergency/freeze/AMO Safes, agent 0x31337fa7…, token, historical deployer 0x0f5e3D9AEe7Ab5fDa909Af1ef147D98a7f4B3022: no extra hits. extraAdapters empty (Hardhat deployments + live router configs; Idle delist is a later paused Timelock tx). Safes are not retirement callers.",
+    "callers": ["0x5D5543e671652a5871331d28357064CAc02A9e7e"],
     "extraAdapters": [],
-    "claimers": []
+    "claimers": [
+      {
+        "controller": "0x04f07d28127d9c1D767664d961f9a20Bb8689579",
+        "emissionManager": "0xCEA995Daf89500FE165bc86D829552B03A1d1396",
+        "user": "0x576Dd487bacFa6e7aFD1E3EA03da0763F732D4c9"
+      },
+      {
+        "controller": "0x04f07d28127d9c1D767664d961f9a20Bb8689579",
+        "emissionManager": "0xCEA995Daf89500FE165bc86D829552B03A1d1396",
+        "user": "0x4aCBcFa29fb085097c5f31783403EF7A7930F6Fe"
+      }
+    ]
   },
   "rounding": {
-    "reviewed": false,
+    "reviewed": true,
     "operationLoss": "1",
     "strategies": []
   }
