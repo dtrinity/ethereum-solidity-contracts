@@ -156,7 +156,8 @@ describe("Incident router replacement — atomic governance migration", function
 
   it("rolls back the ENTIRE batch if legacy adapter authorization is not retired", async function () {
     const f = await migrationFixture();
-    const execute = await f.schedule(f.calls.filter((_, i) => i !== 4));
+    const legacyRevocation = f.adapter.interface.encodeFunctionData("setAuthorizedCaller", [f.router.target, false]);
+    const execute = await f.schedule(f.calls.filter((call) => call.target !== f.adapter.target || call.data !== legacyRevocation));
     await expect(execute()).to.be.reverted;
     expect(await f.guard.phase()).to.equal(0);
     expect(await f.token.router()).to.equal(f.router.target);
