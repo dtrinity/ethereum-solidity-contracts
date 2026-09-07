@@ -99,6 +99,7 @@ const ABI = {
   guard: [
     "function retirementConfigHash() view returns(bytes32)",
     "function begin()",
+    "function verifyLegacyCashHandled()",
     "function finish()",
     "function phase() view returns(uint8)",
     "function oldRouter() view returns(address)",

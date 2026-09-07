@@ -25,7 +25,7 @@ Do not interpret offline model tests or source-pattern checks as substitutes.
 | TypeScript 5.8.3 `transpileModule` diagnostics                  | Passed              | Four changed/new TS files: Hardhat config, fixture, core regressions and migration regressions. No dependency resolution or semantic type checking.                                                    |
 | `git diff --check`                                              | Passed              | Whitespace/conflict-marker check; patch application is checked separately when packaging.                                                                                                              |
 
-The captured Node test log is `validation/offline-tests.tap`. Its 49 tests are
+The captured Node test log is `validation/offline-tests.tap`. Its 94 tests are
 **not** the Solidity tests described below. The validation JSON distinguishes
 `passed` from `not_run` for machine consumers.
 
@@ -125,10 +125,11 @@ both executions are captured.
    Safe thresholds/nonce/pending transactions and timelock delay/operation state.
    The source pack is not a certified mainnet match.
 
-3. **Reconcile backing and decide legacy cash/shortfall disposition.** The default
-   batch moves no strategy assets and requires zero old-router cash and shortfall.
-   Do not clear a loss, drop a valued adapter, or sweep through a suspect strategy
-   solely to make a precondition pass. Preserve an auditable before/after ledger.
+3. **Reconcile backing and decide legacy cash/shortfall disposition.** The guarded
+   batch snapshots backing before legacy cash is reinvested, requires zero incentive,
+   and verifies exact backing/supply conservation before pointer changes. It still
+   requires zero shortfall. Do not clear a loss or drop a valued adapter solely to
+   make a precondition pass. Preserve an auditable before/after ledger.
 
 4. **Rehearse on pinned mainnet forks.** Run real deposit/mint/withdraw/redeem,
    both solver routes, reinvestments and all rebalance paths against actual Idle

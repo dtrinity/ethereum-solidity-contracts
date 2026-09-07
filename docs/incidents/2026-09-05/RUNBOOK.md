@@ -164,14 +164,18 @@ before signatures and execution.
 The migration Safe files contain ONE call each: `scheduleBatch` and later
 `executeBatch` on the Timelock. The executeBatch contents, in order, are:
 
-1. `guard.begin()` checks paused old/new routers, unchanged graph, zero cash and
-   shortfall, matching economics, complete strategy inventory and Suspended status;
-   then records backing, supply and strategy balances.
-2. Every adapter authorizes the new router.
-3. `collateral.setRouter(newRouter)` changes its pointer and custody role.
-4. `sdUSD.migrateCore(newRouter, sameCollateral)` changes the token pointer.
-5. Every adapter revokes the old router's caller role.
-6. `guard.finish()` requires exact backing/supply/position continuity, correct
+1. The replacement router rescues only pre-activation donated cash.
+2. `guard.begin()` checks paused old/new routers, unchanged graph, zero shortfall,
+   matching economics, complete strategy inventory and Suspended status; then records
+   backing, supply and strategy balances before any legacy cash conversion.
+3. The batch always unpauses/reinvests/pauses the old router with zero incentive so
+   cash donated after planning is also handled. `guard.verifyLegacyCashHandled()`
+   requires zero remaining cash and exact backing/supply conservation before migration continues.
+4. Every adapter authorizes the new router.
+5. `collateral.setRouter(newRouter)` changes its pointer and custody role.
+6. `sdUSD.migrateCore(newRouter, sameCollateral)` changes the token pointer.
+7. Every adapter revokes the old router's caller role.
+8. `guard.finish()` requires exact backing/supply/position continuity, correct
    pointers, retired old custody/adapter rights and no remaining deployer powers.
 
 **Never split this into independently executable transactions.** The guard has no

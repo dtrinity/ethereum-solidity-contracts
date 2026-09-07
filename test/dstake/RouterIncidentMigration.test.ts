@@ -53,6 +53,7 @@ async function migrationFixture(withRetirement = false) {
   const call = (c: any, method: string, args: any[] = []) => ({ target: c.target, data: c.interface.encodeFunctionData(method, args) });
   const calls = [
     call(guard, "begin"),
+    call(guard, "verifyLegacyCashHandled"),
     ...(withRetirement
       ? [
           call(f.adapter, "setAuthorizedCaller", [oldCaller.target, false]),
@@ -89,6 +90,41 @@ describe("Incident router replacement — atomic governance migration", function
     const router: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
     expect(await router.paused()).to.equal(true);
     expect(await router.BACKING_GUARD_VERSION()).to.equal(3);
+  });
+
+  it("rejects paused-cash rescue after the router becomes active", async function () {
+    const f = await backingFixture();
+    await f.router.pause();
+    await f.asset.transfer(f.router.target, 1n);
+
+    await expect(f.router.rescuePausedCash()).to.be.revertedWithCustomError(f.router, "ActiveRouterCashRescue");
+    expect(await f.asset.balanceOf(f.router.target)).to.equal(1n);
+  });
+
+  it("allows paused-cash rescue only before router activation", async function () {
+    const f = await backingFixture();
+    const replacement: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
+    await f.asset.transfer(replacement.target, 1n);
+
+    await replacement.rescuePausedCash();
+    expect(await f.asset.balanceOf(replacement.target)).to.equal(0n);
+  });
+
+  it("fails closed when an inactive replacement cannot synchronize a new accounting asset", async function () {
+    const f = await backingFixture();
+    const replacement: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(f.token.target, f.collateral.target);
+    const governance = await (
+      await ethers.getContractFactory("DStakeRouterV2GovernanceModule")
+    ).deploy(f.token.target, f.collateral.target);
+    await replacement.setGovernanceModule(governance.target);
+    const vault: any = await (await ethers.getContractFactory("IncidentAccountingVault")).deploy(f.asset.target);
+    const adapter: any = await (
+      await ethers.getContractFactory("GenericERC4626ConversionAdapter")
+    ).deploy(f.asset.target, vault.target, f.collateral.target);
+
+    await expect(
+      replacement["addVaultConfig(address,address,uint256,uint8)"](vault.target, adapter.target, 1_000_000, 1),
+    ).to.be.revertedWithCustomError(replacement, "StrategyShareAccountingNotSynchronized");
   });
 
   it("rejects old-generation delegatecall module metadata", async function () {
@@ -128,34 +164,30 @@ describe("Incident router replacement — atomic governance migration", function
     expect(await f.adapter.hasRole(ethers.id("AUTHORIZED_CALLER_ROLE"), f.replacement.target)).to.equal(false);
   });
 
-  it("does not strand legacy router cash, including unsolicited dust", async function () {
-    const f = await migrationFixture();
-    await f.asset.transfer(f.router.target, 1);
-    const execute = await f.schedule();
-    await expect(execute()).to.be.reverted;
-    expect(await f.token.router()).to.equal(f.router.target);
-  });
-
-  it("skims unsolicited dUSD off both paused routers inside the same batch", async function () {
+  it("guards legacy cash reinvestment inside the migration backing snapshot", async function () {
     const f = await migrationFixture();
     await f.router.grantRole(ethers.ZeroHash, f.tl.target);
     await f.router.grantRole(role("PAUSER_ROLE"), f.tl.target);
-    await f.asset.transfer(f.router.target, 1);
+    await f.asset.transfer(f.router.target, 100n);
     await f.asset.transfer(f.replacement.target, 1);
     const call = (c: any, method: string, args: any[] = []) => ({
       target: c.target,
       data: c.interface.encodeFunctionData(method, args),
     });
     const execute = await f.schedule([
+      call(f.replacement, "rescuePausedCash"),
+      call(f.guard, "begin"),
       call(f.router, "unpause"),
       call(f.router, "reinvestFees"),
       call(f.router, "pause"),
-      call(f.replacement, "rescuePausedCash"),
-      ...f.calls,
+      call(f.guard, "verifyLegacyCashHandled"),
+      ...f.calls.slice(2),
     ]);
+    const beforeAssets = await f.token.totalAssets();
     const beforeShares = await f.vault.balanceOf(f.collateral.target);
     await execute();
     expect(await f.guard.phase()).to.equal(2);
+    expect(await f.token.totalAssets()).to.equal(beforeAssets);
     expect(await f.asset.balanceOf(f.router.target)).to.equal(0n);
     expect(await f.asset.balanceOf(f.replacement.target)).to.equal(0n);
     expect(await f.asset.balanceOf(f.tl.target)).to.equal(1n);
@@ -163,6 +195,31 @@ describe("Incident router replacement — atomic governance migration", function
     expect(await f.token.router()).to.equal(f.replacement.target);
     expect(await f.replacement.paused()).to.equal(true);
     expect(await f.router.paused()).to.equal(true);
+  });
+
+  it("rolls back legacy cash handling when reinvestment loses backing", async function () {
+    const f = await migrationFixture();
+    await f.router.grantRole(ethers.ZeroHash, f.tl.target);
+    await f.router.grantRole(role("PAUSER_ROLE"), f.tl.target);
+    await f.asset.transfer(f.router.target, 100n);
+    await f.vault.configure(2, 99, 0, 0);
+    const call = (c: any, method: string, args: any[] = []) => ({
+      target: c.target,
+      data: c.interface.encodeFunctionData(method, args),
+    });
+    const execute = await f.schedule([
+      call(f.guard, "begin"),
+      call(f.router, "unpause"),
+      call(f.router, "reinvestFees"),
+      call(f.router, "pause"),
+      call(f.guard, "verifyLegacyCashHandled"),
+      ...f.calls.slice(2),
+    ]);
+
+    await expect(execute()).to.be.reverted;
+    expect(await f.guard.phase()).to.equal(0);
+    expect(await f.asset.balanceOf(f.router.target)).to.equal(100n);
+    expect(await f.token.router()).to.equal(f.router.target);
   });
 
   it("does not silently forgive outstanding settlement shortfall", async function () {

@@ -21,6 +21,8 @@ import { IDStakeRouterV2Module } from "./interfaces/IDStakeRouterV2Module.sol";
 interface IDStakeTokenV2Minimal {
     function asset() external view returns (address);
 
+    function router() external view returns (address);
+
     function balanceOf(address account) external view returns (uint256);
 
     function totalAssets() external view returns (uint256);
@@ -93,6 +95,9 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     error ModuleStorageMismatch(bytes32 expected, bytes32 actual);
     error ModuleTokenMismatch(address expected, address actual);
     error ModuleCollateralVaultMismatch(address expected, address actual);
+    error ActiveRouterCashRescue();
+    error FundedStrategyAdapterReplacement(address strategyShare, address currentAdapter, address replacementAdapter);
+    error StrategyShareAccountingNotSynchronized(address strategyShare);
 
     // Mirrored library errors keep the router ABI usable by existing clients.
     error StrategyBackingLoss(
@@ -1072,6 +1077,11 @@ contract DStakeRouterV2 is IDStakeRouterV2, DStakeRouterV2Storage {
     /// @notice Pulls idle dUSD to the caller while paused. Used to clear CREATE-window
     ///         donations on a replacement router before migration begin(). No-op if empty.
     function rescuePausedCash() external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant whenPaused {
+        if (
+            IDStakeTokenV2Minimal(_dStakeToken).router() == address(this) || _collateralVault.router() == address(this)
+        ) {
+            revert ActiveRouterCashRescue();
+        }
         uint256 amount = IERC20(_dStable).balanceOf(address(this));
         if (amount == 0) {
             return;
