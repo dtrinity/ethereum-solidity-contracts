@@ -30,7 +30,7 @@ It scans only supplied contracts and AccessControl events. It does not discover 
 
 ## 2. Maintain containment and retire legacy capabilities
 
-Keep the earlier emergency-pause/timelock workflow. Permissionless compounding itself is not a vulnerability, but the old direct-adapter implementation is outside the new isolation boundary. Revoking an old manager's configuration role is not containment.
+Maintain dUSD containment. The router rollout is now **paused replacement CREATEs → one Governance Safe 3/5 `scheduleBatch` → one Timelock `executeBatch` 24h later**. Do not schedule a separate old-router pause campaign or a standalone execute-day dUSD unpause. Permissionless compounding itself is not a vulnerability, but the old direct-adapter implementation is outside the new isolation boundary. Revoking an old manager's configuration role is not containment.
 
 Fill `scripts/incident-2026-09-05/ethereum.json` (or a reviewed private copy):
 
@@ -60,14 +60,29 @@ If the EmissionManager is owned by the same Timelock, claimer zeroing is include
 
 The core batch is:
 
-1. Rescue only pre-activation replacement-router cash, then `guard.begin()` snapshots backing while both routers are paused.
-2. Atomically unpause/reinvest/pause the legacy router with zero incentive even when planning-time cash is zero, so later donations are handled; `verifyLegacyCashHandled()` requires zero remaining cash and exact supply/backing conservation before migration continues.
+1. Rescue only pre-activation replacement-router cash (first); pause the old router if inventory says unpaused, omitting a duplicate pause. Then `guard.begin()` snapshots backing while both routers are paused.
+2. If dUSD was paused, Timelock unpauses it. If dLEND dUSD was frozen, verified Timelock PoolAdmin calls `setReserveFreeze(dUSD, false)`. Atomically unpause/reinvest/pause the legacy router with zero incentive even when planning-time cash is zero. Refreeze the reserve and re-pause dUSD when temporarily changed, **before** `verifyLegacyCashHandled()`. Verification requires zero remaining legacy cash and exact supply/backing conservation. Holder cash remains in sdUSD backing, not a Safe; cloned targets and the complete Idle/dLEND graph are unchanged.
 3. Revoke listed old managers' adapter AUTHORIZED_CALLER_ROLE and admin, plus collateral ROUTER_ROLE and admin, across current and explicitly listed historical adapters.
 4. Zero listed legacy reward claimers (or verify separately executed zero preconditions).
 5. Authorize the new router, switch token/collateral pointers, revoke old router adapter authorization.
 6. Finish assertions, including retired manager capabilities and zero claimers. Failure rolls back the entire batch.
 
-No replacement reward manager is authorized in that batch. No reward claim, principal transfer, shortfall forgiveness, dUSD/router unpause, dLEND unfreeze or Curve LP restoration is included. The retirement list is hashed into the immutable migration guard; changing it requires a new reviewed guard/deployment plan, not silently editing the saved plan.
+No replacement reward manager is authorized in that batch. No reward claim, principal exit to a Safe, shortfall forgiveness, **new-router unpause**, persistent dUSD unpause/dLEND unfreeze or Curve LP restoration is included. No unpause/unfreeze is allowed after cash verification. The retirement list is hashed into the immutable migration guard; changing it requires a new reviewed guard/deployment plan, not silently editing the saved plan.
+
+### Cash-path ACL evidence (read-only; refresh before signing)
+
+Ethereum block **25923361**, hash `0xd4079757543ee2522d030c769f24887c24055adee2f73812928956bb2f65be1e`:
+
+- Timelock `0x18CB0EB73D953eD20F2157ce6bDE2A85E30e681B` has `PAUSER_ROLE` on both old router `0xdD26C236ec95d03DDf3cB67b7f54864719E9Be5a` and dUSD `0x07fFf99e1664d9B116fbC158c0E99785F81cA236`.
+- Old router `paused() = false`; dUSD `paused() = true`; dLEND reserve configuration bit 57 (frozen) = true.
+- Provider `0xa5CaE880272183d7C8B69F8B0edF395f8E42e751` resolves ACL `0x80F7023e25a32E4A020ed71346c0f37C10589609`, PoolConfigurator `0x464792C57aEc24C32AfFDe65e6990F2a89695b2a`, Pool `0x6598DaD18Bda89A0E58A1F427c8CeBc0dE90F153`.
+- ACL `isPoolAdmin(timelock) = true` (also `isRiskAdmin = true`). Selected path: existing PoolConfigurator unfreeze/reinvest/refreeze, **not** Idle retargeting and never the freeze-only Safe. Inventory rediscovers these endpoints and permission at a pinned block.
+
+This amendment changes no router/module/guard Solidity or CREATE bytecode and does not flip `ethereum.json` reviewed flags. Live CREATEs, reviewed inventory, exact live-address fork rehearsal, human Safe signoff, the 24h delay and a separate reopening decision remain gates. If paused dUSD prevents first-call rescue of a donation to the inactive replacement, or reinvestment loses even a base unit of backing, stop; do not weaken guards.
+
+**Pinned regression is not a guarantee for every execution timestamp.** At the block above, the preferred cash/core path succeeds with schedule timestamp `block.timestamp + 600` and execute timestamp `schedule + 86400 + 1` (1788845568). At `schedule + 86400 + 2`, dLEND accrued-index rounding causes `MigrationCheckFailed("cash-backing-changed")`; the entire transaction rolls back, retaining old cash and original containment. Both cases are asserted by `RouterIncidentMigration.test.ts`. A diagnostic Idle retargeting also completed at the successful timestamp, but is not the selected planner path. Do not time a mainnet broadcast from these historical timestamps: rehearse the actual intended state and retain fail-closed behavior.
+
+Run `node --test scripts/incident-2026-09-05/policy.test.mjs scripts/followup-2026-09-05/followup.test.mjs` and `yarn hardhat test test/dstake/RouterIncidentMigration.test.ts`. To include the real, block-pinned cash/core regression, securely export `MIGRATION_FORK_RPC_URL` from `$ETHEREUM_RPC_URL` before the Hardhat test command. It resets only the in-process `hardhat` chain (31337), impersonates Governance Safe only there, and restores the local network afterward. It tests existing live router/token/wrapper behavior, real 24h Timelock and planner ABI encoding; it does **not** certify the completeness of the production retirement list or bypass the CLI's reviewed-manifest gates. The default offline run reports this opt-in integration as pending.
 
 Use the existing incident `ops.mjs` inventory/deploy/plan/simulate/verify commands, now generation-3 aware. Start with `node scripts/incident-2026-09-05/ops.mjs help` and its runbook. Rehearse on a local Hardhat fork with the real Safe/Timelock permissions, not an impersonated Timelock. The old operations tool retains its explicit broadcast option for **new paused component deployment only**; no new live governance execution ability was added. This delivery did not exercise that option.
 

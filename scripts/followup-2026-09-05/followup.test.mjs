@@ -129,7 +129,7 @@ test("per-strategy allowance cannot exceed reviewed aggregate bootstrap budget",
 });
 test("retirement includes historical adapters, adapter admin, custody and upstream claims", () => {
   const c = fixture(),
-    s = { configs: [{ adapter: A(80) }], routerCash: "0" },
+    s = { configs: [{ adapter: A(80) }], routerCash: "0", paused: true, assetPaused: false, dlend: { frozen: false } },
     d = { router: A(81), guard: A(82) };
   const calls = migrationCalls(c, d, s);
   assert.equal(calls[0].method, "rescuePausedCash");
@@ -154,7 +154,17 @@ test("retirement includes historical adapters, adapter admin, custody and upstre
 test("separate emission-owner revocation is a checked precondition, not an unauthorized timelock call", () => {
   const c = fixture();
   c.retirement.claimers[0].preconditionOnly = true;
-  const calls = migrationCalls(c, { router: A(81), guard: A(82) }, { configs: [{ adapter: A(80) }], routerCash: "0" });
+  const calls = migrationCalls(
+    c,
+    { router: A(81), guard: A(82) },
+    {
+      configs: [{ adapter: A(80) }],
+      routerCash: "0",
+      paused: true,
+      assetPaused: false,
+      dlend: { frozen: false },
+    },
+  );
   assert(!calls.some((x) => x.method === "setClaimer"));
 });
 test("manifest digest changes with threshold, role or wrapper identity", () => {

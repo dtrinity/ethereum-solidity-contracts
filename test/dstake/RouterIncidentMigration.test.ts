@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { backingFixture } from "../incident-2026-09-05/fixture";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import anchors from "../../scripts/incident-2026-09-05/ethereum.json";
+
+// Preserve native ESM import under this repository's CommonJS ts-node configuration.
+const importOps = (file: string) => new Function("url", "return import(url)")(pathToFileURL(path.resolve(file)).href);
 
 const roleNames = [
   "DEFAULT_ADMIN_ROLE",
@@ -231,12 +237,32 @@ describe("Incident router replacement — atomic governance migration", function
     expect(await f.router.currentShortfall()).to.equal(1);
   });
 
-  it("rejects an unpaused legacy router", async function () {
+  it("migrates an unpaused legacy router when containment is first, but rejects the old prefix", async function () {
     const f = await migrationFixture();
     await f.router.unpause();
+    await f.router.grantRole(role("PAUSER_ROLE"), f.tl.target);
     const execute = await f.schedule();
     await expect(execute()).to.be.reverted;
     expect(await f.guard.phase()).to.equal(0);
+    const compressed = await f.schedule([{ target: f.router.target, data: f.router.interface.encodeFunctionData("pause") }, ...f.calls]);
+    await compressed();
+    expect(await f.guard.phase()).to.equal(2);
+    expect(await f.router.paused()).to.equal(true);
+    expect(await f.replacement.paused()).to.equal(true);
+    expect(await f.token.router()).to.equal(f.replacement.target);
+  });
+
+  it("rolls back new-router unpause after cash verification", async function () {
+    const f = await migrationFixture();
+    const execute = await f.schedule([
+      ...f.calls.slice(0, -1),
+      { target: f.replacement.target, data: f.replacement.interface.encodeFunctionData("unpause") },
+      f.calls.at(-1)!,
+    ]);
+    await expect(execute()).to.be.reverted;
+    expect(await f.guard.phase()).to.equal(0);
+    expect(await f.replacement.paused()).to.equal(true);
+    expect(await f.token.router()).to.equal(f.router.target);
   });
 
   it("requires legacy independent claimer retirement, not just adapter revocation", async function () {
@@ -271,5 +297,155 @@ describe("Incident router replacement — atomic governance migration", function
   it("cannot be started by an unprivileged sender", async function () {
     const f = await migrationFixture();
     await expect(f.guard.connect(f.user).begin()).to.be.revertedWithCustomError(f.guard, "TimelockOnly");
+  });
+});
+
+// Optional real integration regression. Only the in-process Hardhat chain is mutated.
+// No wallet key, live CREATE, reviewed-manifest override, or production signoff.
+(process.env.MIGRATION_FORK_RPC_URL ? describe : describe.skip)("Compressed migration — pinned Ethereum integration", function () {
+  this.timeout(600_000);
+
+  it("preserves holder cash through dUSD unpause and PoolAdmin unfreeze, then restores containment in one batch", async function () {
+    expect(network.name).to.equal("hardhat");
+    try {
+      await network.provider.send("hardhat_reset", [
+        {
+          forking: { jsonRpcUrl: process.env.MIGRATION_FORK_RPC_URL, blockNumber: 25923361 },
+        },
+      ]);
+    } catch {
+      throw new Error("Cannot initialize pinned Ethereum fork; RPC details suppressed.");
+    }
+    try {
+      expect((await ethers.provider.getNetwork()).chainId).to.equal(31337n);
+      // Local gas bookkeeping only; avoid stale fee estimates across hardhat_reset.
+      await network.provider.send("hardhat_setNextBlockBaseFeePerGas", ["0x0"]);
+      const { ABI, inventory } = await importOps("scripts/incident-2026-09-05/ops.mjs");
+      const { migrationCalls, assertMigrationPlan } = await importOps("scripts/incident-2026-09-05/policy.mjs");
+      const s = await inventory(anchors, ethers.provider);
+      expect(s.blockHash).to.equal("0xd4079757543ee2522d030c769f24887c24055adee2f73812928956bb2f65be1e");
+      expect(s.paused).to.equal(false);
+      expect(s.assetPaused).to.equal(true);
+      expect(s.dlend.frozen).to.equal(true);
+      expect(s.dlend.poolAdmin).to.equal(true);
+      expect(s.authority.assetPauser && s.authority.routerPauser).to.equal(true);
+      expect(s.configs.some((v: any) => v.vault.toLowerCase() === anchors.idleVault.toLowerCase())).to.equal(true);
+      const [admin] = await ethers.getSigners();
+      const replacement: any = await (await ethers.getContractFactory("DStakeRouterV2Incident")).deploy(anchors.token, anchors.collateral);
+      for (const [name, setter] of [
+        ["DStakeRouterV2GovernanceModule", "setGovernanceModule"],
+        ["DStakeRouterV2RebalanceModule", "setRebalanceModule"],
+      ]) {
+        const module = await (await ethers.getContractFactory(name)).deploy(anchors.token, anchors.collateral);
+        await replacement[setter](module.target);
+      }
+      await replacement.setMaxVaultCount(s.maxVaults);
+      await replacement.setVaultConfigs(s.configs.map((v: any) => [v.vault, v.adapter, v.targetBps, 1]));
+      for (const [setter, value] of [
+        ["setWithdrawalFee", s.fee],
+        ["setReinvestIncentive", s.incentive],
+        ["setDustTolerance", s.dust],
+        ["setDepositCap", s.cap],
+      ])
+        await replacement[setter](value);
+      for (const name of roleNames) await replacement.grantRole(role(name), anchors.timelock);
+      for (const name of [...roleNames].reverse()) await replacement.revokeRole(role(name), admin.address);
+      // Scope: live cash/core integration, not a certification of production retirement completeness.
+      // Retirement is exercised independently in the local tests above; live reviewed flags stay false.
+      const guard: any = await (
+        await ethers.getContractFactory("DStakeRouterMigrationGuard")
+      ).deploy(
+        anchors.timelock,
+        anchors.token,
+        anchors.collateral,
+        anchors.oldRouter,
+        replacement.target,
+        admin.address,
+        [],
+        s.configs.map((v: any) => v.adapter),
+        [],
+      );
+      const d = { router: replacement.target, guard: guard.target };
+      const semantic = migrationCalls(anchors, d, s);
+      assertMigrationPlan(semantic, anchors, d, s);
+      const get = (address: string, kind: string) => new ethers.Contract(address, [...ABI[kind], ...ABI.access], ethers.provider);
+      const asset = get(anchors.asset, "asset"),
+        old = get(anchors.oldRouter, "router");
+      const token = get(anchors.token, "token"),
+        pool = get(s.dlend.pool, "pool");
+      await network.provider.send("hardhat_impersonateAccount", [anchors.governanceSafe]);
+      await network.provider.send("hardhat_setBalance", [anchors.governanceSafe, "0x56bc75e2d63100000"]);
+      const gov = await ethers.getSigner(anchors.governanceSafe);
+      const tl: any = get(anchors.timelock, "timelock").connect(gov);
+      const execute = async (calls: any[], secondsAfterDelay = 1) => {
+        const args = [
+          calls.map((x) => x.to),
+          calls.map(() => 0),
+          calls.map((x) => new ethers.Interface(ABI[x.contract]).encodeFunctionData(x.method, x.args)),
+          ethers.ZeroHash,
+          ethers.id("compressed migration fork regression"),
+        ];
+        const delay = await tl.getMinDelay();
+        expect(delay).to.equal(86400n);
+        await network.provider.send("evm_setNextBlockTimestamp", [s.timestamp + 600]);
+        await tl.scheduleBatch(...args, delay);
+        await network.provider.send("evm_setNextBlockTimestamp", [s.timestamp + 600 + Number(delay) + secondsAfterDelay]);
+        return () => tl.executeBatch(...args);
+      };
+      // Dedicated sabotage: without each required prefix leg, the actual live path reverts.
+      for (const omit of [
+        (x: any, i: number) => i === 1, // old frozen plan lacked the initial router pause
+        (x: any) => x.contract === "asset" && x.method === "unpause",
+        (x: any) => x.method === "setReserveFreeze" && x.args[1] === false,
+      ]) {
+        const snapshot = await network.provider.send("evm_snapshot");
+        const run = await execute(semantic.filter((x: any, i: number) => !omit(x, i)));
+        await expect(run()).to.be.reverted;
+        expect(await guard.phase()).to.equal(0);
+        expect(await token.router()).to.equal(anchors.oldRouter);
+        expect(await asset.paused()).to.equal(true);
+        await network.provider.send("evm_revert", [snapshot]);
+      }
+      const cash = await asset.balanceOf(anchors.oldRouter);
+      expect(cash).to.be.gt(0n);
+      const safeCash = await asset.balanceOf(anchors.governanceSafe);
+      const timelockCash = await asset.balanceOf(anchors.timelock);
+      const supply = await token.totalSupply();
+      // Adjacent accrued-index state cannot conserve backing exactly. Never widen the guard.
+      const snapshot = await network.provider.send("evm_snapshot");
+      const roundingFailure = await execute(semantic, 2);
+      await expect(roundingFailure())
+        .to.be.revertedWithCustomError(guard, "MigrationCheckFailed")
+        .withArgs(ethers.encodeBytes32String("cash-backing-changed"));
+      expect(await guard.phase()).to.equal(0);
+      expect(await token.router()).to.equal(anchors.oldRouter);
+      expect(await asset.balanceOf(anchors.oldRouter)).to.equal(cash);
+      expect(await asset.paused()).to.equal(true);
+      expect(await old.paused()).to.equal(false);
+      expect(Boolean((await pool.getConfiguration(anchors.asset)).data & (1n << 57n))).to.equal(true);
+      await network.provider.send("evm_revert", [snapshot]);
+      const run = await execute(semantic);
+      await run();
+      expect(await guard.phase()).to.equal(2); // exact intra-transaction backing/supply continuity
+      expect(await guard.startingLegacyCash()).to.equal(cash);
+      expect(await asset.balanceOf(anchors.oldRouter)).to.equal(0n);
+      expect(await asset.balanceOf(anchors.governanceSafe)).to.equal(safeCash);
+      expect(await asset.balanceOf(anchors.timelock)).to.equal(timelockCash);
+      expect(await token.totalSupply()).to.equal(supply);
+      expect(await token.router()).to.equal(replacement.target);
+      expect(await get(anchors.collateral, "collateral").router()).to.equal(replacement.target);
+      expect(await old.paused()).to.equal(true);
+      expect(await asset.paused()).to.equal(true);
+      expect(Boolean((await pool.getConfiguration(anchors.asset)).data & (1n << 57n))).to.equal(true);
+      expect(await replacement.paused()).to.equal(true);
+      for (const v of s.configs) {
+        const cloned = await replacement.getVaultConfig(v.vault);
+        expect(cloned.targetBps).to.equal(BigInt(v.targetBps));
+        expect(cloned.status).to.equal(1n);
+      }
+    } finally {
+      await network.provider.send("hardhat_stopImpersonatingAccount", [anchors.governanceSafe]);
+      await network.provider.send("hardhat_reset");
+    }
   });
 });

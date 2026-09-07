@@ -149,10 +149,12 @@ both executions are captured.
 6. **Approve isolation and reopening separately.** First approve deployment of
    verified paused components and the timelocked, guard-protected migration. Verify
    completed guard phase, pointers, retired privileges, exact transaction-boundary
-   accounting and paused/Suspended state. Unpause, dLEND unfreeze and Curve liquidity
-   restoration are separate reviewed governance actions; no script in this patch
-   automatically performs them.
+   accounting and paused/Suspended state. The compressed migration restores its
+   temporary dUSD unpause/dLEND unfreeze before cash verification; neither is a
+   persistent reopening. New-router unpause, persistent dUSD/dLEND reopening and
+   Curve liquidity restoration remain separate reviewed governance actions.
 
-The runbook describes simulation and operation preparation. No fork result,
-mainnet execution receipt, or incident-closure certificate is included because
-none was obtained in this review environment.
+The runbook describes simulation and operation preparation. The compressed-rollout
+amendment's pinned cash/core regression and execution-time rounding limitation are
+documented in `docs/security/2026-09-05-followup/DEPLOYMENT.md`. This is not a complete
+live-manifest rehearsal, a mainnet execution receipt, or an incident-closure certificate.
