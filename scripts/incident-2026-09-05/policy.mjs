@@ -37,6 +37,22 @@ export function retirementAdapters(c, inventory) {
   return [...new Set([...inventory.configs.map((v) => lower(v.adapter)), ...(c.retirement?.extraAdapters ?? []).map(lower)])];
 }
 
+/** Old-router configs so reinvestFees deposits leftover cash into Idle, not dLEND. */
+export function idleCashConfigs(c, inventory) {
+  check(
+    typeof c.idleVault === "string" && /^0x[0-9a-fA-F]{40}$/.test(c.idleVault) && !sameAddress(c.idleVault, ZERO),
+    "idleVault is required.",
+  );
+  const idle = inventory.configs.find((v) => sameAddress(v.vault, c.idleVault));
+  check(idle, "Idle vault is not in the live strategy graph; do not invent it.");
+  return inventory.configs.map((v) => [
+    v.vault,
+    v.adapter,
+    sameAddress(v.vault, c.idleVault) ? "1000000" : "0",
+    sameAddress(v.vault, c.idleVault) ? 0 : 1,
+  ]);
+}
+
 export function validateRetirement(c) {
   const r = c.retirement;
   check(r && r.reviewed === true, "A reviewed legacy reward/caller inventory is required; see follow-up instructions.");
@@ -129,24 +145,17 @@ export function validateInventory(c, s, migration = false) {
 export function migrationCalls(c, replacement, inventory) {
   check(typeof inventory.paused === "boolean" && typeof inventory.assetPaused === "boolean", "Missing pinned pause state.");
   check(!inventory.assetPaused || inventory.authority.assetPauser === true, "Timelock lacks dUSD PAUSER authority.");
-  const dlend = inventory.dlend;
-  check(dlend && typeof dlend.frozen === "boolean", "Missing pinned dLEND reserve state.");
-  check(!dlend.frozen || dlend.poolAdmin === true, "Frozen dLEND cash path requires Timelock PoolAdmin; review an Idle alternative.");
-  check(
-    !dlend.frozen || (/^0x[0-9a-fA-F]{40}$/.test(dlend.configurator) && !sameAddress(dlend.configurator, ZERO)),
-    "Missing verified PoolConfigurator.",
-  );
+  const idleConfigs = idleCashConfigs(c, inventory);
   const adapters = [...new Set(inventory.configs.map((v) => lower(v.adapter)))];
   return [
     { to: replacement.router, contract: "router", method: "rescuePausedCash", args: [] },
     ...(!inventory.paused ? [{ to: c.oldRouter, contract: "router", method: "pause", args: [] }] : []),
     { to: replacement.guard, contract: "guard", method: "begin", args: [] },
     ...(inventory.assetPaused ? [{ to: c.asset, contract: "asset", method: "unpause", args: [] }] : []),
-    ...(dlend.frozen ? [{ to: dlend.configurator, contract: "configurator", method: "setReserveFreeze", args: [c.asset, false] }] : []),
     { to: c.oldRouter, contract: "router", method: "unpause", args: [] },
+    { to: c.oldRouter, contract: "router", method: "setVaultConfigs", args: [idleConfigs] },
     { to: c.oldRouter, contract: "router", method: "reinvestFees", args: [] },
     { to: c.oldRouter, contract: "router", method: "pause", args: [] },
-    ...(dlend.frozen ? [{ to: dlend.configurator, contract: "configurator", method: "setReserveFreeze", args: [c.asset, true] }] : []),
     ...(inventory.assetPaused ? [{ to: c.asset, contract: "asset", method: "pause", args: [] }] : []),
     { to: replacement.guard, contract: "guard", method: "verifyLegacyCashHandled", args: [] },
     ...c.retirement.callers.flatMap((caller) => [
@@ -189,14 +198,13 @@ export function assertMigrationPlan(calls, c, replacement, inventory) {
   check(!calls.some((x) => sameAddress(x.to, replacement.router) && /unpause/i.test(x.method)), "New router must remain paused.");
   const cashVerified = calls.findIndex((x) => x.method === "verifyLegacyCashHandled");
   check(cashVerified >= 2, "Legacy cash handling must be verified before migration.");
+  const retarget = calls.find((x) => x.method === "setVaultConfigs");
+  check(retarget && sameAddress(retarget.to, c.oldRouter), "Leftover cash must retarget the old router to Idle before reinvestFees.");
+  check(!calls.some((x) => x.method === "setReserveFreeze"), "Do not unfreeze dLEND in this batch; leftover cash goes to Idle.");
   check(
     !calls
       .slice(cashVerified + 1)
-      .some(
-        (x) =>
-          /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method) ||
-          (x.method === "setReserveFreeze" && x.args[1] === false),
-      ),
+      .some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares|setReserveFreeze/i.test(x.method)),
     "Unsafe reopening/upgrade/asset-removal call in migration batch.",
   );
 }

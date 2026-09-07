@@ -177,14 +177,13 @@ The migration Safe files contain ONE call each: `scheduleBatch` and later
 3. `guard.begin()` checks paused old/new routers, unchanged graph, zero shortfall,
    matching economics, complete strategy inventory and Suspended status; then records
    backing, supply and strategy balances before any legacy cash conversion.
-4. If dUSD was paused, Timelock calls `dUSD.unpause()`. If the dLEND reserve was
-   frozen, verified Timelock PoolAdmin calls `PoolConfigurator.setReserveFreeze(dUSD, false)`.
-5. Always old-router `unpause()` → `reinvestFees()` → `pause()`, with zero incentive,
-   even if planning-time cash was zero. This cash is **holder backing**, not Safe funds.
-   It is reinvested into the existing strategy graph, without changing cloned targets.
-6. Refreeze dLEND if temporarily unfrozen, then re-pause dUSD if temporarily unpaused.
-   `guard.verifyLegacyCashHandled()` requires zero remaining old cash and exact
-   backing/supply conservation. No unpause/unfreeze is allowed after this point.
+4. If dUSD was paused, Timelock calls `dUSD.unpause()`. Do **not** unfreeze dLEND.
+5. Old-router `unpause()` → `setVaultConfigs` (Idle 100% Active, other vaults 0% Suspended)
+   → `reinvestFees()` → `pause()`, even if planning-time cash was zero. Leftover dUSD is
+   **holder backing** parked in Idle (no floating dLEND index). Replacement cloned targets
+   stay the live graph (Idle remains; dLEND 100%). Idle delist is a later Timelock.
+6. Re-pause dUSD if temporarily unpaused. `guard.verifyLegacyCashHandled()` requires zero
+   remaining old cash and exact backing/supply conservation. No unpause/unfreeze after this.
 7. Retire legacy reward capabilities/claimers per the follow-up deployment handoff;
    every adapter authorizes the new router.
 8. `collateral.setRouter(newRouter)` then `sdUSD.migrateCore(newRouter, sameCollateral)`
@@ -203,9 +202,9 @@ Only a mined `scheduleBatch` starts the clock, not signature collection. Re-read
 pause state, reserve state and ACLs before scheduling and execution and rehearse
 the exact saved payload. State drift may require cancellation/reproposal; never
 edit scheduled calls or manually unpause to make them work. New router stays
-paused with every strategy Suspended, including Idle. The brief dUSD/dLEND window
+paused with every strategy Suspended, including Idle. The brief dUSD window
 cannot be sandwiched by another transaction inside one `executeBatch`; this does
-not waive callback/reentrancy or exact-backing checks.
+not waive callback/reentrancy or exact-backing checks. dLEND stays frozen.
 
 ### Blockers that require an explicit decision
 
