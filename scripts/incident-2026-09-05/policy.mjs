@@ -127,13 +127,27 @@ export function validateInventory(c, s, migration = false) {
 
 // Semantic plan first; ABI encoding is separate and cannot silently change order.
 export function migrationCalls(c, replacement, inventory) {
+  check(typeof inventory.paused === "boolean" && typeof inventory.assetPaused === "boolean", "Missing pinned pause state.");
+  check(!inventory.assetPaused || inventory.authority.assetPauser === true, "Timelock lacks dUSD PAUSER authority.");
+  const dlend = inventory.dlend;
+  check(dlend && typeof dlend.frozen === "boolean", "Missing pinned dLEND reserve state.");
+  check(!dlend.frozen || dlend.poolAdmin === true, "Frozen dLEND cash path requires Timelock PoolAdmin; review an Idle alternative.");
+  check(
+    !dlend.frozen || (/^0x[0-9a-fA-F]{40}$/.test(dlend.configurator) && !sameAddress(dlend.configurator, ZERO)),
+    "Missing verified PoolConfigurator.",
+  );
   const adapters = [...new Set(inventory.configs.map((v) => lower(v.adapter)))];
   return [
     { to: replacement.router, contract: "router", method: "rescuePausedCash", args: [] },
+    ...(!inventory.paused ? [{ to: c.oldRouter, contract: "router", method: "pause", args: [] }] : []),
     { to: replacement.guard, contract: "guard", method: "begin", args: [] },
+    ...(inventory.assetPaused ? [{ to: c.asset, contract: "asset", method: "unpause", args: [] }] : []),
+    ...(dlend.frozen ? [{ to: dlend.configurator, contract: "configurator", method: "setReserveFreeze", args: [c.asset, false] }] : []),
     { to: c.oldRouter, contract: "router", method: "unpause", args: [] },
     { to: c.oldRouter, contract: "router", method: "reinvestFees", args: [] },
     { to: c.oldRouter, contract: "router", method: "pause", args: [] },
+    ...(dlend.frozen ? [{ to: dlend.configurator, contract: "configurator", method: "setReserveFreeze", args: [c.asset, true] }] : []),
+    ...(inventory.assetPaused ? [{ to: c.asset, contract: "asset", method: "pause", args: [] }] : []),
     { to: replacement.guard, contract: "guard", method: "verifyLegacyCashHandled", args: [] },
     ...c.retirement.callers.flatMap((caller) => [
       ...retirementAdapters(c, inventory).flatMap((to) => [
@@ -166,13 +180,23 @@ export function assertMigrationPlan(calls, c, replacement, inventory) {
     "Migration call sequence was modified or is incomplete.",
   );
   check(calls[0]?.method === "rescuePausedCash", "Replacement cash rescue must occur before migration begin.");
-  check(calls[1]?.method === "begin", "Migration guard must snapshot backing before legacy cash handling.");
+  const beginIndex = inventory.paused ? 1 : 2;
+  check(calls[beginIndex]?.method === "begin", "Migration guard must snapshot backing after containment and before cash handling.");
+  check(
+    inventory.paused || (calls[1]?.method === "pause" && sameAddress(calls[1]?.to, c.oldRouter)),
+    "Unpaused legacy router must be paused before begin in this batch.",
+  );
+  check(!calls.some((x) => sameAddress(x.to, replacement.router) && /unpause/i.test(x.method)), "New router must remain paused.");
   const cashVerified = calls.findIndex((x) => x.method === "verifyLegacyCashHandled");
   check(cashVerified >= 2, "Legacy cash handling must be verified before migration.");
   check(
     !calls
       .slice(cashVerified + 1)
-      .some((x) => /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method)),
+      .some(
+        (x) =>
+          /unpause|unfreeze|upgrade|removeAdapter|clearShortfall|transferStrategyShares/i.test(x.method) ||
+          (x.method === "setReserveFreeze" && x.args[1] === false),
+      ),
     "Unsafe reopening/upgrade/asset-removal call in migration batch.",
   );
 }

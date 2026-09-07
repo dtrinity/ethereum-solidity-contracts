@@ -28,14 +28,23 @@ const ARTIFACTS = {
   rebalance: ["DStakeRouterV2RebalanceModule.sol", "DStakeRouterV2RebalanceModule"],
   guard: ["incident/DStakeRouterMigrationGuard.sol", "DStakeRouterMigrationGuard"],
 };
-const ABI = {
+export const ABI = {
   access: ["function hasRole(bytes32,address) view returns(bool)", "function revokeRole(bytes32,address)"],
   asset: [
     "function balanceOf(address) view returns(uint256)",
     "function allowance(address,address) view returns(uint256)",
     "function paused() view returns(bool)",
     "function pause()",
+    "function unpause()",
   ],
+  addressesProvider: [
+    "function getACLManager() view returns(address)",
+    "function getPoolConfigurator() view returns(address)",
+    "function getPool() view returns(address)",
+  ],
+  acl: ["function isPoolAdmin(address) view returns(bool)"],
+  pool: ["function getConfiguration(address) view returns(tuple(uint256 data))"],
+  configurator: ["function setReserveFreeze(address,bool)"],
   token: [
     "function router() view returns(address)",
     "function collateralVault() view returns(address)",
@@ -279,7 +288,8 @@ async function fingerprint(provider, address, block) {
   return { address, codeHash: E.keccak256(code), implementation, implementationHash };
 }
 
-async function inventory(c, provider) {
+export async function inventory(c, provider) {
+  E ??= await import("ethers");
   const block = await provider.getBlock("latest");
   check(block && block.hash, "Cannot pin a canonical block.");
   const tag = { blockTag: block.number };
@@ -288,6 +298,13 @@ async function inventory(c, provider) {
   const cv = contract(c.collateral, "collateral", provider);
   const a = contract(c.asset, "asset", provider);
   const tl = contract(c.timelock, "timelock", provider);
+  // Discover current endpoints from the deployed provider, never the freeze-only Safe.
+  const addressesProvider = readJson(path.join(ROOT, "deployments/ethereum_mainnet/PoolAddressesProvider.json")).address;
+  const ap = contract(addressesProvider, "addressesProvider", provider);
+  const acl = await ap.getACLManager(tag);
+  const configurator = await ap.getPoolConfigurator(tag);
+  const pool = await ap.getPool(tag);
+  const reserve = await contract(pool, "pool", provider).getConfiguration(c.asset, tag);
   const s = {
     chainId: c.chainId,
     blockNumber: block.number,
@@ -303,6 +320,14 @@ async function inventory(c, provider) {
     vaultAsset: await cv.dStable(tag),
     paused: await r.paused(tag),
     assetPaused: await a.paused(tag),
+    dlend: {
+      addressesProvider,
+      acl,
+      configurator,
+      pool,
+      poolAdmin: await contract(acl, "acl", provider).isPoolAdmin(c.timelock, tag),
+      frozen: Boolean(reserve.data & (1n << 57n)),
+    },
     supply: String(await t.totalSupply(tag)),
     assets: String(await t.totalAssets(tag)),
     managed: String(await r.totalManagedAssets(tag)),
@@ -323,6 +348,7 @@ async function inventory(c, provider) {
       tokenAdmin: await t.hasRole(ZERO_HASH, c.timelock, tag),
       vaultAdmin: await cv.hasRole(ZERO_HASH, c.timelock, tag),
       routerPauser: await r.hasRole(role("PAUSER_ROLE"), c.timelock, tag),
+      assetPauser: await a.hasRole(role("PAUSER_ROLE"), c.timelock, tag),
       proposer: await tl.hasRole(role("PROPOSER_ROLE"), c.governanceSafe, tag),
       executor: (await tl.hasRole(role("EXECUTOR_ROLE"), c.governanceSafe, tag)) || (await tl.hasRole(role("EXECUTOR_ROLE"), ZERO, tag)),
       emergencyAssetPauser: await a.hasRole(role("PAUSER_ROLE"), c.emergencySafe, tag),
@@ -360,6 +386,10 @@ async function inventory(c, provider) {
       c.collateral,
       c.oldRouter,
       c.timelock,
+      addressesProvider,
+      acl,
+      configurator,
+      pool,
       await r.governanceModule(tag),
       await r.rebalanceModule(tag),
       ...s.configs.flatMap((v) => [v.vault, v.adapter]),
@@ -779,17 +809,26 @@ async function migration(c, s, d, provider, out) {
     ),
   }));
   const op = await operation(c, provider, calls, "migration");
-  const plan = { format: 1, config: c, deployment: d, inventory: s, semantic, operation: op, requiresLegacyPause: true, noReopening: true };
+  const plan = {
+    format: 1,
+    config: c,
+    deployment: d,
+    inventory: s,
+    semantic,
+    operation: op,
+    requiresLegacyPause: s.paused,
+    noReopening: true,
+  };
   plan.reviewSha256 = digest(plan);
   write(path.join(out, "migration-plan.json"), plan);
   write(path.join(out, "migration-schedule.safe.json"), safe(c, "Schedule ATOMIC paused sdUSD router replacement", [op.schedule]));
   write(
     path.join(out, "migration-execute.safe.json"),
-    safe(c, "Execute ATOMIC paused replacement ONLY AFTER legacy pause and timelock maturity", [op.execute]),
+    safe(c, "Execute ATOMIC paused replacement after ONE timelock maturity", [op.execute]),
   );
   console.log(`Migration review SHA-256: ${plan.reviewSha256}`);
   console.log(
-    "Legacy router MUST be paused before execution. All replacement strategies stay suspended; no unpause/unfreeze or LP restoration is included.",
+    "ONE campaign: legacy pause is folded in when needed. Temporary dUSD unpause/dLEND unfreeze is restored before cash verification. Replacement stays paused; no reopening or LP restoration.",
   );
 }
 
@@ -830,20 +869,7 @@ async function simulate(plan, provider, options, out) {
       check(r && r.status === 1, "Local-fork governance transaction failed.");
       return r;
     };
-    // Rehearse containment through the REAL timelock, not by impersonating it.
-    const old = contract(plan.config.oldRouter, "router", provider);
-    if (!(await old.paused())) {
-      const stop = await operation(
-        plan.config,
-        provider,
-        [{ to: plan.config.oldRouter, data: new E.Interface(ABI.router).encodeFunctionData("pause") }],
-        `fork-containment-${snapshot}`,
-      );
-      await send(stop.schedule);
-      await provider.send("evm_increaseTime", [Number(stop.delay) + 1]);
-      await provider.send("evm_mine", []);
-      await send(stop.execute);
-    }
+    // No preparatory containment transaction: rehearse the exact single campaign.
     const before = {
       assets: String(await contract(plan.config.token, "token", provider).totalAssets()),
       supply: String(await contract(plan.config.token, "token", provider).totalSupply()),
@@ -855,6 +881,12 @@ async function simulate(plan, provider, options, out) {
     await provider.send("evm_mine", []);
     const receipt = await send(op.execute); // ONE atomic executeBatch, guard begin/finish inside
     await verifyReplacement(plan.config, plan.deployment, provider, true);
+    check(
+      (await contract(plan.config.asset, "asset", provider).paused()) === plan.inventory.assetPaused,
+      "dUSD containment was not restored.",
+    );
+    const reserve = await contract(plan.inventory.dlend.pool, "pool", provider).getConfiguration(plan.config.asset);
+    check(Boolean(reserve.data & (1n << 57n)) === plan.inventory.dlend.frozen, "Reserve freeze state was not restored.");
     const after = {
       assets: String(await contract(plan.config.token, "token", provider).totalAssets()),
       supply: String(await contract(plan.config.token, "token", provider).totalSupply()),
@@ -939,12 +971,13 @@ async function main() {
     provider.destroy();
   }
 }
-main().catch((error) => {
-  // Never echo ethers request objects, RPC URLs, wallet errors or environment values.
-  console.error(
-    error instanceof IncidentError
-      ? error.message
-      : "Operation failed. Raw provider/wallet diagnostics were suppressed to avoid leaking credentials. Check local dependencies, compilation, RPC access and on-chain preconditions.",
-  );
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  main().catch((error) => {
+    // Never echo ethers request objects, RPC URLs, wallet errors or environment values.
+    console.error(
+      error instanceof IncidentError
+        ? error.message
+        : "Operation failed. Raw provider/wallet diagnostics were suppressed to avoid leaking credentials. Check local dependencies, compilation, RPC access and on-chain preconditions.",
+    );
+    process.exitCode = 1;
+  });

@@ -4,6 +4,12 @@
 
 ## Preconditions
 
+Rollout is **three steps / one Timelock campaign**: (1) separately approved agent-wallet
+CREATEs and bootstrap of paused replacements, (2) Governance Safe **3/5** submits one
+`scheduleBatch`, (3) one `executeBatch` after the **24h** delay. The batch includes
+legacy-router containment and execute-day cash handling. There is no separate
+router-pause clock and no reopening in this campaign.
+
 Use the full repository at the supplied base, or consciously rebase and re-review.
 Restore its existing dependency lockfile and `.shared`/Foundry dependencies. The
 selected remediation archive alone is not a bootable project. Run the complete
@@ -24,8 +30,6 @@ unsigned Safe transaction data for human review.
 ```sh
 node scripts/incident-2026-09-05/ops.mjs inventory \
   --rpc-env ETHEREUM_RPC_URL --out /tmp/dstake-ir-live
-node scripts/incident-2026-09-05/ops.mjs containment \
-  --rpc-env ETHEREUM_RPC_URL --out /tmp/dstake-ir-live
 ```
 
 The inventory captures one block, code hashes, EIP-1967 implementation-slot
@@ -34,7 +38,10 @@ strategy/adapter NAVs, roles, cash, shortfall, limits and pointer identities.
 This records the live integration; it does **not** certify that old code matches
 the workspace source. Compare the relevant verified/source builds independently.
 
-`containment` creates unsigned files only when a pause is still needed:
+The optional `containment` command is a standalone emergency tool, **not a step
+in this compressed rollout**. Do not schedule its router-pause operation alongside
+the migration: a duplicate `pause()` reverts. It creates unsigned files only when
+a pause is still needed:
 
 - `emergency-dUSD-pause.safe.json`: direct dUSD pause by the verified emergency Safe.
 - `containment-schedule.safe.json`: Governance Safe schedules the router pause.
@@ -49,7 +56,8 @@ unscheduled, 1 means executed, and a larger value is the ready timestamp. Reuse 
 existing operation rather than blindly attempt to schedule it again.
 
 A reserve freeze/LP withdrawal remains defense in depth, not proof of accounting
-isolation. None of these commands unfreezes reserves or restores liquidity.
+isolation. Containment never unfreezes reserves or restores liquidity. The migration
+temporarily unfreezes dLEND only inside its never-split cash-handling batch, then refreezes it.
 
 ## 2. Compile and inspect
 
@@ -164,18 +172,24 @@ before signatures and execution.
 The migration Safe files contain ONE call each: `scheduleBatch` and later
 `executeBatch` on the Timelock. The executeBatch contents, in order, are:
 
-1. The replacement router rescues only pre-activation donated cash.
-2. `guard.begin()` checks paused old/new routers, unchanged graph, zero shortfall,
+1. The replacement router rescues only pre-activation donated cash (still first).
+2. Pause the old router **if the pinned inventory says unpaused**; omit otherwise.
+3. `guard.begin()` checks paused old/new routers, unchanged graph, zero shortfall,
    matching economics, complete strategy inventory and Suspended status; then records
    backing, supply and strategy balances before any legacy cash conversion.
-3. The batch always unpauses/reinvests/pauses the old router with zero incentive so
-   cash donated after planning is also handled. `guard.verifyLegacyCashHandled()`
-   requires zero remaining cash and exact backing/supply conservation before migration continues.
-4. Every adapter authorizes the new router.
-5. `collateral.setRouter(newRouter)` changes its pointer and custody role.
-6. `sdUSD.migrateCore(newRouter, sameCollateral)` changes the token pointer.
-7. Every adapter revokes the old router's caller role.
-8. `guard.finish()` requires exact backing/supply/position continuity, correct
+4. If dUSD was paused, Timelock calls `dUSD.unpause()`. If the dLEND reserve was
+   frozen, verified Timelock PoolAdmin calls `PoolConfigurator.setReserveFreeze(dUSD, false)`.
+5. Always old-router `unpause()` → `reinvestFees()` → `pause()`, with zero incentive,
+   even if planning-time cash was zero. This cash is **holder backing**, not Safe funds.
+   It is reinvested into the existing strategy graph, without changing cloned targets.
+6. Refreeze dLEND if temporarily unfrozen, then re-pause dUSD if temporarily unpaused.
+   `guard.verifyLegacyCashHandled()` requires zero remaining old cash and exact
+   backing/supply conservation. No unpause/unfreeze is allowed after this point.
+7. Retire legacy reward capabilities/claimers per the follow-up deployment handoff;
+   every adapter authorizes the new router.
+8. `collateral.setRouter(newRouter)` then `sdUSD.migrateCore(newRouter, sameCollateral)`
+   switch pointers atomically; every adapter revokes the old router's caller role.
+9. `guard.finish()` requires exact backing/supply/position continuity, correct
    pointers, retired old custody/adapter rights and no remaining deployer powers.
 
 **Never split this into independently executable transactions.** The guard has no
@@ -184,25 +198,31 @@ single Timelock executeBatch. A failed final assertion reverts all preceding
 changes in that batch. The builder enforces its exact semantic call sequence and
 the simulation rechecks both the sequence and encoded envelope.
 
-The old router must be paused before executing the migration. Its pause can be
-scheduled in parallel; do not infer that collecting signatures starts either
-clock. The script does not add a duplicate pause to the migration batch, because
-`pause()` itself reverts when already paused.
+The old router must be paused **at begin**, which the same batch now establishes.
+Only a mined `scheduleBatch` starts the clock, not signature collection. Re-read
+pause state, reserve state and ACLs before scheduling and execution and rehearse
+the exact saved payload. State drift may require cancellation/reproposal; never
+edit scheduled calls or manually unpause to make them work. New router stays
+paused with every strategy Suspended, including Idle. The brief dUSD/dLEND window
+cannot be sandwiched by another transaction inside one `executeBatch`; this does
+not waive callback/reentrancy or exact-backing checks.
 
 ### Blockers that require an explicit decision
 
-Nonzero legacy router cash is not automatically swept through a suspect adapter.
+Nonzero legacy router cash is reinvested inside the backing snapshot, never swept to a Safe.
 Nonzero shortfall is not cleared. A cap below current NAV cannot be copied through
 the existing setter and requires an explicit reviewed adjustment. Adapter admins,
 EIP-1967 implementation differences, unsupported positions and role mismatches
 also block this path. These are intentional failures, not fields to force to zero.
 
-An unsolicited donation to the old or new router can invalidate the zero-cash
-precondition. This is a known **availability** limitation of the zero-movement
-handover. Reconcile and review a guarded cash-disposition extension or another
-migration path if it occurs; do not relax backing continuity to force execution.
-The supplied state does not establish current old-router cash, so this needs a
-live read. Shortfall-bearing/cash-bearing migration is outside this package.
+Legacy donations after planning are covered by unconditional reinvestment. If
+dUSD is paused and the inactive replacement receives cash, first-call rescue can
+still revert because transfers are paused: this is a fail-closed availability
+limitation, not permission to move rescue after `begin` or reopen separately.
+Missing Timelock dUSD PAUSER or frozen-reserve PoolAdmin blocks this selected
+path. The freeze-only Safe cannot substitute. Deposit caps, wrapper pause or
+rounding loss may also block reinvestment: require a successful exact fork rehearsal,
+not relaxed continuity. See the pinned evidence in the follow-up deployment handoff.
 
 ## 6. Verify isolation; review reopening separately
 
